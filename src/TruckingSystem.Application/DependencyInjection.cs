@@ -1,0 +1,36 @@
+using Microsoft.Extensions.DependencyInjection;
+using TruckingSystem.Application.Customers;
+using TruckingSystem.Application.Employees;
+using TruckingSystem.Application.Invoices;
+using TruckingSystem.Application.Locations;
+using TruckingSystem.Application.PublicTracking;
+using TruckingSystem.Application.TransportOrders;
+using TruckingSystem.Application.Trips;
+using TruckingSystem.Application.Vehicles;
+using TruckingSystem.Application.VehicleAllocation;
+using TruckingSystem.Application.Warehouses;
+
+namespace TruckingSystem.Application;
+
+/// <summary>
+/// Đăng ký toàn bộ Service của Application layer vào DI container.
+/// Program.cs (API) chỉ cần gọi 1 dòng builder.Services.AddApplication()
+/// thay vì phải biết chi tiết bên trong Application có bao nhiêu service.
+/// </summary>
+public static class DependencyInjection
+{
+    public static IServiceCollection AddApplication(this IServiceCollection services)
+    {
+        services.AddScoped<ITripService, TripService>();
+        services.AddScoped<ITransportOrderService, TransportOrderService>();
+        services.AddScoped<IVehicleService, VehicleService>();
+        services.AddScoped<ICustomerService, CustomerService>();
+        services.AddScoped<IPublicTrackingService, PublicTrackingService>();
+        services.AddScoped<IWarehouseSlottingService, WarehouseSlottingService>();
+        services.AddScoped<IEmployeeService, EmployeeService>();
+        services.AddScoped<IInvoiceService, InvoiceService>();
+        services.AddScoped<IVehicleAllocationService, VehicleAllocationService>();
+        services.AddScoped<ILocationService, LocationService>();
+        return services;
+    }
+}

@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- API chỉ cần EF Core Design (để chạy Add-Migration/Update-Database) và Swagger.
+         KHÔNG cần trực tiếp Npgsql/Identity/JWT nữa — những package đó giờ
+         nằm gọn trong TruckingSystem.Infrastructure, API chỉ "mượn" qua
+         ProjectReference, đúng nguyên tắc API không ôm chi tiết kỹ thuật. -->
+    <!-- Khai báo cố định ở đây thay vì để tự cài qua NuGet UI — tránh NuGet UI
+         tự chọn bản mới nhất (có thể là 10.x) gây lệch version như đã gặp trước đó. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.1" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\TruckingSystem.Domain\TruckingSystem.Domain.csproj" />
+    <ProjectReference Include="..\TruckingSystem.Application\TruckingSystem.Application.csproj" />
+    <ProjectReference Include="..\TruckingSystem.Infrastructure\TruckingSystem.Infrastructure.csproj" />
+  </ItemGroup>
+</Project>

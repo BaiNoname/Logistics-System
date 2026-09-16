@@ -1,0 +1,20 @@
+# ==== Build output — không commit, sinh ra tự động mỗi lần Build ====
+bin/
+obj/
+**/bin/
+**/obj/
+
+# ==== File riêng của Visual Studio (không liên quan tới code) ====
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# ==== Log/cache khác ====
+*.log
+*.tmp
+
+# ==== File máy Mac/Windows tự sinh (nếu có) ====
+.DS_Store
+Thumbs.db

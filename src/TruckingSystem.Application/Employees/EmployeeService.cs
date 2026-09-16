@@ -1,0 +1,58 @@
+using Microsoft.EntityFrameworkCore;
+using TruckingSystem.Application.Common.Interfaces;
+using TruckingSystem.Domain.Entities;
+using TruckingSystem.Domain.Enums;
+
+namespace TruckingSystem.Application.Employees;
+
+public class EmployeeService : IEmployeeService
+{
+    private readonly IApplicationDbContext _db;
+
+    public EmployeeService(IApplicationDbContext db)
+    {
+        _db = db;
+    }
+
+    public async Task<List<EmployeeListItemDto>> GetAllAsync()
+    {
+        return await _db.Employees
+            .Include(e => e.Department)
+            .Include(e => e.Position)
+            .OrderBy(e => e.FullName)
+            .Select(e => new EmployeeListItemDto(
+                e.Id, e.Code, e.FullName, e.Phone,
+                e.Department != null ? e.Department.Name : null,
+                e.Position != null ? e.Position.Name : null,
+                e.Status.ToString()))
+            .ToListAsync();
+    }
+
+    public async Task<EmployeeListItemDto> CreateAsync(CreateEmployeeRequest request)
+    {
+        var employee = new Employee
+        {
+            Code = request.Code,
+            FullName = request.FullName,
+            Phone = request.Phone,
+            DepartmentId = request.DepartmentId,
+            PositionId = request.PositionId,
+            HireDate = DateTime.UtcNow,
+            Status = EmployeeStatus.Active,
+        };
+        _db.Employees.Add(employee);
+        await _db.SaveChangesAsync();
+
+        var dept = request.DepartmentId.HasValue ? await _db.Departments.FindAsync(request.DepartmentId) : null;
+        var pos = request.PositionId.HasValue ? await _db.Positions.FindAsync(request.PositionId) : null;
+
+        return new EmployeeListItemDto(employee.Id, employee.Code, employee.FullName, employee.Phone,
+            dept?.Name, pos?.Name, employee.Status.ToString());
+    }
+
+    public async Task<List<LookupItemDto>> GetDepartmentsAsync()
+        => await _db.Departments.Select(d => new LookupItemDto(d.Id, d.Name)).ToListAsync();
+
+    public async Task<List<LookupItemDto>> GetPositionsAsync()
+        => await _db.Positions.Select(p => new LookupItemDto(p.Id, p.Name)).ToListAsync();
+}

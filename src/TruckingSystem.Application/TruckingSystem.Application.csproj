@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- QUAN TRỌNG: Application KHÔNG được reference EF Core, Npgsql, hay bất kỳ
+         package nào của Infrastructure — chỉ phụ thuộc Domain. Đây chính là điểm
+         khác biệt cốt lõi so với N-layer/3-layer cũ (nơi Service có thể gọi thẳng
+         DbContext). Application chỉ biết tới INTERFACE (IApplicationDbContext),
+         không biết Postgres/EF Core là gì. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.0" />
+    <!-- Chỉ lấy kiểu DbSet<T> để viết interface — KHÔNG phải Npgsql hay bất kỳ
+         provider cụ thể nào. Package này là abstraction thuần, không kéo theo
+         phụ thuộc vào PostgreSQL/SQL Server gì cả, vẫn giữ đúng nguyên tắc Clean
+         Architecture (Application không biết công nghệ lưu trữ cụ thể). -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.0" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.1" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\TruckingSystem.Domain\TruckingSystem.Domain.csproj" />
+  </ItemGroup>
+</Project>
