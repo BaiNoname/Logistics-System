@@ -1,65 +1,108 @@
 using System.Drawing;
 using System.Windows.Forms;
 using TruckingSystem.Desktop.Common;
+using TruckingSystem.Desktop.DTO_LocationManagement;
 
 namespace TruckingSystem.Desktop.GUI_LocationManagement;
 
-public class CreateLocationForm : BaseForm
+/// <summary>
+/// Logic — thêm địa điểm mới BẮT BUỘC chọn từ gợi ý VietMap Autocomplete
+/// (không cho gõ tay tọa độ nữa). Người dùng gõ từ khóa → hệ thống tự động
+/// gợi ý sau 300ms ngừng gõ (debounce, tránh gọi API dồn dập từng phím) →
+/// chọn 1 gợi ý → tự động lấy tọa độ thật qua Place API.
+/// </summary>
+public partial class CreateLocationForm : BaseForm
 {
-    private readonly ApiServices _api;
-    private readonly TextBox _txtName = new();
-    private readonly TextBox _txtAddress = new();
-    private readonly NumericUpDown _numLat = new() { Minimum = -90, Maximum = 90, DecimalPlaces = 6, Increment = 0.0001m };
-    private readonly NumericUpDown _numLng = new() { Minimum = -180, Maximum = 180, DecimalPlaces = 6, Increment = 0.0001m };
-    private readonly Label _lblStatus = new() { Font = Theme.FontSmall, ForeColor = Theme.Danger, Top = 300, Left = 24, AutoSize = true };
+    private ApiServices? _api;
+    private readonly System.Windows.Forms.Timer _debounceTimer = new() { Interval = 300 };
+    private PlaceSuggestionItem? _selectedDetail;
+    private bool _suppressNextSearch = false; // true ngay sau khi chọn xong gợi ý — tránh tìm lại vô ích
 
-    public CreateLocationForm(ApiServices api)
+    public CreateLocationForm()
     {
-        _api = api;
-        Text = "Thêm địa điểm mới";
-        Width = 460; Height = 400;
-        FormBorderStyle = FormBorderStyle.FixedDialog;
-        StartPosition = FormStartPosition.CenterParent;
-        MaximizeBox = false;
-        BackColor = Color.White;
+        InitializeComponent();
 
-        var p1 = Theme.MakeLabeledInput("Tên địa điểm *", _txtName, 400); p1.Top = 20; p1.Left = 24;
-        var p2 = Theme.MakeLabeledInput("Địa chỉ đầy đủ *", _txtAddress, 400); p2.Top = 90; p2.Left = 24;
-        var p3 = Theme.MakeLabeledInput("Vĩ độ (Lat) — tuỳ chọn", _numLat, 190); p3.Top = 160; p3.Left = 24;
-        var p4 = Theme.MakeLabeledInput("Kinh độ (Lng) — tuỳ chọn", _numLng, 190); p4.Top = 160; p4.Left = 234;
-
-        var note = new Label
+        txtSearch.TextChanged += (_, _) =>
         {
-            Text = "Ghi chú: chưa tích hợp tự động tra tọa độ (VietMap Geocoding) — nhập tay nếu biết, hoặc để trống.",
-            Font = Theme.FontSmall, ForeColor = Theme.TextSecondary, Top = 220, Left = 24, Width = 400, Height = 40,
+            if (_suppressNextSearch) { _suppressNextSearch = false; return; }
+            _selectedDetail = null; // gõ lại nghĩa là chọn cũ không còn hiệu lực, phải chọn lại
+            lblSelectedAddress.Text = "";
+            _debounceTimer.Stop();
+            _debounceTimer.Start();
         };
-
-        var btnSave = Theme.MakePrimaryButton("Lưu địa điểm", 180); btnSave.Top = 310; btnSave.Left = 244;
-        btnSave.Click += Save;
-
-        Controls.Add(p1); Controls.Add(p2); Controls.Add(p3); Controls.Add(p4);
-        Controls.Add(note);
-        Controls.Add(btnSave); Controls.Add(_lblStatus);
+        _debounceTimer.Tick += async (_, _) => { _debounceTimer.Stop(); await RunSearchAsync(); };
+        lstSuggestions.SelectedIndexChanged += (_, _) => SelectSuggestion();
     }
 
-    private async void Save(object? sender, EventArgs e)
+    public CreateLocationForm(ApiServices api) : this()
     {
-        if (string.IsNullOrWhiteSpace(_txtName.Text) || string.IsNullOrWhiteSpace(_txtAddress.Text))
-        {
-            _lblStatus.Text = "Vui lòng nhập đủ tên và địa chỉ.";
-            return;
-        }
+        _api = api;
+    }
+
+    private async Task RunSearchAsync()
+    {
+        if (_api is null) return;
+        var text = txtSearch.Text.Trim();
+        if (text.Length < 2) { lstSuggestions.Items.Clear(); lstSuggestions.Visible = false; return; }
+
         try
         {
-            double? lat = _numLat.Value == 0 ? null : (double)_numLat.Value;
-            double? lng = _numLng.Value == 0 ? null : (double)_numLng.Value;
-            await _api.Locations.CreateLocationAsync(_txtName.Text.Trim(), _txtAddress.Text.Trim(), lat, lng);
+            var results = await _api.Locations.SearchPlacesAsync(text);
+            lstSuggestions.Items.Clear();
+            foreach (var r in results) lstSuggestions.Items.Add(r);
+            lstSuggestions.Visible = results.Count > 0;
+        }
+        catch (Exception ex)
+        {
+            lblStatus.Text = "Lỗi tìm kiếm: " + ex.Message;
+            lblStatus.ForeColor = Theme.Danger;
+        }
+    }
+
+    /// <summary>Chọn xong xử lý NGAY tại chỗ — Autocomplete đã trả sẵn tọa độ
+    /// trong kết quả tìm kiếm (đã xác nhận qua test thật), không cần gọi
+    /// thêm API Place nào nữa.</summary>
+    private void SelectSuggestion()
+    {
+        if (lstSuggestions.SelectedItem is not PlaceSuggestionItem suggestion) return;
+
+        _selectedDetail = suggestion;
+        lblSelectedAddress.Text = $"✅ {suggestion.Address}\n(Lat: {suggestion.Lat:0.000000}, Lng: {suggestion.Lng:0.000000})";
+        lblSelectedAddress.ForeColor = Theme.Success;
+        lstSuggestions.Visible = false;
+
+        _suppressNextSearch = true;
+        txtSearch.Text = suggestion.Address;
+
+        lblStatus.Text = "";
+    }
+
+    private async void BtnSave_Click(object? sender, EventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(txtName.Text))
+        {
+            lblStatus.Text = "Vui lòng nhập tên địa điểm.";
+            lblStatus.ForeColor = Theme.Danger;
+            return;
+        }
+        if (_selectedDetail is null)
+        {
+            lblStatus.Text = "Vui lòng tìm và CHỌN 1 địa chỉ từ danh sách gợi ý — không nhập tay được.";
+            lblStatus.ForeColor = Theme.Danger;
+            return;
+        }
+        if (_api is null) return;
+
+        try
+        {
+            await _api.Locations.CreateLocationAsync(txtName.Text.Trim(), _selectedDetail.Address, _selectedDetail.Lat, _selectedDetail.Lng);
             DialogResult = DialogResult.OK;
             Close();
         }
         catch (Exception ex)
         {
-            _lblStatus.Text = "Lỗi: " + ex.Message;
+            lblStatus.Text = "Lỗi: " + ex.Message;
+            lblStatus.ForeColor = Theme.Danger;
         }
     }
 }

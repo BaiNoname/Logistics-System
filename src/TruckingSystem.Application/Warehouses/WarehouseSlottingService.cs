@@ -72,7 +72,7 @@ public class WarehouseSlottingService : IWarehouseSlottingService
     {
         return await _db.StorageBins
             .Where(b => b.WarehouseZoneId == zoneId)
-            .Select(b => new StorageBinDto(b.Id, b.Code, b.CapacityM3, b.CurrentUsedM3, b.MaxWeightKg))
+            .Select(b => new StorageBinDto(b.Id, b.Code, b.CapacityM3, b.CurrentUsedM3, b.MaxWeightKg, b.Row, b.Column))
             .ToListAsync();
     }
 

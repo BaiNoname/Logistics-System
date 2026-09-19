@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using TruckingSystem.Application.Auth;
 using TruckingSystem.Application.Common.Interfaces;
+using TruckingSystem.Application.Locations;
 using TruckingSystem.Application.Routing;
 using TruckingSystem.Domain.Identity;
 using TruckingSystem.Infrastructure.Auth;
@@ -33,18 +34,18 @@ public static class DependencyInjection
         services.AddScoped<IApplicationDbContext>(provider => provider.GetRequiredService<AppDbContext>());
 
         services.AddIdentity<ApplicationUser, ApplicationRole>(options =>
-            {
-                options.Password.RequireNonAlphanumeric = false;
-                options.Password.RequiredLength = 6;
-            })
+        {
+            options.Password.RequireNonAlphanumeric = false;
+            options.Password.RequiredLength = 6;
+        })
             .AddEntityFrameworkStores<AppDbContext>()
             .AddDefaultTokenProviders();
 
         services.AddAuthentication(options =>
-            {
-                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-            })
+        {
+            options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+            options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+        })
             .AddJwtBearer(options =>
             {
                 options.TokenValidationParameters = new TokenValidationParameters
@@ -66,6 +67,7 @@ public static class DependencyInjection
         // AddHttpClient<TInterface, TImplementation> tự quản lý vòng đời
         // HttpClient đúng chuẩn (tránh lỗi rò rỉ socket khi tự new HttpClient()).
         services.AddHttpClient<IRouteProvider, VietMapRouteProvider>();
+        services.AddHttpClient<IPlaceSearchProvider, VietMapPlaceProvider>();
 
         return services;
     }

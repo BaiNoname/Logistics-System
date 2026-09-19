@@ -23,6 +23,8 @@ public class StorageBinItem
     public decimal CapacityM3 { get; set; }
     public decimal CurrentUsedM3 { get; set; }
     public decimal MaxWeightKg { get; set; }
+    public int Row { get; set; }
+    public int Column { get; set; }
 }
 
 public class SuggestBinResult

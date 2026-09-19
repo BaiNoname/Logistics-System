@@ -4,60 +4,50 @@ using TruckingSystem.Desktop.DTO_TransportOrderManagement;
 
 namespace TruckingSystem.Desktop.GUI_TransportOrderManagement;
 
-public class TransportOrdersControl : BaseUserControl
+public partial class TransportOrdersControl : BaseUserControl
 {
-    private readonly ApiServices _api;
-    private readonly DataGridView _grid = new() { Top = 76, Left = 0, Height = 560 };
-    private readonly Label _lblStatus = new() { Font = Theme.FontSmall, ForeColor = Theme.TextSecondary, Top = 44, Left = 0, AutoSize = true };
+    private ApiServices? _api;
     private List<TransportOrderListItem> _orders = new();
 
-    public TransportOrdersControl(ApiServices api)
+    public TransportOrdersControl()
     {
-        _api = api;
-        BackColor = Theme.ContentBg;
+        InitializeComponent();
+        Theme.StyleGrid(grid);
 
-        var title = new Label { Text = "Đơn vận chuyển", Font = Theme.FontTitle, ForeColor = Theme.TextPrimary, Top = 0, Left = 0, AutoSize = true };
-        var btnRefresh = Theme.MakeSecondaryButton("🔄 Làm mới", 110);
-        var btnAllocate = Theme.MakeSecondaryButton("🚚 Chia xe", 130);
-        var btnCreate = Theme.MakePrimaryButton("➕ Tạo đơn mới", 150);
-        btnRefresh.Top = 0; btnRefresh.Left = 640;
-        btnAllocate.Top = 0; btnAllocate.Left = 760;
-        btnCreate.Top = 0; btnCreate.Left = 900;
-
-        btnRefresh.Click += async (_, _) => await LoadAsync();
-        btnCreate.Click += async (_, _) =>
+        grid.DataBindingComplete += (_, _) =>
         {
-            using var f = new CreateOrderForm(_api);
-            if (f.ShowDialog() == DialogResult.OK) await LoadAsync();
+            if (grid.Columns["Id"] != null) grid.Columns["Id"]!.Visible = false;
         };
-        btnAllocate.Click += async (_, _) => await AllocateSelectedAsync();
-
-        Theme.StyleGrid(_grid);
-        // Chỉ hiện các cột dễ đọc, ẩn cột Id đi (vẫn giữ trong DataSource để lấy khi cần)
-        _grid.DataBindingComplete += (_, _) =>
-        {
-            if (_grid.Columns["Id"] != null) _grid.Columns["Id"]!.Visible = false;
-        };
-        Resize += (_, _) => { _grid.Width = Width; _grid.Height = Height - _grid.Top; };
-        _grid.CellDoubleClick += async (_, _) => await OpenDetailAsync();
-
-        Controls.Add(_grid);
-        Controls.Add(_lblStatus);
-        Controls.Add(btnRefresh);
-        Controls.Add(btnAllocate);
-        Controls.Add(btnCreate);
-        Controls.Add(title);
+        Resize += (_, _) => { grid.Width = Width; grid.Height = Height - grid.Top; };
+        grid.CellDoubleClick += async (_, _) => await OpenDetailAsync();
 
         Load += async (_, _) => await LoadAsync();
     }
 
+    public TransportOrdersControl(ApiServices api) : this()
+    {
+        _api = api;
+    }
+
+    private void BtnRefresh_Click(object? sender, EventArgs e) => _ = LoadAsync();
+
+    private async void BtnCreate_Click(object? sender, EventArgs e)
+    {
+        if (_api is null) return;
+        using var f = new CreateOrderForm(_api);
+        if (f.ShowDialog() == DialogResult.OK) await LoadAsync();
+    }
+
+    private async void BtnAllocate_Click(object? sender, EventArgs e) => await AllocateSelectedAsync();
+
     private async Task LoadAsync()
     {
-        _lblStatus.Text = "Đang tải...";
+        if (_api is null) return;
+        lblStatus.Text = "Đang tải...";
         try
         {
             _orders = await _api.TransportOrders.GetTransportOrdersAsync();
-            _grid.DataSource = _orders.Select(o => new
+            grid.DataSource = _orders.Select(o => new
             {
                 o.Id,
                 Mã_đơn = o.Code,
@@ -67,35 +57,36 @@ public class TransportOrdersControl : BaseUserControl
                 Điểm_lấy = o.PickupPoint,
                 Điểm_giao = o.DropoffPoint,
             }).ToList();
-            _lblStatus.Text = $"Tổng {_orders.Count} đơn hàng — chọn 1 dòng rồi bấm \"Chia xe\" để chạy thuật toán Greedy";
-            _lblStatus.ForeColor = Theme.TextSecondary;
+            lblStatus.Text = $"Tổng {_orders.Count} đơn hàng — chọn 1 dòng rồi bấm \"Chia xe\" để chạy thuật toán Greedy";
+            lblStatus.ForeColor = Theme.TextSecondary;
         }
         catch (Exception ex)
         {
-            _lblStatus.Text = "Lỗi: " + ex.Message;
-            _lblStatus.ForeColor = Theme.Danger;
+            lblStatus.Text = "Lỗi: " + ex.Message;
+            lblStatus.ForeColor = Theme.Danger;
         }
     }
 
     private async Task OpenDetailAsync()
     {
-        if (_grid.CurrentRow is null) return;
-        var orderId = (int)_grid.CurrentRow.Cells["Id"].Value;
+        if (_api is null || grid.CurrentRow is null) return;
+        var orderId = (int)grid.CurrentRow.Cells["Id"].Value;
 
         using var f = new OrderDetailForm(_api, orderId);
         f.ShowDialog();
-        await LoadAsync(); // làm mới danh sách phòng khi trạng thái đơn vừa đổi (do vừa Chia xe)
+        await LoadAsync();
     }
 
     private async Task AllocateSelectedAsync()
     {
-        if (_grid.CurrentRow is null)
+        if (_api is null) return;
+        if (grid.CurrentRow is null)
         {
             MessageBox.Show("Vui lòng chọn 1 đơn hàng trong danh sách trước.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }
 
-        var orderId = (int)_grid.CurrentRow.Cells["Id"].Value;
+        var orderId = (int)grid.CurrentRow.Cells["Id"].Value;
         var orderCode = _orders.First(o => o.Id == orderId).Code;
 
         try
@@ -118,7 +109,7 @@ public class TransportOrdersControl : BaseUserControl
             MessageBox.Show(summary, "Kết quả chia xe (Greedy)", MessageBoxButtons.OK,
                 result.Message != null ? MessageBoxIcon.Warning : MessageBoxIcon.Information);
 
-            await LoadAsync(); // làm mới để thấy trạng thái đơn vừa đổi thành "Đang vận chuyển"
+            await LoadAsync();
         }
         catch (Exception ex)
         {

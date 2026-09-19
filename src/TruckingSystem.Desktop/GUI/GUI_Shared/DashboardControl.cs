@@ -1,29 +1,30 @@
+using System.Drawing;
+using System.Windows.Forms;
 using TruckingSystem.Desktop.Common;
 
 namespace TruckingSystem.Desktop.GUI_Shared;
 
-public class DashboardControl : BaseUserControl
+/// <summary>Logic — khung tĩnh (tiêu đề, panel chứa thẻ KPI) nằm ở
+/// DashboardControl.Designer.cs. Nội dung 6 thẻ KPI vẫn tạo động vì số liệu
+/// (và cả số lượng thẻ) phụ thuộc dữ liệu tải về lúc chạy — không cố định.</summary>
+public partial class DashboardControl : BaseUserControl
 {
-    private readonly ApiServices _api;
-    private readonly FlowLayoutPanel _kpiPanel = new() { Dock = DockStyle.Top, Height = 140, FlowDirection = FlowDirection.LeftToRight, WrapContents = false };
-    private readonly Label _lblLoading = new() { Text = "Đang tải dữ liệu tổng quan...", Font = Theme.FontNormal, ForeColor = Theme.TextSecondary, AutoSize = true, Top = 160, Left = 4 };
+    private ApiServices? _api;
 
-    public DashboardControl(ApiServices api)
+    public DashboardControl()
+    {
+        InitializeComponent();
+        Load += async (_, _) => await LoadAsync();
+    }
+
+    public DashboardControl(ApiServices api) : this()
     {
         _api = api;
-        BackColor = Theme.ContentBg;
-
-        var title = new Label { Text = "Tổng quan hệ thống", Font = Theme.FontTitle, ForeColor = Theme.TextPrimary, AutoSize = true, Top = 0, Left = 0 };
-
-        Controls.Add(_lblLoading);
-        Controls.Add(_kpiPanel);
-        Controls.Add(title);
-
-        Load += async (_, _) => await LoadAsync();
     }
 
     private async Task LoadAsync()
     {
+        if (_api is null) return;
         try
         {
             var orders = await _api.TransportOrders.GetTransportOrdersAsync();
@@ -35,20 +36,20 @@ public class DashboardControl : BaseUserControl
             var done = orders.Count(o => o.Status == "Done");
             var availableVehicles = vehicles.Count(v => v.Status == "Available");
 
-            _kpiPanel.Controls.Clear();
-            _kpiPanel.Controls.Add(MakeKpiCard("📦", "Tổng đơn hàng", orders.Count.ToString(), Theme.Primary));
-            _kpiPanel.Controls.Add(MakeKpiCard("🚚", "Đang giao", inProgress.ToString(), Theme.Warning));
-            _kpiPanel.Controls.Add(MakeKpiCard("✅", "Đã hoàn tất", done.ToString(), Theme.Success));
-            _kpiPanel.Controls.Add(MakeKpiCard("🚛", "Xe sẵn sàng", $"{availableVehicles}/{vehicles.Count}", Theme.Primary));
-            _kpiPanel.Controls.Add(MakeKpiCard("👥", "Khách hàng", customers.Count.ToString(), Theme.Primary));
-            _kpiPanel.Controls.Add(MakeKpiCard("🧾", "Hóa đơn", invoices.Count.ToString(), Theme.Primary));
+            kpiPanel.Controls.Clear();
+            kpiPanel.Controls.Add(MakeKpiCard("📦", "Tổng đơn hàng", orders.Count.ToString(), Theme.Primary));
+            kpiPanel.Controls.Add(MakeKpiCard("🚚", "Đang giao", inProgress.ToString(), Theme.Warning));
+            kpiPanel.Controls.Add(MakeKpiCard("✅", "Đã hoàn tất", done.ToString(), Theme.Success));
+            kpiPanel.Controls.Add(MakeKpiCard("🚛", "Xe sẵn sàng", $"{availableVehicles}/{vehicles.Count}", Theme.Primary));
+            kpiPanel.Controls.Add(MakeKpiCard("👥", "Khách hàng", customers.Count.ToString(), Theme.Primary));
+            kpiPanel.Controls.Add(MakeKpiCard("🧾", "Hóa đơn", invoices.Count.ToString(), Theme.Primary));
 
-            _lblLoading.Visible = false;
+            lblLoading.Visible = false;
         }
         catch (Exception ex)
         {
-            _lblLoading.Text = "Không tải được dữ liệu: " + ex.Message;
-            _lblLoading.ForeColor = Theme.Danger;
+            lblLoading.Text = "Không tải được dữ liệu: " + ex.Message;
+            lblLoading.ForeColor = Theme.Danger;
         }
     }
 
@@ -63,20 +64,10 @@ public class DashboardControl : BaseUserControl
             e.Graphics.FillRectangle(brush, 0, 0, 4, card.Height);
         };
 
-        // Dùng FlowLayoutPanel(TopDown) thay vì Top/Left cố định — mỗi Label tự
-        // AutoSize và tự xếp chồng theo thứ tự, không phụ thuộc tính toán pixel
-        // thủ công nên không bị lệch/đè khi chạy trên màn hình DPI khác 100%
-        // (lỗi cũ: control tạo ra SAU khi Form đã hiển thị không được WinForms
-        // tự động scale theo DPI như các control khai báo sẵn trong constructor).
         var stack = new FlowLayoutPanel
         {
-            FlowDirection = FlowDirection.TopDown,
-            WrapContents = false,
-            AutoSize = false,
-            Left = 18,
-            Top = 14,
-            Width = card.Width - 30,
-            Height = card.Height - 24,
+            FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoSize = false,
+            Left = 18, Top = 14, Width = card.Width - 30, Height = card.Height - 24,
         };
 
         var lblIcon = new Label { Text = icon, Font = new Font("Segoe UI Emoji", 18), AutoSize = true, Margin = new Padding(0, 0, 0, 6) };

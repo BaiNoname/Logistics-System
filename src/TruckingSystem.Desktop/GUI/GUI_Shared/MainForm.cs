@@ -1,3 +1,5 @@
+using System.Drawing;
+using System.Windows.Forms;
 using TruckingSystem.Desktop.Common;
 using TruckingSystem.Desktop.GUI_CustomerManagement;
 using TruckingSystem.Desktop.GUI_EmployeeManagement;
@@ -9,55 +11,45 @@ using TruckingSystem.Desktop.GUI_WarehouseManagement;
 
 namespace TruckingSystem.Desktop.GUI_Shared;
 
-/// <summary>Shell chính — sidebar điều hướng bên trái + vùng nội dung tự đổi UserControl theo mục đang chọn.</summary>
-public class MainForm : BaseForm
+/// <summary>Logic — shell chính (sidebar + nội dung động). Khung tĩnh (3 panel
+/// sidebar/content/topBar) nằm ở MainForm.Designer.cs. Nội dung BÊN TRONG
+/// sidebar (danh sách nút điều hướng) vẫn tạo bằng code — vì sinh ra từ vòng
+/// lặp dữ liệu (navItems), không phải danh sách cố định Designer vẽ tay được.</summary>
+public partial class MainForm : BaseForm
 {
     /// <summary>Phát ra khi người dùng xác nhận đăng xuất — TruckingAppContext
     /// lắng nghe để quay lại LoginForm. Cờ IsLoggingOut giúp phân biệt việc
     /// Close() này là do "Đăng xuất" (quay lại Login) hay do bấm nút ✕ thật
-    /// (thoát hẳn ứng dụng) — tránh lặp lại đúng lỗi cũ đã sửa.</summary>
+    /// (thoát hẳn ứng dụng).</summary>
     public event EventHandler? LogoutRequested;
     public bool IsLoggingOut { get; private set; }
 
-    private readonly ApiServices _api;
-    private readonly Panel _sidebar = new() { Dock = DockStyle.Left, Width = 260 };
-    private readonly Panel _content = new() { Dock = DockStyle.Fill, Padding = new Padding(24) };
-    private readonly Panel _topBar = new() { Dock = DockStyle.Top, Height = 60, BackColor = Color.White };
+    private ApiServices? _api;
     private readonly List<Button> _navButtons = new();
     private Button? _activeNavButton;
 
-    public MainForm(ApiServices api, string username)
+    public MainForm()
+    {
+        InitializeComponent();
+    }
+
+    public MainForm(ApiServices api, string username) : this()
     {
         _api = api;
-        Text = "Trucking System";
-        Width = 1280; Height = 800;
-        StartPosition = FormStartPosition.CenterScreen;
-        BackColor = Theme.ContentBg;
-        MinimumSize = new Size(1100, 700);
-
         BuildSidebar();
         BuildTopBar(username);
-
-        Controls.Add(_content);
-        Controls.Add(_topBar);
-        Controls.Add(_sidebar);
-
         NavigateTo(_navButtons[0], () => new DashboardControl(_api));
     }
 
     private void BuildSidebar()
     {
-        _sidebar.BackColor = Theme.SidebarBg;
+        if (_api is null) return;
 
         var logoPanel = new Panel { Dock = DockStyle.Top, Height = 70 };
         var logo = new Label
         {
-            Text = "🚚 TruckingSystem",
-            ForeColor = Color.White,
-            Font = new Font("Segoe UI", 13, FontStyle.Bold),
-            Dock = DockStyle.Fill,
-            TextAlign = ContentAlignment.MiddleLeft,
-            Padding = new Padding(20, 0, 0, 0),
+            Text = "🚚 TruckingSystem", ForeColor = Color.White, Font = new Font("Segoe UI", 13, FontStyle.Bold),
+            Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft, Padding = new Padding(20, 0, 0, 0),
         };
         logoPanel.Controls.Add(logo);
 
@@ -100,27 +92,19 @@ public class MainForm : BaseForm
         };
         bottomPanel.Controls.Add(logoutBtn);
 
-        _sidebar.Controls.Add(navPanel);
-        _sidebar.Controls.Add(bottomPanel);
-        _sidebar.Controls.Add(logoPanel);
+        sidebar.Controls.Add(navPanel);
+        sidebar.Controls.Add(bottomPanel);
+        sidebar.Controls.Add(logoPanel);
     }
 
     private Button MakeNavButton(string icon, string text)
     {
         var btn = new Button
         {
-            Text = $"  {icon}   {text}",
-            Width = 238,
-            Height = 44,
-            TextAlign = ContentAlignment.MiddleLeft,
-            AutoEllipsis = false,
-            UseCompatibleTextRendering = false,
-            FlatStyle = FlatStyle.Flat,
-            BackColor = Theme.SidebarBg,
-            ForeColor = Theme.SidebarText,
-            Font = Theme.FontSidebar,
-            Cursor = Cursors.Hand,
-            Margin = new Padding(0, 2, 0, 2),
+            Text = $"  {icon}   {text}", Width = 238, Height = 44, TextAlign = ContentAlignment.MiddleLeft,
+            AutoEllipsis = false, UseCompatibleTextRendering = false,
+            FlatStyle = FlatStyle.Flat, BackColor = Theme.SidebarBg, ForeColor = Theme.SidebarText,
+            Font = Theme.FontSidebar, Cursor = Cursors.Hand, Margin = new Padding(0, 2, 0, 2),
         };
         btn.FlatAppearance.BorderSize = 0;
         btn.FlatAppearance.MouseOverBackColor = ColorTranslator.FromHtml("#334155");
@@ -129,11 +113,10 @@ public class MainForm : BaseForm
 
     private void BuildTopBar(string username)
     {
-        _topBar.Padding = new Padding(24, 0, 24, 0);
         var lblUser = new Label { Text = $"👤  {username}", Dock = DockStyle.Right, Width = 200, TextAlign = ContentAlignment.MiddleRight, Font = Theme.FontNormal, ForeColor = Theme.TextSecondary };
         var bottomBorder = new Panel { Dock = DockStyle.Bottom, Height = 1, BackColor = Theme.BorderColor };
-        _topBar.Controls.Add(lblUser);
-        _topBar.Controls.Add(bottomBorder);
+        topBar.Controls.Add(lblUser);
+        topBar.Controls.Add(bottomBorder);
     }
 
     private void NavigateTo(Button navButton, Func<Control> buildControl)
@@ -147,9 +130,9 @@ public class MainForm : BaseForm
         navButton.ForeColor = Theme.SidebarTextActive;
         _activeNavButton = navButton;
 
-        _content.Controls.Clear();
+        content.Controls.Clear();
         var control = buildControl();
         control.Dock = DockStyle.Fill;
-        _content.Controls.Add(control);
+        content.Controls.Add(control);
     }
 }

@@ -7,7 +7,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace TruckingSystem.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class AddLocationTable : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -736,6 +736,8 @@ namespace TruckingSystem.Infrastructure.Migrations
                     CapacityM3 = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
                     MaxWeightKg = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
                     CurrentUsedM3 = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
+                    Row = table.Column<int>(type: "integer", nullable: false),
+                    Column = table.Column<int>(type: "integer", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
                 },
@@ -1258,6 +1260,8 @@ namespace TruckingSystem.Infrastructure.Migrations
                     Accuracy = table.Column<decimal>(type: "numeric(18,2)", nullable: true),
                     Timestamp = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     Note = table.Column<string>(type: "text", nullable: true),
+                    WeatherCondition = table.Column<string>(type: "text", nullable: true),
+                    IsSevereWeather = table.Column<bool>(type: "boolean", nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
                 },

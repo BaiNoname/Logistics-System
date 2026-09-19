@@ -12,8 +12,8 @@ using TruckingSystem.Infrastructure.Persistence;
 namespace TruckingSystem.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260916072943_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20260918095655_AddLocationTable")]
+    partial class AddLocationTable
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -1195,6 +1195,9 @@ namespace TruckingSystem.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<int>("Column")
+                        .HasColumnType("integer");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -1203,6 +1206,9 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     b.Property<decimal>("MaxWeightKg")
                         .HasColumnType("numeric(18,2)");
+
+                    b.Property<int>("Row")
+                        .HasColumnType("integer");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -1731,6 +1737,9 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<bool?>("IsSevereWeather")
+                        .HasColumnType("boolean");
+
                     b.Property<double>("Lat")
                         .HasColumnType("double precision");
 
@@ -1751,6 +1760,9 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("WeatherCondition")
+                        .HasColumnType("text");
 
                     b.HasKey("Id");
 

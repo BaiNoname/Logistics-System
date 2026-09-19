@@ -1,68 +1,57 @@
-using System.Drawing;
-using System.Globalization;
 using System.Text;
 using System.Text.Json;
-using System.Windows.Forms;
-using Microsoft.Web.WebView2.WinForms;
 using TruckingSystem.Desktop.Common;
 using TruckingSystem.Desktop.DTO_RouteManagement;
 
 namespace TruckingSystem.Desktop.GUI_RouteManagement;
 
-/// <summary>
-/// Hiển thị lộ trình thật giữa 2 điểm tọa độ trên bản đồ VietMap (qua Leaflet
-/// nhúng trong WebView2). Gọi Backend để lấy tuyến đường đã tính sẵn (khoảng
-/// cách, thời gian, danh sách điểm vẽ polyline) — Form chỉ có nhiệm vụ hiển thị.
-/// </summary>
-public class RouteMapForm : BaseForm
+/// <summary>Logic — hiển thị lộ trình thật giữa 2 điểm tọa độ trên bản đồ VietMap
+/// (qua Leaflet nhúng trong WebView2). Giao diện (khung WebView2 + label thông
+/// tin) nằm ở RouteMapForm.Designer.cs.</summary>
+public partial class RouteMapForm : BaseForm
 {
-    private readonly ApiServices _api;
-    private readonly double _fromLat, _fromLng, _toLat, _toLng;
+    private ApiServices? _api;
+    private double _fromLat, _fromLng, _toLat, _toLng;
 
-    private readonly WebView2 _webView = new() { Dock = DockStyle.Fill };
-    private readonly Label _lblInfo = new() { Dock = DockStyle.Top, Height = 36, TextAlign = ContentAlignment.MiddleLeft, Padding = new Padding(12, 0, 0, 0), Font = Theme.FontBold, BackColor = Theme.CardBg };
+    public RouteMapForm()
+    {
+        InitializeComponent();
+    }
 
-    public RouteMapForm(ApiServices api, string title, double fromLat, double fromLng, double toLat, double toLng)
+    public RouteMapForm(ApiServices api, string title, double fromLat, double fromLng, double toLat, double toLng) : this()
     {
         _api = api;
         _fromLat = fromLat; _fromLng = fromLng; _toLat = toLat; _toLng = toLng;
-
         Text = $"Lộ trình — {title}";
-        Width = 900; Height = 700;
-        StartPosition = FormStartPosition.CenterParent;
-        BackColor = Color.White;
-
-        _lblInfo.Text = "Đang tính toán lộ trình qua VietMap...";
-
-        Controls.Add(_webView);
-        Controls.Add(_lblInfo);
+        lblInfo.Text = "Đang tính toán lộ trình qua VietMap...";
 
         Load += async (_, _) => await LoadRouteAsync();
     }
 
     private async Task LoadRouteAsync()
     {
+        if (_api is null) return;
         try
         {
             var route = await _api.Routes.CalculateAsync(_fromLat, _fromLng, _toLat, _toLng);
 
             if (!route.Success)
             {
-                _lblInfo.Text = "⚠️ " + (route.Message ?? "Không tính được lộ trình.");
-                _lblInfo.ForeColor = Theme.Danger;
+                lblInfo.Text = "⚠️ " + (route.Message ?? "Không tính được lộ trình.");
+                lblInfo.ForeColor = Theme.Danger;
                 return;
             }
 
-            _lblInfo.Text = $"📏 {route.DistanceKm} km   •   ⏱ {route.DurationMinutes} phút   (nguồn: VietMap)";
-            _lblInfo.ForeColor = Theme.TextPrimary;
+            lblInfo.Text = $"📏 {route.DistanceKm} km   •   ⏱ {route.DurationMinutes} phút   (nguồn: VietMap)";
+            lblInfo.ForeColor = Theme.TextPrimary;
 
-            await _webView.EnsureCoreWebView2Async();
-            _webView.NavigateToString(BuildMapHtml(route));
+            await webView.EnsureCoreWebView2Async();
+            webView.NavigateToString(BuildMapHtml(route));
         }
         catch (Exception ex)
         {
-            _lblInfo.Text = "Lỗi: " + ex.Message;
-            _lblInfo.ForeColor = Theme.Danger;
+            lblInfo.Text = "Lỗi: " + ex.Message;
+            lblInfo.ForeColor = Theme.Danger;
         }
     }
 
@@ -76,8 +65,6 @@ public class RouteMapForm : BaseForm
             route.Points.Select(p => new[] { p.Lat, p.Lng }).ToList());
 
         var tileUrl = route.TileUrlTemplate ?? "";
-        var fromPoint = route.Points.FirstOrDefault();
-        var toPoint = route.Points.LastOrDefault();
 
         var sb = new StringBuilder();
         sb.Append("""

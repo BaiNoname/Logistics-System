@@ -1,82 +1,44 @@
-using System.Drawing;
-using System.Windows.Forms;
 using TruckingSystem.Desktop.Common;
 using TruckingSystem.Desktop.DTO_TransportOrderManagement;
 using TruckingSystem.Desktop.GUI_RouteManagement;
 
 namespace TruckingSystem.Desktop.GUI_TransportOrderManagement;
 
-/// <summary>Xem chi tiết 1 đơn: thông tin chung, danh sách dòng hàng, danh sách chuyến đã gán,
-/// và nút "Chia xe" gọi thuật toán Greedy — đây là nơi thể hiện trực tiếp thuật toán chạy thật.</summary>
-public class OrderDetailForm : BaseForm
+/// <summary>Logic — xem chi tiết 1 đơn: dòng hàng, chuyến đã gán, nút Chia xe (Greedy)
+/// và Xem lộ trình (VietMap). Giao diện nằm ở OrderDetailForm.Designer.cs.</summary>
+public partial class OrderDetailForm : BaseForm
 {
-    private readonly ApiServices _api;
-    private readonly int _orderId;
-
-    private readonly Label _lblHeader = new() { Font = Theme.FontSectionTitle, ForeColor = Theme.TextPrimary, Top = 20, Left = 24, AutoSize = true };
-    private readonly Label _lblInfo = new() { Font = Theme.FontNormal, ForeColor = Theme.TextSecondary, Top = 50, Left = 24, AutoSize = true };
-
-    private readonly Label _lblCargoTitle = new() { Text = "Dòng hàng hóa", Font = Theme.FontBold, Top = 100, Left = 24, AutoSize = true };
-    private readonly DataGridView _gridCargo = new() { Top = 125, Left = 24, Width = 700, Height = 130 };
-
-    private readonly Label _lblTripsTitle = new() { Text = "Chuyến đã gán", Font = Theme.FontBold, Top = 270, Left = 24, AutoSize = true };
-    private readonly DataGridView _gridTrips = new() { Top = 295, Left = 24, Width = 700, Height = 150 };
-
-    private readonly Button _btnAllocate;
-    private readonly Button _btnViewRoute;
-    private readonly Label _lblResult = new() { Top = 500, Left = 24, Width = 700, Height = 60, Font = Theme.FontSmall };
-
+    private ApiServices? _api;
+    private int _orderId;
     private TransportOrderDetailItem? _currentOrder;
 
-    public OrderDetailForm(ApiServices api, int orderId)
+    public OrderDetailForm()
+    {
+        InitializeComponent();
+        Theme.StyleGrid(gridCargo);
+        Theme.StyleGrid(gridTrips);
+    }
+
+    public OrderDetailForm(ApiServices api, int orderId) : this()
     {
         _api = api;
         _orderId = orderId;
-
-        Text = "Chi tiết đơn vận chuyển";
-        Width = 780; Height = 610;
-        FormBorderStyle = FormBorderStyle.FixedDialog;
-        StartPosition = FormStartPosition.CenterParent;
-        MaximizeBox = false;
-        BackColor = Color.White;
-
-        Theme.StyleGrid(_gridCargo);
-        Theme.StyleGrid(_gridTrips);
-
-        _btnAllocate = Theme.MakePrimaryButton("🚚  Chia xe (Greedy)", 200, 40);
-        _btnAllocate.Top = 460; _btnAllocate.Left = 24;
-        _btnAllocate.Click += async (_, _) => await RunAllocateAsync();
-
-        _btnViewRoute = Theme.MakeSecondaryButton("🗺️  Xem lộ trình", 180, 40);
-        _btnViewRoute.Top = 460; _btnViewRoute.Left = 234;
-        _btnViewRoute.Enabled = false; // chỉ bật khi cả 2 điểm có tọa độ
-        _btnViewRoute.Click += (_, _) => OpenRouteMap();
-
-        Controls.Add(_lblHeader);
-        Controls.Add(_lblInfo);
-        Controls.Add(_lblCargoTitle);
-        Controls.Add(_gridCargo);
-        Controls.Add(_lblTripsTitle);
-        Controls.Add(_gridTrips);
-        Controls.Add(_btnAllocate);
-        Controls.Add(_btnViewRoute);
-        Controls.Add(_lblResult);
-
         Load += async (_, _) => await LoadAsync();
     }
 
     private async Task LoadAsync()
     {
+        if (_api is null) return;
         try
         {
             var order = await _api.TransportOrders.GetOrderDetailAsync(_orderId);
             _currentOrder = order;
 
-            _lblHeader.Text = $"Đơn {order.Code} — {order.CustomerName}";
-            _lblInfo.Text = $"Trạng thái: {order.Status}   |   Tiến độ: {order.ProgressPercent}%   |   " +
-                            $"{order.PickupPoint} → {order.DropoffPoint}";
+            lblHeader.Text = $"Đơn {order.Code} — {order.CustomerName}";
+            lblInfo.Text = $"Trạng thái: {order.Status}   |   Tiến độ: {order.ProgressPercent}%   |   " +
+                           $"{order.PickupPoint} → {order.DropoffPoint}";
 
-            _gridCargo.DataSource = order.CargoLines.Select(c => new
+            gridCargo.DataSource = order.CargoLines.Select(c => new
             {
                 Loại_hàng = c.CargoType,
                 Số_kiện = c.PackageCount,
@@ -87,7 +49,7 @@ public class OrderDetailForm : BaseForm
                 Số_lượng = c.QtyTotal,
             }).ToList();
 
-            _gridTrips.DataSource = order.Trips.Select(t => new
+            gridTrips.DataSource = order.Trips.Select(t => new
             {
                 Mã_chuyến = t.Id,
                 Biển_số_xe = t.VehiclePlate,
@@ -96,23 +58,20 @@ public class OrderDetailForm : BaseForm
                 Số_lượng_chở = t.QtyPlanned,
             }).ToList();
 
-            // Nếu đơn đã có chuyến, không cần chia xe lại nữa
-            _btnAllocate.Enabled = order.Trips.Count == 0;
-
-            // Chỉ xem được lộ trình nếu CẢ 2 điểm lấy/giao đều chọn từ Location đã lưu (có tọa độ)
-            _btnViewRoute.Enabled = order.PickupLat.HasValue && order.PickupLng.HasValue
-                                 && order.DropoffLat.HasValue && order.DropoffLng.HasValue;
+            btnAllocate.Enabled = order.Trips.Count == 0;
+            btnViewRoute.Enabled = order.PickupLat.HasValue && order.PickupLng.HasValue
+                                && order.DropoffLat.HasValue && order.DropoffLng.HasValue;
         }
         catch (Exception ex)
         {
-            _lblResult.Text = "Lỗi tải chi tiết đơn: " + ex.Message;
-            _lblResult.ForeColor = Theme.Danger;
+            lblResult.Text = "Lỗi tải chi tiết đơn: " + ex.Message;
+            lblResult.ForeColor = Theme.Danger;
         }
     }
 
-    private void OpenRouteMap()
+    private void BtnViewRoute_Click(object? sender, EventArgs e)
     {
-        if (_currentOrder is null) return;
+        if (_api is null || _currentOrder is null) return;
         if (_currentOrder.PickupLat is null || _currentOrder.PickupLng is null
             || _currentOrder.DropoffLat is null || _currentOrder.DropoffLng is null)
         {
@@ -130,34 +89,35 @@ public class OrderDetailForm : BaseForm
         f.ShowDialog();
     }
 
-    private async Task RunAllocateAsync()
+    private async void BtnAllocate_Click(object? sender, EventArgs e)
     {
-        _btnAllocate.Enabled = false;
-        _lblResult.Text = "Đang chạy thuật toán chia xe...";
-        _lblResult.ForeColor = Theme.TextSecondary;
+        if (_api is null) return;
+        btnAllocate.Enabled = false;
+        lblResult.Text = "Đang chạy thuật toán chia xe...";
+        lblResult.ForeColor = Theme.TextSecondary;
         try
         {
             var result = await _api.TransportOrders.AllocateVehiclesAsync(_orderId);
 
             if (result.Success)
             {
-                _lblResult.Text = $"✅ Đã gán {result.Trips.Count} xe, chở {result.TotalQtyAssigned}/{result.TotalQtyToShip}." +
-                                   (result.Message != null ? "\n⚠️ " + result.Message : "");
-                _lblResult.ForeColor = Theme.Success;
-                await LoadAsync(); // tải lại để thấy danh sách chuyến vừa tạo
+                lblResult.Text = $"✅ Đã gán {result.Trips.Count} xe, chở {result.TotalQtyAssigned}/{result.TotalQtyToShip}." +
+                                  (result.Message != null ? "\n⚠️ " + result.Message : "");
+                lblResult.ForeColor = Theme.Success;
+                await LoadAsync();
             }
             else
             {
-                _lblResult.Text = "⚠️ " + (result.Message ?? "Không thể chia xe.");
-                _lblResult.ForeColor = Theme.Warning;
-                _btnAllocate.Enabled = true;
+                lblResult.Text = "⚠️ " + (result.Message ?? "Không thể chia xe.");
+                lblResult.ForeColor = Theme.Warning;
+                btnAllocate.Enabled = true;
             }
         }
         catch (Exception ex)
         {
-            _lblResult.Text = "Lỗi: " + ex.Message;
-            _lblResult.ForeColor = Theme.Danger;
-            _btnAllocate.Enabled = true;
+            lblResult.Text = "Lỗi: " + ex.Message;
+            lblResult.ForeColor = Theme.Danger;
+            btnAllocate.Enabled = true;
         }
     }
 }
