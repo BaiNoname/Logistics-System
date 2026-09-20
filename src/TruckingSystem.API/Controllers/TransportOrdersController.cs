@@ -44,6 +44,30 @@ public class TransportOrdersController : ControllerBase
         }
     }
 
+    /// <summary>Sửa đơn — CHỈ áp dụng được khi đơn còn Draft.</summary>
+    [HttpPut("{id:int}")]
+    public async Task<ActionResult<OrderActionResult>> Update(int id, UpdateTransportOrderRequest request)
+    {
+        var result = await _service.UpdateAsync(id, request);
+        return result.Success ? Ok(result) : BadRequest(result);
+    }
+
+    /// <summary>Draft -> Confirmed.</summary>
+    [HttpPost("{id:int}/confirm")]
+    public async Task<ActionResult<OrderActionResult>> Confirm(int id)
+    {
+        var result = await _service.ConfirmAsync(id);
+        return result.Success ? Ok(result) : BadRequest(result);
+    }
+
+    /// <summary>-> Cancelled.</summary>
+    [HttpPost("{id:int}/cancel")]
+    public async Task<ActionResult<OrderActionResult>> Cancel(int id)
+    {
+        var result = await _service.CancelAsync(id);
+        return result.Success ? Ok(result) : BadRequest(result);
+    }
+
     // Endpoint thể hiện thuật toán Greedy — chia xe tự động cho 1 đơn vận chuyển
     [HttpPost("{id:int}/allocate-vehicles")]
     public async Task<ActionResult<AllocateVehiclesResponse>> AllocateVehicles(int id)

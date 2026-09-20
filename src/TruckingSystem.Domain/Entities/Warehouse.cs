@@ -9,6 +9,12 @@ public class Warehouse : BaseEntity
     public string? Address { get; set; }
     public decimal? CapacityM3 { get; set; }
 
+    // Kích thước thật của kho (mét) — dùng để vẽ sơ đồ tổng quan đúng tỉ lệ,
+    // đặt đúng vị trí từng WarehouseZone bên trong. Không dùng cho tính toán
+    // Best-Fit (vẫn dùng CapacityM3/StorageBin như trước).
+    public decimal? LengthMeters { get; set; }
+    public decimal? WidthMeters { get; set; }
+
     public int? BranchId { get; set; }
     public Branch? Branch { get; set; }
 

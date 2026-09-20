@@ -5,6 +5,7 @@ using TruckingSystem.Desktop.SERVICE_InvoiceManagement;
 using TruckingSystem.Desktop.SERVICE_LocationManagement;
 using TruckingSystem.Desktop.SERVICE_RouteManagement;
 using TruckingSystem.Desktop.SERVICE_TransportOrderManagement;
+using TruckingSystem.Desktop.SERVICE_TripManagement;
 using TruckingSystem.Desktop.SERVICE_VehicleManagement;
 using TruckingSystem.Desktop.SERVICE_WarehouseManagement;
 
@@ -31,6 +32,7 @@ public class ApiServices
     public InvoiceApiService Invoices { get; }
     public LocationApiService Locations { get; }
     public RouteApiService Routes { get; }
+    public TripApiService Trips { get; }
 
     public ApiServices(string baseUrl)
     {
@@ -45,5 +47,6 @@ public class ApiServices
         Invoices = new InvoiceApiService(Connection);
         Locations = new LocationApiService(Connection);
         Routes = new RouteApiService(Connection);
+        Trips = new TripApiService(Connection);
     }
 }

@@ -6,6 +6,10 @@ public class WarehouseListItem
     public string Name { get; set; } = "";
     public string? Address { get; set; }
     public decimal? CapacityM3 { get; set; }
+    public decimal? LengthMeters { get; set; }
+    public decimal? WidthMeters { get; set; }
+
+    public override string ToString() => Name;
 }
 
 public class WarehouseZoneItem
@@ -14,6 +18,16 @@ public class WarehouseZoneItem
     public string Name { get; set; } = "";
     public string ZoneType { get; set; } = "";
     public int BinCount { get; set; }
+    public decimal PosX { get; set; }
+    public decimal PosY { get; set; }
+    public decimal WidthMeters { get; set; }
+    public decimal HeightMeters { get; set; }
+}
+
+public class WarehouseActionResultItem
+{
+    public bool Success { get; set; }
+    public string? Message { get; set; }
 }
 
 public class StorageBinItem

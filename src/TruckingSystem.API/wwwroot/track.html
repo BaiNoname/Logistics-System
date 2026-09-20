@@ -1,103 +1,170 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Theo dõi đơn hàng</title>
-  <!-- Leaflet CSS/JS load qua CDN — không cần cài npm/build gì cả, trang HTML thuần -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <style>
-    body { font-family: Arial, sans-serif; margin: 0; background: #f5f5f5; }
-    .header { background: #2E7D32; color: white; padding: 16px 20px; }
-    .header h1 { margin: 0; font-size: 18px; }
-    .info-box { background: white; margin: 16px; padding: 16px; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-    .info-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #eee; }
-    .info-row:last-child { border-bottom: none; }
-    .label { color: #666; font-size: 13px; }
-    .value { font-weight: 600; font-size: 13px; }
-    .progress-bar { height: 8px; background: #e0e0e0; border-radius: 4px; overflow: hidden; margin-top: 8px; }
-    .progress-fill { height: 100%; background: #2E7D32; transition: width 0.3s; }
-    #map { height: 350px; margin: 0 16px 16px; border-radius: 10px; }
-    .error { color: #C62828; text-align: center; padding: 40px 16px; }
-    .status-badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 12px; background: #E8F5E9; color: #2E7D32; }
-  </style>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Theo dõi đơn hàng</title>
+    <!-- Leaflet CSS/JS load qua CDN — không cần cài npm/build gì cả, trang HTML thuần -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            background: #f5f5f5;
+        }
+
+        .header {
+            background: #2E7D32;
+            color: white;
+            padding: 16px 20px;
+        }
+
+            .header h1 {
+                margin: 0;
+                font-size: 18px;
+            }
+
+        .info-box {
+            background: white;
+            margin: 16px;
+            padding: 16px;
+            border-radius: 10px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+            .info-row:last-child {
+                border-bottom: none;
+            }
+
+        .label {
+            color: #666;
+            font-size: 13px;
+        }
+
+        .value {
+            font-weight: 600;
+            font-size: 13px;
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: #2E7D32;
+            transition: width 0.3s;
+        }
+
+        #map {
+            height: 350px;
+            margin: 0 16px 16px;
+            border-radius: 10px;
+        }
+
+        .error {
+            color: #C62828;
+            text-align: center;
+            padding: 40px 16px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            background: #E8F5E9;
+            color: #2E7D32;
+        }
+    </style>
 </head>
 <body>
-  <div class="header"><h1>📦 Theo dõi đơn hàng</h1></div>
-  <div id="content">
-    <div class="info-box" id="loadingBox">Đang tải dữ liệu...</div>
-  </div>
-  <div id="map" style="display:none;"></div>
+    <div class="header"><h1>📦 Theo dõi đơn hàng</h1></div>
+    <div id="content">
+        <div class="info-box" id="loadingBox">Đang tải dữ liệu...</div>
+    </div>
+    <div id="map" style="display:none;"></div>
 
-  <script>
-    // Token lấy từ URL, ví dụ: /track.html?token=abc123
-    const params = new URLSearchParams(window.location.search);
-    const token = params.get('token');
-    const apiBase = window.location.origin; // cùng domain với API
+    <script>
+        // Token lấy từ URL, ví dụ: /track.html?token=abc123
+        const params = new URLSearchParams(window.location.search);
+        const token = params.get('token');
+        const apiBase = window.location.origin; // cùng domain với API
 
-    let map, marker;
+        let map, marker;
 
-    async function loadTracking() {
-      if (!token) {
-        document.getElementById('content').innerHTML =
-          '<div class="error">Thiếu mã theo dõi (token) trong đường dẫn.</div>';
-        return;
-      }
-      try {
-        const resp = await fetch(`${apiBase}/api/public/track/${token}`);
-        if (!resp.ok) {
-          document.getElementById('content').innerHTML =
-            '<div class="error">Không tìm thấy đơn hàng, vui lòng kiểm tra lại đường dẫn.</div>';
-          return;
+        async function loadTracking() {
+            if (!token) {
+                document.getElementById('content').innerHTML =
+                    '<div class="error">Thiếu mã theo dõi (token) trong đường dẫn.</div>';
+                return;
+            }
+            try {
+                const resp = await fetch(`${apiBase}/api/public/track/${token}`);
+                if (!resp.ok) {
+                    document.getElementById('content').innerHTML =
+                        '<div class="error">Không tìm thấy đơn hàng, vui lòng kiểm tra lại đường dẫn.</div>';
+                    return;
+                }
+                const data = await resp.json();
+                render(data);
+            } catch (e) {
+                document.getElementById('content').innerHTML =
+                    '<div class="error">Lỗi kết nối tới máy chủ.</div>';
+            }
         }
-        const data = await resp.json();
-        render(data);
-      } catch (e) {
-        document.getElementById('content').innerHTML =
-          '<div class="error">Lỗi kết nối tới máy chủ.</div>';
-      }
-    }
 
-    function render(data) {
-      document.getElementById('content').innerHTML = `
-        <div class="info-box">
-          <div class="info-row"><span class="label">Mã đơn</span><span class="value">${data.orderCode}</span></div>
-          <div class="info-row"><span class="label">Trạng thái</span><span class="status-badge">${translateStatus(data.status)}</span></div>
-          <div class="info-row"><span class="label">Điểm lấy hàng</span><span class="value">${data.pickupPoint}</span></div>
-          <div class="info-row"><span class="label">Điểm giao hàng</span><span class="value">${data.dropoffPoint}</span></div>
-          <div class="info-row"><span class="label">Tiến độ</span><span class="value">${data.progressPercent}%</span></div>
-          <div class="progress-bar"><div class="progress-fill" style="width:${data.progressPercent}%"></div></div>
-        </div>
-      `;
+        function render(data) {
+            document.getElementById('content').innerHTML = `
+            <div class="info-box">
+              <div class="info-row"><span class="label">Mã đơn</span><span class="value">${data.orderCode}</span></div>
+              <div class="info-row"><span class="label">Giai đoạn</span><span class="status-badge">${data.currentStage}</span></div>
+              <div class="info-row"><span class="label">Điểm lấy hàng</span><span class="value">${data.pickupPoint}</span></div>
+              <div class="info-row"><span class="label">Điểm giao hàng</span><span class="value">${data.dropoffPoint}</span></div>
+              <div class="info-row"><span class="label">Tiến độ</span><span class="value">${data.progressPercent}%</span></div>
+              <div class="progress-bar"><div class="progress-fill" style="width:${data.progressPercent}%"></div></div>
+            </div>
+          `;
 
-      if (data.lastLat && data.lastLng) {
-        document.getElementById('map').style.display = 'block';
-        if (!map) {
-          map = L.map('map').setView([data.lastLat, data.lastLng], 13);
-          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; OpenStreetMap contributors',
-          }).addTo(map);
-          marker = L.marker([data.lastLat, data.lastLng]).addTo(map);
-        } else {
-          marker.setLatLng([data.lastLat, data.lastLng]);
-          map.panTo([data.lastLat, data.lastLng]);
+            if (data.lastLat && data.lastLng) {
+                document.getElementById('map').style.display = 'block';
+                if (!map) {
+                    map = L.map('map').setView([data.lastLat, data.lastLng], 13);
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '&copy; OpenStreetMap contributors',
+                    }).addTo(map);
+                    marker = L.marker([data.lastLat, data.lastLng]).addTo(map);
+                } else {
+                    marker.setLatLng([data.lastLat, data.lastLng]);
+                    map.panTo([data.lastLat, data.lastLng]);
+                }
+            }
         }
-      }
-    }
 
-    function translateStatus(status) {
-      const map = {
-        Draft: 'Nháp', Confirmed: 'Đã xác nhận', InProgress: 'Đang vận chuyển',
-        Done: 'Đã hoàn tất', Cancelled: 'Đã hủy',
-      };
-      return map[status] || status;
-    }
+        function translateStatus(status) {
+            const map = {
+                Draft: 'Nháp', Confirmed: 'Đã xác nhận', InProgress: 'Đang vận chuyển',
+                Done: 'Đã hoàn tất', Cancelled: 'Đã hủy',
+            };
+            return map[status] || status;
+        }
 
-    loadTracking();
-    // Tự làm mới mỗi 15 giây để cập nhật vị trí xe — đơn giản hơn SignalR,
-    // đủ dùng cho đồ án. Có thể nâng cấp SignalR sau nếu muốn realtime tức thời.
-    setInterval(loadTracking, 15000);
-  </script>
+        loadTracking();
+        // Tự làm mới mỗi 15 giây để cập nhật vị trí xe — đơn giản hơn SignalR,
+        // đủ dùng cho đồ án. Có thể nâng cấp SignalR sau nếu muốn realtime tức thời.
+        setInterval(loadTracking, 15000);
+    </script>
 </body>
 </html>

@@ -14,76 +14,91 @@ partial class VehiclesControl
 
     private void InitializeComponent()
     {
-        this.lblTitle = new System.Windows.Forms.Label();
-        this.btnRefresh = new System.Windows.Forms.Button();
-        this.btnCreate = new System.Windows.Forms.Button();
-        this.lblStatus = new System.Windows.Forms.Label();
-        this.grid = new System.Windows.Forms.DataGridView();
-        this.SuspendLayout();
-        //
+        lblTitle = new Label();
+        btnRefresh = new Button();
+        btnCreate = new Button();
+        lblStatus = new Label();
+        grid = new DataGridView();
+        ((System.ComponentModel.ISupportInitialize)grid).BeginInit();
+        SuspendLayout();
+        // 
         // lblTitle
-        //
-        this.lblTitle.Location = new System.Drawing.Point(0, 0);
-        this.lblTitle.Size = new System.Drawing.Size(400, 32);
-        this.lblTitle.Text = "Đội xe";
-        this.lblTitle.Font = TruckingSystem.Desktop.Common.Theme.FontTitle;
-        this.lblTitle.ForeColor = TruckingSystem.Desktop.Common.Theme.TextPrimary;
-        //
+        // 
+        lblTitle.Font = new Font("Segoe UI", 18F, FontStyle.Bold);
+        lblTitle.ForeColor = Color.FromArgb(15, 23, 42);
+        lblTitle.Location = new Point(0, 0);
+        lblTitle.Name = "lblTitle";
+        lblTitle.Size = new Size(400, 73);
+        lblTitle.TabIndex = 0;
+        lblTitle.Text = "Đội xe";
+        // 
         // btnRefresh
-        //
-        this.btnRefresh.Location = new System.Drawing.Point(780, 0);
-        this.btnRefresh.Size = new System.Drawing.Size(110, 38);
-        this.btnRefresh.Text = "🔄 Làm mới";
-        this.btnRefresh.BackColor = System.Drawing.Color.White;
-        this.btnRefresh.ForeColor = TruckingSystem.Desktop.Common.Theme.TextPrimary;
-        this.btnRefresh.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-        this.btnRefresh.Font = TruckingSystem.Desktop.Common.Theme.FontBold;
-        this.btnRefresh.Cursor = System.Windows.Forms.Cursors.Hand;
-        this.btnRefresh.FlatAppearance.BorderSize = 1;
-        this.btnRefresh.FlatAppearance.MouseOverBackColor = TruckingSystem.Desktop.Common.Theme.GridAltRow;
-        this.btnRefresh.Click += new System.EventHandler(this.BtnRefresh_Click);
-        //
+        // 
+        btnRefresh.BackColor = Color.White;
+        btnRefresh.Cursor = Cursors.Hand;
+        btnRefresh.FlatAppearance.MouseOverBackColor = Color.FromArgb(248, 250, 252);
+        btnRefresh.FlatStyle = FlatStyle.Flat;
+        btnRefresh.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+        btnRefresh.ForeColor = Color.FromArgb(15, 23, 42);
+        btnRefresh.Location = new Point(741, 0);
+        btnRefresh.Name = "btnRefresh";
+        btnRefresh.Size = new Size(149, 38);
+        btnRefresh.TabIndex = 1;
+        btnRefresh.Text = "🔄 Làm mới";
+        btnRefresh.UseVisualStyleBackColor = false;
+        btnRefresh.Click += BtnRefresh_Click;
+        // 
         // btnCreate
-        //
-        this.btnCreate.Location = new System.Drawing.Point(900, 0);
-        this.btnCreate.Size = new System.Drawing.Size(150, 38);
-        this.btnCreate.Text = "➕ Thêm xe mới";
-        this.btnCreate.BackColor = TruckingSystem.Desktop.Common.Theme.Primary;
-        this.btnCreate.ForeColor = System.Drawing.Color.White;
-        this.btnCreate.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-        this.btnCreate.Font = TruckingSystem.Desktop.Common.Theme.FontBold;
-        this.btnCreate.Cursor = System.Windows.Forms.Cursors.Hand;
-        this.btnCreate.FlatAppearance.BorderSize = 0;
-        this.btnCreate.FlatAppearance.MouseOverBackColor = TruckingSystem.Desktop.Common.Theme.PrimaryDark;
-        this.btnCreate.Click += new System.EventHandler(this.BtnCreate_Click);
-        //
+        // 
+        btnCreate.BackColor = Color.FromArgb(37, 99, 235);
+        btnCreate.Cursor = Cursors.Hand;
+        btnCreate.FlatAppearance.BorderSize = 0;
+        btnCreate.FlatAppearance.MouseOverBackColor = Color.FromArgb(29, 78, 216);
+        btnCreate.FlatStyle = FlatStyle.Flat;
+        btnCreate.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+        btnCreate.ForeColor = Color.White;
+        btnCreate.Location = new Point(900, 0);
+        btnCreate.Name = "btnCreate";
+        btnCreate.Size = new Size(150, 38);
+        btnCreate.TabIndex = 2;
+        btnCreate.Text = "➕ Thêm xe mới";
+        btnCreate.UseVisualStyleBackColor = false;
+        btnCreate.Click += BtnCreate_Click;
+        // 
         // lblStatus
-        //
-        this.lblStatus.Location = new System.Drawing.Point(0, 44);
-        this.lblStatus.AutoSize = true;
-        this.lblStatus.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
-        this.lblStatus.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
-        //
+        // 
+        lblStatus.AutoSize = true;
+        lblStatus.Font = new Font("Segoe UI", 9F);
+        lblStatus.ForeColor = Color.FromArgb(100, 116, 139);
+        lblStatus.Location = new Point(0, 44);
+        lblStatus.Name = "lblStatus";
+        lblStatus.Size = new Size(0, 25);
+        lblStatus.TabIndex = 3;
+        // 
         // grid
-        //
-        ((System.ComponentModel.ISupportInitialize)(this.grid)).BeginInit();
-        this.grid.Location = new System.Drawing.Point(0, 76);
-        this.grid.Size = new System.Drawing.Size(1000, 560);
-        this.grid.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
-        //
+        // 
+        grid.ColumnHeadersHeight = 34;
+        grid.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
+        grid.Location = new Point(0, 76);
+        grid.Name = "grid";
+        grid.RowHeadersWidth = 62;
+        grid.Size = new Size(1000, 560);
+        grid.TabIndex = 4;
+        // 
         // VehiclesControl
-        //
-        this.BackColor = TruckingSystem.Desktop.Common.Theme.ContentBg;
-        this.Dock = System.Windows.Forms.DockStyle.Fill;
-        this.Controls.Add(this.lblTitle);
-        this.Controls.Add(this.btnRefresh);
-        this.Controls.Add(this.btnCreate);
-        this.Controls.Add(this.lblStatus);
-        this.Controls.Add(this.grid);
-        this.Name = "VehiclesControl";
-        ((System.ComponentModel.ISupportInitialize)(this.grid)).EndInit();
-        this.ResumeLayout(false);
-        this.PerformLayout();
+        // 
+        AutoScaleDimensions = new SizeF(144F, 144F);
+        BackColor = Color.FromArgb(241, 245, 249);
+        Controls.Add(lblTitle);
+        Controls.Add(btnRefresh);
+        Controls.Add(btnCreate);
+        Controls.Add(lblStatus);
+        Controls.Add(grid);
+        Name = "VehiclesControl";
+        Size = new Size(1315, 613);
+        ((System.ComponentModel.ISupportInitialize)grid).EndInit();
+        ResumeLayout(false);
+        PerformLayout();
     }
 
     #endregion

@@ -58,14 +58,92 @@ public partial class OrderDetailForm : BaseForm
                 Số_lượng_chở = t.QtyPlanned,
             }).ToList();
 
-            btnAllocate.Enabled = order.Trips.Count == 0;
+            btnAllocate.Enabled = order.Trips.Count == 0 && order.Status == "Confirmed";
             btnViewRoute.Enabled = order.PickupLat.HasValue && order.PickupLng.HasValue
                                 && order.DropoffLat.HasValue && order.DropoffLng.HasValue;
+
+            // Chỉ cho Sửa/Xác nhận khi đơn còn Draft; chỉ cho Hủy khi Draft hoặc Confirmed
+            btnEdit.Enabled = order.Status == "Draft";
+            btnConfirm.Enabled = order.Status == "Draft" && order.CargoLines.Count > 0;
+            btnCancel.Enabled = order.Status is "Draft" or "Confirmed";
         }
         catch (Exception ex)
         {
             lblResult.Text = "Lỗi tải chi tiết đơn: " + ex.Message;
             lblResult.ForeColor = Theme.Danger;
+        }
+    }
+
+    private void BtnEdit_Click(object? sender, EventArgs e)
+    {
+        if (_api is null) return;
+        using var f = new CreateOrderForm(_api, _orderId);
+        if (f.ShowDialog() == DialogResult.OK) _ = LoadAsync();
+    }
+
+    private async void BtnConfirm_Click(object? sender, EventArgs e)
+    {
+        if (_api is null) return;
+        var confirm = MessageBox.Show(
+            "Xác nhận đơn này? Sau khi xác nhận sẽ KHÔNG sửa được nữa (chỉ có thể hủy).",
+            "Xác nhận đơn hàng", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+        if (confirm != DialogResult.Yes) return;
+
+        btnConfirm.Enabled = false;
+        try
+        {
+            var result = await _api.TransportOrders.ConfirmOrderAsync(_orderId);
+            if (result.Success)
+            {
+                lblResult.Text = "✅ Đã xác nhận đơn hàng.";
+                lblResult.ForeColor = Theme.Success;
+                await LoadAsync();
+            }
+            else
+            {
+                lblResult.Text = "⚠️ " + result.Message;
+                lblResult.ForeColor = Theme.Warning;
+                btnConfirm.Enabled = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            lblResult.Text = "Lỗi: " + ex.Message;
+            lblResult.ForeColor = Theme.Danger;
+            btnConfirm.Enabled = true;
+        }
+    }
+
+    private async void BtnCancel_Click(object? sender, EventArgs e)
+    {
+        if (_api is null) return;
+        var confirm = MessageBox.Show(
+            "Bạn có chắc chắn muốn HỦY đơn hàng này không? Không thể hoàn tác.",
+            "Xác nhận hủy đơn", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+        if (confirm != DialogResult.Yes) return;
+
+        btnCancel.Enabled = false;
+        try
+        {
+            var result = await _api.TransportOrders.CancelOrderAsync(_orderId);
+            if (result.Success)
+            {
+                lblResult.Text = "❌ Đã hủy đơn hàng.";
+                lblResult.ForeColor = Theme.TextSecondary;
+                await LoadAsync();
+            }
+            else
+            {
+                lblResult.Text = "⚠️ " + result.Message;
+                lblResult.ForeColor = Theme.Warning;
+                btnCancel.Enabled = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            lblResult.Text = "Lỗi: " + ex.Message;
+            lblResult.ForeColor = Theme.Danger;
+            btnCancel.Enabled = true;
         }
     }
 

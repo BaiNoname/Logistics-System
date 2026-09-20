@@ -33,7 +33,7 @@ public partial class LoginForm : BaseForm
     {
         InitializeComponent();
         SetupTruckAnimation();
-        txtServerUrl.Text = "https://localhost:8081";
+        txtServerUrl.Text = "https://localhost:8080";
         txtUsername.Text = "admin";
     }
 

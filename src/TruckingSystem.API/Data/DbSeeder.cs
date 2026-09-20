@@ -151,12 +151,34 @@ public static class DbSeeder
             Name = "Kho TP.HCM",
             Address = "Quận 7, TP.HCM",
             CapacityM3 = 500,
+            LengthMeters = 30, // kho hình chữ nhật 30m x 20m — đủ chỗ đặt 2 khu cạnh nhau
+            WidthMeters = 20,
         };
         db.Warehouses.Add(warehouse);
         await db.SaveChangesAsync();
 
-        var zoneNormal = new WarehouseZone { WarehouseId = warehouse.Id, Name = "Khu A - Hàng thường", ZoneType = ZoneType.Normal };
-        var zoneFragile = new WarehouseZone { WarehouseId = warehouse.Id, Name = "Khu B - Hàng dễ vỡ", ZoneType = ZoneType.Fragile };
+        // 2 khu đặt CẠNH NHAU theo chiều ngang trong sơ đồ 30m x 20m —
+        // Khu A chiếm nửa trái (0,0 tới 18,20), Khu B nửa phải (20,0 tới 30,20).
+        var zoneNormal = new WarehouseZone
+        {
+            WarehouseId = warehouse.Id,
+            Name = "Khu A - Hàng thường",
+            ZoneType = ZoneType.Normal,
+            PosX = 0,
+            PosY = 0,
+            WidthMeters = 18,
+            HeightMeters = 20,
+        };
+        var zoneFragile = new WarehouseZone
+        {
+            WarehouseId = warehouse.Id,
+            Name = "Khu B - Hàng dễ vỡ",
+            ZoneType = ZoneType.Fragile,
+            PosX = 20,
+            PosY = 0,
+            WidthMeters = 10,
+            HeightMeters = 20,
+        };
         db.WarehouseZones.AddRange(zoneNormal, zoneFragile);
         await db.SaveChangesAsync();
 

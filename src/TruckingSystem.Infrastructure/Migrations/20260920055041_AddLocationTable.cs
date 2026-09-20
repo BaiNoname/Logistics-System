@@ -366,6 +366,8 @@ namespace TruckingSystem.Infrastructure.Migrations
                     Name = table.Column<string>(type: "text", nullable: false),
                     Address = table.Column<string>(type: "text", nullable: true),
                     CapacityM3 = table.Column<decimal>(type: "numeric(18,2)", nullable: true),
+                    LengthMeters = table.Column<decimal>(type: "numeric(18,2)", nullable: true),
+                    WidthMeters = table.Column<decimal>(type: "numeric(18,2)", nullable: true),
                     BranchId = table.Column<int>(type: "integer", nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
@@ -606,6 +608,10 @@ namespace TruckingSystem.Infrastructure.Migrations
                     WarehouseId = table.Column<int>(type: "integer", nullable: false),
                     Name = table.Column<string>(type: "text", nullable: false),
                     ZoneType = table.Column<int>(type: "integer", nullable: false),
+                    PosX = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
+                    PosY = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
+                    WidthMeters = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
+                    HeightMeters = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
                 },
@@ -903,6 +909,7 @@ namespace TruckingSystem.Infrastructure.Migrations
                     EndTime = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     Status = table.Column<int>(type: "integer", nullable: false),
                     LegType = table.Column<int>(type: "integer", nullable: false),
+                    WarehouseId = table.Column<int>(type: "integer", nullable: true),
                     PlannedFuelCost = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
                     ActualFuelCost = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
                     StartLat = table.Column<double>(type: "double precision", nullable: true),
@@ -934,6 +941,11 @@ namespace TruckingSystem.Infrastructure.Migrations
                         principalTable: "Vehicles",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Trips_Warehouses_WarehouseId",
+                        column: x => x.WarehouseId,
+                        principalTable: "Warehouses",
+                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
@@ -1601,6 +1613,11 @@ namespace TruckingSystem.Infrastructure.Migrations
                 name: "IX_Trips_VehicleId",
                 table: "Trips",
                 column: "VehicleId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Trips_WarehouseId",
+                table: "Trips",
+                column: "WarehouseId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_VehicleDocuments_VehicleId",

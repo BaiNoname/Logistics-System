@@ -1,5 +1,22 @@
-namespace TruckingSystem.Application.Trips;
+﻿namespace TruckingSystem.Application.Trips;
 
-public record GpsPingRequest(double Lat, double Lng, decimal? Accuracy, decimal? SpeedKmh, DateTime Timestamp);
+// ==== Dùng cho màn hình quản lý Trip (Desktop, Dispatcher) ====
+
+public record TripListItemDto(
+    int Id, string OrderCode, string VehiclePlate, string DriverName,
+    string Status, string LegType, decimal TotalQtyPlanned
+);
+
+public record TripActionResult(bool Success, string? Message);
+
+/// <summary>Ghi nhận 1 lần đổ xăng thực tế cho 1 chuyến cụ thể.</summary>
+public record RecordFuelRequest(decimal Liters, decimal Cost, string? StationName);
+
+// ==== Dùng cho App tài xế (GPS ping + xác nhận đến nơi) — ĐÃ CÓ TỪ TRƯỚC,
+// giữ nguyên tên/kiểu để không phá vỡ TripsController đã tồn tại ====
+
+public record GpsPingRequest(double Lat, double Lng, decimal? SpeedKmh, decimal? Accuracy, DateTime? Timestamp);
+
 public record ConfirmArrivalRequest(string? Note);
-public record ServiceResult(bool Success, string? Message = null);
+
+public record ServiceResult(bool Success, string? Message);

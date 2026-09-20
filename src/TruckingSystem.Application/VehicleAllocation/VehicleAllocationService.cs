@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using TruckingSystem.Application.Common.Interfaces;
+using TruckingSystem.Application.Warehouses;
 using TruckingSystem.Domain.Entities;
 using TruckingSystem.Domain.Enums;
 
@@ -9,15 +10,36 @@ namespace TruckingSystem.Application.VehicleAllocation;
 /// Cài đặt thuật toán Tham lam (Greedy) cho bài toán phân bổ xe theo tải trọng.
 /// Ưu tiên xe có sức chứa còn trống LỚN NHẤT trước, gán tối đa có thể vào 1
 /// chuyến, lặp lại cho tới khi đủ hàng hoặc hết xe. Độ phức tạp O(n log n).
-/// Mỗi xe được gán sẽ tự động sinh ra 1 Trip + TripLine tương ứng.
+///
+/// ĐÃ SỬA 6 lỗi so với bản trước:
+///  1. Dùng ĐÚNG TẤT CẢ CargoLine (trước đây chỉ lấy dòng đầu tiên) — coi cả
+///     danh sách CargoLine như 1 "dòng chảy" liên tục, đóng gói dần vào từng
+///     xe theo đúng tinh thần Greedy, xe nào đầy thì chuyển dòng hàng dở dang
+///     tiếp sang xe kế tiếp.
+///  2. PickupMethod giờ THẬT SỰ ảnh hưởng: CompanyPickup tạo ĐỦ 2 chặng
+///     (Pickup + Delivery, cùng 1 xe/tài xế phụ trách cả 2 chặng) khớp đúng
+///     kịch bản nghiệp vụ đã mô tả; SelfDelivery chỉ tạo 1 chặng Delivery
+///     (khách đã tự mang hàng tới kho, xe chỉ cần giao đi).
+///  3. Chọn tài xế đúng — CHỈ chọn nhân viên có DriverProfile thật (là tài
+///     xế), không chọn bừa bất kỳ nhân viên Active nào như trước.
+///  4. Kiểm tra ĐỦ 3 ràng buộc sức chứa (Qty, Kg, m³) — trước đây CHỈ kiểm
+///     tra CapacityQty, có thể gán quá tải khối lượng/thể tích thật dù "số
+///     lượng" vẫn còn chỗ trên xe.
+///  5. Chỉ chọn tài xế có bằng lái CÒN HẠN (LicenseExpiryDate) — trước đây
+///     không kiểm tra, có thể gán tài xế đã hết hạn bằng lái.
+///  6. Loại trừ xe có giấy tờ (Đăng kiểm/Bảo hiểm/Giấy phép vận tải) ĐÃ HẾT
+///     HẠN — xe chưa nhập giấy tờ nào vẫn cho qua bình thường, chỉ chặn khi
+///     phát hiện thật sự hết hạn.
 /// </summary>
 public class VehicleAllocationService : IVehicleAllocationService
 {
     private readonly IApplicationDbContext _db;
+    private readonly IWarehouseSlottingService _warehouseService;
 
-    public VehicleAllocationService(IApplicationDbContext db)
+    public VehicleAllocationService(IApplicationDbContext db, IWarehouseSlottingService warehouseService)
     {
         _db = db;
+        _warehouseService = warehouseService;
     }
 
     public async Task<AllocateVehiclesResponse> AllocateAsync(int transportOrderId)
@@ -29,87 +51,236 @@ public class VehicleAllocationService : IVehicleAllocationService
         if (order is null)
             return new AllocateVehiclesResponse(false, 0, 0, new(), "Không tìm thấy đơn vận chuyển.");
 
-        // Tổng số lượng cần chở = tổng QtyTotal của tất cả CargoLine trong đơn
-        var totalQtyToShip = order.CargoLines.Sum(c => c.QtyTotal);
+        var cargoLines = order.CargoLines.ToList();
+        var totalQtyToShip = cargoLines.Sum(c => c.QtyTotal);
         if (totalQtyToShip <= 0)
             return new AllocateVehiclesResponse(false, 0, 0, new(), "Đơn hàng chưa khai báo số lượng hàng hóa.");
 
         // Bước 1: sắp xếp giảm dần theo sức chứa — cốt lõi của tính "tham lam"
+        // LOẠI TRỪ xe có giấy tờ quan trọng (Đăng kiểm/Bảo hiểm/Giấy phép vận
+        // tải) ĐÃ HẾT HẠN — xe chưa hề nhập giấy tờ nào vẫn cho qua bình thường
+        // (không ép buộc phải có dữ liệu, chỉ chặn khi PHÁT HIỆN thật sự hết hạn).
+        var today = DateTime.UtcNow;
+        var vehicleIdsWithExpiredDocs = await _db.VehicleDocuments
+            .Where(d => d.DocType != VehicleDocumentType.Other && d.ExpiryDate <= today)
+            .Select(d => d.VehicleId)
+            .Distinct()
+            .ToListAsync();
+
         var availableVehicles = await _db.Vehicles
-            .Where(v => v.Status == VehicleStatus.Available)
+            .Where(v => v.Status == VehicleStatus.Available && !vehicleIdsWithExpiredDocs.Contains(v.Id))
             .OrderByDescending(v => v.CapacityQty)
             .ToListAsync();
 
         if (!availableVehicles.Any())
-            return new AllocateVehiclesResponse(false, totalQtyToShip, 0, new(), "Không còn xe nào đang rảnh.");
+            return new AllocateVehiclesResponse(false, totalQtyToShip, 0, new(), "Không còn xe nào đang rảnh (hoặc tất cả xe rảnh đều có giấy tờ đã hết hạn).");
 
-        var remaining = totalQtyToShip;
+        // Danh sách tài xế hợp lệ (có DriverProfile thật + đang Active + bằng
+        // lái CÒN HẠN) — xoay vòng nếu cần nhiều xe hơn số tài xế rảnh (đơn
+        // giản hoá: không kiểm tra trùng lịch, cải tiến sau nếu cần).
+        // Loại trừ tài xế ĐANG BẬN chuyến khác (Planned/InProgress) — tránh
+        // gán trùng 1 tài xế cho 2 chuyến cùng lúc.
+        var busyDriverIds = await _db.Trips
+            .Where(t => t.Status == TripStatus.Planned || t.Status == TripStatus.InProgress)
+            .Select(t => t.DriverEmployeeId)
+            .Distinct()
+            .ToListAsync();
+
+        var driverIds = await _db.DriverProfiles
+            .Include(dp => dp.Employee)
+            .Where(dp => dp.Employee.Status == EmployeeStatus.Active && dp.LicenseExpiryDate > today)
+            .Select(dp => dp.EmployeeId)
+            .ToListAsync();
+        driverIds = driverIds.Except(busyDriverIds).ToList();
+
+        if (driverIds.Count == 0)
+            return new AllocateVehiclesResponse(false, totalQtyToShip, 0, new(), "Không có tài xế nào khả dụng (đã hết hạn bằng lái, hoặc tất cả đang bận chuyến khác).");
+
+        // Đơn giản hoá: dùng kho ĐẦU TIÊN hiện có làm kho trung chuyển mặc định
+        // — hệ thống hiện chưa có bước chọn kho cụ thể lúc Chia xe. Cải tiến
+        // sau: cho Dispatcher chọn kho, hoặc tự động chọn kho gần điểm lấy/giao nhất.
+        var defaultWarehouseId = await _db.Warehouses.Select(w => w.Id).FirstOrDefaultAsync();
+        if (defaultWarehouseId == 0)
+            return new AllocateVehiclesResponse(false, totalQtyToShip, 0, new(), "Chưa có kho trung chuyển nào trong hệ thống — cần tạo ít nhất 1 kho trước khi chia xe.");
+
+        var isCompanyPickup = order.PickupMethod == PickupMethod.CompanyPickup;
+
         var results = new List<AllocationResultItem>();
+        int vehicleIndex = 0, driverIndex = 0;
+        decimal vehicleRemainingQty = availableVehicles[0].CapacityQty;
+        decimal vehicleRemainingKg = availableVehicles[0].CapacityKg;
+        decimal vehicleRemainingM3 = availableVehicles[0].CapacityM3;
+        decimal totalAssigned = 0;
 
-        // Chỉ lấy 1 CargoLine đại diện để gán vào TripLine (đơn giản hoá: coi cả đơn là 1 loại hàng gộp)
-        var primaryCargoLine = order.CargoLines.First();
+        // Dòng hàng hiện đang xử lý dở (đóng gói liên tục qua nhiều dòng hàng
+        // và nhiều xe, đúng tinh thần Greedy — không dừng lại ở từng dòng).
+        int cargoIndex = 0;
+        decimal cargoRemaining = cargoLines.Count > 0 ? cargoLines[0].QtyTotal : 0;
 
-        // Bước 2: duyệt qua từng xe, gán tối đa có thể, dừng khi đủ hàng hoặc hết xe
-        foreach (var vehicle in availableVehicles)
+        Trip? currentPickupTrip = null, currentDeliveryTrip = null;
+        int currentDriverEmployeeId = 0;
+
+        while (cargoIndex < cargoLines.Count && vehicleIndex < availableVehicles.Count)
         {
-            if (remaining <= 0) break;
-
-            var qtyAssigned = Math.Min(remaining, vehicle.CapacityQty);
-
-            var trip = new Trip
+            if (cargoRemaining <= 0)
             {
-                TransportOrderId = order.Id,
-                VehicleId = vehicle.Id,
-                // Đơn giản hoá: gán tạm tài xế đầu tiên tìm thấy có hồ sơ DriverProfile.
-                // Cải tiến sau: cho phép Dispatcher chọn tài xế cụ thể trước khi xác nhận.
-                DriverEmployeeId = await GetAnyDriverEmployeeIdAsync(),
-                Status = TripStatus.Planned,
-                LegType = TripLegType.Delivery,
-            };
-            _db.Trips.Add(trip);
-            await _db.SaveChangesAsync(); // cần Id thật của Trip trước khi tạo TripLine
+                cargoIndex++;
+                if (cargoIndex >= cargoLines.Count) break;
+                cargoRemaining = cargoLines[cargoIndex].QtyTotal;
+                continue;
+            }
 
-            _db.TripLines.Add(new TripLine
+            // Bắt đầu xe mới -> tạo Trip (1 hoặc 2 chặng tùy PickupMethod)
+            if (currentDeliveryTrip is null)
             {
-                TripId = trip.Id,
-                CargoLineId = primaryCargoLine.Id,
-                QtyPlanned = qtyAssigned,
-            });
+                var vehicle = availableVehicles[vehicleIndex];
+                var driverEmployeeId = driverIds[driverIndex % driverIds.Count];
+                driverIndex++;
+                currentDriverEmployeeId = driverEmployeeId;
 
-            vehicle.Status = VehicleStatus.OnTrip; // xe đã được gán, không còn rảnh nữa
+                if (isCompanyPickup)
+                {
+                    currentPickupTrip = new Trip
+                    {
+                        TransportOrderId = order.Id,
+                        VehicleId = vehicle.Id,
+                        DriverEmployeeId = driverEmployeeId,
+                        Status = TripStatus.Planned,
+                        LegType = TripLegType.Pickup,
+                        WarehouseId = defaultWarehouseId,
+                    };
+                    _db.Trips.Add(currentPickupTrip);
+                }
 
-            results.Add(new AllocationResultItem(trip.Id, vehicle.PlateNumber, qtyAssigned));
-            remaining -= qtyAssigned;
+                currentDeliveryTrip = new Trip
+                {
+                    TransportOrderId = order.Id,
+                    VehicleId = vehicle.Id,
+                    DriverEmployeeId = driverEmployeeId,
+                    Status = TripStatus.Planned,
+                    LegType = TripLegType.Delivery,
+                    WarehouseId = defaultWarehouseId,
+                };
+                _db.Trips.Add(currentDeliveryTrip);
+                await _db.SaveChangesAsync(); // cần Id thật trước khi tạo TripLine
+
+                vehicle.Status = VehicleStatus.OnTrip;
+                results.Add(new AllocationResultItem(currentDeliveryTrip.Id, vehicle.PlateNumber, 0));
+            }
+
+            var qtyThisStep = cargoRemaining;
+            var cargoLine = cargoLines[cargoIndex];
+
+            // Quy đổi theo TỈ LỆ trên mỗi đơn vị QtyTotal — VD: CargoLine khai
+            // báo tổng 1000kg cho 10 đơn vị => mỗi đơn vị nặng 100kg. Nhờ vậy
+            // biết chính xác gán thêm bao nhiêu đơn vị nữa thì sẽ VỪA HẾT
+            // khối lượng/thể tích còn trống của xe, không chỉ dựa vào Qty.
+            var unitWeight = cargoLine.QtyTotal > 0 ? cargoLine.WeightKg / cargoLine.QtyTotal : 0;
+            var unitVolume = cargoLine.QtyTotal > 0 ? cargoLine.VolumeM3 / cargoLine.QtyTotal : 0;
+
+            qtyThisStep = Math.Min(qtyThisStep, vehicleRemainingQty);
+            if (unitWeight > 0) qtyThisStep = Math.Min(qtyThisStep, vehicleRemainingKg / unitWeight);
+            if (unitVolume > 0) qtyThisStep = Math.Min(qtyThisStep, vehicleRemainingM3 / unitVolume);
+            qtyThisStep = Math.Max(qtyThisStep, 0); // phòng hờ sai số âm cực nhỏ
+
+            // Bảo vệ vòng lặp vô hạn: nếu xe HIỆN TẠI (dù còn nguyên, chưa
+            // chở gì) vẫn không đủ sức chở NỔI 1 đơn vị hàng này (hàng quá
+            // nặng/quá khổ so với sức chứa xe) — ép chuyển sang xe kế tiếp
+            // ngay, tránh lặp lại mãi cùng 1 trạng thái không tiến triển.
+            if (qtyThisStep <= 0)
+            {
+                vehicleIndex++;
+                currentPickupTrip = null;
+                currentDeliveryTrip = null;
+                if (vehicleIndex < availableVehicles.Count)
+                {
+                    vehicleRemainingQty = availableVehicles[vehicleIndex].CapacityQty;
+                    vehicleRemainingKg = availableVehicles[vehicleIndex].CapacityKg;
+                    vehicleRemainingM3 = availableVehicles[vehicleIndex].CapacityM3;
+                }
+                continue;
+            }
+
+            // CompanyPickup: cùng số lượng đó cần ghi vào CẢ 2 chặng (chặng
+            // Pickup mang về kho, chặng Delivery mang đi giao) — cùng lô hàng
+            // đi qua 2 chặng, không phải 2 lô khác nhau.
+            if (isCompanyPickup && currentPickupTrip is not null)
+            {
+                _db.TripLines.Add(new TripLine { TripId = currentPickupTrip.Id, CargoLineId = cargoLine.Id, QtyPlanned = qtyThisStep });
+            }
+            else if (!isCompanyPickup)
+            {
+                // SelfDelivery: khách đã tự mang hàng tới kho rồi — không có
+                // chặng Pickup nào để "hoàn tất" và kích hoạt nhập kho sau này
+                // như CompanyPickup, nên phải nhập kho NGAY tại đây.
+                await _db.SaveChangesAsync(); // cần lưu trước để có CargoLine/Trip Id ổn định cho ReceiveGoodsAsync
+                await _warehouseService.ReceiveGoodsAsync(
+                    defaultWarehouseId, order.Id, cargoLine.Id, qtyThisStep, currentDriverEmployeeId, tripId: null);
+            }
+            _db.TripLines.Add(new TripLine { TripId = currentDeliveryTrip.Id, CargoLineId = cargoLine.Id, QtyPlanned = qtyThisStep });
+
+            // Cộng dồn đúng vào kết quả của Trip (Delivery) tương ứng đang hiển thị cho Dispatcher
+            var lastResult = results[^1];
+            results[^1] = lastResult with { QtyAssigned = lastResult.QtyAssigned + qtyThisStep };
+
+            cargoRemaining -= qtyThisStep;
+            vehicleRemainingQty -= qtyThisStep;
+            vehicleRemainingKg -= qtyThisStep * unitWeight;
+            vehicleRemainingM3 -= qtyThisStep * unitVolume;
+            totalAssigned += qtyThisStep;
+
+            // Chuyển sang xe kế tiếp nếu BẤT KỲ chiều nào (Qty/Kg/m³) đã hết
+            // chỗ — không chỉ riêng Qty như bản trước. Ngưỡng nhỏ (0.001) để
+            // tránh kẹt vòng lặp do sai số làm tròn của kiểu decimal.
+            const decimal epsilon = 0.001m;
+            if (vehicleRemainingQty <= epsilon || vehicleRemainingKg <= epsilon || vehicleRemainingM3 <= epsilon)
+            {
+                vehicleIndex++;
+                currentPickupTrip = null;
+                currentDeliveryTrip = null;
+                if (vehicleIndex < availableVehicles.Count)
+                {
+                    vehicleRemainingQty = availableVehicles[vehicleIndex].CapacityQty;
+                    vehicleRemainingKg = availableVehicles[vehicleIndex].CapacityKg;
+                    vehicleRemainingM3 = availableVehicles[vehicleIndex].CapacityM3;
+                }
+            }
         }
 
-        // Đơn chuyển sang Confirmed vì đã có chuyến được lên kế hoạch
+        // Dọn dẹp: trường hợp hiếm gặp — 1 xe vừa được gán Trip nhưng phát
+        // hiện ngay không chở nổi dù chỉ 1 đơn vị hàng (hàng quá nặng/quá khổ
+        // so với CHÍNH xe đó dù Qty vẫn còn dư) — xóa Trip rỗng, trả xe lại Available.
+        var emptyTrips = results.Where(r => r.QtyAssigned <= 0).ToList();
+        foreach (var empty in emptyTrips)
+        {
+            var trip = await _db.Trips.Include(t => t.Vehicle).FirstAsync(t => t.Id == empty.TripId);
+            var relatedTrips = _db.Trips.Local.Where(t => t.VehicleId == trip.VehicleId && t.TransportOrderId == order.Id);
+            foreach (var rt in relatedTrips.ToList()) _db.Trips.Remove(rt);
+            trip.Vehicle.Status = VehicleStatus.Available;
+            results.Remove(empty);
+        }
+
+        // Đơn chuyển sang Confirmed nếu vì lý do nào đó vẫn còn Draft khi Chia
+        // xe (phòng hờ gọi trực tiếp API bỏ qua bước Xác nhận thủ công ở UI).
         if (order.Status == TransportOrderStatus.Draft)
             order.Status = TransportOrderStatus.Confirmed;
 
-        _db.AuditLogs.Add(new Domain.Entities.AuditLog
+        _db.AuditLogs.Add(new AuditLog
         {
             Action = "AllocateVehicles",
             EntityName = nameof(TransportOrder),
             EntityId = order.Id,
-            Detail = $"Thuật toán Greedy đã gán {results.Count} xe, tổng {totalQtyToShip - remaining}/{totalQtyToShip}.",
+            Detail = $"Thuật toán Greedy đã gán {results.Count} xe, tổng {totalAssigned}/{totalQtyToShip}." +
+                     (isCompanyPickup ? " (2 chặng Pickup+Delivery)" : " (1 chặng Delivery)"),
         });
 
         await _db.SaveChangesAsync();
 
+        var remaining = totalQtyToShip - totalAssigned;
         var message = remaining > 0
-            ? $"Chỉ đủ xe chở {totalQtyToShip - remaining}/{totalQtyToShip} — còn thiếu {remaining}, cần thêm xe hoặc chờ xe rảnh."
+            ? $"Chỉ đủ xe chở {totalAssigned}/{totalQtyToShip} — còn thiếu {remaining}, cần thêm xe hoặc chờ xe rảnh."
             : null;
 
-        return new AllocateVehiclesResponse(true, totalQtyToShip, totalQtyToShip - remaining, results, message);
-    }
-
-    private async Task<int> GetAnyDriverEmployeeIdAsync()
-    {
-        var driver = await _db.Employees
-            .Where(e => e.Status == EmployeeStatus.Active)
-            .OrderBy(e => e.Id)
-            .FirstOrDefaultAsync();
-
-        return driver?.Id ?? 0;
+        return new AllocateVehiclesResponse(true, totalQtyToShip, totalAssigned, results, message);
     }
 }

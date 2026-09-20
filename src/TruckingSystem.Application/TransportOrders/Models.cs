@@ -1,4 +1,4 @@
-namespace TruckingSystem.Application.TransportOrders;
+﻿namespace TruckingSystem.Application.TransportOrders;
 
 public record CargoLineDto(string CargoType, int PackageCount, decimal WeightKg, decimal VolumeM3, bool IsFragile, bool IsHazmat, decimal QtyTotal);
 
@@ -9,7 +9,20 @@ public record CreateTransportOrderRequest(
     DateTime? CommittedDeliveryDate,
     List<CargoLineDto> CargoLines,
     int? PickupLocationId = null,
-    int? DropoffLocationId = null
+    int? DropoffLocationId = null,
+    string PickupMethod = "CompanyPickup" // "CompanyPickup" | "SelfDelivery"
+);
+
+/// <summary>Sửa đơn — CHỈ cho phép khi đơn còn ở trạng thái Draft (chưa xác
+/// nhận). Không có CustomerId — không cho đổi khách hàng của 1 đơn đã tạo.</summary>
+public record UpdateTransportOrderRequest(
+    string PickupPoint,
+    string DropoffPoint,
+    DateTime? CommittedDeliveryDate,
+    List<CargoLineDto> CargoLines,
+    int? PickupLocationId = null,
+    int? DropoffLocationId = null,
+    string PickupMethod = "CompanyPickup"
 );
 
 public record TransportOrderListItemDto(
@@ -19,9 +32,15 @@ public record TransportOrderListItemDto(
 
 public record TripSummaryDto(int Id, string VehiclePlate, string DriverName, string Status, decimal QtyPlanned);
 
+/// <summary>Kết quả của các thao tác đổi trạng thái đơn (Xác nhận/Hủy) — không
+/// trả nguyên TransportOrderDetailDto vì Desktop chỉ cần biết có thành công
+/// không và lý do nếu thất bại, rồi tự gọi lại GetByIdAsync để load lại mới nhất.</summary>
+public record OrderActionResult(bool Success, string? Message);
+
 public record TransportOrderDetailDto(
     int Id, string Code, string CustomerName, string Status, decimal ProgressPercent,
     string PickupPoint, string DropoffPoint, DateTime? CommittedDeliveryDate,
     string PublicTrackingToken, List<CargoLineDto> CargoLines, List<TripSummaryDto> Trips,
-    double? PickupLat, double? PickupLng, double? DropoffLat, double? DropoffLng
+    double? PickupLat, double? PickupLng, double? DropoffLat, double? DropoffLng,
+    string PickupMethod, int CustomerId
 );
