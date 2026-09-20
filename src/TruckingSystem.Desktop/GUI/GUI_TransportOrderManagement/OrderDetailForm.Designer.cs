@@ -20,6 +20,9 @@ partial class OrderDetailForm
         this.gridCargo = new System.Windows.Forms.DataGridView();
         this.lblTripsTitle = new System.Windows.Forms.Label();
         this.gridTrips = new System.Windows.Forms.DataGridView();
+        this.btnEdit = new System.Windows.Forms.Button();
+        this.btnConfirm = new System.Windows.Forms.Button();
+        this.btnCancel = new System.Windows.Forms.Button();
         this.btnAllocate = new System.Windows.Forms.Button();
         this.btnViewRoute = new System.Windows.Forms.Button();
         this.lblResult = new System.Windows.Forms.Label();
@@ -67,9 +70,50 @@ partial class OrderDetailForm
         this.gridTrips.Size = new System.Drawing.Size(700, 150);
         this.gridTrips.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
         //
+        // btnEdit
+        //
+        this.btnEdit.Location = new System.Drawing.Point(24, 460);
+        this.btnEdit.Size = new System.Drawing.Size(110, 36);
+        this.btnEdit.Text = "✏️ Sửa đơn";
+        this.btnEdit.BackColor = System.Drawing.Color.White;
+        this.btnEdit.ForeColor = TruckingSystem.Desktop.Common.Theme.TextPrimary;
+        this.btnEdit.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+        this.btnEdit.Font = TruckingSystem.Desktop.Common.Theme.FontBold;
+        this.btnEdit.Cursor = System.Windows.Forms.Cursors.Hand;
+        this.btnEdit.FlatAppearance.BorderSize = 1;
+        this.btnEdit.FlatAppearance.MouseOverBackColor = TruckingSystem.Desktop.Common.Theme.GridAltRow;
+        this.btnEdit.Click += new System.EventHandler(this.BtnEdit_Click);
+        //
+        // btnConfirm
+        //
+        this.btnConfirm.Location = new System.Drawing.Point(144, 460);
+        this.btnConfirm.Size = new System.Drawing.Size(150, 36);
+        this.btnConfirm.Text = "✅ Xác nhận đơn";
+        this.btnConfirm.BackColor = TruckingSystem.Desktop.Common.Theme.Success;
+        this.btnConfirm.ForeColor = System.Drawing.Color.White;
+        this.btnConfirm.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+        this.btnConfirm.Font = TruckingSystem.Desktop.Common.Theme.FontBold;
+        this.btnConfirm.Cursor = System.Windows.Forms.Cursors.Hand;
+        this.btnConfirm.FlatAppearance.BorderSize = 0;
+        this.btnConfirm.Click += new System.EventHandler(this.BtnConfirm_Click);
+        //
+        // btnCancel
+        //
+        this.btnCancel.Location = new System.Drawing.Point(304, 460);
+        this.btnCancel.Size = new System.Drawing.Size(110, 36);
+        this.btnCancel.Text = "❌ Hủy đơn";
+        this.btnCancel.BackColor = System.Drawing.Color.White;
+        this.btnCancel.ForeColor = TruckingSystem.Desktop.Common.Theme.Danger;
+        this.btnCancel.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+        this.btnCancel.Font = TruckingSystem.Desktop.Common.Theme.FontBold;
+        this.btnCancel.Cursor = System.Windows.Forms.Cursors.Hand;
+        this.btnCancel.FlatAppearance.BorderSize = 1;
+        this.btnCancel.FlatAppearance.BorderColor = TruckingSystem.Desktop.Common.Theme.Danger;
+        this.btnCancel.Click += new System.EventHandler(this.BtnCancel_Click);
+        //
         // btnAllocate
         //
-        this.btnAllocate.Location = new System.Drawing.Point(24, 460);
+        this.btnAllocate.Location = new System.Drawing.Point(24, 505);
         this.btnAllocate.Size = new System.Drawing.Size(200, 40);
         this.btnAllocate.Text = "🚚  Chia xe (Greedy)";
         this.btnAllocate.BackColor = TruckingSystem.Desktop.Common.Theme.Primary;
@@ -83,7 +127,7 @@ partial class OrderDetailForm
         //
         // btnViewRoute
         //
-        this.btnViewRoute.Location = new System.Drawing.Point(234, 460);
+        this.btnViewRoute.Location = new System.Drawing.Point(234, 505);
         this.btnViewRoute.Size = new System.Drawing.Size(180, 40);
         this.btnViewRoute.Text = "🗺️  Xem lộ trình";
         this.btnViewRoute.BackColor = System.Drawing.Color.White;
@@ -98,7 +142,7 @@ partial class OrderDetailForm
         //
         // lblResult
         //
-        this.lblResult.Location = new System.Drawing.Point(24, 500);
+        this.lblResult.Location = new System.Drawing.Point(24, 550);
         this.lblResult.Size = new System.Drawing.Size(700, 60);
         this.lblResult.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
         //
@@ -107,13 +151,16 @@ partial class OrderDetailForm
         this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
         this.AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
         this.BackColor = System.Drawing.Color.White;
-        this.ClientSize = new System.Drawing.Size(780, 610);
+        this.ClientSize = new System.Drawing.Size(780, 660);
         this.Controls.Add(this.lblHeader);
         this.Controls.Add(this.lblInfo);
         this.Controls.Add(this.lblCargoTitle);
         this.Controls.Add(this.gridCargo);
         this.Controls.Add(this.lblTripsTitle);
         this.Controls.Add(this.gridTrips);
+        this.Controls.Add(this.btnEdit);
+        this.Controls.Add(this.btnConfirm);
+        this.Controls.Add(this.btnCancel);
         this.Controls.Add(this.btnAllocate);
         this.Controls.Add(this.btnViewRoute);
         this.Controls.Add(this.lblResult);
@@ -136,6 +183,9 @@ partial class OrderDetailForm
     private System.Windows.Forms.DataGridView gridCargo;
     private System.Windows.Forms.Label lblTripsTitle;
     private System.Windows.Forms.DataGridView gridTrips;
+    private System.Windows.Forms.Button btnEdit;
+    private System.Windows.Forms.Button btnConfirm;
+    private System.Windows.Forms.Button btnCancel;
     private System.Windows.Forms.Button btnAllocate;
     private System.Windows.Forms.Button btnViewRoute;
     private System.Windows.Forms.Label lblResult;

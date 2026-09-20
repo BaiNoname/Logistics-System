@@ -55,7 +55,7 @@ public partial class DashboardControl : BaseUserControl
 
     private static Panel MakeKpiCard(string icon, string label, string value, Color accentColor)
     {
-        var card = new Panel { Width = 190, Height = 120, Margin = new Padding(0, 0, 16, 0), BackColor = Theme.CardBg };
+        var card = new Panel { Width = 190, Height = 200, Margin = new Padding(0, 0, 16, 0), BackColor = Theme.CardBg };
         card.Paint += (_, e) =>
         {
             using var pen = new Pen(Theme.BorderColor);

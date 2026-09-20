@@ -25,6 +25,12 @@ public class Trip : BaseEntity
     /// <summary>Chặng lấy hàng về kho, hay chặng xuất kho đi giao. Mặc định Delivery cho mô hình cũ (đi thẳng).</summary>
     public TripLegType LegType { get; set; } = TripLegType.Delivery;
 
+    /// <summary>Kho liên quan tới chặng này — chặng Pickup thì đây là kho hàng
+    /// SẼ VỀ; chặng Delivery thì đây là kho hàng XUẤT ĐI. Null nếu đơn không
+    /// qua kho trung chuyển (hiếm, thường luôn có giá trị với thiết kế hiện tại).</summary>
+    public int? WarehouseId { get; set; }
+    public Warehouse? Warehouse { get; set; }
+
     public decimal PlannedFuelCost { get; set; }
     public decimal ActualFuelCost { get; set; }
 

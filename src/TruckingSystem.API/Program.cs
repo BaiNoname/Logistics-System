@@ -1,6 +1,16 @@
 using TruckingSystem.Application;
 using TruckingSystem.Infrastructure;
 
+// ---- Sửa lỗi 500 kinh điển với Npgsql: WinForms DateTimePicker (và nhiều
+// nguồn khác) trả về DateTime với Kind=Unspecified/Local — nhưng Npgsql bản
+// mới BẮT BUỘC DateTime phải Kind=Utc khi ghi vào cột timestamptz, nếu không
+// sẽ ném lỗi "Cannot write DateTime with Kind=Unspecified..." (500 Internal
+// Server Error). Switch này tắt kiểm tra nghiêm ngặt đó — áp dụng 1 LẦN DUY
+// NHẤT ở đây, tránh phải tự SpecifyKind(Utc) thủ công ở TỪNG chỗ tạo/sửa các
+// trường ngày tháng rải rác khắp hệ thống (TransportOrder, Trip, GoodsReceipt,
+// DriverProfile, VehicleDocument...).
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+
 var builder = WebApplication.CreateBuilder(args);
 
 // ---- 2 dòng này thay thế cho hàng chục dòng cấu hình DbContext/Identity/JWT/Service

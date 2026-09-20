@@ -1,12 +1,22 @@
 namespace TruckingSystem.Application.Trips;
 
-/// <summary>
-/// Use case liên quan tới Trip. Đây là nơi chứa TOÀN BỘ business logic
-/// (trước đây từng nằm sai chỗ, trực tiếp trong TripsController).
-/// Controller giờ chỉ còn 2-3 dòng: nhận request -> gọi service -> trả response.
-/// </summary>
 public interface ITripService
 {
+    // ---- Quản lý Trip (Desktop, Dispatcher) ----
+    Task<List<TripListItemDto>> GetAllAsync();
+
+    /// <summary>Planned -> InProgress. Thao tác THỦ CÔNG do Dispatcher xác nhận
+    /// (chưa tích hợp GPS thật để tự động chuyển).</summary>
+    Task<TripActionResult> StartAsync(int id);
+
+    /// <summary>InProgress -> Completed. Thao tác thủ công tương tự — ÁP DỤNG
+    /// ĐÚNG logic phân biệt theo LegType (xem TripService.HandleArrivalAsync).</summary>
+    Task<TripActionResult> CompleteAsync(int id);
+
+    /// <summary>Ghi nhận 1 lần đổ xăng thực tế — tạo FuelLog, cộng dồn vào Trip.ActualFuelCost.</summary>
+    Task<TripActionResult> RecordFuelAsync(int id, RecordFuelRequest request);
+
+    // ---- App tài xế (đã có từ trước, giữ nguyên chữ ký) ----
     Task<ServiceResult> PingAsync(int tripId, GpsPingRequest request);
     Task<ServiceResult> ConfirmArrivalAsync(int tripId, ConfirmArrivalRequest request);
 }

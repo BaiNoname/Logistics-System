@@ -47,6 +47,9 @@ public class TransportOrderService : ITransportOrderService
         var customer = await _db.Customers.FindAsync(request.CustomerId)
             ?? throw new InvalidOperationException("Khách hàng không tồn tại.");
 
+        if (request.CargoLines is null || request.CargoLines.Count == 0)
+            throw new InvalidOperationException("Đơn hàng phải có ít nhất 1 dòng hàng hóa.");
+
         var code = $"TO-{DateTime.UtcNow:yyyyMMddHHmmss}";
 
         var order = new TransportOrder
@@ -59,16 +62,8 @@ public class TransportOrderService : ITransportOrderService
             Status = TransportOrderStatus.Draft,
             PickupLocationId = request.PickupLocationId,
             DropoffLocationId = request.DropoffLocationId,
-            CargoLines = request.CargoLines.Select(c => new CargoLine
-            {
-                CargoType = c.CargoType,
-                PackageCount = c.PackageCount,
-                WeightKg = c.WeightKg,
-                VolumeM3 = c.VolumeM3,
-                IsFragile = c.IsFragile,
-                IsHazmat = c.IsHazmat,
-                QtyTotal = c.QtyTotal,
-            }).ToList(),
+            PickupMethod = ParsePickupMethod(request.PickupMethod),
+            CargoLines = request.CargoLines.Select(MapCargoLine).ToList(),
         };
 
         _db.TransportOrders.Add(order);
@@ -85,6 +80,81 @@ public class TransportOrderService : ITransportOrderService
         return MapToDetail(order);
     }
 
+    public async Task<OrderActionResult> UpdateAsync(int id, UpdateTransportOrderRequest request)
+    {
+        var order = await _db.TransportOrders
+            .Include(o => o.CargoLines)
+            .FirstOrDefaultAsync(o => o.Id == id);
+
+        if (order is null) return new OrderActionResult(false, "Không tìm thấy đơn hàng.");
+        if (order.Status != TransportOrderStatus.Draft)
+            return new OrderActionResult(false, "Chỉ có thể sửa đơn khi còn ở trạng thái Nháp (Draft) — đơn này đã xác nhận/đang chạy.");
+        if (request.CargoLines is null || request.CargoLines.Count == 0)
+            return new OrderActionResult(false, "Đơn hàng phải có ít nhất 1 dòng hàng hóa.");
+
+        order.PickupPoint = request.PickupPoint;
+        order.DropoffPoint = request.DropoffPoint;
+        order.CommittedDeliveryDate = request.CommittedDeliveryDate;
+        order.PickupLocationId = request.PickupLocationId;
+        order.DropoffLocationId = request.DropoffLocationId;
+        order.PickupMethod = ParsePickupMethod(request.PickupMethod);
+
+        // Thay hẳn toàn bộ danh sách dòng hàng cũ bằng danh sách mới — đơn giản
+        // và an toàn hơn nhiều so với dò từng dòng để so sánh thêm/sửa/xóa,
+        // chấp nhận được vì đơn còn Draft nên chưa gắn Trip/StorageAssignment nào.
+        _db.CargoLines.RemoveRange(order.CargoLines);
+        order.CargoLines = request.CargoLines.Select(MapCargoLine).ToList();
+
+        await _db.SaveChangesAsync();
+        return new OrderActionResult(true, null);
+    }
+
+    public async Task<OrderActionResult> ConfirmAsync(int id)
+    {
+        var order = await _db.TransportOrders
+            .Include(o => o.CargoLines)
+            .FirstOrDefaultAsync(o => o.Id == id);
+
+        if (order is null) return new OrderActionResult(false, "Không tìm thấy đơn hàng.");
+        if (order.Status != TransportOrderStatus.Draft)
+            return new OrderActionResult(false, "Chỉ có thể xác nhận đơn đang ở trạng thái Nháp (Draft).");
+        if (order.CargoLines.Count == 0)
+            return new OrderActionResult(false, "Đơn hàng chưa có dòng hàng hóa nào — không thể xác nhận.");
+
+        order.Status = TransportOrderStatus.Confirmed;
+        await _db.SaveChangesAsync();
+        return new OrderActionResult(true, null);
+    }
+
+    public async Task<OrderActionResult> CancelAsync(int id)
+    {
+        var order = await _db.TransportOrders.FindAsync(id);
+        if (order is null) return new OrderActionResult(false, "Không tìm thấy đơn hàng.");
+
+        if (order.Status is TransportOrderStatus.InProgress or TransportOrderStatus.Done)
+            return new OrderActionResult(false, "Không thể hủy đơn đã có xe đang chạy hoặc đã hoàn tất.");
+        if (order.Status == TransportOrderStatus.Cancelled)
+            return new OrderActionResult(false, "Đơn này đã bị hủy từ trước.");
+
+        order.Status = TransportOrderStatus.Cancelled;
+        await _db.SaveChangesAsync();
+        return new OrderActionResult(true, null);
+    }
+
+    private static PickupMethod ParsePickupMethod(string value)
+        => Enum.TryParse<PickupMethod>(value, out var parsed) ? parsed : PickupMethod.CompanyPickup;
+
+    private static CargoLine MapCargoLine(CargoLineDto c) => new()
+    {
+        CargoType = c.CargoType,
+        PackageCount = c.PackageCount,
+        WeightKg = c.WeightKg,
+        VolumeM3 = c.VolumeM3,
+        IsFragile = c.IsFragile,
+        IsHazmat = c.IsHazmat,
+        QtyTotal = c.QtyTotal,
+    };
+
     private static TransportOrderDetailDto MapToDetail(TransportOrder order) => new(
         order.Id, order.Code, order.Customer.Name, order.Status.ToString(), order.ProgressPercent,
         order.PickupPoint, order.DropoffPoint, order.CommittedDeliveryDate, order.PublicTrackingToken,
@@ -94,6 +164,7 @@ public class TransportOrderService : ITransportOrderService
             t.Id, t.Vehicle.PlateNumber, t.DriverEmployee.FullName, t.Status.ToString(),
             t.TripLines.Sum(tl => tl.QtyPlanned))).ToList(),
         order.PickupLocation?.Lat, order.PickupLocation?.Lng,
-        order.DropoffLocation?.Lat, order.DropoffLocation?.Lng
+        order.DropoffLocation?.Lat, order.DropoffLocation?.Lng,
+        order.PickupMethod.ToString(), order.CustomerId
     );
 }

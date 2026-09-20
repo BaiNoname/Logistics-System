@@ -8,6 +8,11 @@
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Remove="GUI\GUI_WarehouseManagement\NewFolder\**" />
+    <EmbeddedResource Remove="GUI\GUI_WarehouseManagement\NewFolder\**" />
+    <None Remove="GUI\GUI_WarehouseManagement\NewFolder\**" />
+  </ItemGroup>
+  <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2792.45" />
   </ItemGroup>

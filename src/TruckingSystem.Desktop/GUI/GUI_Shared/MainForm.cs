@@ -6,6 +6,7 @@ using TruckingSystem.Desktop.GUI_EmployeeManagement;
 using TruckingSystem.Desktop.GUI_InvoiceManagement;
 using TruckingSystem.Desktop.GUI_LocationManagement;
 using TruckingSystem.Desktop.GUI_TransportOrderManagement;
+using TruckingSystem.Desktop.GUI_TripManagement;
 using TruckingSystem.Desktop.GUI_VehicleManagement;
 using TruckingSystem.Desktop.GUI_WarehouseManagement;
 
@@ -48,8 +49,12 @@ public partial class MainForm : BaseForm
         var logoPanel = new Panel { Dock = DockStyle.Top, Height = 70 };
         var logo = new Label
         {
-            Text = "🚚 TruckingSystem", ForeColor = Color.White, Font = new Font("Segoe UI", 13, FontStyle.Bold),
-            Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft, Padding = new Padding(20, 0, 0, 0),
+            Text = "🚚 TruckingSystem",
+            ForeColor = Color.White,
+            Font = new Font("Segoe UI", 13, FontStyle.Bold),
+            Dock = DockStyle.Fill,
+            TextAlign = ContentAlignment.MiddleLeft,
+            Padding = new Padding(20, 0, 0, 0),
         };
         logoPanel.Controls.Add(logo);
 
@@ -57,6 +62,7 @@ public partial class MainForm : BaseForm
         {
             ("📊", "Tổng quan", () => new DashboardControl(_api)),
             ("📦", "Đơn vận chuyển", () => new TransportOrdersControl(_api)),
+            ("🛣️", "Chuyến (Trip)", () => new TripsControl(_api)),
             ("📍", "Địa điểm", () => new LocationsControl(_api)),
             ("🚚", "Đội xe", () => new VehiclesControl(_api)),
             ("🏬", "Kho trung chuyển", () => new WarehousesControl(_api)),
@@ -101,10 +107,18 @@ public partial class MainForm : BaseForm
     {
         var btn = new Button
         {
-            Text = $"  {icon}   {text}", Width = 238, Height = 44, TextAlign = ContentAlignment.MiddleLeft,
-            AutoEllipsis = false, UseCompatibleTextRendering = false,
-            FlatStyle = FlatStyle.Flat, BackColor = Theme.SidebarBg, ForeColor = Theme.SidebarText,
-            Font = Theme.FontSidebar, Cursor = Cursors.Hand, Margin = new Padding(0, 2, 0, 2),
+            Text = $"  {icon}   {text}",
+            Width = 238,
+            Height = 44,
+            TextAlign = ContentAlignment.MiddleLeft,
+            AutoEllipsis = false,
+            UseCompatibleTextRendering = false,
+            FlatStyle = FlatStyle.Flat,
+            BackColor = Theme.SidebarBg,
+            ForeColor = Theme.SidebarText,
+            Font = Theme.FontSidebar,
+            Cursor = Cursors.Hand,
+            Margin = new Padding(0, 2, 0, 2),
         };
         btn.FlatAppearance.BorderSize = 0;
         btn.FlatAppearance.MouseOverBackColor = ColorTranslator.FromHtml("#334155");

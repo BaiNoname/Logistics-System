@@ -12,7 +12,7 @@ using TruckingSystem.Infrastructure.Persistence;
 namespace TruckingSystem.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260918095655_AddLocationTable")]
+    [Migration("20260920055041_AddLocationTable")]
     partial class AddLocationTable
     {
         /// <inheritdoc />
@@ -1422,6 +1422,9 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.Property<int>("VehicleId")
                         .HasColumnType("integer");
 
+                    b.Property<int?>("WarehouseId")
+                        .HasColumnType("integer");
+
                     b.HasKey("Id");
 
                     b.HasIndex("DriverEmployeeId");
@@ -1429,6 +1432,8 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.HasIndex("TransportOrderId");
 
                     b.HasIndex("VehicleId");
+
+                    b.HasIndex("WarehouseId");
 
                     b.ToTable("Trips");
                 });
@@ -1642,12 +1647,18 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<decimal?>("LengthMeters")
+                        .HasColumnType("numeric(18,2)");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal?>("WidthMeters")
+                        .HasColumnType("numeric(18,2)");
 
                     b.HasKey("Id");
 
@@ -1703,15 +1714,27 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<decimal>("HeightMeters")
+                        .HasColumnType("numeric(18,2)");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<decimal>("PosX")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("PosY")
+                        .HasColumnType("numeric(18,2)");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<int>("WarehouseId")
                         .HasColumnType("integer");
+
+                    b.Property<decimal>("WidthMeters")
+                        .HasColumnType("numeric(18,2)");
 
                     b.Property<int>("ZoneType")
                         .HasColumnType("integer");
@@ -2320,11 +2343,17 @@ namespace TruckingSystem.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("TruckingSystem.Domain.Entities.Warehouse", "Warehouse")
+                        .WithMany()
+                        .HasForeignKey("WarehouseId");
+
                     b.Navigation("DriverEmployee");
 
                     b.Navigation("TransportOrder");
 
                     b.Navigation("Vehicle");
+
+                    b.Navigation("Warehouse");
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.TripCalendarEvent", b =>

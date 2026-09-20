@@ -1,16 +1,19 @@
 using TruckingSystem.Desktop.Common;
+using TruckingSystem.Desktop.DTO_EmployeeManagement;
 
 namespace TruckingSystem.Desktop.GUI_EmployeeManagement;
 
 public partial class EmployeesControl : BaseUserControl
 {
     private ApiServices? _api;
+    private List<EmployeeListItem> _employees = new();
 
     public EmployeesControl()
     {
         InitializeComponent();
         Theme.StyleGrid(grid);
         Resize += (_, _) => { grid.Width = Width; grid.Height = Height - grid.Top; };
+        grid.DataBindingComplete += (_, _) => { if (grid.Columns["Id"] != null) grid.Columns["Id"]!.Visible = false; };
         Load += async (_, _) => await LoadAsync();
     }
 
@@ -28,23 +31,45 @@ public partial class EmployeesControl : BaseUserControl
         if (f.ShowDialog() == DialogResult.OK) await LoadAsync();
     }
 
+    private async void BtnMakeDriver_Click(object? sender, EventArgs e)
+    {
+        if (_api is null || grid.CurrentRow is null)
+        {
+            MessageBox.Show("Vui lòng chọn 1 nhân viên trước.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
+        var employeeId = (int)grid.CurrentRow.Cells["Id"].Value;
+        var employee = _employees.First(e => e.Id == employeeId);
+
+        if (employee.IsDriver)
+        {
+            MessageBox.Show("Nhân viên này đã có hồ sơ tài xế rồi.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
+
+        using var f = new CreateDriverProfileForm(_api, employeeId, employee.FullName);
+        if (f.ShowDialog() == DialogResult.OK) await LoadAsync();
+    }
+
     private async Task LoadAsync()
     {
         if (_api is null) return;
         lblStatus.Text = "Đang tải...";
         try
         {
-            var employees = await _api.Employees.GetEmployeesAsync();
-            grid.DataSource = employees.Select(e => new
+            _employees = await _api.Employees.GetEmployeesAsync();
+            grid.DataSource = _employees.Select(e => new
             {
+                e.Id,
                 Mã_NV = e.Code,
                 Họ_tên = e.FullName,
                 Điện_thoại = e.Phone ?? "—",
                 Phòng_ban = e.DepartmentName ?? "—",
                 Chức_danh = e.PositionName ?? "—",
                 Trạng_thái = e.Status == "Active" ? "Đang làm" : e.Status,
+                Là_tài_xế = e.IsDriver ? "✅ Có" : "—",
             }).ToList();
-            lblStatus.Text = $"Tổng {employees.Count} nhân viên";
+            lblStatus.Text = $"Tổng {_employees.Count} nhân viên — chọn 1 dòng rồi bấm \"Tạo hồ sơ tài xế\" nếu cần";
         }
         catch (Exception ex)
         {

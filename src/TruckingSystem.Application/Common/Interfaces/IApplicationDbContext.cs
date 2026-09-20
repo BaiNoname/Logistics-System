@@ -38,6 +38,8 @@ public interface IApplicationDbContext
     DbSet<TripLine> TripLines { get; }
 
     DbSet<Vehicle> Vehicles { get; }
+    DbSet<VehicleDocument> VehicleDocuments { get; }
+    DbSet<FuelLog> FuelLogs { get; }
     DbSet<Trip> Trips { get; }
     DbSet<Waypoint> Waypoints { get; }
 

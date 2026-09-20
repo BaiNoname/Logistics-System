@@ -9,6 +9,7 @@ public class EmployeeListItem
     public string? DepartmentName { get; set; }
     public string? PositionName { get; set; }
     public string Status { get; set; } = "";
+    public bool IsDriver { get; set; }
 }
 
 public class LookupItem
@@ -16,4 +17,10 @@ public class LookupItem
     public int Id { get; set; }
     public string Name { get; set; } = "";
     public override string ToString() => Name;
+}
+
+public class EmployeeActionResultItem
+{
+    public bool Success { get; set; }
+    public string? Message { get; set; }
 }

@@ -14,186 +14,247 @@ partial class LoginForm
 
     private void InitializeComponent()
     {
-        this.bannerPanel = new System.Windows.Forms.Panel();
-        this.lblAppName = new System.Windows.Forms.Label();
-        this.lblTagline = new System.Windows.Forms.Label();
-        this.roadLine = new System.Windows.Forms.Panel();
-        this.rightPanel = new System.Windows.Forms.Panel();
-        this.lblTitle = new System.Windows.Forms.Label();
-        this.lblSub = new System.Windows.Forms.Label();
-        this.lblServerUrl = new System.Windows.Forms.Label();
-        this.txtServerUrl = new System.Windows.Forms.TextBox();
-        this.lblUsername = new System.Windows.Forms.Label();
-        this.txtUsername = new System.Windows.Forms.TextBox();
-        this.lblPassword = new System.Windows.Forms.Label();
-        this.txtPassword = new System.Windows.Forms.TextBox();
-        this.btnLogin = new System.Windows.Forms.Button();
-        this.lblStatus = new System.Windows.Forms.Label();
-        this.btnClose = new System.Windows.Forms.Button();
-        this.bannerPanel.SuspendLayout();
-        this.rightPanel.SuspendLayout();
-        this.SuspendLayout();
-        //
+        bannerPanel = new Panel();
+        lblAppName = new Label();
+        lblTagline = new Label();
+        roadLine = new Panel();
+        rightPanel = new Panel();
+        lblTitle = new Label();
+        lblSub = new Label();
+        lblServerUrl = new Label();
+        txtServerUrl = new TextBox();
+        lblUsername = new Label();
+        txtUsername = new TextBox();
+        lblPassword = new Label();
+        txtPassword = new TextBox();
+        btnLogin = new Button();
+        lblStatus = new Label();
+        btnClose = new Button();
+        bannerPanel.SuspendLayout();
+        rightPanel.SuspendLayout();
+        SuspendLayout();
+        // 
         // bannerPanel
-        //
-        this.bannerPanel.Dock = System.Windows.Forms.DockStyle.Left;
-        this.bannerPanel.Width = 460;
-        this.bannerPanel.BackColor = TruckingSystem.Desktop.Common.Theme.SidebarBg;
-        this.bannerPanel.Controls.Add(this.lblAppName);
-        this.bannerPanel.Controls.Add(this.lblTagline);
-        this.bannerPanel.Controls.Add(this.roadLine);
-        //
+        // 
+        bannerPanel.BackColor = Color.FromArgb(30, 41, 59);
+        bannerPanel.Controls.Add(lblAppName);
+        bannerPanel.Controls.Add(lblTagline);
+        bannerPanel.Controls.Add(roadLine);
+        bannerPanel.Dock = DockStyle.Left;
+        bannerPanel.Location = new Point(0, 0);
+        bannerPanel.Margin = new Padding(4, 4, 4, 4);
+        bannerPanel.Name = "bannerPanel";
+        bannerPanel.Size = new Size(690, 960);
+        bannerPanel.TabIndex = 1;
+        // 
         // lblAppName
-        //
-        this.lblAppName.Location = new System.Drawing.Point(40, 200);
-        this.lblAppName.AutoSize = true;
-        this.lblAppName.Text = "Trucking System";
-        this.lblAppName.Font = new System.Drawing.Font("Segoe UI", 26F, System.Drawing.FontStyle.Bold);
-        this.lblAppName.ForeColor = System.Drawing.Color.White;
-        //
+        // 
+        lblAppName.AutoSize = true;
+        lblAppName.Font = new Font("Segoe UI", 26F, FontStyle.Bold);
+        lblAppName.ForeColor = Color.White;
+        lblAppName.Location = new Point(108, 188);
+        lblAppName.Margin = new Padding(4, 0, 4, 0);
+        lblAppName.Name = "lblAppName";
+        lblAppName.Size = new Size(429, 70);
+        lblAppName.TabIndex = 0;
+        lblAppName.Text = "Trucking System";
+        // 
         // lblTagline
-        //
-        this.lblTagline.Location = new System.Drawing.Point(40, 255);
-        this.lblTagline.AutoSize = true;
-        this.lblTagline.Text = "Hệ thống quản lý vận tải và\nkho trung chuyển hàng hóa nội địa";
-        this.lblTagline.Font = new System.Drawing.Font("Segoe UI", 11F);
-        this.lblTagline.ForeColor = TruckingSystem.Desktop.Common.Theme.SidebarText;
-        //
+        // 
+        lblTagline.AutoSize = true;
+        lblTagline.Font = new Font("Segoe UI", 11F);
+        lblTagline.ForeColor = Color.FromArgb(203, 213, 225);
+        lblTagline.Location = new Point(146, 295);
+        lblTagline.Margin = new Padding(4, 0, 4, 0);
+        lblTagline.Name = "lblTagline";
+        lblTagline.Size = new Size(349, 60);
+        lblTagline.TabIndex = 1;
+        lblTagline.Text = "Hệ thống quản lý vận tải và\nkho trung chuyển hàng hóa nội địa";
+        // 
         // roadLine
-        //
-        this.roadLine.Location = new System.Drawing.Point(0, 506);
-        this.roadLine.Size = new System.Drawing.Size(460, 2);
-        this.roadLine.BackColor = System.Drawing.ColorTranslator.FromHtml("#334155");
-        //
+        // 
+        roadLine.BackColor = Color.FromArgb(51, 65, 85);
+        roadLine.Location = new Point(0, 759);
+        roadLine.Margin = new Padding(4, 4, 4, 4);
+        roadLine.Name = "roadLine";
+        roadLine.Size = new Size(690, 3);
+        roadLine.TabIndex = 2;
+        // 
         // rightPanel
-        //
-        this.rightPanel.Dock = System.Windows.Forms.DockStyle.Fill;
-        this.rightPanel.BackColor = System.Drawing.Color.White;
-        this.rightPanel.Controls.Add(this.lblTitle);
-        this.rightPanel.Controls.Add(this.lblSub);
-        this.rightPanel.Controls.Add(this.lblServerUrl);
-        this.rightPanel.Controls.Add(this.txtServerUrl);
-        this.rightPanel.Controls.Add(this.lblUsername);
-        this.rightPanel.Controls.Add(this.txtUsername);
-        this.rightPanel.Controls.Add(this.lblPassword);
-        this.rightPanel.Controls.Add(this.txtPassword);
-        this.rightPanel.Controls.Add(this.btnLogin);
-        this.rightPanel.Controls.Add(this.lblStatus);
-        this.rightPanel.Controls.Add(this.btnClose);
-        //
+        // 
+        rightPanel.BackColor = Color.White;
+        rightPanel.Controls.Add(lblTitle);
+        rightPanel.Controls.Add(lblSub);
+        rightPanel.Controls.Add(lblServerUrl);
+        rightPanel.Controls.Add(txtServerUrl);
+        rightPanel.Controls.Add(lblUsername);
+        rightPanel.Controls.Add(txtUsername);
+        rightPanel.Controls.Add(lblPassword);
+        rightPanel.Controls.Add(txtPassword);
+        rightPanel.Controls.Add(btnLogin);
+        rightPanel.Controls.Add(lblStatus);
+        rightPanel.Controls.Add(btnClose);
+        rightPanel.Dock = DockStyle.Fill;
+        rightPanel.Location = new Point(690, 0);
+        rightPanel.Margin = new Padding(4, 4, 4, 4);
+        rightPanel.Name = "rightPanel";
+        rightPanel.Size = new Size(810, 960);
+        rightPanel.TabIndex = 0;
+        // 
         // lblTitle
-        //
-        this.lblTitle.Location = new System.Drawing.Point(90, 140);
-        this.lblTitle.AutoSize = true;
-        this.lblTitle.Text = "Đăng nhập";
-        this.lblTitle.Font = TruckingSystem.Desktop.Common.Theme.FontTitle;
-        this.lblTitle.ForeColor = TruckingSystem.Desktop.Common.Theme.TextPrimary;
-        //
+        // 
+        lblTitle.AutoSize = true;
+        lblTitle.Font = new Font("Segoe UI", 18F, FontStyle.Bold);
+        lblTitle.ForeColor = Color.FromArgb(15, 23, 42);
+        lblTitle.Location = new Point(135, 210);
+        lblTitle.Margin = new Padding(4, 0, 4, 0);
+        lblTitle.Name = "lblTitle";
+        lblTitle.Size = new Size(205, 48);
+        lblTitle.TabIndex = 0;
+        lblTitle.Text = "Đăng nhập";
+        // 
         // lblSub
-        //
-        this.lblSub.Location = new System.Drawing.Point(90, 180);
-        this.lblSub.AutoSize = true;
-        this.lblSub.Text = "Nhập thông tin tài khoản để tiếp tục";
-        this.lblSub.Font = TruckingSystem.Desktop.Common.Theme.FontNormal;
-        this.lblSub.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
-        //
+        // 
+        lblSub.AutoSize = true;
+        lblSub.Font = new Font("Segoe UI", 10F);
+        lblSub.ForeColor = Color.FromArgb(100, 116, 139);
+        lblSub.Location = new Point(135, 270);
+        lblSub.Margin = new Padding(4, 0, 4, 0);
+        lblSub.Name = "lblSub";
+        lblSub.Size = new Size(330, 28);
+        lblSub.TabIndex = 1;
+        lblSub.Text = "Nhập thông tin tài khoản để tiếp tục";
+        // 
         // lblServerUrl
-        //
-        this.lblServerUrl.Location = new System.Drawing.Point(90, 220);
-        this.lblServerUrl.AutoSize = true;
-        this.lblServerUrl.Text = "SERVER URL";
-        this.lblServerUrl.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
-        this.lblServerUrl.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
-        //
+        // 
+        lblServerUrl.AutoSize = true;
+        lblServerUrl.Font = new Font("Segoe UI", 9F);
+        lblServerUrl.ForeColor = Color.FromArgb(100, 116, 139);
+        lblServerUrl.Location = new Point(135, 330);
+        lblServerUrl.Margin = new Padding(4, 0, 4, 0);
+        lblServerUrl.Name = "lblServerUrl";
+        lblServerUrl.Size = new Size(109, 25);
+        lblServerUrl.TabIndex = 2;
+        lblServerUrl.Text = "SERVER URL";
+        // 
         // txtServerUrl
-        //
-        this.txtServerUrl.Location = new System.Drawing.Point(90, 240);
-        this.txtServerUrl.Size = new System.Drawing.Size(320, 32);
-        this.txtServerUrl.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-        this.txtServerUrl.Font = TruckingSystem.Desktop.Common.Theme.FontNormal;
-        //
+        // 
+        txtServerUrl.BorderStyle = BorderStyle.FixedSingle;
+        txtServerUrl.Font = new Font("Segoe UI", 10F);
+        txtServerUrl.Location = new Point(135, 360);
+        txtServerUrl.Margin = new Padding(4, 4, 4, 4);
+        txtServerUrl.Name = "txtServerUrl";
+        txtServerUrl.Size = new Size(479, 34);
+        txtServerUrl.TabIndex = 3;
+        // 
         // lblUsername
-        //
-        this.lblUsername.Location = new System.Drawing.Point(90, 290);
-        this.lblUsername.AutoSize = true;
-        this.lblUsername.Text = "TÀI KHOẢN";
-        this.lblUsername.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
-        this.lblUsername.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
-        //
+        // 
+        lblUsername.AutoSize = true;
+        lblUsername.Font = new Font("Segoe UI", 9F);
+        lblUsername.ForeColor = Color.FromArgb(100, 116, 139);
+        lblUsername.Location = new Point(135, 435);
+        lblUsername.Margin = new Padding(4, 0, 4, 0);
+        lblUsername.Name = "lblUsername";
+        lblUsername.Size = new Size(104, 25);
+        lblUsername.TabIndex = 4;
+        lblUsername.Text = "TÀI KHOẢN";
+        // 
         // txtUsername
-        //
-        this.txtUsername.Location = new System.Drawing.Point(90, 310);
-        this.txtUsername.Size = new System.Drawing.Size(320, 32);
-        this.txtUsername.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-        this.txtUsername.Font = TruckingSystem.Desktop.Common.Theme.FontNormal;
-        //
+        // 
+        txtUsername.BorderStyle = BorderStyle.FixedSingle;
+        txtUsername.Font = new Font("Segoe UI", 10F);
+        txtUsername.Location = new Point(135, 465);
+        txtUsername.Margin = new Padding(4, 4, 4, 4);
+        txtUsername.Name = "txtUsername";
+        txtUsername.Size = new Size(479, 34);
+        txtUsername.TabIndex = 5;
+        // 
         // lblPassword
-        //
-        this.lblPassword.Location = new System.Drawing.Point(90, 360);
-        this.lblPassword.AutoSize = true;
-        this.lblPassword.Text = "MẬT KHẨU";
-        this.lblPassword.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
-        this.lblPassword.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
-        //
+        // 
+        lblPassword.AutoSize = true;
+        lblPassword.Font = new Font("Segoe UI", 9F);
+        lblPassword.ForeColor = Color.FromArgb(100, 116, 139);
+        lblPassword.Location = new Point(135, 540);
+        lblPassword.Margin = new Padding(4, 0, 4, 0);
+        lblPassword.Name = "lblPassword";
+        lblPassword.Size = new Size(101, 25);
+        lblPassword.TabIndex = 6;
+        lblPassword.Text = "MẬT KHẨU";
+        // 
         // txtPassword
-        //
-        this.txtPassword.Location = new System.Drawing.Point(90, 380);
-        this.txtPassword.Size = new System.Drawing.Size(320, 32);
-        this.txtPassword.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-        this.txtPassword.Font = TruckingSystem.Desktop.Common.Theme.FontNormal;
-        this.txtPassword.PasswordChar = '●';
-        //
+        // 
+        txtPassword.BorderStyle = BorderStyle.FixedSingle;
+        txtPassword.Font = new Font("Segoe UI", 10F);
+        txtPassword.Location = new Point(135, 570);
+        txtPassword.Margin = new Padding(4, 4, 4, 4);
+        txtPassword.Name = "txtPassword";
+        txtPassword.PasswordChar = '●';
+        txtPassword.Size = new Size(479, 34);
+        txtPassword.TabIndex = 7;
+        // 
         // btnLogin
-        //
-        this.btnLogin.Location = new System.Drawing.Point(90, 440);
-        this.btnLogin.Size = new System.Drawing.Size(320, 44);
-        this.btnLogin.Text = "Đăng nhập";
-        this.btnLogin.BackColor = TruckingSystem.Desktop.Common.Theme.Primary;
-        this.btnLogin.ForeColor = System.Drawing.Color.White;
-        this.btnLogin.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-        this.btnLogin.Font = TruckingSystem.Desktop.Common.Theme.FontBold;
-        this.btnLogin.Cursor = System.Windows.Forms.Cursors.Hand;
-        this.btnLogin.FlatAppearance.BorderSize = 0;
-        this.btnLogin.FlatAppearance.MouseOverBackColor = TruckingSystem.Desktop.Common.Theme.PrimaryDark;
-        this.btnLogin.Click += new System.EventHandler(this.BtnLogin_Click);
-        //
+        // 
+        btnLogin.BackColor = Color.FromArgb(37, 99, 235);
+        btnLogin.Cursor = Cursors.Hand;
+        btnLogin.FlatAppearance.BorderSize = 0;
+        btnLogin.FlatAppearance.MouseOverBackColor = Color.FromArgb(29, 78, 216);
+        btnLogin.FlatStyle = FlatStyle.Flat;
+        btnLogin.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+        btnLogin.ForeColor = Color.White;
+        btnLogin.Location = new Point(135, 660);
+        btnLogin.Margin = new Padding(4, 4, 4, 4);
+        btnLogin.Name = "btnLogin";
+        btnLogin.Size = new Size(480, 66);
+        btnLogin.TabIndex = 8;
+        btnLogin.Text = "Đăng nhập";
+        btnLogin.UseVisualStyleBackColor = false;
+        btnLogin.Click += BtnLogin_Click;
+        // 
         // lblStatus
-        //
-        this.lblStatus.Location = new System.Drawing.Point(90, 495);
-        this.lblStatus.Size = new System.Drawing.Size(320, 40);
-        this.lblStatus.ForeColor = TruckingSystem.Desktop.Common.Theme.Danger;
-        this.lblStatus.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
-        //
+        // 
+        lblStatus.Font = new Font("Segoe UI", 9F);
+        lblStatus.ForeColor = Color.FromArgb(220, 38, 38);
+        lblStatus.Location = new Point(135, 742);
+        lblStatus.Margin = new Padding(4, 0, 4, 0);
+        lblStatus.Name = "lblStatus";
+        lblStatus.Size = new Size(480, 60);
+        lblStatus.TabIndex = 9;
+        // 
         // btnClose
-        //
-        this.btnClose.Location = new System.Drawing.Point(954, 10);
-        this.btnClose.Size = new System.Drawing.Size(36, 36);
-        this.btnClose.Text = "✕";
-        this.btnClose.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-        this.btnClose.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-        this.btnClose.BackColor = System.Drawing.Color.White;
-        this.btnClose.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
-        this.btnClose.FlatAppearance.BorderSize = 0;
-        this.btnClose.Click += new System.EventHandler(this.BtnClose_Click);
-        //
+        // 
+        btnClose.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+        btnClose.BackColor = Color.White;
+        btnClose.FlatAppearance.BorderSize = 0;
+        btnClose.FlatStyle = FlatStyle.Flat;
+        btnClose.ForeColor = Color.FromArgb(100, 116, 139);
+        btnClose.Location = new Point(1941, 15);
+        btnClose.Margin = new Padding(4, 4, 4, 4);
+        btnClose.Name = "btnClose";
+        btnClose.Size = new Size(54, 54);
+        btnClose.TabIndex = 10;
+        btnClose.Text = "✕";
+        btnClose.UseVisualStyleBackColor = false;
+        btnClose.Click += BtnClose_Click;
+        // 
         // LoginForm
-        //
-        this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
-        this.AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
-        this.BackColor = TruckingSystem.Desktop.Common.Theme.Primary;
-        this.ClientSize = new System.Drawing.Size(1000, 640);
-        this.Controls.Add(this.rightPanel);
-        this.Controls.Add(this.bannerPanel);
-        this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.None;
-        this.Name = "LoginForm";
-        this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
-        this.Text = "Trucking System — Đăng nhập";
-        this.AcceptButton = this.btnLogin;
-        this.bannerPanel.ResumeLayout(false);
-        this.bannerPanel.PerformLayout();
-        this.rightPanel.ResumeLayout(false);
-        this.rightPanel.PerformLayout();
-        this.ResumeLayout(false);
+        // 
+        AcceptButton = btnLogin;
+        AutoScaleDimensions = new SizeF(144F, 144F);
+        AutoScaleMode = AutoScaleMode.Dpi;
+        BackColor = Color.FromArgb(37, 99, 235);
+        ClientSize = new Size(1500, 960);
+        Controls.Add(rightPanel);
+        Controls.Add(bannerPanel);
+        FormBorderStyle = FormBorderStyle.None;
+        Margin = new Padding(6, 6, 6, 6);
+        Name = "LoginForm";
+        StartPosition = FormStartPosition.CenterScreen;
+        Text = "Trucking System — Đăng nhập";
+        bannerPanel.ResumeLayout(false);
+        bannerPanel.PerformLayout();
+        rightPanel.ResumeLayout(false);
+        rightPanel.PerformLayout();
+        ResumeLayout(false);
     }
 
     #endregion

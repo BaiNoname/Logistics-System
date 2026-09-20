@@ -1,4 +1,4 @@
-namespace TruckingSystem.Desktop.DTO_TransportOrderManagement;
+﻿namespace TruckingSystem.Desktop.DTO_TransportOrderManagement;
 
 public class TransportOrderListItem
 {
@@ -37,6 +37,7 @@ public class TransportOrderDetailItem
     public int Id { get; set; }
     public string Code { get; set; } = "";
     public string CustomerName { get; set; } = "";
+    public int CustomerId { get; set; }
     public string Status { get; set; } = "";
     public decimal ProgressPercent { get; set; }
     public string PickupPoint { get; set; } = "";
@@ -49,6 +50,14 @@ public class TransportOrderDetailItem
     public double? PickupLng { get; set; }
     public double? DropoffLat { get; set; }
     public double? DropoffLng { get; set; }
+    public string PickupMethod { get; set; } = "CompanyPickup";
+}
+
+/// <summary>Kết quả thao tác Xác nhận/Hủy đơn.</summary>
+public class OrderActionResultItem
+{
+    public bool Success { get; set; }
+    public string? Message { get; set; }
 }
 
 public class AllocationResultItemDto

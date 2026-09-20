@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using TruckingSystem.Application.Common.Interfaces;
 using TruckingSystem.Domain.Entities;
 using TruckingSystem.Domain.Enums;
@@ -16,6 +16,8 @@ public class EmployeeService : IEmployeeService
 
     public async Task<List<EmployeeListItemDto>> GetAllAsync()
     {
+        var driverEmployeeIds = await _db.DriverProfiles.Select(dp => dp.EmployeeId).ToListAsync();
+
         return await _db.Employees
             .Include(e => e.Department)
             .Include(e => e.Position)
@@ -24,8 +26,30 @@ public class EmployeeService : IEmployeeService
                 e.Id, e.Code, e.FullName, e.Phone,
                 e.Department != null ? e.Department.Name : null,
                 e.Position != null ? e.Position.Name : null,
-                e.Status.ToString()))
+                e.Status.ToString(),
+                driverEmployeeIds.Contains(e.Id)))
             .ToListAsync();
+    }
+
+    public async Task<EmployeeActionResult> CreateDriverProfileAsync(int employeeId, CreateDriverProfileRequest request)
+    {
+        var employee = await _db.Employees.FindAsync(employeeId);
+        if (employee is null) return new EmployeeActionResult(false, "Không tìm thấy nhân viên.");
+
+        var existing = await _db.DriverProfiles.AnyAsync(dp => dp.EmployeeId == employeeId);
+        if (existing) return new EmployeeActionResult(false, "Nhân viên này đã có hồ sơ tài xế rồi.");
+
+        _db.DriverProfiles.Add(new DriverProfile
+        {
+            EmployeeId = employeeId,
+            LicenseNumber = request.LicenseNumber,
+            LicenseClass = request.LicenseClass,
+            LicenseExpiryDate = request.LicenseExpiryDate,
+            HealthCertExpiryDate = request.HealthCertExpiryDate,
+            YearsOfExperience = request.YearsOfExperience,
+        });
+        await _db.SaveChangesAsync();
+        return new EmployeeActionResult(true, null);
     }
 
     public async Task<EmployeeListItemDto> CreateAsync(CreateEmployeeRequest request)
@@ -47,7 +71,7 @@ public class EmployeeService : IEmployeeService
         var pos = request.PositionId.HasValue ? await _db.Positions.FindAsync(request.PositionId) : null;
 
         return new EmployeeListItemDto(employee.Id, employee.Code, employee.FullName, employee.Phone,
-            dept?.Name, pos?.Name, employee.Status.ToString());
+            dept?.Name, pos?.Name, employee.Status.ToString(), IsDriver: false);
     }
 
     public async Task<List<LookupItemDto>> GetDepartmentsAsync()

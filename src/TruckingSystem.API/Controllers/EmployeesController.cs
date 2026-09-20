@@ -31,4 +31,11 @@ public class EmployeesController : ControllerBase
     [HttpGet("positions")]
     public async Task<ActionResult<List<LookupItemDto>>> GetPositions()
         => Ok(await _service.GetPositionsAsync());
+
+    [HttpPost("{employeeId:int}/driver-profile")]
+    public async Task<ActionResult<EmployeeActionResult>> CreateDriverProfile(int employeeId, CreateDriverProfileRequest request)
+    {
+        var result = await _service.CreateDriverProfileAsync(employeeId, request);
+        return result.Success ? Ok(result) : BadRequest(result);
+    }
 }
