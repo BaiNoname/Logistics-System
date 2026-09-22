@@ -20,5 +20,10 @@ public class StorageBin : BaseEntity
     public int Row { get; set; }
     public int Column { get; set; }
 
+    /// <summary>Khoảng cách thật (mét) từ vị trí này tới cửa kho — dùng cho
+    /// thuật toán tối ưu theo độ khẩn cấp: đơn hàng SẮP tới hạn giao thì ưu
+    /// tiên xếp vào vị trí GẦN CỬA nhất, giảm thời gian lấy hàng đi sau này.</summary>
+    public decimal DistanceFromDoorMeters { get; set; }
+
     public ICollection<StorageAssignment> Assignments { get; set; } = new List<StorageAssignment>();
 }

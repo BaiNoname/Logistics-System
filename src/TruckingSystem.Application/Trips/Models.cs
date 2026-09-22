@@ -4,7 +4,8 @@
 
 public record TripListItemDto(
     int Id, string OrderCode, string VehiclePlate, string DriverName,
-    string Status, string LegType, decimal TotalQtyPlanned
+    string Status, string LegType, decimal TotalQtyPlanned,
+    double? FromLat, double? FromLng, double? ToLat, double? ToLng
 );
 
 public record TripActionResult(bool Success, string? Message);

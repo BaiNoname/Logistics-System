@@ -38,16 +38,43 @@ public class TripService : ITripService
 
     public async Task<List<TripListItemDto>> GetAllAsync()
     {
-        return await _db.Trips
-            .Include(t => t.TransportOrder)
+        var trips = await _db.Trips
+            .Include(t => t.TransportOrder).ThenInclude(o => o.PickupLocation)
+            .Include(t => t.TransportOrder).ThenInclude(o => o.DropoffLocation)
             .Include(t => t.Vehicle)
             .Include(t => t.DriverEmployee)
             .Include(t => t.TripLines)
+            .Include(t => t.Warehouse)
             .OrderByDescending(t => t.Id)
-            .Select(t => new TripListItemDto(
-                t.Id, t.TransportOrder.Code, t.Vehicle.PlateNumber, t.DriverEmployee.FullName,
-                t.Status.ToString(), t.LegType.ToString(), t.TripLines.Sum(tl => tl.QtyPlanned)))
             .ToListAsync();
+
+        // Tính ĐÚNG tọa độ đầu-cuối theo từng chặng — dùng tọa độ KHO làm điểm
+        // giữa thay vì vẽ thẳng Khách gửi → Khách nhận (sai với đơn đi qua kho):
+        //   Chặng Pickup:   Khách gửi (PickupLocation) → Kho
+        //   Chặng Delivery: Kho → Khách nhận (DropoffLocation)
+        return trips.Select(t =>
+        {
+            double? fromLat = null, fromLng = null, toLat = null, toLng = null;
+            if (t.LegType == TripLegType.Pickup)
+            {
+                fromLat = t.TransportOrder.PickupLocation?.Lat;
+                fromLng = t.TransportOrder.PickupLocation?.Lng;
+                toLat = t.Warehouse?.Lat;
+                toLng = t.Warehouse?.Lng;
+            }
+            else // Delivery
+            {
+                fromLat = t.Warehouse?.Lat;
+                fromLng = t.Warehouse?.Lng;
+                toLat = t.TransportOrder.DropoffLocation?.Lat;
+                toLng = t.TransportOrder.DropoffLocation?.Lng;
+            }
+
+            return new TripListItemDto(
+                t.Id, t.TransportOrder.Code, t.Vehicle.PlateNumber, t.DriverEmployee.FullName,
+                t.Status.ToString(), t.LegType.ToString(), t.TripLines.Sum(tl => tl.QtyPlanned),
+                fromLat, fromLng, toLat, toLng);
+        }).ToList();
     }
 
     public async Task<TripActionResult> StartAsync(int id)

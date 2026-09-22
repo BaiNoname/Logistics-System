@@ -2,26 +2,27 @@ using Newtonsoft.Json;
 using TruckingSystem.Desktop.Common;
 using TruckingSystem.Desktop.DTO_Auth;
 
-namespace TruckingSystem.Desktop.SERVICE_Auth;
-
-public class AuthApiService
+namespace TruckingSystem.Desktop.SERVICE_Auth
 {
-    private readonly ApiConnection _conn;
-
-    public AuthApiService(ApiConnection conn)
+    public class AuthApiService
     {
-        _conn = conn;
-    }
+        private readonly ApiConnection _conn;
 
-    public async Task<LoginResult> LoginAsync(string username, string password)
-    {
-        var (isSuccess, body) = await _conn.PostRawAsync("/api/auth/login", new { username, password });
-        var result = JsonConvert.DeserializeObject<LoginResult>(body)
-                     ?? new LoginResult { Success = false, Message = "Không đọc được phản hồi từ server." };
+        public AuthApiService(ApiConnection conn)
+        {
+            _conn = conn;
+        }
 
-        if (result.Success && result.Token != null)
-            _conn.SetToken(result.Token);
+        public async Task<LoginResult> LoginAsync(string username, string password)
+        {
+            var (isSuccess, body) = await _conn.PostRawAsync("/api/auth/login", new { username, password });
+            var result = JsonConvert.DeserializeObject<LoginResult>(body)
+                         ?? new LoginResult { Success = false, Message = "Không đọc được phản hồi từ server." };
 
-        return result;
+            if (result.Success && result.Token != null)
+                _conn.SetToken(result.Token);
+
+            return result;
+        }
     }
 }

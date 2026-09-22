@@ -1,60 +1,61 @@
 ﻿using System.Xml.Linq;
 using TruckingSystem.Desktop.Common;
 
-namespace TruckingSystem.Desktop.GUI_WarehouseManagement;
-
-/// <summary>Tạo khu vực (Zone) mới trong 1 kho — cần khai báo đúng vị trí
-/// (PosX, PosY) và kích thước (WidthMeters, HeightMeters) thật để vẽ đúng
-/// chỗ trong sơ đồ tổng quan của kho.</summary>
-public partial class CreateZoneForm : BaseForm
+namespace TruckingSystem.Desktop.GUI_WarehouseManagement
 {
-    private ApiServices? _api;
-    private int _warehouseId;
-
-    public CreateZoneForm()
+    /// <summary>Tạo khu vực (Zone) mới trong 1 kho — cần khai báo đúng vị trí
+    /// (PosX, PosY) và kích thước (WidthMeters, HeightMeters) thật để vẽ đúng
+    /// chỗ trong sơ đồ tổng quan của kho.</summary>
+    public partial class CreateZoneForm : BaseForm
     {
-        InitializeComponent();
-        cboZoneType.Items.AddRange(new object[] { "Normal", "Fragile", "Hazmat" });
-        cboZoneType.SelectedIndex = 0;
-    }
+        private ApiServices? _api;
+        private int _warehouseId;
 
-    public CreateZoneForm(ApiServices api, int warehouseId) : this()
-    {
-        _api = api;
-        _warehouseId = warehouseId;
-    }
+        public CreateZoneForm()
+        {
+            InitializeComponent();
+            cboZoneType.Items.AddRange(new object[] { "Normal", "Fragile", "Hazmat" });
+            cboZoneType.SelectedIndex = 0;
+        }
 
-    private async void BtnSave_Click(object? sender, EventArgs e)
-    {
-        if (string.IsNullOrWhiteSpace(txtName.Text))
+        public CreateZoneForm(ApiServices api, int warehouseId) : this()
         {
-            lblStatus.Text = "Vui lòng nhập tên khu vực.";
-            return;
+            _api = api;
+            _warehouseId = warehouseId;
         }
-        if (numWidth.Value <= 0 || numHeight.Value <= 0)
-        {
-            lblStatus.Text = "Chiều rộng/cao phải lớn hơn 0.";
-            return;
-        }
-        if (_api is null) return;
 
-        btnSave.Enabled = false;
-        try
+        private async void BtnSave_Click(object? sender, EventArgs e)
         {
-            await _api.Warehouses.CreateZoneAsync(
-                _warehouseId, txtName.Text.Trim(), (string)cboZoneType.SelectedItem!,
-                numPosX.Value, numPosY.Value, numWidth.Value, numHeight.Value);
+            if (string.IsNullOrWhiteSpace(txtName.Text))
+            {
+                lblStatus.Text = "Vui lòng nhập tên khu vực.";
+                return;
+            }
+            if (numWidth.Value <= 0 || numHeight.Value <= 0)
+            {
+                lblStatus.Text = "Chiều rộng/cao phải lớn hơn 0.";
+                return;
+            }
+            if (_api is null) return;
 
-            DialogResult = DialogResult.OK;
-            Close();
-        }
-        catch (Exception ex)
-        {
-            lblStatus.Text = "Lỗi: " + ex.Message;
-        }
-        finally
-        {
-            btnSave.Enabled = true;
+            btnSave.Enabled = false;
+            try
+            {
+                await _api.Warehouses.CreateZoneAsync(
+                    _warehouseId, txtName.Text.Trim(), (string)cboZoneType.SelectedItem!,
+                    numPosX.Value, numPosY.Value, numWidth.Value, numHeight.Value);
+
+                DialogResult = DialogResult.OK;
+                Close();
+            }
+            catch (Exception ex)
+            {
+                lblStatus.Text = "Lỗi: " + ex.Message;
+            }
+            finally
+            {
+                btnSave.Enabled = true;
+            }
         }
     }
 }

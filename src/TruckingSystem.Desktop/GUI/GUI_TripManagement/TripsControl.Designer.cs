@@ -19,6 +19,7 @@ partial class TripsControl
         btnFuel = new Button();
         btnStart = new Button();
         btnComplete = new Button();
+        btnViewRoute = new Button();
         lblStatus = new Label();
         grid = new DataGridView();
         ((System.ComponentModel.ISupportInitialize)grid).BeginInit();
@@ -98,6 +99,22 @@ partial class TripsControl
         btnComplete.Text = "✅ Hoàn tất chuyến";
         btnComplete.UseVisualStyleBackColor = false;
         btnComplete.Click += BtnComplete_Click;
+        //
+        // btnViewRoute
+        //
+        btnViewRoute.BackColor = Color.White;
+        btnViewRoute.Cursor = Cursors.Hand;
+        btnViewRoute.FlatAppearance.MouseOverBackColor = Color.FromArgb(248, 250, 252);
+        btnViewRoute.FlatStyle = FlatStyle.Flat;
+        btnViewRoute.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+        btnViewRoute.ForeColor = Color.FromArgb(15, 23, 42);
+        btnViewRoute.Location = new Point(1030, 0);
+        btnViewRoute.Name = "btnViewRoute";
+        btnViewRoute.Size = new Size(180, 38);
+        btnViewRoute.TabIndex = 4;
+        btnViewRoute.Text = "🗺️ Xem lộ trình";
+        btnViewRoute.UseVisualStyleBackColor = false;
+        btnViewRoute.Click += BtnViewRoute_Click;
         // 
         // lblStatus
         // 
@@ -128,6 +145,7 @@ partial class TripsControl
         Controls.Add(btnFuel);
         Controls.Add(btnStart);
         Controls.Add(btnComplete);
+        Controls.Add(btnViewRoute);
         Controls.Add(lblStatus);
         Controls.Add(grid);
         Name = "TripsControl";
@@ -144,6 +162,7 @@ partial class TripsControl
     private System.Windows.Forms.Button btnFuel;
     private System.Windows.Forms.Button btnStart;
     private System.Windows.Forms.Button btnComplete;
+    private System.Windows.Forms.Button btnViewRoute;
     private System.Windows.Forms.Label lblStatus;
     private System.Windows.Forms.DataGridView grid;
 }

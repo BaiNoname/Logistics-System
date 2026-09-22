@@ -5,6 +5,7 @@ using TruckingSystem.Application.Invoices;
 using TruckingSystem.Application.Locations;
 using TruckingSystem.Application.PublicTracking;
 using TruckingSystem.Application.TransportOrders;
+using TruckingSystem.Application.Fuel;
 using TruckingSystem.Application.Trips;
 using TruckingSystem.Application.Vehicles;
 using TruckingSystem.Application.VehicleAllocation;
@@ -22,6 +23,7 @@ public static class DependencyInjection
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
         services.AddScoped<ITripService, TripService>();
+        services.AddScoped<IFuelService, FuelService>();
         services.AddScoped<ITransportOrderService, TransportOrderService>();
         services.AddScoped<IVehicleService, VehicleService>();
         services.AddScoped<ICustomerService, CustomerService>();

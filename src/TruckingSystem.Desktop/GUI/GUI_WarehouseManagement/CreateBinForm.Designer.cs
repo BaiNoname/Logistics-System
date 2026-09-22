@@ -24,6 +24,8 @@ partial class CreateBinForm
         this.numRow = new System.Windows.Forms.NumericUpDown();
         this.lblColumn = new System.Windows.Forms.Label();
         this.numColumn = new System.Windows.Forms.NumericUpDown();
+        this.lblDistanceFromDoor = new System.Windows.Forms.Label();
+        this.numDistanceFromDoor = new System.Windows.Forms.NumericUpDown();
         this.lblNote = new System.Windows.Forms.Label();
         this.btnSave = new System.Windows.Forms.Button();
         this.lblStatus = new System.Windows.Forms.Label();
@@ -31,6 +33,7 @@ partial class CreateBinForm
         ((System.ComponentModel.ISupportInitialize)(this.numMaxWeight)).BeginInit();
         ((System.ComponentModel.ISupportInitialize)(this.numRow)).BeginInit();
         ((System.ComponentModel.ISupportInitialize)(this.numColumn)).BeginInit();
+        ((System.ComponentModel.ISupportInitialize)(this.numDistanceFromDoor)).BeginInit();
         this.SuspendLayout();
         //
         // lblCode
@@ -105,9 +108,24 @@ partial class CreateBinForm
         this.numColumn.Size = new System.Drawing.Size(190, 23);
         this.numColumn.Maximum = new decimal(new int[] { 100, 0, 0, 0 });
         //
+        // lblDistanceFromDoor
+        //
+        this.lblDistanceFromDoor.Location = new System.Drawing.Point(24, 215);
+        this.lblDistanceFromDoor.Size = new System.Drawing.Size(400, 18);
+        this.lblDistanceFromDoor.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
+        this.lblDistanceFromDoor.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
+        this.lblDistanceFromDoor.Text = "Khoảng cách tới cửa kho (mét) — dùng để ưu tiên xếp hàng gấp";
+        //
+        // numDistanceFromDoor
+        //
+        this.numDistanceFromDoor.Location = new System.Drawing.Point(24, 235);
+        this.numDistanceFromDoor.Size = new System.Drawing.Size(400, 23);
+        this.numDistanceFromDoor.DecimalPlaces = 1;
+        this.numDistanceFromDoor.Maximum = new decimal(new int[] { 1000, 0, 0, 0 });
+        //
         // lblNote
         //
-        this.lblNote.Location = new System.Drawing.Point(24, 215);
+        this.lblNote.Location = new System.Drawing.Point(24, 270);
         this.lblNote.Size = new System.Drawing.Size(400, 40);
         this.lblNote.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
         this.lblNote.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
@@ -115,7 +133,7 @@ partial class CreateBinForm
         //
         // btnSave
         //
-        this.btnSave.Location = new System.Drawing.Point(120, 320);
+        this.btnSave.Location = new System.Drawing.Point(120, 355);
         this.btnSave.Size = new System.Drawing.Size(180, 38);
         this.btnSave.Text = "Lưu vị trí";
         this.btnSave.BackColor = TruckingSystem.Desktop.Common.Theme.Primary;
@@ -129,7 +147,7 @@ partial class CreateBinForm
         //
         // lblStatus
         //
-        this.lblStatus.Location = new System.Drawing.Point(24, 285);
+        this.lblStatus.Location = new System.Drawing.Point(24, 320);
         this.lblStatus.Size = new System.Drawing.Size(400, 25);
         this.lblStatus.ForeColor = TruckingSystem.Desktop.Common.Theme.Danger;
         this.lblStatus.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
@@ -139,7 +157,7 @@ partial class CreateBinForm
         this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
         this.AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
         this.BackColor = System.Drawing.Color.White;
-        this.ClientSize = new System.Drawing.Size(450, 380);
+        this.ClientSize = new System.Drawing.Size(450, 420);
         this.Controls.Add(this.lblCode);
         this.Controls.Add(this.txtCode);
         this.Controls.Add(this.lblCapacity);
@@ -150,6 +168,8 @@ partial class CreateBinForm
         this.Controls.Add(this.numRow);
         this.Controls.Add(this.lblColumn);
         this.Controls.Add(this.numColumn);
+        this.Controls.Add(this.lblDistanceFromDoor);
+        this.Controls.Add(this.numDistanceFromDoor);
         this.Controls.Add(this.lblNote);
         this.Controls.Add(this.lblStatus);
         this.Controls.Add(this.btnSave);
@@ -162,6 +182,7 @@ partial class CreateBinForm
         ((System.ComponentModel.ISupportInitialize)(this.numMaxWeight)).EndInit();
         ((System.ComponentModel.ISupportInitialize)(this.numRow)).EndInit();
         ((System.ComponentModel.ISupportInitialize)(this.numColumn)).EndInit();
+        ((System.ComponentModel.ISupportInitialize)(this.numDistanceFromDoor)).EndInit();
         this.ResumeLayout(false);
         this.PerformLayout();
     }
@@ -178,6 +199,8 @@ partial class CreateBinForm
     private System.Windows.Forms.NumericUpDown numRow;
     private System.Windows.Forms.Label lblColumn;
     private System.Windows.Forms.NumericUpDown numColumn;
+    private System.Windows.Forms.Label lblDistanceFromDoor;
+    private System.Windows.Forms.NumericUpDown numDistanceFromDoor;
     private System.Windows.Forms.Label lblNote;
     private System.Windows.Forms.Button btnSave;
     private System.Windows.Forms.Label lblStatus;

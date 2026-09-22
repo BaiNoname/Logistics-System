@@ -2,200 +2,212 @@ using TruckingSystem.Desktop.Common;
 using TruckingSystem.Desktop.DTO_TransportOrderManagement;
 using TruckingSystem.Desktop.GUI_RouteManagement;
 
-namespace TruckingSystem.Desktop.GUI_TransportOrderManagement;
-
-/// <summary>Logic — xem chi tiết 1 đơn: dòng hàng, chuyến đã gán, nút Chia xe (Greedy)
-/// và Xem lộ trình (VietMap). Giao diện nằm ở OrderDetailForm.Designer.cs.</summary>
-public partial class OrderDetailForm : BaseForm
+namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
 {
-    private ApiServices? _api;
-    private int _orderId;
-    private TransportOrderDetailItem? _currentOrder;
-
-    public OrderDetailForm()
+    /// <summary>Logic — xem chi tiết 1 đơn: dòng hàng, chuyến đã gán, nút Chia xe (Greedy)
+    /// và Xem lộ trình (VietMap). Giao diện nằm ở OrderDetailForm.Designer.cs.</summary>
+    public partial class OrderDetailForm : BaseForm
     {
-        InitializeComponent();
-        Theme.StyleGrid(gridCargo);
-        Theme.StyleGrid(gridTrips);
-    }
+        private ApiServices? _api;
+        private int _orderId;
+        private TransportOrderDetailItem? _currentOrder;
+        private string _trackingUrl = "";
 
-    public OrderDetailForm(ApiServices api, int orderId) : this()
-    {
-        _api = api;
-        _orderId = orderId;
-        Load += async (_, _) => await LoadAsync();
-    }
-
-    private async Task LoadAsync()
-    {
-        if (_api is null) return;
-        try
+        public OrderDetailForm()
         {
-            var order = await _api.TransportOrders.GetOrderDetailAsync(_orderId);
-            _currentOrder = order;
-
-            lblHeader.Text = $"Đơn {order.Code} — {order.CustomerName}";
-            lblInfo.Text = $"Trạng thái: {order.Status}   |   Tiến độ: {order.ProgressPercent}%   |   " +
-                           $"{order.PickupPoint} → {order.DropoffPoint}";
-
-            gridCargo.DataSource = order.CargoLines.Select(c => new
+            InitializeComponent();
+            Theme.StyleGrid(gridCargo);
+            Theme.StyleGrid(gridTrips);
+            lblTrackingLink.Cursor = Cursors.Hand;
+            lblTrackingLink.Click += (_, _) =>
             {
-                Loại_hàng = c.CargoType,
-                Số_kiện = c.PackageCount,
-                Khối_lượng_kg = c.WeightKg,
-                Thể_tích_m3 = c.VolumeM3,
-                Dễ_vỡ = c.IsFragile ? "Có" : "",
-                Nguy_hiểm = c.IsHazmat ? "Có" : "",
-                Số_lượng = c.QtyTotal,
-            }).ToList();
-
-            gridTrips.DataSource = order.Trips.Select(t => new
-            {
-                Mã_chuyến = t.Id,
-                Biển_số_xe = t.VehiclePlate,
-                Tài_xế = t.DriverName,
-                Trạng_thái = t.Status,
-                Số_lượng_chở = t.QtyPlanned,
-            }).ToList();
-
-            btnAllocate.Enabled = order.Trips.Count == 0 && order.Status == "Confirmed";
-            btnViewRoute.Enabled = order.PickupLat.HasValue && order.PickupLng.HasValue
-                                && order.DropoffLat.HasValue && order.DropoffLng.HasValue;
-
-            // Chỉ cho Sửa/Xác nhận khi đơn còn Draft; chỉ cho Hủy khi Draft hoặc Confirmed
-            btnEdit.Enabled = order.Status == "Draft";
-            btnConfirm.Enabled = order.Status == "Draft" && order.CargoLines.Count > 0;
-            btnCancel.Enabled = order.Status is "Draft" or "Confirmed";
+                if (string.IsNullOrEmpty(_trackingUrl)) return;
+                Clipboard.SetText(_trackingUrl);
+                MessageBox.Show(FindForm(), "Đã copy link theo dõi vào Clipboard:\n" + _trackingUrl, "Đã copy", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            };
         }
-        catch (Exception ex)
+
+        public OrderDetailForm(ApiServices api, int orderId) : this()
         {
-            lblResult.Text = "Lỗi tải chi tiết đơn: " + ex.Message;
-            lblResult.ForeColor = Theme.Danger;
+            _api = api;
+            _orderId = orderId;
+            Load += async (_, _) => await LoadAsync();
         }
-    }
 
-    private void BtnEdit_Click(object? sender, EventArgs e)
-    {
-        if (_api is null) return;
-        using var f = new CreateOrderForm(_api, _orderId);
-        if (f.ShowDialog() == DialogResult.OK) _ = LoadAsync();
-    }
-
-    private async void BtnConfirm_Click(object? sender, EventArgs e)
-    {
-        if (_api is null) return;
-        var confirm = MessageBox.Show(
-            "Xác nhận đơn này? Sau khi xác nhận sẽ KHÔNG sửa được nữa (chỉ có thể hủy).",
-            "Xác nhận đơn hàng", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-        if (confirm != DialogResult.Yes) return;
-
-        btnConfirm.Enabled = false;
-        try
+        private async Task LoadAsync()
         {
-            var result = await _api.TransportOrders.ConfirmOrderAsync(_orderId);
-            if (result.Success)
+            if (_api is null) return;
+            try
             {
-                lblResult.Text = "✅ Đã xác nhận đơn hàng.";
-                lblResult.ForeColor = Theme.Success;
-                await LoadAsync();
+                var order = await _api.TransportOrders.GetOrderDetailAsync(_orderId);
+                _currentOrder = order;
+
+                lblHeader.Text = $"Đơn {order.Code} — {order.CustomerName}";
+                lblInfo.Text = $"Trạng thái: {order.Status}   |   Tiến độ: {order.ProgressPercent}%   |   " +
+                               $"{order.PickupPoint} → {order.DropoffPoint}";
+
+                _trackingUrl = $"{_api.Connection.BaseUrl}/track.html?token={order.PublicTrackingToken}";
+                lblTrackingLink.Text = "🔗 Link theo dõi công khai (bấm để copy): " + _trackingUrl;
+
+                gridCargo.DataSource = order.CargoLines.Select(c => new
+                {
+                    Loại_hàng = c.CargoType,
+                    Số_kiện = c.PackageCount,
+                    Khối_lượng_kg = c.WeightKg,
+                    Thể_tích_m3 = c.VolumeM3,
+                    Dễ_vỡ = c.IsFragile ? "Có" : "",
+                    Nguy_hiểm = c.IsHazmat ? "Có" : "",
+                    Số_lượng = c.QtyTotal,
+                }).ToList();
+
+                gridTrips.DataSource = order.Trips.Select(t => new
+                {
+                    Mã_chuyến = t.Id,
+                    Biển_số_xe = t.VehiclePlate,
+                    Tài_xế = t.DriverName,
+                    Trạng_thái = t.Status,
+                    Số_lượng_chở = t.QtyPlanned,
+                }).ToList();
+
+                btnAllocate.Enabled = order.Trips.Count == 0 && order.Status == "Confirmed";
+                btnViewRoute.Enabled = order.PickupLat.HasValue && order.PickupLng.HasValue
+                                    && order.DropoffLat.HasValue && order.DropoffLng.HasValue;
+
+                // Chỉ cho Sửa/Xác nhận khi đơn còn Draft; chỉ cho Hủy khi Draft hoặc Confirmed
+                btnEdit.Enabled = order.Status == "Draft";
+                btnConfirm.Enabled = order.Status == "Draft" && order.CargoLines.Count > 0;
+                btnCancel.Enabled = order.Status is "Draft" or "Confirmed";
             }
-            else
+            catch (Exception ex)
             {
-                lblResult.Text = "⚠️ " + result.Message;
-                lblResult.ForeColor = Theme.Warning;
+                lblResult.Text = "Lỗi tải chi tiết đơn: " + ex.Message;
+                lblResult.ForeColor = Theme.Danger;
+            }
+        }
+
+        private void BtnEdit_Click(object? sender, EventArgs e)
+        {
+            if (_api is null) return;
+            using var f = new CreateOrderForm(_api, _orderId);
+            if (f.ShowDialog(FindForm()) == DialogResult.OK) _ = LoadAsync();
+        }
+
+        private async void BtnConfirm_Click(object? sender, EventArgs e)
+        {
+            if (_api is null) return;
+            var confirm = MessageBox.Show(FindForm(), 
+                "Xác nhận đơn này? Sau khi xác nhận sẽ KHÔNG sửa được nữa (chỉ có thể hủy).",
+                "Xác nhận đơn hàng", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+            if (confirm != DialogResult.Yes) return;
+
+            btnConfirm.Enabled = false;
+            try
+            {
+                var result = await _api.TransportOrders.ConfirmOrderAsync(_orderId);
+                if (result.Success)
+                {
+                    lblResult.Text = "✅ Đã xác nhận đơn hàng.";
+                    lblResult.ForeColor = Theme.Success;
+                    await LoadAsync();
+                }
+                else
+                {
+                    lblResult.Text = "⚠️ " + result.Message;
+                    lblResult.ForeColor = Theme.Warning;
+                    btnConfirm.Enabled = true;
+                }
+            }
+            catch (Exception ex)
+            {
+                lblResult.Text = "Lỗi: " + ex.Message;
+                lblResult.ForeColor = Theme.Danger;
                 btnConfirm.Enabled = true;
             }
         }
-        catch (Exception ex)
-        {
-            lblResult.Text = "Lỗi: " + ex.Message;
-            lblResult.ForeColor = Theme.Danger;
-            btnConfirm.Enabled = true;
-        }
-    }
 
-    private async void BtnCancel_Click(object? sender, EventArgs e)
-    {
-        if (_api is null) return;
-        var confirm = MessageBox.Show(
-            "Bạn có chắc chắn muốn HỦY đơn hàng này không? Không thể hoàn tác.",
-            "Xác nhận hủy đơn", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
-        if (confirm != DialogResult.Yes) return;
-
-        btnCancel.Enabled = false;
-        try
+        private async void BtnCancel_Click(object? sender, EventArgs e)
         {
-            var result = await _api.TransportOrders.CancelOrderAsync(_orderId);
-            if (result.Success)
+            if (_api is null) return;
+            var confirm = MessageBox.Show(FindForm(), 
+                "Bạn có chắc chắn muốn HỦY đơn hàng này không? Không thể hoàn tác.",
+                "Xác nhận hủy đơn", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+            if (confirm != DialogResult.Yes) return;
+
+            btnCancel.Enabled = false;
+            try
             {
-                lblResult.Text = "❌ Đã hủy đơn hàng.";
-                lblResult.ForeColor = Theme.TextSecondary;
-                await LoadAsync();
+                var result = await _api.TransportOrders.CancelOrderAsync(_orderId);
+                if (result.Success)
+                {
+                    lblResult.Text = "❌ Đã hủy đơn hàng.";
+                    lblResult.ForeColor = Theme.TextSecondary;
+                    await LoadAsync();
+                }
+                else
+                {
+                    lblResult.Text = "⚠️ " + result.Message;
+                    lblResult.ForeColor = Theme.Warning;
+                    btnCancel.Enabled = true;
+                }
             }
-            else
+            catch (Exception ex)
             {
-                lblResult.Text = "⚠️ " + result.Message;
-                lblResult.ForeColor = Theme.Warning;
+                lblResult.Text = "Lỗi: " + ex.Message;
+                lblResult.ForeColor = Theme.Danger;
                 btnCancel.Enabled = true;
             }
         }
-        catch (Exception ex)
+
+        private void BtnViewRoute_Click(object? sender, EventArgs e)
         {
-            lblResult.Text = "Lỗi: " + ex.Message;
-            lblResult.ForeColor = Theme.Danger;
-            btnCancel.Enabled = true;
-        }
-    }
-
-    private void BtnViewRoute_Click(object? sender, EventArgs e)
-    {
-        if (_api is null || _currentOrder is null) return;
-        if (_currentOrder.PickupLat is null || _currentOrder.PickupLng is null
-            || _currentOrder.DropoffLat is null || _currentOrder.DropoffLng is null)
-        {
-            MessageBox.Show(
-                "Đơn này chưa chọn địa điểm từ danh sách đã lưu (chỉ gõ tay), nên chưa có tọa độ để vẽ lộ trình.\n\n" +
-                "Vào mục 'Địa điểm' để thêm tọa độ, rồi tạo lại đơn bằng cách chọn từ danh sách địa điểm đã lưu.",
-                "Thiếu tọa độ", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            return;
-        }
-
-        using var f = new RouteMapForm(
-            _api, _currentOrder.Code,
-            _currentOrder.PickupLat.Value, _currentOrder.PickupLng.Value,
-            _currentOrder.DropoffLat.Value, _currentOrder.DropoffLng.Value);
-        f.ShowDialog();
-    }
-
-    private async void BtnAllocate_Click(object? sender, EventArgs e)
-    {
-        if (_api is null) return;
-        btnAllocate.Enabled = false;
-        lblResult.Text = "Đang chạy thuật toán chia xe...";
-        lblResult.ForeColor = Theme.TextSecondary;
-        try
-        {
-            var result = await _api.TransportOrders.AllocateVehiclesAsync(_orderId);
-
-            if (result.Success)
+            if (_api is null || _currentOrder is null) return;
+            if (_currentOrder.PickupLat is null || _currentOrder.PickupLng is null
+                || _currentOrder.DropoffLat is null || _currentOrder.DropoffLng is null)
             {
-                lblResult.Text = $"✅ Đã gán {result.Trips.Count} xe, chở {result.TotalQtyAssigned}/{result.TotalQtyToShip}." +
-                                  (result.Message != null ? "\n⚠️ " + result.Message : "");
-                lblResult.ForeColor = Theme.Success;
-                await LoadAsync();
+                MessageBox.Show(FindForm(), 
+                    "Đơn này chưa chọn địa điểm từ danh sách đã lưu (chỉ gõ tay), nên chưa có tọa độ để vẽ lộ trình.\n\n" +
+                    "Vào mục 'Địa điểm' để thêm tọa độ, rồi tạo lại đơn bằng cách chọn từ danh sách địa điểm đã lưu.",
+                    "Thiếu tọa độ", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
             }
-            else
+
+            using var f = new RouteMapForm(
+                _api, _currentOrder.Code,
+                _currentOrder.PickupLat.Value, _currentOrder.PickupLng.Value,
+                _currentOrder.DropoffLat.Value, _currentOrder.DropoffLng.Value);
+            f.ShowDialog(FindForm());
+        }
+
+        private async void BtnAllocate_Click(object? sender, EventArgs e)
+        {
+            if (_api is null) return;
+            btnAllocate.Enabled = false;
+            lblResult.Text = "Đang chạy thuật toán chia xe...";
+            lblResult.ForeColor = Theme.TextSecondary;
+            try
             {
-                lblResult.Text = "⚠️ " + (result.Message ?? "Không thể chia xe.");
-                lblResult.ForeColor = Theme.Warning;
+                var result = await _api.TransportOrders.AllocateVehiclesAsync(_orderId);
+
+                if (result.Success)
+                {
+                    lblResult.Text = $"✅ Đã gán {result.Trips.Count} xe, chở {result.TotalQtyAssigned}/{result.TotalQtyToShip}." +
+                                      (result.Message != null ? "\n⚠️ " + result.Message : "");
+                    lblResult.ForeColor = Theme.Success;
+                    await LoadAsync();
+                }
+                else
+                {
+                    lblResult.Text = "⚠️ " + (result.Message ?? "Không thể chia xe.");
+                    lblResult.ForeColor = Theme.Warning;
+                    btnAllocate.Enabled = true;
+                }
+            }
+            catch (Exception ex)
+            {
+                lblResult.Text = "Lỗi: " + ex.Message;
+                lblResult.ForeColor = Theme.Danger;
                 btnAllocate.Enabled = true;
             }
-        }
-        catch (Exception ex)
-        {
-            lblResult.Text = "Lỗi: " + ex.Message;
-            lblResult.ForeColor = Theme.Danger;
-            btnAllocate.Enabled = true;
         }
     }
 }

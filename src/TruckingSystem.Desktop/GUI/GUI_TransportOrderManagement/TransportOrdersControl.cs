@@ -2,124 +2,125 @@ using System.Windows.Forms;
 using TruckingSystem.Desktop.Common;
 using TruckingSystem.Desktop.DTO_TransportOrderManagement;
 
-namespace TruckingSystem.Desktop.GUI_TransportOrderManagement;
-
-public partial class TransportOrdersControl : BaseUserControl
+namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
 {
-    private ApiServices? _api;
-    private List<TransportOrderListItem> _orders = new();
-
-    public TransportOrdersControl()
+    public partial class TransportOrdersControl : BaseUserControl
     {
-        InitializeComponent();
-        Theme.StyleGrid(grid);
+        private ApiServices? _api;
+        private List<TransportOrderListItem> _orders = new();
 
-        grid.DataBindingComplete += (_, _) =>
+        public TransportOrdersControl()
         {
-            if (grid.Columns["Id"] != null) grid.Columns["Id"]!.Visible = false;
-        };
-        Resize += (_, _) => { grid.Width = Width; grid.Height = Height - grid.Top; };
-        grid.CellDoubleClick += async (_, _) => await OpenDetailAsync();
+            InitializeComponent();
+            Theme.StyleGrid(grid);
 
-        Load += async (_, _) => await LoadAsync();
-    }
-
-    public TransportOrdersControl(ApiServices api) : this()
-    {
-        _api = api;
-    }
-
-    private void BtnRefresh_Click(object? sender, EventArgs e) => _ = LoadAsync();
-
-    private async void BtnCreate_Click(object? sender, EventArgs e)
-    {
-        if (_api is null) return;
-        using var f = new CreateOrderForm(_api);
-        if (f.ShowDialog() == DialogResult.OK) await LoadAsync();
-    }
-
-    private async void BtnAllocate_Click(object? sender, EventArgs e) => await AllocateSelectedAsync();
-
-    private async Task LoadAsync()
-    {
-        if (_api is null) return;
-        lblStatus.Text = "Đang tải...";
-        try
-        {
-            _orders = await _api.TransportOrders.GetTransportOrdersAsync();
-            grid.DataSource = _orders.Select(o => new
+            grid.DataBindingComplete += (_, _) =>
             {
-                o.Id,
-                Mã_đơn = o.Code,
-                Khách_hàng = o.CustomerName,
-                Trạng_thái = TranslateStatus(o.Status),
-                Tiến_độ = $"{o.ProgressPercent}%",
-                Điểm_lấy = o.PickupPoint,
-                Điểm_giao = o.DropoffPoint,
-            }).ToList();
-            lblStatus.Text = $"Tổng {_orders.Count} đơn hàng — chọn 1 dòng rồi bấm \"Chia xe\" để chạy thuật toán Greedy";
-            lblStatus.ForeColor = Theme.TextSecondary;
-        }
-        catch (Exception ex)
-        {
-            lblStatus.Text = "Lỗi: " + ex.Message;
-            lblStatus.ForeColor = Theme.Danger;
-        }
-    }
+                if (grid.Columns["Id"] != null) grid.Columns["Id"]!.Visible = false;
+            };
+            Resize += (_, _) => { grid.Width = Width; grid.Height = Height - grid.Top; };
+            grid.CellDoubleClick += async (_, _) => await OpenDetailAsync();
 
-    private async Task OpenDetailAsync()
-    {
-        if (_api is null || grid.CurrentRow is null) return;
-        var orderId = (int)grid.CurrentRow.Cells["Id"].Value;
-
-        using var f = new OrderDetailForm(_api, orderId);
-        f.ShowDialog();
-        await LoadAsync();
-    }
-
-    private async Task AllocateSelectedAsync()
-    {
-        if (_api is null) return;
-        if (grid.CurrentRow is null)
-        {
-            MessageBox.Show("Vui lòng chọn 1 đơn hàng trong danh sách trước.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            return;
+            Load += async (_, _) => await LoadAsync();
         }
 
-        var orderId = (int)grid.CurrentRow.Cells["Id"].Value;
-        var orderCode = _orders.First(o => o.Id == orderId).Code;
-
-        try
+        public TransportOrdersControl(ApiServices api) : this()
         {
-            var result = await _api.TransportOrders.AllocateVehiclesAsync(orderId);
+            _api = api;
+        }
 
-            if (!result.Trips.Any())
+        private void BtnRefresh_Click(object? sender, EventArgs e) => _ = LoadAsync();
+
+        private async void BtnCreate_Click(object? sender, EventArgs e)
+        {
+            if (_api is null) return;
+            using var f = new CreateOrderForm(_api);
+            if (f.ShowDialog(FindForm()) == DialogResult.OK) await LoadAsync();
+        }
+
+        private async void BtnAllocate_Click(object? sender, EventArgs e) => await AllocateSelectedAsync();
+
+        private async Task LoadAsync()
+        {
+            if (_api is null) return;
+            lblStatus.Text = "Đang tải...";
+            try
             {
-                MessageBox.Show(result.Message ?? "Không có xe nào rảnh để chia.", "Không thể chia xe", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                _orders = await _api.TransportOrders.GetTransportOrdersAsync();
+                grid.DataSource = _orders.Select(o => new
+                {
+                    o.Id,
+                    Mã_đơn = o.Code,
+                    Khách_hàng = o.CustomerName,
+                    Trạng_thái = TranslateStatus(o.Status),
+                    Tiến_độ = $"{o.ProgressPercent}%",
+                    Điểm_lấy = o.PickupPoint,
+                    Điểm_giao = o.DropoffPoint,
+                }).ToList();
+                lblStatus.Text = $"Tổng {_orders.Count} đơn hàng — chọn 1 dòng rồi bấm \"Chia xe\" để chạy thuật toán Greedy";
+                lblStatus.ForeColor = Theme.TextSecondary;
+            }
+            catch (Exception ex)
+            {
+                lblStatus.Text = "Lỗi: " + ex.Message;
+                lblStatus.ForeColor = Theme.Danger;
+            }
+        }
+
+        private async Task OpenDetailAsync()
+        {
+            if (_api is null || grid.CurrentRow is null) return;
+            var orderId = (int)grid.CurrentRow.Cells["Id"].Value;
+
+            using var f = new OrderDetailForm(_api, orderId);
+            f.ShowDialog(FindForm());
+            await LoadAsync();
+        }
+
+        private async Task AllocateSelectedAsync()
+        {
+            if (_api is null) return;
+            if (grid.CurrentRow is null)
+            {
+                MessageBox.Show(FindForm(), "Vui lòng chọn 1 đơn hàng trong danh sách trước.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
-            var lines = result.Trips.Select(a => $"  • Xe {a.VehiclePlate} — chở {a.QtyAssigned} (Chuyến #{a.TripId})");
-            var summary = $"Đơn {orderCode}\n" +
-                          $"Tổng cần chở: {result.TotalQtyToShip}  |  Đã gán: {result.TotalQtyAssigned}\n\n" +
-                          $"Thuật toán Greedy đã chia thành {result.Trips.Count} chuyến:\n" +
-                          string.Join("\n", lines) +
-                          (result.Message != null ? $"\n\n⚠️ {result.Message}" : "");
+            var orderId = (int)grid.CurrentRow.Cells["Id"].Value;
+            var orderCode = _orders.First(o => o.Id == orderId).Code;
 
-            MessageBox.Show(summary, "Kết quả chia xe (Greedy)", MessageBoxButtons.OK,
-                result.Message != null ? MessageBoxIcon.Warning : MessageBoxIcon.Information);
+            try
+            {
+                var result = await _api.TransportOrders.AllocateVehiclesAsync(orderId);
 
-            await LoadAsync();
+                if (!result.Trips.Any())
+                {
+                    MessageBox.Show(FindForm(), result.Message ?? "Không có xe nào rảnh để chia.", "Không thể chia xe", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                var lines = result.Trips.Select(a => $"  • Xe {a.VehiclePlate} — chở {a.QtyAssigned} (Chuyến #{a.TripId})");
+                var summary = $"Đơn {orderCode}\n" +
+                              $"Tổng cần chở: {result.TotalQtyToShip}  |  Đã gán: {result.TotalQtyAssigned}\n\n" +
+                              $"Thuật toán Greedy đã chia thành {result.Trips.Count} chuyến:\n" +
+                              string.Join("\n", lines) +
+                              (result.Message != null ? $"\n\n⚠️ {result.Message}" : "");
+
+                MessageBox.Show(FindForm(), summary, "Kết quả chia xe (Greedy)", MessageBoxButtons.OK,
+                    result.Message != null ? MessageBoxIcon.Warning : MessageBoxIcon.Information);
+
+                await LoadAsync();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(FindForm(), "Lỗi khi chia xe: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
-        catch (Exception ex)
+
+        private static string TranslateStatus(string s) => s switch
         {
-            MessageBox.Show("Lỗi khi chia xe: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
-        }
+            "Draft" => "Nháp", "Confirmed" => "Đã xác nhận", "InProgress" => "Đang vận chuyển",
+            "Done" => "Hoàn tất", "Cancelled" => "Đã hủy", _ => s,
+        };
     }
-
-    private static string TranslateStatus(string s) => s switch
-    {
-        "Draft" => "Nháp", "Confirmed" => "Đã xác nhận", "InProgress" => "Đang vận chuyển",
-        "Done" => "Hoàn tất", "Cancelled" => "Đã hủy", _ => s,
-    };
 }

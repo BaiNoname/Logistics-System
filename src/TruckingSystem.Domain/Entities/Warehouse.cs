@@ -9,6 +9,12 @@ public class Warehouse : BaseEntity
     public string? Address { get; set; }
     public decimal? CapacityM3 { get; set; }
 
+    /// <summary>Tọa độ thật của kho — BẮT BUỘC có để tính lộ trình đúng (chặng
+    /// Pickup: Khách gửi → Kho; chặng Delivery: Kho → Khách nhận), lấy từ
+    /// VietMap Autocomplete khi tạo kho, không nhập tay.</summary>
+    public double? Lat { get; set; }
+    public double? Lng { get; set; }
+
     // Kích thước thật của kho (mét) — dùng để vẽ sơ đồ tổng quan đúng tỉ lệ,
     // đặt đúng vị trí từng WarehouseZone bên trong. Không dùng cho tính toán
     // Best-Fit (vẫn dùng CapacityM3/StorageBin như trước).

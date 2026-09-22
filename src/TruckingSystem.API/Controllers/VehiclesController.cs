@@ -23,4 +23,26 @@ public class VehiclesController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<VehicleListItemDto>> Create(CreateVehicleRequest request)
         => Ok(await _service.CreateAsync(request));
+
+    [HttpPut("{id:int}")]
+    public async Task<ActionResult<VehicleActionResult>> Update(int id, UpdateVehicleRequest request)
+    {
+        var result = await _service.UpdateAsync(id, request);
+        return result.Success ? Ok(result) : BadRequest(result);
+    }
+
+    [HttpGet("{vehicleId:int}/documents")]
+    public async Task<ActionResult<List<VehicleDocumentDto>>> GetDocuments(int vehicleId)
+        => Ok(await _service.GetDocumentsAsync(vehicleId));
+
+    [HttpPost("{vehicleId:int}/documents")]
+    public async Task<ActionResult<VehicleDocumentDto>> CreateDocument(int vehicleId, CreateVehicleDocumentRequest request)
+        => Ok(await _service.CreateDocumentAsync(vehicleId, request));
+
+    [HttpDelete("documents/{documentId:int}")]
+    public async Task<ActionResult<VehicleActionResult>> DeleteDocument(int documentId)
+    {
+        var result = await _service.DeleteDocumentAsync(documentId);
+        return result.Success ? Ok(result) : BadRequest(result);
+    }
 }

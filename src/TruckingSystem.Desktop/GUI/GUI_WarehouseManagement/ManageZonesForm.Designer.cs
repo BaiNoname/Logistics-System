@@ -16,6 +16,7 @@ partial class ManageZonesForm
     {
         this.lblTitle = new System.Windows.Forms.Label();
         this.btnAddZone = new System.Windows.Forms.Button();
+        this.btnEditZone = new System.Windows.Forms.Button();
         this.btnDeleteZone = new System.Windows.Forms.Button();
         this.lblStatus = new System.Windows.Forms.Label();
         this.grid = new System.Windows.Forms.DataGridView();
@@ -29,9 +30,22 @@ partial class ManageZonesForm
         this.lblTitle.Font = TruckingSystem.Desktop.Common.Theme.FontTitle;
         this.lblTitle.ForeColor = TruckingSystem.Desktop.Common.Theme.TextPrimary;
         //
+        //
+        // btnEditZone
+        //
+        this.btnEditZone.Location = new System.Drawing.Point(590, 16);
+        this.btnEditZone.Size = new System.Drawing.Size(130, 38);
+        this.btnEditZone.Text = "✏️ Sửa khu vực";
+        this.btnEditZone.BackColor = System.Drawing.Color.White;
+        this.btnEditZone.ForeColor = TruckingSystem.Desktop.Common.Theme.TextPrimary;
+        this.btnEditZone.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+        this.btnEditZone.Font = TruckingSystem.Desktop.Common.Theme.FontBold;
+        this.btnEditZone.Cursor = System.Windows.Forms.Cursors.Hand;
+        this.btnEditZone.FlatAppearance.BorderSize = 1;
+        this.btnEditZone.Click += new System.EventHandler(this.BtnEditZone_Click);
         // btnAddZone
         //
-        this.btnAddZone.Location = new System.Drawing.Point(590, 16);
+        this.btnAddZone.Location = new System.Drawing.Point(730, 16);
         this.btnAddZone.Size = new System.Drawing.Size(160, 38);
         this.btnAddZone.Text = "➕ Thêm khu vực mới";
         this.btnAddZone.BackColor = TruckingSystem.Desktop.Common.Theme.Primary;
@@ -45,7 +59,7 @@ partial class ManageZonesForm
         //
         // btnDeleteZone
         //
-        this.btnDeleteZone.Location = new System.Drawing.Point(760, 16);
+        this.btnDeleteZone.Location = new System.Drawing.Point(900, 16);
         this.btnDeleteZone.Size = new System.Drawing.Size(140, 38);
         this.btnDeleteZone.Text = "🗑️ Xóa khu vực";
         this.btnDeleteZone.BackColor = System.Drawing.Color.White;
@@ -68,7 +82,7 @@ partial class ManageZonesForm
         //
         ((System.ComponentModel.ISupportInitialize)(this.grid)).BeginInit();
         this.grid.Location = new System.Drawing.Point(20, 76);
-        this.grid.Size = new System.Drawing.Size(880, 380);
+        this.grid.Size = new System.Drawing.Size(1020, 380);
         this.grid.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
         //
         // ManageZonesForm
@@ -76,9 +90,10 @@ partial class ManageZonesForm
         this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
         this.AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
         this.BackColor = System.Drawing.Color.White;
-        this.ClientSize = new System.Drawing.Size(920, 500);
+        this.ClientSize = new System.Drawing.Size(1060, 500);
         this.Controls.Add(this.lblTitle);
         this.Controls.Add(this.btnAddZone);
+        this.Controls.Add(this.btnEditZone);
         this.Controls.Add(this.btnDeleteZone);
         this.Controls.Add(this.lblStatus);
         this.Controls.Add(this.grid);
@@ -96,6 +111,7 @@ partial class ManageZonesForm
 
     private System.Windows.Forms.Label lblTitle;
     private System.Windows.Forms.Button btnAddZone;
+    private System.Windows.Forms.Button btnEditZone;
     private System.Windows.Forms.Button btnDeleteZone;
     private System.Windows.Forms.Label lblStatus;
     private System.Windows.Forms.DataGridView grid;

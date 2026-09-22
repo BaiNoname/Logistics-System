@@ -1,0 +1,138 @@
+﻿using System.Xml.Linq;
+using TruckingSystem.Desktop.Common;
+using TruckingSystem.Desktop.DTO_LocationManagement;
+using TruckingSystem.Desktop.DTO_WarehouseManagement;
+
+namespace TruckingSystem.Desktop.GUI_WarehouseManagement
+{
+    /// <summary>Sửa thông tin kho đã có — khác CreateWarehouseForm ở chỗ nạp
+    /// sẵn dữ liệu cũ. Nếu không đụng vào ô tìm địa chỉ, giữ nguyên tọa độ cũ;
+    /// chỉ đổi khi người dùng tìm và chọn lại địa chỉ mới.</summary>
+    public partial class EditWarehouseForm : BaseForm
+    {
+        private ApiServices? _api;
+        private int _warehouseId;
+        private readonly System.Windows.Forms.Timer _debounceTimer = new() { Interval = 300 };
+        private PlaceSuggestionItem? _newSelectedAddress; // null = giữ nguyên địa chỉ/tọa độ cũ
+        private string? _oldAddress;
+        private double? _oldLat, _oldLng;
+        private bool _suppressNextSearch = false;
+
+        public EditWarehouseForm()
+        {
+            InitializeComponent();
+
+            txtSearch.TextChanged += (_, _) =>
+            {
+                if (_suppressNextSearch) { _suppressNextSearch = false; return; }
+                _newSelectedAddress = null;
+                lblSelectedAddress.Text = "";
+                _debounceTimer.Stop();
+                _debounceTimer.Start();
+            };
+            _debounceTimer.Tick += async (_, _) => { _debounceTimer.Stop(); await RunSearchAsync(); };
+            lstSuggestions.SelectedIndexChanged += (_, _) => SelectSuggestion();
+        }
+
+        public EditWarehouseForm(ApiServices api, WarehouseListItem warehouse) : this()
+        {
+            _api = api;
+            _warehouseId = warehouse.Id;
+            _oldAddress = warehouse.Address;
+            _oldLat = warehouse.Lat;
+            _oldLng = warehouse.Lng;
+
+            txtName.Text = warehouse.Name;
+            numCapacity.Value = warehouse.CapacityM3 ?? 0;
+            numLength.Value = warehouse.LengthMeters ?? 0;
+            numWidth.Value = warehouse.WidthMeters ?? 0;
+
+            _suppressNextSearch = true;
+            txtSearch.Text = warehouse.Address ?? "";
+            if (!string.IsNullOrEmpty(warehouse.Address))
+            {
+                lblSelectedAddress.Text = warehouse.Lat.HasValue
+                    ? $"✅ (địa chỉ hiện tại) {warehouse.Address}"
+                    : $"⚠️ (địa chỉ cũ, CHƯA có tọa độ) {warehouse.Address}";
+                lblSelectedAddress.ForeColor = warehouse.Lat.HasValue ? Theme.Success : Theme.Warning;
+            }
+        }
+
+        private async Task RunSearchAsync()
+        {
+            if (_api is null) return;
+            var text = txtSearch.Text.Trim();
+            if (text.Length < 2) { lstSuggestions.Items.Clear(); lstSuggestions.Visible = false; return; }
+
+            try
+            {
+                var results = await _api.Locations.SearchPlacesAsync(text);
+                lstSuggestions.Items.Clear();
+                foreach (var r in results) lstSuggestions.Items.Add(r);
+                lstSuggestions.Visible = results.Count > 0;
+            }
+            catch (Exception ex)
+            {
+                lblStatus.Text = "Lỗi tìm kiếm: " + ex.Message;
+            }
+        }
+
+        private void SelectSuggestion()
+        {
+            if (lstSuggestions.SelectedItem is not PlaceSuggestionItem suggestion) return;
+
+            _newSelectedAddress = suggestion;
+            lblSelectedAddress.Text = $"✅ {suggestion.Address}";
+            lblSelectedAddress.ForeColor = Theme.Success;
+            lstSuggestions.Visible = false;
+
+            _suppressNextSearch = true;
+            txtSearch.Text = suggestion.Address;
+            lblStatus.Text = "";
+        }
+
+        private async void BtnSave_Click(object? sender, EventArgs e)
+        {
+            if (string.IsNullOrWhiteSpace(txtName.Text))
+            {
+                lblStatus.Text = "Vui lòng nhập tên kho.";
+                return;
+            }
+            if (_api is null) return;
+
+            // Nếu đã chọn địa chỉ mới -> dùng địa chỉ/tọa độ mới; nếu không đụng
+            // gì -> giữ nguyên địa chỉ/tọa độ cũ (kể cả khi cũ chưa có tọa độ).
+            var address = _newSelectedAddress?.Address ?? _oldAddress;
+            var lat = _newSelectedAddress?.Lat ?? _oldLat;
+            var lng = _newSelectedAddress?.Lng ?? _oldLng;
+
+            btnSave.Enabled = false;
+            try
+            {
+                var result = await _api.Warehouses.UpdateWarehouseAsync(
+                    _warehouseId, txtName.Text.Trim(), address,
+                    numCapacity.Value == 0 ? null : numCapacity.Value,
+                    numLength.Value == 0 ? null : numLength.Value,
+                    numWidth.Value == 0 ? null : numWidth.Value,
+                    lat, lng);
+
+                if (!result.Success)
+                {
+                    lblStatus.Text = "⚠️ " + result.Message;
+                    return;
+                }
+
+                DialogResult = DialogResult.OK;
+                Close();
+            }
+            catch (Exception ex)
+            {
+                lblStatus.Text = "Lỗi: " + ex.Message;
+            }
+            finally
+            {
+                btnSave.Enabled = true;
+            }
+        }
+    }
+}
