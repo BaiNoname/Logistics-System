@@ -78,7 +78,7 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             btnMakeDriver.Name = "btnMakeDriver";
             btnMakeDriver.Size = new Size(180, 46);
             btnMakeDriver.TabIndex = 3;
-            btnMakeDriver.Text = "🚗 Tạo hồ sơ tài xế";
+            btnMakeDriver.Text = "🚗 Hồ sơ tài xế";
             btnMakeDriver.UseVisualStyleBackColor = false;
             btnMakeDriver.Click += BtnMakeDriver_Click;
             // 

@@ -24,4 +24,13 @@ namespace TruckingSystem.Desktop.DTO_EmployeeManagement
         public bool Success { get; set; }
         public string? Message { get; set; }
     }
+
+    public class DriverProfileItem
+    {
+        public string LicenseNumber { get; set; } = "";
+        public string LicenseClass { get; set; } = "";
+        public DateTime LicenseExpiryDate { get; set; }
+        public DateTime? HealthCertExpiryDate { get; set; }
+        public int YearsOfExperience { get; set; }
+    }
 }

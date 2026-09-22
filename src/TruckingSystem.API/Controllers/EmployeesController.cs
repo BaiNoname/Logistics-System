@@ -38,4 +38,15 @@ public class EmployeesController : ControllerBase
         var result = await _service.CreateDriverProfileAsync(employeeId, request);
         return result.Success ? Ok(result) : BadRequest(result);
     }
+
+    [HttpGet("{employeeId:int}/driver-profile")]
+    public async Task<ActionResult<DriverProfileDto?>> GetDriverProfile(int employeeId)
+        => Ok(await _service.GetDriverProfileAsync(employeeId));
+
+    [HttpPut("{employeeId:int}/driver-profile")]
+    public async Task<ActionResult<EmployeeActionResult>> UpdateDriverProfile(int employeeId, UpdateDriverProfileRequest request)
+    {
+        var result = await _service.UpdateDriverProfileAsync(employeeId, request);
+        return result.Success ? Ok(result) : BadRequest(result);
+    }
 }

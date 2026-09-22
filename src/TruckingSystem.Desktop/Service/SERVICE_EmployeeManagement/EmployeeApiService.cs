@@ -35,5 +35,21 @@ namespace TruckingSystem.Desktop.SERVICE_EmployeeManagement
                 healthCertExpiryDate,
                 yearsOfExperience,
             })!;
+
+        /// <summary>Lấy hồ sơ tài xế hiện tại — null nếu chưa có.</summary>
+        public Task<DriverProfileItem?> GetDriverProfileAsync(int employeeId)
+            => _conn.GetAsync<DriverProfileItem?>($"/api/employees/{employeeId}/driver-profile");
+
+        /// <summary>Sửa hồ sơ tài xế đã có.</summary>
+        public Task<EmployeeActionResultItem> UpdateDriverProfileAsync(int employeeId, string licenseNumber, string licenseClass,
+            DateTime licenseExpiryDate, DateTime? healthCertExpiryDate, int yearsOfExperience)
+            => _conn.PutAsync<EmployeeActionResultItem>($"/api/employees/{employeeId}/driver-profile", new
+            {
+                licenseNumber,
+                licenseClass,
+                licenseExpiryDate,
+                healthCertExpiryDate,
+                yearsOfExperience,
+            })!;
     }
 }
