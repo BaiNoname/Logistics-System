@@ -1,63 +1,64 @@
 using TruckingSystem.Desktop.Common;
 using TruckingSystem.Desktop.DTO_EmployeeManagement;
 
-namespace TruckingSystem.Desktop.GUI_EmployeeManagement;
-
-public partial class CreateEmployeeForm : BaseForm
+namespace TruckingSystem.Desktop.GUI_EmployeeManagement
 {
-    private ApiServices? _api;
-
-    public CreateEmployeeForm()
+    public partial class CreateEmployeeForm : BaseForm
     {
-        InitializeComponent();
-        Load += async (_, _) => await LoadLookupsAsync();
-    }
+        private ApiServices? _api;
 
-    public CreateEmployeeForm(ApiServices api) : this()
-    {
-        _api = api;
-    }
+        public CreateEmployeeForm()
+        {
+            InitializeComponent();
+            Load += async (_, _) => await LoadLookupsAsync();
+        }
 
-    private async Task LoadLookupsAsync()
-    {
-        if (_api is null) return;
-        try
+        public CreateEmployeeForm(ApiServices api) : this()
         {
-            var depts = await _api.Employees.GetDepartmentsAsync();
-            var positions = await _api.Employees.GetPositionsAsync();
-            cboDept.DataSource = depts;
-            cboDept.DisplayMember = nameof(LookupItem.Name);
-            cboDept.ValueMember = nameof(LookupItem.Id);
-            cboPos.DataSource = positions;
-            cboPos.DisplayMember = nameof(LookupItem.Name);
-            cboPos.ValueMember = nameof(LookupItem.Id);
+            _api = api;
         }
-        catch (Exception ex)
-        {
-            lblStatus.Text = "Không tải được danh sách phòng ban/chức danh: " + ex.Message;
-        }
-    }
 
-    private async void BtnSave_Click(object? sender, EventArgs e)
-    {
-        if (string.IsNullOrWhiteSpace(txtCode.Text) || string.IsNullOrWhiteSpace(txtFullName.Text))
+        private async Task LoadLookupsAsync()
         {
-            lblStatus.Text = "Vui lòng nhập đủ mã nhân viên và họ tên.";
-            return;
+            if (_api is null) return;
+            try
+            {
+                var depts = await _api.Employees.GetDepartmentsAsync();
+                var positions = await _api.Employees.GetPositionsAsync();
+                cboDept.DataSource = depts;
+                cboDept.DisplayMember = nameof(LookupItem.Name);
+                cboDept.ValueMember = nameof(LookupItem.Id);
+                cboPos.DataSource = positions;
+                cboPos.DisplayMember = nameof(LookupItem.Name);
+                cboPos.ValueMember = nameof(LookupItem.Id);
+            }
+            catch (Exception ex)
+            {
+                lblStatus.Text = "Không tải được danh sách phòng ban/chức danh: " + ex.Message;
+            }
         }
-        if (_api is null) return;
 
-        try
+        private async void BtnSave_Click(object? sender, EventArgs e)
         {
-            int? deptId = cboDept.SelectedValue as int?;
-            int? posId = cboPos.SelectedValue as int?;
-            await _api.Employees.CreateEmployeeAsync(txtCode.Text.Trim(), txtFullName.Text.Trim(), txtPhone.Text.Trim(), deptId, posId);
-            DialogResult = DialogResult.OK;
-            Close();
-        }
-        catch (Exception ex)
-        {
-            lblStatus.Text = "Lỗi: " + ex.Message;
+            if (string.IsNullOrWhiteSpace(txtCode.Text) || string.IsNullOrWhiteSpace(txtFullName.Text))
+            {
+                lblStatus.Text = "Vui lòng nhập đủ mã nhân viên và họ tên.";
+                return;
+            }
+            if (_api is null) return;
+
+            try
+            {
+                int? deptId = cboDept.SelectedValue as int?;
+                int? posId = cboPos.SelectedValue as int?;
+                await _api.Employees.CreateEmployeeAsync(txtCode.Text.Trim(), txtFullName.Text.Trim(), txtPhone.Text.Trim(), deptId, posId);
+                DialogResult = DialogResult.OK;
+                Close();
+            }
+            catch (Exception ex)
+            {
+                lblStatus.Text = "Lỗi: " + ex.Message;
+            }
         }
     }
 }

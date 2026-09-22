@@ -16,11 +16,21 @@ public interface IWarehouseSlottingService
     /// <summary>Tạo kho mới — cho phép nhiều kho ở nhiều địa điểm khác nhau.</summary>
     Task<WarehouseListItemDto> CreateWarehouseAsync(CreateWarehouseRequest request);
 
+    /// <summary>Sửa thông tin kho — cho sửa cả kích thước/tọa độ (ảnh hưởng sơ đồ + lộ trình sau này).</summary>
+    Task<WarehouseActionResult> UpdateWarehouseAsync(int warehouseId, UpdateWarehouseRequest request);
+
     /// <summary>Tạo khu vực mới trong 1 kho.</summary>
     Task<WarehouseZoneDto> CreateZoneAsync(int warehouseId, CreateZoneRequest request);
 
+    /// <summary>Sửa khu vực — cho sửa cả tọa độ/kích thước trên sơ đồ.</summary>
+    Task<WarehouseActionResult> UpdateZoneAsync(int zoneId, CreateZoneRequest request);
+
     /// <summary>Tạo vị trí lưu trữ mới trong 1 khu vực.</summary>
     Task<StorageBinDto> CreateBinAsync(int zoneId, CreateBinRequest request);
+
+    /// <summary>Sửa vị trí lưu trữ — cho sửa cả Row/Column/khoảng cách cửa.
+    /// CHẶN nếu vị trí đang chứa hàng và sức chứa mới nhỏ hơn lượng đang chứa.</summary>
+    Task<WarehouseActionResult> UpdateBinAsync(int binId, CreateBinRequest request);
 
     /// <summary>Xóa kho — CHẶN nếu kho đang có tồn kho thật (WarehouseStock > 0),
     /// tránh mất dấu vết hàng hóa thật đang ở đó. Tự xóa hết Zone/Bin bên trong.</summary>
@@ -32,14 +42,28 @@ public interface IWarehouseSlottingService
     /// <summary>Xóa vị trí lưu trữ — CHẶN nếu đang chứa hàng (CurrentUsedM3 > 0).</summary>
     Task<WarehouseActionResult> DeleteBinAsync(int binId);
 
-    /// <summary>Nhập kho THẬT SỰ — tạo GoodsReceipt, tự chạy Best-Fit chọn vị
-    /// trí, cộng WarehouseStock. Dùng chung bởi VehicleAllocationService
-    /// (SelfDelivery) và TripService (chặng Pickup hoàn tất).</summary>
+    /// <summary>Nhập kho THẬT SỰ — tạo GoodsReceipt, cộng WarehouseStock. Nếu
+    /// chosenBinId CÓ giá trị → dùng ĐÚNG vị trí đó (do người dùng tự chọn tay,
+    /// bỏ qua Best-Fit); nếu null → tự động chạy Best-Fit như trước.</summary>
     Task<ReceiveGoodsResult> ReceiveGoodsAsync(int warehouseId, int transportOrderId, int cargoLineId,
-        decimal qty, int receivedByEmployeeId, int? tripId);
+        decimal qty, int receivedByEmployeeId, int? tripId, int? chosenBinId = null);
+
+    /// <summary>Danh sách vị trí (StorageBin) còn đủ chỗ trong 1 kho, ĐÚNG khu
+    /// vực phù hợp với tính chất của CargoLine — dùng cho màn Nhập kho thủ
+    /// công để người dùng tự chọn tay thay vì để hệ thống tự động chọn.</summary>
+    Task<List<StorageBinDto>> GetAvailableBinsForCargoAsync(int warehouseId, int cargoLineId);
 
     /// <summary>Xuất kho THẬT SỰ — tạo GoodsIssue, trừ dần StorageAssignment
-    /// (FIFO), trừ WarehouseStock. Dùng bởi TripService khi chặng Delivery bắt đầu.</summary>
+    /// (FIFO), trừ WarehouseStock. tripId = null nếu xuất kho THỦ CÔNG (không
+    /// gắn chuyến nào).</summary>
     Task<IssueGoodsResult> IssueGoodsAsync(int warehouseId, int transportOrderId, int cargoLineId,
-        decimal qty, int issuedByEmployeeId, int tripId);
+        decimal qty, int issuedByEmployeeId, int? tripId);
+
+    /// <summary>Lấy danh sách CargoLine của 1 đơn — dùng cho màn Nhập/Xuất kho
+    /// thủ công (chọn đúng dòng hàng cần nhập/xuất).</summary>
+    Task<List<CargoLineOptionDto>> GetCargoLinesForOrderAsync(int transportOrderId);
+
+    /// <summary>Lịch sử nhập/xuất kho (gộp cả GoodsReceipt + GoodsIssue), sắp
+    /// xếp mới nhất trước — dùng cho màn Nhập/Xuất kho thủ công xem lại.</summary>
+    Task<List<WarehouseTransactionDto>> GetTransactionHistoryAsync(int warehouseId);
 }

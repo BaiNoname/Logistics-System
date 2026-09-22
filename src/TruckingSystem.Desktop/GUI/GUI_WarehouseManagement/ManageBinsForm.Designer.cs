@@ -16,6 +16,7 @@ partial class ManageBinsForm
     {
         this.lblTitle = new System.Windows.Forms.Label();
         this.btnAddBin = new System.Windows.Forms.Button();
+        this.btnEditBin = new System.Windows.Forms.Button();
         this.btnDeleteBin = new System.Windows.Forms.Button();
         this.lblStatus = new System.Windows.Forms.Label();
         this.grid = new System.Windows.Forms.DataGridView();
@@ -29,9 +30,22 @@ partial class ManageBinsForm
         this.lblTitle.Font = TruckingSystem.Desktop.Common.Theme.FontTitle;
         this.lblTitle.ForeColor = TruckingSystem.Desktop.Common.Theme.TextPrimary;
         //
+        //
+        // btnEditBin
+        //
+        this.btnEditBin.Location = new System.Drawing.Point(590, 16);
+        this.btnEditBin.Size = new System.Drawing.Size(130, 38);
+        this.btnEditBin.Text = "✏️ Sửa vị trí";
+        this.btnEditBin.BackColor = System.Drawing.Color.White;
+        this.btnEditBin.ForeColor = TruckingSystem.Desktop.Common.Theme.TextPrimary;
+        this.btnEditBin.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+        this.btnEditBin.Font = TruckingSystem.Desktop.Common.Theme.FontBold;
+        this.btnEditBin.Cursor = System.Windows.Forms.Cursors.Hand;
+        this.btnEditBin.FlatAppearance.BorderSize = 1;
+        this.btnEditBin.Click += new System.EventHandler(this.BtnEditBin_Click);
         // btnAddBin
         //
-        this.btnAddBin.Location = new System.Drawing.Point(590, 16);
+        this.btnAddBin.Location = new System.Drawing.Point(730, 16);
         this.btnAddBin.Size = new System.Drawing.Size(160, 38);
         this.btnAddBin.Text = "➕ Thêm vị trí mới";
         this.btnAddBin.BackColor = TruckingSystem.Desktop.Common.Theme.Primary;
@@ -45,7 +59,7 @@ partial class ManageBinsForm
         //
         // btnDeleteBin
         //
-        this.btnDeleteBin.Location = new System.Drawing.Point(760, 16);
+        this.btnDeleteBin.Location = new System.Drawing.Point(900, 16);
         this.btnDeleteBin.Size = new System.Drawing.Size(140, 38);
         this.btnDeleteBin.Text = "🗑️ Xóa vị trí";
         this.btnDeleteBin.BackColor = System.Drawing.Color.White;
@@ -68,7 +82,7 @@ partial class ManageBinsForm
         //
         ((System.ComponentModel.ISupportInitialize)(this.grid)).BeginInit();
         this.grid.Location = new System.Drawing.Point(20, 76);
-        this.grid.Size = new System.Drawing.Size(880, 380);
+        this.grid.Size = new System.Drawing.Size(1020, 380);
         this.grid.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
         //
         // ManageBinsForm
@@ -76,9 +90,10 @@ partial class ManageBinsForm
         this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
         this.AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
         this.BackColor = System.Drawing.Color.White;
-        this.ClientSize = new System.Drawing.Size(920, 500);
+        this.ClientSize = new System.Drawing.Size(1060, 500);
         this.Controls.Add(this.lblTitle);
         this.Controls.Add(this.btnAddBin);
+        this.Controls.Add(this.btnEditBin);
         this.Controls.Add(this.btnDeleteBin);
         this.Controls.Add(this.lblStatus);
         this.Controls.Add(this.grid);
@@ -96,6 +111,7 @@ partial class ManageBinsForm
 
     private System.Windows.Forms.Label lblTitle;
     private System.Windows.Forms.Button btnAddBin;
+    private System.Windows.Forms.Button btnEditBin;
     private System.Windows.Forms.Button btnDeleteBin;
     private System.Windows.Forms.Label lblStatus;
     private System.Windows.Forms.DataGridView grid;

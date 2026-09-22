@@ -1,42 +1,43 @@
 using TruckingSystem.Desktop.Common;
 
-namespace TruckingSystem.Desktop.GUI_CustomerManagement;
-
-/// <summary>Logic xử lý — giao diện nằm ở CreateCustomerForm.Designer.cs.</summary>
-public partial class CreateCustomerForm : BaseForm
+namespace TruckingSystem.Desktop.GUI_CustomerManagement
 {
-    private ApiServices? _api;
-
-    public CreateCustomerForm()
+    /// <summary>Logic xử lý — giao diện nằm ở CreateCustomerForm.Designer.cs.</summary>
+    public partial class CreateCustomerForm : BaseForm
     {
-        InitializeComponent();
-        cboType.Items.AddRange(new object[] { "Individual", "Company" });
-        cboType.SelectedIndex = 0;
-    }
+        private ApiServices? _api;
 
-    public CreateCustomerForm(ApiServices api) : this()
-    {
-        _api = api;
-    }
-
-    private async void BtnSave_Click(object? sender, EventArgs e)
-    {
-        if (string.IsNullOrWhiteSpace(txtName.Text))
+        public CreateCustomerForm()
         {
-            lblStatus.Text = "Vui lòng nhập tên khách hàng.";
-            return;
+            InitializeComponent();
+            cboType.Items.AddRange(new object[] { "Individual", "Company" });
+            cboType.SelectedIndex = 0;
         }
-        if (_api is null) return;
 
-        try
+        public CreateCustomerForm(ApiServices api) : this()
         {
-            await _api.Customers.CreateCustomerAsync(txtName.Text.Trim(), txtPhone.Text.Trim(), txtTaxCode.Text.Trim(), (string)cboType.SelectedItem!);
-            DialogResult = DialogResult.OK;
-            Close();
+            _api = api;
         }
-        catch (Exception ex)
+
+        private async void BtnSave_Click(object? sender, EventArgs e)
         {
-            lblStatus.Text = "Lỗi: " + ex.Message;
+            if (string.IsNullOrWhiteSpace(txtName.Text))
+            {
+                lblStatus.Text = "Vui lòng nhập tên khách hàng.";
+                return;
+            }
+            if (_api is null) return;
+
+            try
+            {
+                await _api.Customers.CreateCustomerAsync(txtName.Text.Trim(), txtPhone.Text.Trim(), txtTaxCode.Text.Trim(), (string)cboType.SelectedItem!);
+                DialogResult = DialogResult.OK;
+                Close();
+            }
+            catch (Exception ex)
+            {
+                lblStatus.Text = "Lỗi: " + ex.Message;
+            }
         }
     }
 }

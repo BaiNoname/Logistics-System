@@ -1,272 +1,310 @@
-namespace TruckingSystem.Desktop.GUI_WarehouseManagement;
-
-partial class WarehousesControl
+namespace TruckingSystem.Desktop.GUI_WarehouseManagement
 {
-    private System.ComponentModel.IContainer components = null!;
-
-    protected override void Dispose(bool disposing)
+    partial class WarehousesControl
     {
-        if (disposing && (components != null)) components.Dispose();
-        base.Dispose(disposing);
+        private System.ComponentModel.IContainer components = null!;
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing && (components != null)) components.Dispose();
+            base.Dispose(disposing);
+        }
+
+        #region Component Designer generated code
+
+        private void InitializeComponent()
+        {
+            lblTitle = new Label();
+            lblChoose = new Label();
+            cboWarehouse = new ComboBox();
+            btnCreateWarehouse = new Button();
+            btnEditWarehouse = new Button();
+            btnManageZones = new Button();
+            btnDeleteWarehouse = new Button();
+            btnManualStock = new Button();
+            lblStatus = new Label();
+            zonesPanel = new Panel();
+            testPanel = new Panel();
+            lblTestTitle = new Label();
+            lblCargoLineId = new Label();
+            numCargoLineId = new NumericUpDown();
+            lblQty = new Label();
+            numQty = new NumericUpDown();
+            btnSuggest = new Button();
+            lblResult = new Label();
+            testPanel.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)numCargoLineId).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)numQty).BeginInit();
+            SuspendLayout();
+            // 
+            // lblTitle
+            // 
+            lblTitle.Font = new Font("Segoe UI", 18F, FontStyle.Bold);
+            lblTitle.ForeColor = Color.FromArgb(15, 23, 42);
+            lblTitle.Location = new Point(0, 0);
+            lblTitle.Name = "lblTitle";
+            lblTitle.Size = new Size(400, 54);
+            lblTitle.TabIndex = 0;
+            lblTitle.Text = "Kho trung chuyển";
+            // 
+            // lblChoose
+            // 
+            lblChoose.AutoSize = true;
+            lblChoose.Font = new Font("Segoe UI", 10F);
+            lblChoose.Location = new Point(-1, 72);
+            lblChoose.Name = "lblChoose";
+            lblChoose.Size = new Size(100, 28);
+            lblChoose.TabIndex = 1;
+            lblChoose.Text = "Chọn kho:";
+            // 
+            // cboWarehouse
+            // 
+            cboWarehouse.DropDownStyle = ComboBoxStyle.DropDownList;
+            cboWarehouse.Location = new Point(119, 69);
+            cboWarehouse.Name = "cboWarehouse";
+            cboWarehouse.Size = new Size(280, 36);
+            cboWarehouse.TabIndex = 2;
+            // 
+            // btnCreateWarehouse
+            // 
+            btnCreateWarehouse.BackColor = Color.FromArgb(37, 99, 235);
+            btnCreateWarehouse.Cursor = Cursors.Hand;
+            btnCreateWarehouse.FlatAppearance.BorderSize = 0;
+            btnCreateWarehouse.FlatAppearance.MouseOverBackColor = Color.FromArgb(29, 78, 216);
+            btnCreateWarehouse.FlatStyle = FlatStyle.Flat;
+            btnCreateWarehouse.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+            btnCreateWarehouse.ForeColor = Color.White;
+            btnCreateWarehouse.Location = new Point(419, 67);
+            btnCreateWarehouse.Name = "btnCreateWarehouse";
+            btnCreateWarehouse.Size = new Size(170, 38);
+            btnCreateWarehouse.TabIndex = 3;
+            btnCreateWarehouse.Text = "➕ Thêm kho mới";
+            btnCreateWarehouse.UseVisualStyleBackColor = false;
+            btnCreateWarehouse.Click += BtnCreateWarehouse_Click;
+            //
+            // btnEditWarehouse
+            //
+            btnEditWarehouse.BackColor = Color.White;
+            btnEditWarehouse.Cursor = Cursors.Hand;
+            btnEditWarehouse.FlatAppearance.BorderSize = 1;
+            btnEditWarehouse.FlatStyle = FlatStyle.Flat;
+            btnEditWarehouse.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+            btnEditWarehouse.ForeColor = Color.FromArgb(15, 23, 42);
+            btnEditWarehouse.Location = new Point(589, 67);
+            btnEditWarehouse.Name = "btnEditWarehouse";
+            btnEditWarehouse.Size = new Size(130, 38);
+            btnEditWarehouse.Text = "✏️ Sửa kho";
+            btnEditWarehouse.UseVisualStyleBackColor = false;
+            btnEditWarehouse.Click += BtnEditWarehouse_Click;
+            // 
+            // btnManageZones
+            // 
+            btnManageZones.BackColor = Color.White;
+            btnManageZones.Cursor = Cursors.Hand;
+            btnManageZones.FlatAppearance.MouseOverBackColor = Color.FromArgb(248, 250, 252);
+            btnManageZones.FlatStyle = FlatStyle.Flat;
+            btnManageZones.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+            btnManageZones.ForeColor = Color.FromArgb(15, 23, 42);
+            btnManageZones.Location = new Point(729, 67);
+            btnManageZones.Name = "btnManageZones";
+            btnManageZones.Size = new Size(218, 38);
+            btnManageZones.TabIndex = 4;
+            btnManageZones.Text = "🏗️ Quản lý khu vực";
+            btnManageZones.UseVisualStyleBackColor = false;
+            btnManageZones.Click += BtnManageZones_Click;
+            // 
+            // btnDeleteWarehouse
+            // 
+            btnDeleteWarehouse.BackColor = Color.White;
+            btnDeleteWarehouse.Cursor = Cursors.Hand;
+            btnDeleteWarehouse.FlatAppearance.BorderColor = Color.FromArgb(220, 38, 38);
+            btnDeleteWarehouse.FlatStyle = FlatStyle.Flat;
+            btnDeleteWarehouse.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+            btnDeleteWarehouse.ForeColor = Color.FromArgb(220, 38, 38);
+            btnDeleteWarehouse.Location = new Point(977, 67);
+            btnDeleteWarehouse.Name = "btnDeleteWarehouse";
+            btnDeleteWarehouse.Size = new Size(130, 38);
+            btnDeleteWarehouse.TabIndex = 5;
+            btnDeleteWarehouse.Text = "🗑️ Xóa kho";
+            btnDeleteWarehouse.UseVisualStyleBackColor = false;
+            btnDeleteWarehouse.Click += BtnDeleteWarehouse_Click;
+            // 
+            // btnManualStock
+            // 
+            btnManualStock.BackColor = Color.FromArgb(217, 119, 6);
+            btnManualStock.Cursor = Cursors.Hand;
+            btnManualStock.FlatAppearance.BorderSize = 0;
+            btnManualStock.FlatStyle = FlatStyle.Flat;
+            btnManualStock.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+            btnManualStock.ForeColor = Color.White;
+            btnManualStock.Location = new Point(1117, 67);
+            btnManualStock.Name = "btnManualStock";
+            btnManualStock.Size = new Size(200, 38);
+            btnManualStock.TabIndex = 5;
+            btnManualStock.Text = "📥📤 Nhập/Xuất kho";
+            btnManualStock.UseVisualStyleBackColor = false;
+            btnManualStock.Click += BtnManualStock_Click;
+            // 
+            // lblStatus
+            // 
+            lblStatus.AutoSize = true;
+            lblStatus.Font = new Font("Segoe UI", 9F);
+            lblStatus.ForeColor = Color.FromArgb(100, 116, 139);
+            lblStatus.Location = new Point(0, 100);
+            lblStatus.Name = "lblStatus";
+            lblStatus.Size = new Size(0, 25);
+            lblStatus.TabIndex = 6;
+            // 
+            // zonesPanel
+            // 
+            zonesPanel.AutoScroll = true;
+            zonesPanel.BackColor = Color.White;
+            zonesPanel.BorderStyle = BorderStyle.FixedSingle;
+            zonesPanel.Location = new Point(0, 130);
+            zonesPanel.Name = "zonesPanel";
+            zonesPanel.Size = new Size(1000, 430);
+            zonesPanel.TabIndex = 7;
+            // 
+            // testPanel
+            // 
+            testPanel.BackColor = Color.White;
+            testPanel.Controls.Add(lblTestTitle);
+            testPanel.Controls.Add(lblCargoLineId);
+            testPanel.Controls.Add(numCargoLineId);
+            testPanel.Controls.Add(lblQty);
+            testPanel.Controls.Add(numQty);
+            testPanel.Controls.Add(btnSuggest);
+            testPanel.Controls.Add(lblResult);
+            testPanel.Location = new Point(0, 570);
+            testPanel.Name = "testPanel";
+            testPanel.Size = new Size(1000, 150);
+            testPanel.TabIndex = 8;
+            // 
+            // lblTestTitle
+            // 
+            lblTestTitle.AutoSize = true;
+            lblTestTitle.Font = new Font("Segoe UI", 13F, FontStyle.Bold);
+            lblTestTitle.ForeColor = Color.FromArgb(15, 23, 42);
+            lblTestTitle.Location = new Point(20, 14);
+            lblTestTitle.Name = "lblTestTitle";
+            lblTestTitle.Size = new Size(689, 36);
+            lblTestTitle.TabIndex = 0;
+            lblTestTitle.Text = "\U0001f9ea  Kiểm tra thuật toán Best-Fit — đề xuất vị trí lưu trữ";
+            // 
+            // lblCargoLineId
+            // 
+            lblCargoLineId.AutoSize = true;
+            lblCargoLineId.Font = new Font("Segoe UI", 9F);
+            lblCargoLineId.ForeColor = Color.FromArgb(100, 116, 139);
+            lblCargoLineId.Location = new Point(20, 56);
+            lblCargoLineId.Name = "lblCargoLineId";
+            lblCargoLineId.Size = new Size(244, 25);
+            lblCargoLineId.TabIndex = 1;
+            lblCargoLineId.Text = "Mã dòng hàng (CargoLineId):";
+            // 
+            // numCargoLineId
+            // 
+            numCargoLineId.Location = new Point(20, 76);
+            numCargoLineId.Maximum = new decimal(new int[] { 999999, 0, 0, 0 });
+            numCargoLineId.Minimum = new decimal(new int[] { 1, 0, 0, 0 });
+            numCargoLineId.Name = "numCargoLineId";
+            numCargoLineId.Size = new Size(100, 34);
+            numCargoLineId.TabIndex = 2;
+            numCargoLineId.Value = new decimal(new int[] { 1, 0, 0, 0 });
+            // 
+            // lblQty
+            // 
+            lblQty.AutoSize = true;
+            lblQty.Font = new Font("Segoe UI", 9F);
+            lblQty.ForeColor = Color.FromArgb(100, 116, 139);
+            lblQty.Location = new Point(140, 56);
+            lblQty.Name = "lblQty";
+            lblQty.Size = new Size(192, 25);
+            lblQty.TabIndex = 3;
+            lblQty.Text = "Số lượng cần xếp (m³):";
+            // 
+            // numQty
+            // 
+            numQty.DecimalPlaces = 2;
+            numQty.Location = new Point(140, 76);
+            numQty.Maximum = new decimal(new int[] { 999999, 0, 0, 0 });
+            numQty.Minimum = new decimal(new int[] { 1, 0, 0, 65536 });
+            numQty.Name = "numQty";
+            numQty.Size = new Size(100, 34);
+            numQty.TabIndex = 4;
+            numQty.Value = new decimal(new int[] { 2, 0, 0, 0 });
+            // 
+            // btnSuggest
+            // 
+            btnSuggest.BackColor = Color.FromArgb(37, 99, 235);
+            btnSuggest.Cursor = Cursors.Hand;
+            btnSuggest.FlatAppearance.BorderSize = 0;
+            btnSuggest.FlatAppearance.MouseOverBackColor = Color.FromArgb(29, 78, 216);
+            btnSuggest.FlatStyle = FlatStyle.Flat;
+            btnSuggest.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+            btnSuggest.ForeColor = Color.White;
+            btnSuggest.Location = new Point(260, 75);
+            btnSuggest.Name = "btnSuggest";
+            btnSuggest.Size = new Size(160, 36);
+            btnSuggest.TabIndex = 5;
+            btnSuggest.Text = "🔍  Gợi ý vị trí";
+            btnSuggest.UseVisualStyleBackColor = false;
+            btnSuggest.Click += BtnSuggest_Click;
+            // 
+            // lblResult
+            // 
+            lblResult.AutoSize = true;
+            lblResult.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+            lblResult.Location = new Point(460, 60);
+            lblResult.MaximumSize = new Size(600, 80);
+            lblResult.Name = "lblResult";
+            lblResult.Size = new Size(0, 28);
+            lblResult.TabIndex = 6;
+            // 
+            // WarehousesControl
+            // 
+            AutoScaleDimensions = new SizeF(144F, 144F);
+            BackColor = Color.FromArgb(241, 245, 249);
+            Controls.Add(lblTitle);
+            Controls.Add(lblChoose);
+            Controls.Add(cboWarehouse);
+            Controls.Add(btnCreateWarehouse);
+            Controls.Add(btnEditWarehouse);
+            Controls.Add(btnManageZones);
+            Controls.Add(btnDeleteWarehouse);
+            Controls.Add(btnManualStock);
+            Controls.Add(lblStatus);
+            Controls.Add(zonesPanel);
+            Controls.Add(testPanel);
+            Name = "WarehousesControl";
+            Size = new Size(1420, 568);
+            testPanel.ResumeLayout(false);
+            testPanel.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)numCargoLineId).EndInit();
+            ((System.ComponentModel.ISupportInitialize)numQty).EndInit();
+            ResumeLayout(false);
+            PerformLayout();
+        }
+
+        #endregion
+
+        private System.Windows.Forms.Label lblTitle;
+        private System.Windows.Forms.Label lblChoose;
+        private System.Windows.Forms.ComboBox cboWarehouse;
+        private System.Windows.Forms.Button btnCreateWarehouse;
+        private System.Windows.Forms.Button btnEditWarehouse;
+        private System.Windows.Forms.Button btnManageZones;
+        private System.Windows.Forms.Button btnDeleteWarehouse;
+        private System.Windows.Forms.Button btnManualStock;
+        private System.Windows.Forms.Label lblStatus;
+        private System.Windows.Forms.Panel zonesPanel;
+        private System.Windows.Forms.Panel testPanel;
+        private System.Windows.Forms.Label lblTestTitle;
+        private System.Windows.Forms.Label lblCargoLineId;
+        private System.Windows.Forms.NumericUpDown numCargoLineId;
+        private System.Windows.Forms.Label lblQty;
+        private System.Windows.Forms.NumericUpDown numQty;
+        private System.Windows.Forms.Button btnSuggest;
+        private System.Windows.Forms.Label lblResult;
     }
-
-    #region Component Designer generated code
-
-    private void InitializeComponent()
-    {
-        lblTitle = new Label();
-        lblChoose = new Label();
-        cboWarehouse = new ComboBox();
-        btnCreateWarehouse = new Button();
-        btnManageZones = new Button();
-        btnDeleteWarehouse = new Button();
-        lblStatus = new Label();
-        zonesPanel = new Panel();
-        testPanel = new Panel();
-        lblTestTitle = new Label();
-        lblCargoLineId = new Label();
-        numCargoLineId = new NumericUpDown();
-        lblQty = new Label();
-        numQty = new NumericUpDown();
-        btnSuggest = new Button();
-        lblResult = new Label();
-        testPanel.SuspendLayout();
-        ((System.ComponentModel.ISupportInitialize)numCargoLineId).BeginInit();
-        ((System.ComponentModel.ISupportInitialize)numQty).BeginInit();
-        SuspendLayout();
-        // 
-        // lblTitle
-        // 
-        lblTitle.Font = new Font("Segoe UI", 18F, FontStyle.Bold);
-        lblTitle.ForeColor = Color.FromArgb(15, 23, 42);
-        lblTitle.Location = new Point(0, 0);
-        lblTitle.Name = "lblTitle";
-        lblTitle.Size = new Size(400, 54);
-        lblTitle.TabIndex = 0;
-        lblTitle.Text = "Kho trung chuyển";
-        // 
-        // lblChoose
-        // 
-        lblChoose.AutoSize = true;
-        lblChoose.Font = new Font("Segoe UI", 10F);
-        lblChoose.Location = new Point(-1, 72);
-        lblChoose.Name = "lblChoose";
-        lblChoose.Size = new Size(100, 28);
-        lblChoose.TabIndex = 1;
-        lblChoose.Text = "Chọn kho:";
-        // 
-        // cboWarehouse
-        // 
-        cboWarehouse.DropDownStyle = ComboBoxStyle.DropDownList;
-        cboWarehouse.Location = new Point(119, 69);
-        cboWarehouse.Name = "cboWarehouse";
-        cboWarehouse.Size = new Size(280, 36);
-        cboWarehouse.TabIndex = 2;
-        // 
-        // btnCreateWarehouse
-        // 
-        btnCreateWarehouse.BackColor = Color.FromArgb(37, 99, 235);
-        btnCreateWarehouse.Cursor = Cursors.Hand;
-        btnCreateWarehouse.FlatAppearance.BorderSize = 0;
-        btnCreateWarehouse.FlatAppearance.MouseOverBackColor = Color.FromArgb(29, 78, 216);
-        btnCreateWarehouse.FlatStyle = FlatStyle.Flat;
-        btnCreateWarehouse.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
-        btnCreateWarehouse.ForeColor = Color.White;
-        btnCreateWarehouse.Location = new Point(419, 67);
-        btnCreateWarehouse.Name = "btnCreateWarehouse";
-        btnCreateWarehouse.Size = new Size(170, 38);
-        btnCreateWarehouse.TabIndex = 3;
-        btnCreateWarehouse.Text = "➕ Thêm kho mới";
-        btnCreateWarehouse.UseVisualStyleBackColor = false;
-        btnCreateWarehouse.Click += BtnCreateWarehouse_Click;
-        // 
-        // btnManageZones
-        // 
-        btnManageZones.BackColor = Color.White;
-        btnManageZones.Cursor = Cursors.Hand;
-        btnManageZones.FlatAppearance.MouseOverBackColor = Color.FromArgb(248, 250, 252);
-        btnManageZones.FlatStyle = FlatStyle.Flat;
-        btnManageZones.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
-        btnManageZones.ForeColor = Color.FromArgb(15, 23, 42);
-        btnManageZones.Location = new Point(622, 67);
-        btnManageZones.Name = "btnManageZones";
-        btnManageZones.Size = new Size(218, 38);
-        btnManageZones.TabIndex = 4;
-        btnManageZones.Text = "🏗️ Quản lý khu vực";
-        btnManageZones.UseVisualStyleBackColor = false;
-        btnManageZones.Click += BtnManageZones_Click;
-        // 
-        // btnDeleteWarehouse
-        // 
-        btnDeleteWarehouse.BackColor = Color.White;
-        btnDeleteWarehouse.Cursor = Cursors.Hand;
-        btnDeleteWarehouse.FlatAppearance.BorderColor = Color.FromArgb(220, 38, 38);
-        btnDeleteWarehouse.FlatStyle = FlatStyle.Flat;
-        btnDeleteWarehouse.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
-        btnDeleteWarehouse.ForeColor = Color.FromArgb(220, 38, 38);
-        btnDeleteWarehouse.Location = new Point(870, 67);
-        btnDeleteWarehouse.Name = "btnDeleteWarehouse";
-        btnDeleteWarehouse.Size = new Size(130, 38);
-        btnDeleteWarehouse.TabIndex = 5;
-        btnDeleteWarehouse.Text = "🗑️ Xóa kho";
-        btnDeleteWarehouse.UseVisualStyleBackColor = false;
-        btnDeleteWarehouse.Click += BtnDeleteWarehouse_Click;
-        // 
-        // lblStatus
-        // 
-        lblStatus.AutoSize = true;
-        lblStatus.Font = new Font("Segoe UI", 9F);
-        lblStatus.ForeColor = Color.FromArgb(100, 116, 139);
-        lblStatus.Location = new Point(0, 100);
-        lblStatus.Name = "lblStatus";
-        lblStatus.Size = new Size(0, 25);
-        lblStatus.TabIndex = 6;
-        // 
-        // zonesPanel
-        // 
-        zonesPanel.AutoScroll = true;
-        zonesPanel.BackColor = Color.White;
-        zonesPanel.BorderStyle = BorderStyle.FixedSingle;
-        zonesPanel.Location = new Point(0, 130);
-        zonesPanel.Name = "zonesPanel";
-        zonesPanel.Size = new Size(1000, 430);
-        zonesPanel.TabIndex = 7;
-        // 
-        // testPanel
-        // 
-        testPanel.BackColor = Color.White;
-        testPanel.Controls.Add(lblTestTitle);
-        testPanel.Controls.Add(lblCargoLineId);
-        testPanel.Controls.Add(numCargoLineId);
-        testPanel.Controls.Add(lblQty);
-        testPanel.Controls.Add(numQty);
-        testPanel.Controls.Add(btnSuggest);
-        testPanel.Controls.Add(lblResult);
-        testPanel.Location = new Point(0, 570);
-        testPanel.Name = "testPanel";
-        testPanel.Size = new Size(1000, 150);
-        testPanel.TabIndex = 8;
-        // 
-        // lblTestTitle
-        // 
-        lblTestTitle.AutoSize = true;
-        lblTestTitle.Font = new Font("Segoe UI", 13F, FontStyle.Bold);
-        lblTestTitle.ForeColor = Color.FromArgb(15, 23, 42);
-        lblTestTitle.Location = new Point(20, 14);
-        lblTestTitle.Name = "lblTestTitle";
-        lblTestTitle.Size = new Size(689, 36);
-        lblTestTitle.TabIndex = 0;
-        lblTestTitle.Text = "\U0001f9ea  Kiểm tra thuật toán Best-Fit — đề xuất vị trí lưu trữ";
-        // 
-        // lblCargoLineId
-        // 
-        lblCargoLineId.AutoSize = true;
-        lblCargoLineId.Font = new Font("Segoe UI", 9F);
-        lblCargoLineId.ForeColor = Color.FromArgb(100, 116, 139);
-        lblCargoLineId.Location = new Point(20, 56);
-        lblCargoLineId.Name = "lblCargoLineId";
-        lblCargoLineId.Size = new Size(244, 25);
-        lblCargoLineId.TabIndex = 1;
-        lblCargoLineId.Text = "Mã dòng hàng (CargoLineId):";
-        // 
-        // numCargoLineId
-        // 
-        numCargoLineId.Location = new Point(20, 76);
-        numCargoLineId.Maximum = new decimal(new int[] { 999999, 0, 0, 0 });
-        numCargoLineId.Minimum = new decimal(new int[] { 1, 0, 0, 0 });
-        numCargoLineId.Name = "numCargoLineId";
-        numCargoLineId.Size = new Size(100, 34);
-        numCargoLineId.TabIndex = 2;
-        numCargoLineId.Value = new decimal(new int[] { 1, 0, 0, 0 });
-        // 
-        // lblQty
-        // 
-        lblQty.AutoSize = true;
-        lblQty.Font = new Font("Segoe UI", 9F);
-        lblQty.ForeColor = Color.FromArgb(100, 116, 139);
-        lblQty.Location = new Point(140, 56);
-        lblQty.Name = "lblQty";
-        lblQty.Size = new Size(192, 25);
-        lblQty.TabIndex = 3;
-        lblQty.Text = "Số lượng cần xếp (m³):";
-        // 
-        // numQty
-        // 
-        numQty.DecimalPlaces = 2;
-        numQty.Location = new Point(140, 76);
-        numQty.Maximum = new decimal(new int[] { 999999, 0, 0, 0 });
-        numQty.Minimum = new decimal(new int[] { 1, 0, 0, 65536 });
-        numQty.Name = "numQty";
-        numQty.Size = new Size(100, 34);
-        numQty.TabIndex = 4;
-        numQty.Value = new decimal(new int[] { 2, 0, 0, 0 });
-        // 
-        // btnSuggest
-        // 
-        btnSuggest.BackColor = Color.FromArgb(37, 99, 235);
-        btnSuggest.Cursor = Cursors.Hand;
-        btnSuggest.FlatAppearance.BorderSize = 0;
-        btnSuggest.FlatAppearance.MouseOverBackColor = Color.FromArgb(29, 78, 216);
-        btnSuggest.FlatStyle = FlatStyle.Flat;
-        btnSuggest.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
-        btnSuggest.ForeColor = Color.White;
-        btnSuggest.Location = new Point(260, 75);
-        btnSuggest.Name = "btnSuggest";
-        btnSuggest.Size = new Size(160, 36);
-        btnSuggest.TabIndex = 5;
-        btnSuggest.Text = "🔍  Gợi ý vị trí";
-        btnSuggest.UseVisualStyleBackColor = false;
-        btnSuggest.Click += BtnSuggest_Click;
-        // 
-        // lblResult
-        // 
-        lblResult.AutoSize = true;
-        lblResult.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
-        lblResult.Location = new Point(460, 60);
-        lblResult.MaximumSize = new Size(600, 80);
-        lblResult.Name = "lblResult";
-        lblResult.Size = new Size(0, 28);
-        lblResult.TabIndex = 6;
-        // 
-        // WarehousesControl
-        // 
-        AutoScaleDimensions = new SizeF(144F, 144F);
-        BackColor = Color.FromArgb(241, 245, 249);
-        Controls.Add(lblTitle);
-        Controls.Add(lblChoose);
-        Controls.Add(cboWarehouse);
-        Controls.Add(btnCreateWarehouse);
-        Controls.Add(btnManageZones);
-        Controls.Add(btnDeleteWarehouse);
-        Controls.Add(lblStatus);
-        Controls.Add(zonesPanel);
-        Controls.Add(testPanel);
-        Name = "WarehousesControl";
-        Size = new Size(1315, 568);
-        testPanel.ResumeLayout(false);
-        testPanel.PerformLayout();
-        ((System.ComponentModel.ISupportInitialize)numCargoLineId).EndInit();
-        ((System.ComponentModel.ISupportInitialize)numQty).EndInit();
-        ResumeLayout(false);
-        PerformLayout();
-    }
-
-    #endregion
-
-    private System.Windows.Forms.Label lblTitle;
-    private System.Windows.Forms.Label lblChoose;
-    private System.Windows.Forms.ComboBox cboWarehouse;
-    private System.Windows.Forms.Button btnCreateWarehouse;
-    private System.Windows.Forms.Button btnManageZones;
-    private System.Windows.Forms.Button btnDeleteWarehouse;
-    private System.Windows.Forms.Label lblStatus;
-    private System.Windows.Forms.Panel zonesPanel;
-    private System.Windows.Forms.Panel testPanel;
-    private System.Windows.Forms.Label lblTestTitle;
-    private System.Windows.Forms.Label lblCargoLineId;
-    private System.Windows.Forms.NumericUpDown numCargoLineId;
-    private System.Windows.Forms.Label lblQty;
-    private System.Windows.Forms.NumericUpDown numQty;
-    private System.Windows.Forms.Button btnSuggest;
-    private System.Windows.Forms.Label lblResult;
 }

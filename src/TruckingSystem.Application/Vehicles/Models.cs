@@ -1,4 +1,17 @@
-namespace TruckingSystem.Application.Vehicles;
+﻿namespace TruckingSystem.Application.Vehicles;
 
 public record CreateVehicleRequest(string PlateNumber, string VehicleType, decimal CapacityQty, decimal CapacityKg, decimal CapacityM3);
-public record VehicleListItemDto(int Id, string PlateNumber, string VehicleType, decimal CapacityQty, string Status);
+public record VehicleListItemDto(int Id, string PlateNumber, string VehicleType, decimal CapacityQty, decimal CapacityKg, decimal CapacityM3, string Status);
+
+/// <summary>Sửa thông tin xe — CHO PHÉP đổi cả Status thủ công (VD: đánh dấu
+/// đang bảo dưỡng/ngừng hoạt động — Greedy sẽ tự loại trừ xe không Available).</summary>
+public record UpdateVehicleRequest(string PlateNumber, string VehicleType, decimal CapacityQty, decimal CapacityKg, decimal CapacityM3, string Status);
+
+public record VehicleActionResult(bool Success, string? Message);
+
+public record VehicleDocumentDto(int Id, string DocType, DateTime IssueDate, DateTime ExpiryDate, string? FileUrl);
+
+/// <summary>Nhập giấy tờ xe mới (đăng kiểm/bảo hiểm/giấy phép vận tải) — Greedy
+/// đã kiểm tra hạn các giấy tờ này khi chia xe, nhưng trước đây chưa có UI
+/// để thực sự NHẬP các giấy tờ này vào hệ thống.</summary>
+public record CreateVehicleDocumentRequest(string DocType, DateTime IssueDate, DateTime ExpiryDate, string? FileUrl);

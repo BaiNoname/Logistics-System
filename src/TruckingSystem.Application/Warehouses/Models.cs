@@ -12,20 +12,35 @@ public record SuggestBinResponse(
 );
 
 public record WarehouseZoneDto(int Id, string Name, string ZoneType, int BinCount, decimal PosX, decimal PosY, decimal WidthMeters, decimal HeightMeters);
-public record StorageBinDto(int Id, string Code, decimal CapacityM3, decimal CurrentUsedM3, decimal MaxWeightKg, int Row, int Column);
-public record WarehouseListItemDto(int Id, string Name, string? Address, decimal? CapacityM3, decimal? LengthMeters, decimal? WidthMeters);
+public record StorageBinDto(int Id, string Code, decimal CapacityM3, decimal CurrentUsedM3, decimal MaxWeightKg, int Row, int Column, decimal DistanceFromDoorMeters);
+public record WarehouseListItemDto(int Id, string Name, string? Address, decimal? CapacityM3, decimal? LengthMeters, decimal? WidthMeters, double? Lat, double? Lng);
 
 /// <summary>Tạo kho mới — cho phép công ty có NHIỀU kho ở nhiều địa điểm khác
 /// nhau (VD: TP.HCM, Hà Nội, Đà Nẵng), mỗi kho kích thước thật riêng để vẽ
-/// đúng sơ đồ tổng quan.</summary>
-public record CreateWarehouseRequest(string Name, string? Address, decimal? CapacityM3, decimal? LengthMeters, decimal? WidthMeters);
+/// đúng sơ đồ tổng quan. Lat/Lng BẮT BUỘC có (lấy từ VietMap Autocomplete) để
+/// tính lộ trình đúng qua kho — không phải chỉ để hiển thị.</summary>
+public record CreateWarehouseRequest(string Name, string? Address, decimal? CapacityM3, decimal? LengthMeters, decimal? WidthMeters, double? Lat, double? Lng);
+
+/// <summary>Sửa thông tin kho — cùng cấu trúc CreateWarehouseRequest.</summary>
+public record UpdateWarehouseRequest(string Name, string? Address, decimal? CapacityM3, decimal? LengthMeters, decimal? WidthMeters, double? Lat, double? Lng);
 
 /// <summary>Tạo khu vực (Zone) mới trong 1 kho — có tọa độ/kích thước thật để
 /// vẽ đúng vị trí trong sơ đồ tổng quan.</summary>
 public record CreateZoneRequest(string Name, string ZoneType, decimal PosX, decimal PosY, decimal WidthMeters, decimal HeightMeters);
 
 /// <summary>Tạo vị trí lưu trữ (StorageBin) mới trong 1 khu vực.</summary>
-public record CreateBinRequest(string Code, decimal CapacityM3, decimal MaxWeightKg, int Row, int Column);
+public record CreateBinRequest(string Code, decimal CapacityM3, decimal MaxWeightKg, int Row, int Column, decimal DistanceFromDoorMeters);
+
+/// <summary>Yêu cầu nhập/xuất kho THỦ CÔNG — dùng chung cho cả 2 chiều.
+/// ChosenBinId: có giá trị = người dùng tự chọn tay vị trí (chỉ áp dụng khi
+/// nhập kho); null = để hệ thống tự động chạy Best-Fit như trước.</summary>
+public record ManualStockRequest(int TransportOrderId, int CargoLineId, decimal Qty, int? ChosenBinId = null);
+
+/// <summary>Dùng cho ComboBox chọn dòng hàng trong màn Nhập/Xuất kho thủ công.</summary>
+public record CargoLineOptionDto(int Id, string CargoType, decimal QtyTotal, string OrderCode);
+
+/// <summary>1 dòng lịch sử nhập/xuất kho — gộp chung GoodsReceipt/GoodsIssue để hiện trên cùng 1 bảng.</summary>
+public record WarehouseTransactionDto(string Type, DateTime OccurredAt, string OrderCode, string CargoType, decimal Qty, string ByEmployeeName);
 
 public record WarehouseActionResult(bool Success, string? Message);
 

@@ -64,9 +64,9 @@ namespace TruckingSystem.Infrastructure.Migrations
                     EntityName = table.Column<string>(type: "text", nullable: false),
                     EntityId = table.Column<int>(type: "integer", nullable: true),
                     Detail = table.Column<string>(type: "text", nullable: true),
-                    Timestamp = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    Timestamp = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -81,8 +81,8 @@ namespace TruckingSystem.Infrastructure.Migrations
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     Name = table.Column<string>(type: "text", nullable: false),
                     Address = table.Column<string>(type: "text", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -103,8 +103,8 @@ namespace TruckingSystem.Infrastructure.Migrations
                     CreditLimit = table.Column<decimal>(type: "numeric(18,2)", nullable: true),
                     UserId = table.Column<string>(type: "text", nullable: true),
                     GoogleCalendarId = table.Column<string>(type: "text", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -118,8 +118,8 @@ namespace TruckingSystem.Infrastructure.Migrations
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     Name = table.Column<string>(type: "text", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -135,8 +135,8 @@ namespace TruckingSystem.Infrastructure.Migrations
                     Name = table.Column<string>(type: "text", nullable: false),
                     ContactPhone = table.Column<string>(type: "text", nullable: true),
                     Address = table.Column<string>(type: "text", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -153,8 +153,8 @@ namespace TruckingSystem.Infrastructure.Migrations
                     Title = table.Column<string>(type: "text", nullable: false),
                     Message = table.Column<string>(type: "text", nullable: false),
                     IsRead = table.Column<bool>(type: "boolean", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -170,8 +170,8 @@ namespace TruckingSystem.Infrastructure.Migrations
                     Code = table.Column<string>(type: "text", nullable: false),
                     Description = table.Column<string>(type: "text", nullable: true),
                     Module = table.Column<string>(type: "text", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -185,8 +185,8 @@ namespace TruckingSystem.Infrastructure.Migrations
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     Name = table.Column<string>(type: "text", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -200,9 +200,9 @@ namespace TruckingSystem.Infrastructure.Migrations
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     Name = table.Column<string>(type: "text", nullable: false),
-                    EffectiveDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    EffectiveDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -217,8 +217,8 @@ namespace TruckingSystem.Infrastructure.Migrations
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     Key = table.Column<string>(type: "text", nullable: false),
                     Value = table.Column<string>(type: "text", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -344,8 +344,8 @@ namespace TruckingSystem.Infrastructure.Migrations
                     CapacityM3 = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
                     Status = table.Column<int>(type: "integer", nullable: false),
                     BranchId = table.Column<int>(type: "integer", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -366,11 +366,13 @@ namespace TruckingSystem.Infrastructure.Migrations
                     Name = table.Column<string>(type: "text", nullable: false),
                     Address = table.Column<string>(type: "text", nullable: true),
                     CapacityM3 = table.Column<decimal>(type: "numeric(18,2)", nullable: true),
+                    Lat = table.Column<double>(type: "double precision", nullable: true),
+                    Lng = table.Column<double>(type: "double precision", nullable: true),
                     LengthMeters = table.Column<decimal>(type: "numeric(18,2)", nullable: true),
                     WidthMeters = table.Column<decimal>(type: "numeric(18,2)", nullable: true),
                     BranchId = table.Column<int>(type: "integer", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -392,8 +394,8 @@ namespace TruckingSystem.Infrastructure.Migrations
                     Name = table.Column<string>(type: "text", nullable: false),
                     Phone = table.Column<string>(type: "text", nullable: true),
                     Position = table.Column<string>(type: "text", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -417,8 +419,8 @@ namespace TruckingSystem.Infrastructure.Migrations
                     Lat = table.Column<double>(type: "double precision", nullable: true),
                     Lng = table.Column<double>(type: "double precision", nullable: true),
                     CustomerId = table.Column<int>(type: "integer", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -438,10 +440,10 @@ namespace TruckingSystem.Infrastructure.Migrations
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     FuelType = table.Column<string>(type: "text", nullable: false),
                     Price = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
-                    EffectiveDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    EffectiveDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
                     FuelProviderId = table.Column<int>(type: "integer", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -488,14 +490,14 @@ namespace TruckingSystem.Infrastructure.Migrations
                     Phone = table.Column<string>(type: "text", nullable: true),
                     IdentityCardNo = table.Column<string>(type: "text", nullable: true),
                     Address = table.Column<string>(type: "text", nullable: true),
-                    HireDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    HireDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
                     Status = table.Column<int>(type: "integer", nullable: false),
                     DepartmentId = table.Column<int>(type: "integer", nullable: true),
                     PositionId = table.Column<int>(type: "integer", nullable: true),
                     UserId = table.Column<string>(type: "text", nullable: true),
                     BranchId = table.Column<int>(type: "integer", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -525,12 +527,12 @@ namespace TruckingSystem.Infrastructure.Migrations
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     CustomerId = table.Column<int>(type: "integer", nullable: false),
                     Code = table.Column<string>(type: "text", nullable: false),
-                    StartDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    EndDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    StartDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    EndDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
                     Terms = table.Column<string>(type: "text", nullable: true),
                     PriceListId = table.Column<int>(type: "integer", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -560,8 +562,8 @@ namespace TruckingSystem.Infrastructure.Migrations
                     PricePerTon = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
                     SurchargeFragile = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
                     SurchargeHazmat = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -582,11 +584,11 @@ namespace TruckingSystem.Infrastructure.Migrations
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     VehicleId = table.Column<int>(type: "integer", nullable: false),
                     DocType = table.Column<int>(type: "integer", nullable: false),
-                    IssueDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    ExpiryDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    IssueDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    ExpiryDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
                     FileUrl = table.Column<string>(type: "text", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -612,8 +614,8 @@ namespace TruckingSystem.Infrastructure.Migrations
                     PosY = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
                     WidthMeters = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
                     HeightMeters = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -635,12 +637,12 @@ namespace TruckingSystem.Infrastructure.Migrations
                     EmployeeId = table.Column<int>(type: "integer", nullable: false),
                     LicenseNumber = table.Column<string>(type: "text", nullable: false),
                     LicenseClass = table.Column<string>(type: "text", nullable: false),
-                    LicenseExpiryDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    HealthCertExpiryDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    LicenseExpiryDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    HealthCertExpiryDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
                     YearsOfExperience = table.Column<int>(type: "integer", nullable: false),
                     GoogleCalendarId = table.Column<string>(type: "text", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -660,10 +662,10 @@ namespace TruckingSystem.Infrastructure.Migrations
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     DriverEmployeeId = table.Column<int>(type: "integer", nullable: false),
-                    ShiftDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    ShiftDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
                     ShiftType = table.Column<int>(type: "integer", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -685,9 +687,9 @@ namespace TruckingSystem.Infrastructure.Migrations
                     EmployeeId = table.Column<int>(type: "integer", nullable: false),
                     DocType = table.Column<int>(type: "integer", nullable: false),
                     FileUrl = table.Column<string>(type: "text", nullable: false),
-                    ExpiryDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    ExpiryDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -712,8 +714,8 @@ namespace TruckingSystem.Infrastructure.Migrations
                     PickupPoint = table.Column<string>(type: "text", nullable: false),
                     DropoffPoint = table.Column<string>(type: "text", nullable: false),
                     Status = table.Column<int>(type: "integer", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -744,8 +746,9 @@ namespace TruckingSystem.Infrastructure.Migrations
                     CurrentUsedM3 = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
                     Row = table.Column<int>(type: "integer", nullable: false),
                     Column = table.Column<int>(type: "integer", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    DistanceFromDoorMeters = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -773,12 +776,12 @@ namespace TruckingSystem.Infrastructure.Migrations
                     DropoffLocationId = table.Column<int>(type: "integer", nullable: true),
                     Status = table.Column<int>(type: "integer", nullable: false),
                     PickupMethod = table.Column<int>(type: "integer", nullable: false),
-                    CommittedDeliveryDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    CommittedDeliveryDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
                     ProgressPercent = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
                     BranchId = table.Column<int>(type: "integer", nullable: true),
                     PublicTrackingToken = table.Column<string>(type: "text", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -827,8 +830,8 @@ namespace TruckingSystem.Infrastructure.Migrations
                     IsFragile = table.Column<bool>(type: "boolean", nullable: false),
                     IsHazmat = table.Column<bool>(type: "boolean", nullable: false),
                     QtyTotal = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -850,8 +853,8 @@ namespace TruckingSystem.Infrastructure.Migrations
                     TransportOrderId = table.Column<int>(type: "integer", nullable: false),
                     Rating = table.Column<int>(type: "integer", nullable: false),
                     Comment = table.Column<string>(type: "text", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -872,12 +875,12 @@ namespace TruckingSystem.Infrastructure.Migrations
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     TransportOrderId = table.Column<int>(type: "integer", nullable: false),
                     CustomerId = table.Column<int>(type: "integer", nullable: false),
-                    IssueDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    DueDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    IssueDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    DueDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
                     TotalAmount = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
                     Status = table.Column<int>(type: "integer", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -905,8 +908,8 @@ namespace TruckingSystem.Infrastructure.Migrations
                     TransportOrderId = table.Column<int>(type: "integer", nullable: false),
                     VehicleId = table.Column<int>(type: "integer", nullable: false),
                     DriverEmployeeId = table.Column<int>(type: "integer", nullable: false),
-                    StartTime = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    EndTime = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    StartTime = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
+                    EndTime = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
                     Status = table.Column<int>(type: "integer", nullable: false),
                     LegType = table.Column<int>(type: "integer", nullable: false),
                     WarehouseId = table.Column<int>(type: "integer", nullable: true),
@@ -917,8 +920,8 @@ namespace TruckingSystem.Infrastructure.Migrations
                     EndLat = table.Column<double>(type: "double precision", nullable: true),
                     EndLng = table.Column<double>(type: "double precision", nullable: true),
                     PlannedDistanceKm = table.Column<decimal>(type: "numeric(18,2)", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -957,9 +960,9 @@ namespace TruckingSystem.Infrastructure.Migrations
                     WarehouseId = table.Column<int>(type: "integer", nullable: false),
                     CargoLineId = table.Column<int>(type: "integer", nullable: false),
                     QtyOnHand = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
-                    LastUpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    LastUpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -989,8 +992,8 @@ namespace TruckingSystem.Infrastructure.Migrations
                     Quantity = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
                     UnitPrice = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
                     Amount = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -1011,10 +1014,10 @@ namespace TruckingSystem.Infrastructure.Migrations
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     InvoiceId = table.Column<int>(type: "integer", nullable: false),
                     Amount = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
-                    PaymentDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    PaymentDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
                     Method = table.Column<int>(type: "integer", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -1037,9 +1040,9 @@ namespace TruckingSystem.Infrastructure.Migrations
                     Liters = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
                     Cost = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
                     StationName = table.Column<string>(type: "text", nullable: true),
-                    Timestamp = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    Timestamp = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -1061,12 +1064,12 @@ namespace TruckingSystem.Infrastructure.Migrations
                     TransportOrderId = table.Column<int>(type: "integer", nullable: false),
                     CargoLineId = table.Column<int>(type: "integer", nullable: false),
                     WarehouseId = table.Column<int>(type: "integer", nullable: false),
-                    TripId = table.Column<int>(type: "integer", nullable: false),
+                    TripId = table.Column<int>(type: "integer", nullable: true),
                     IssuedByEmployeeId = table.Column<int>(type: "integer", nullable: false),
-                    IssuedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    IssuedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
                     QtyIssued = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -1114,10 +1117,10 @@ namespace TruckingSystem.Infrastructure.Migrations
                     WarehouseId = table.Column<int>(type: "integer", nullable: false),
                     TripId = table.Column<int>(type: "integer", nullable: true),
                     ReceivedByEmployeeId = table.Column<int>(type: "integer", nullable: false),
-                    ReceivedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    ReceivedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
                     QtyReceived = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -1163,10 +1166,10 @@ namespace TruckingSystem.Infrastructure.Migrations
                     TripId = table.Column<int>(type: "integer", nullable: false),
                     Type = table.Column<int>(type: "integer", nullable: false),
                     Description = table.Column<string>(type: "text", nullable: true),
-                    Timestamp = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    Timestamp = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
                     Cost = table.Column<decimal>(type: "numeric(18,2)", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -1188,9 +1191,9 @@ namespace TruckingSystem.Infrastructure.Migrations
                     TripId = table.Column<int>(type: "integer", nullable: false),
                     CalendarId = table.Column<string>(type: "text", nullable: false),
                     GoogleEventId = table.Column<string>(type: "text", nullable: false),
-                    SyncedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    SyncedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -1213,8 +1216,8 @@ namespace TruckingSystem.Infrastructure.Migrations
                     Type = table.Column<int>(type: "integer", nullable: false),
                     Amount = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
                     Note = table.Column<string>(type: "text", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -1239,8 +1242,8 @@ namespace TruckingSystem.Infrastructure.Migrations
                     QtyPicked = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
                     QtyDelivered = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
                     Status = table.Column<int>(type: "integer", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -1270,12 +1273,12 @@ namespace TruckingSystem.Infrastructure.Migrations
                     Lng = table.Column<double>(type: "double precision", nullable: false),
                     SpeedKmh = table.Column<decimal>(type: "numeric(18,2)", nullable: true),
                     Accuracy = table.Column<decimal>(type: "numeric(18,2)", nullable: true),
-                    Timestamp = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    Timestamp = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
                     Note = table.Column<string>(type: "text", nullable: true),
                     WeatherCondition = table.Column<string>(type: "text", nullable: true),
                     IsSevereWeather = table.Column<bool>(type: "boolean", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -1297,9 +1300,9 @@ namespace TruckingSystem.Infrastructure.Migrations
                     GoodsReceiptId = table.Column<int>(type: "integer", nullable: false),
                     StorageBinId = table.Column<int>(type: "integer", nullable: false),
                     QtyStored = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
-                    AssignedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    AssignedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
                 },
                 constraints: table =>
                 {

@@ -14,8 +14,10 @@ public class GoodsIssue : BaseEntity
     public int WarehouseId { get; set; }
     public Warehouse Warehouse { get; set; } = null!;
 
-    public int TripId { get; set; }
-    public Trip Trip { get; set; } = null!;
+    /// <summary>Chuyến xe đi giao hàng (chặng Delivery) — null nếu xuất kho
+    /// THỦ CÔNG (không gắn với chuyến nào, VD: điều chỉnh tồn kho, trả hàng).</summary>
+    public int? TripId { get; set; }
+    public Trip? Trip { get; set; }
 
     public int IssuedByEmployeeId { get; set; }
     public Employee IssuedByEmployee { get; set; } = null!;

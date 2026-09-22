@@ -46,6 +46,7 @@ public interface IApplicationDbContext
     DbSet<Invoice> Invoices { get; }
     DbSet<Payment> Payments { get; }
     DbSet<FuelProvider> FuelProviders { get; }
+    DbSet<FuelPriceHistory> FuelPriceHistories { get; }
     DbSet<TripCalendarEvent> TripCalendarEvents { get; }
 
     DbSet<Warehouse> Warehouses { get; }
