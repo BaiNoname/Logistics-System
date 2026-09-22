@@ -52,6 +52,29 @@ public class EmployeeService : IEmployeeService
         return new EmployeeActionResult(true, null);
     }
 
+    public async Task<DriverProfileDto?> GetDriverProfileAsync(int employeeId)
+    {
+        var profile = await _db.DriverProfiles.FirstOrDefaultAsync(dp => dp.EmployeeId == employeeId);
+        if (profile is null) return null;
+
+        return new DriverProfileDto(profile.LicenseNumber, profile.LicenseClass, profile.LicenseExpiryDate, profile.HealthCertExpiryDate, profile.YearsOfExperience);
+    }
+
+    public async Task<EmployeeActionResult> UpdateDriverProfileAsync(int employeeId, UpdateDriverProfileRequest request)
+    {
+        var profile = await _db.DriverProfiles.FirstOrDefaultAsync(dp => dp.EmployeeId == employeeId);
+        if (profile is null) return new EmployeeActionResult(false, "Nhân viên này chưa có hồ sơ tài xế.");
+
+        profile.LicenseNumber = request.LicenseNumber;
+        profile.LicenseClass = request.LicenseClass;
+        profile.LicenseExpiryDate = request.LicenseExpiryDate;
+        profile.HealthCertExpiryDate = request.HealthCertExpiryDate;
+        profile.YearsOfExperience = request.YearsOfExperience;
+
+        await _db.SaveChangesAsync();
+        return new EmployeeActionResult(true, null);
+    }
+
     public async Task<EmployeeListItemDto> CreateAsync(CreateEmployeeRequest request)
     {
         var employee = new Employee

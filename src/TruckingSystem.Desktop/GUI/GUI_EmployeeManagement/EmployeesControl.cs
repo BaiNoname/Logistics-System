@@ -41,12 +41,8 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             var employeeId = (int)grid.CurrentRow.Cells["Id"].Value;
             var employee = _employees.First(e => e.Id == employeeId);
 
-            if (employee.IsDriver)
-            {
-                MessageBox.Show(FindForm(), "Nhân viên này đã có hồ sơ tài xế rồi.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                return;
-            }
-
+            // Form tự phát hiện nhân viên ĐÃ có hồ sơ hay chưa và tự chuyển
+            // Tạo mới / Sửa cho đúng — không cần chặn ở đây nữa.
             using var f = new CreateDriverProfileForm(_api, employeeId, employee.FullName);
             if (f.ShowDialog(FindForm()) == DialogResult.OK) await LoadAsync();
         }
