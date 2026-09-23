@@ -70,6 +70,12 @@ public class VehicleService : IVehicleService
 
     public async Task<VehicleDocumentDto> CreateDocumentAsync(int vehicleId, CreateVehicleDocumentRequest request)
     {
+        // Trước đây CHỈ kiểm tra ở Desktop (client-side) — gọi thẳng qua API
+        // (Swagger, hoặc app khác) sẽ bỏ qua được, lưu dữ liệu vô lý (hết hạn
+        // trước ngày cấp). Kiểm tra lại ở Backend cho chắc chắn.
+        if (request.ExpiryDate <= request.IssueDate)
+            throw new InvalidOperationException("Ngày hết hạn phải sau ngày cấp.");
+
         var docType = Enum.TryParse<VehicleDocumentType>(request.DocType, out var parsed) ? parsed : VehicleDocumentType.Other;
 
         var doc = new VehicleDocument

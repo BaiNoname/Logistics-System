@@ -37,7 +37,16 @@ public class VehiclesController : ControllerBase
 
     [HttpPost("{vehicleId:int}/documents")]
     public async Task<ActionResult<VehicleDocumentDto>> CreateDocument(int vehicleId, CreateVehicleDocumentRequest request)
-        => Ok(await _service.CreateDocumentAsync(vehicleId, request));
+    {
+        try
+        {
+            return Ok(await _service.CreateDocumentAsync(vehicleId, request));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
 
     [HttpDelete("documents/{documentId:int}")]
     public async Task<ActionResult<VehicleActionResult>> DeleteDocument(int documentId)

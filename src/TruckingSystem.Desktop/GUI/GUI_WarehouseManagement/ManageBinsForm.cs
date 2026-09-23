@@ -3,12 +3,16 @@ using TruckingSystem.Desktop.DTO_WarehouseManagement;
 
 namespace TruckingSystem.Desktop.GUI_WarehouseManagement
 {
-    /// <summary>Danh sách vị trí lưu trữ (StorageBin) của 1 khu vực cụ thể — thêm
-    /// vị trí mới với đúng tọa độ Row/Column để hiện đúng chỗ trên sơ đồ.</summary>
+    /// <summary>Danh sách vị trí lưu trữ (StorageBin) của 1 khu vực cụ thể —
+    /// thêm vị trí mới với đúng tọa độ + kích thước THẬT (mét) để hiện đúng
+    /// chỗ trên sơ đồ, không đè lên vị trí khác.</summary>
     public partial class ManageBinsForm : BaseForm
     {
         private ApiServices? _api;
         private int _zoneId;
+        private string _zoneName = "";
+        private decimal _zoneWidth;
+        private decimal _zoneHeight;
         private List<StorageBinItem> _bins = new();
 
         public ManageBinsForm()
@@ -17,10 +21,13 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             Theme.StyleGrid(grid);
         }
 
-        public ManageBinsForm(ApiServices api, int zoneId, string zoneName) : this()
+        public ManageBinsForm(ApiServices api, int zoneId, string zoneName, decimal zoneWidth, decimal zoneHeight) : this()
         {
             _api = api;
             _zoneId = zoneId;
+            _zoneName = zoneName;
+            _zoneWidth = zoneWidth;
+            _zoneHeight = zoneHeight;
             Text = $"Vị trí lưu trữ — {zoneName}";
             Load += async (_, _) => await LoadAsync();
         }
@@ -36,8 +43,10 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                 {
                     b.Id,
                     Mã_vị_trí = b.Code,
-                    Hàng = b.Row,
-                    Cột = b.Column,
+                    Vị_trí_X = b.PosX,
+                    Vị_trí_Y = b.PosY,
+                    Rộng_m = b.WidthMeters,
+                    Cao_m = b.HeightMeters,
                     Sức_chứa_m3 = b.CapacityM3,
                     Đã_dùng_m3 = b.CurrentUsedM3,
                     Tải_tối_đa_kg = b.MaxWeightKg,
@@ -92,14 +101,14 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             var binId = (int)grid.CurrentRow.Cells["Id"].Value;
             var bin = _bins.First(b => b.Id == binId);
 
-            using var f = new EditBinForm(_api, bin);
+            using var f = new EditBinForm(_api, bin, _zoneName, _zoneWidth, _zoneHeight);
             if (f.ShowDialog(FindForm()) == DialogResult.OK) await LoadAsync();
         }
 
         private async void BtnAddBin_Click(object? sender, EventArgs e)
         {
             if (_api is null) return;
-            using var f = new CreateBinForm(_api, _zoneId);
+            using var f = new CreateBinForm(_api, _zoneId, _zoneName, _zoneWidth, _zoneHeight);
             if (f.ShowDialog(FindForm()) == DialogResult.OK) await LoadAsync();
         }
     }

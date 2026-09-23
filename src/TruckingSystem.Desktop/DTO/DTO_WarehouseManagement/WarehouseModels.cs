@@ -39,9 +39,23 @@ namespace TruckingSystem.Desktop.DTO_WarehouseManagement
         public decimal CapacityM3 { get; set; }
         public decimal CurrentUsedM3 { get; set; }
         public decimal MaxWeightKg { get; set; }
-        public int Row { get; set; }
-        public int Column { get; set; }
+        public decimal PosX { get; set; }
+        public decimal PosY { get; set; }
+        public decimal WidthMeters { get; set; }
+        public decimal HeightMeters { get; set; }
         public decimal DistanceFromDoorMeters { get; set; }
+        public List<BinContentItem> Contents { get; set; } = new();
+    }
+
+    /// <summary>1 lô hàng cụ thể đang nằm trong 1 vị trí — cho biết rõ đây là
+    /// hàng của đơn nào, khách nào, loại gì.</summary>
+    public class BinContentItem
+    {
+        public string OrderCode { get; set; } = "";
+        public string CustomerName { get; set; } = "";
+        public string CargoType { get; set; } = "";
+        public decimal QtyStored { get; set; }
+        public DateTime ReceivedAt { get; set; }
     }
 
     public class SuggestBinResult

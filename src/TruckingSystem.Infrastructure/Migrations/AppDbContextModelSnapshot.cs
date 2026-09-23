@@ -1192,9 +1192,6 @@ namespace TruckingSystem.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<int>("Column")
-                        .HasColumnType("integer");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp without time zone");
 
@@ -1204,17 +1201,26 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.Property<decimal>("DistanceFromDoorMeters")
                         .HasColumnType("numeric(18,2)");
 
+                    b.Property<decimal>("HeightMeters")
+                        .HasColumnType("numeric(18,2)");
+
                     b.Property<decimal>("MaxWeightKg")
                         .HasColumnType("numeric(18,2)");
 
-                    b.Property<int>("Row")
-                        .HasColumnType("integer");
+                    b.Property<decimal>("PosX")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("PosY")
+                        .HasColumnType("numeric(18,2)");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp without time zone");
 
                     b.Property<int>("WarehouseZoneId")
                         .HasColumnType("integer");
+
+                    b.Property<decimal>("WidthMeters")
+                        .HasColumnType("numeric(18,2)");
 
                     b.HasKey("Id");
 

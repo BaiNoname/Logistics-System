@@ -87,10 +87,23 @@ public class WarehouseSlottingService : IWarehouseSlottingService
 
     public async Task<List<StorageBinDto>> GetBinsAsync(int zoneId)
     {
-        return await _db.StorageBins
+        var bins = await _db.StorageBins
+            .Include(b => b.Assignments.Where(a => a.QtyStored > 0))
+                .ThenInclude(a => a.GoodsReceipt).ThenInclude(r => r.TransportOrder).ThenInclude(o => o.Customer)
+            .Include(b => b.Assignments)
+                .ThenInclude(a => a.GoodsReceipt).ThenInclude(r => r.CargoLine)
             .Where(b => b.WarehouseZoneId == zoneId)
-            .Select(b => new StorageBinDto(b.Id, b.Code, b.CapacityM3, b.CurrentUsedM3, b.MaxWeightKg, b.Row, b.Column, b.DistanceFromDoorMeters))
             .ToListAsync();
+
+        return bins.Select(b => new StorageBinDto(
+            b.Id, b.Code, b.CapacityM3, b.CurrentUsedM3, b.MaxWeightKg, b.PosX, b.PosY, b.WidthMeters, b.HeightMeters, b.DistanceFromDoorMeters,
+            b.Assignments.Where(a => a.QtyStored > 0).Select(a => new BinContentItemDto(
+                a.GoodsReceipt.TransportOrder.Code,
+                a.GoodsReceipt.TransportOrder.Customer.Name,
+                a.GoodsReceipt.CargoLine.CargoType,
+                a.QtyStored,
+                a.GoodsReceipt.ReceivedAt)).ToList()
+        )).ToList();
     }
 
     public async Task<List<WarehouseListItemDto>> GetWarehousesAsync()
@@ -137,6 +150,29 @@ public class WarehouseSlottingService : IWarehouseSlottingService
 
     public async Task<WarehouseZoneDto> CreateZoneAsync(int warehouseId, CreateZoneRequest request)
     {
+        var warehouseForBounds = await _db.Warehouses.FindAsync(warehouseId);
+
+        // CHẶN khu vực v nằm NGOÀI ranh giới kho — trước đây chỉ kiểm tra
+        // chồng lấn với khu KHÁC, chưa kiểm tra có vượt quá kích thước THẬT
+        // của kho hay không (VD: kho rộng 30m nhưng tạo khu ở PosX=40 vẫn cho
+        // qua) — chỉ áp dụng khi kho ĐÃ khai báo kích thước thật (nullable).
+        if (warehouseForBounds?.LengthMeters is decimal whLength && warehouseForBounds.WidthMeters is decimal whWidth)
+        {
+            if (request.PosX < 0 || request.PosY < 0 || request.PosX + request.WidthMeters > whLength || request.PosY + request.HeightMeters > whWidth)
+                throw new InvalidOperationException($"Khu vực này vượt ra NGOÀI ranh giới kho (kho rộng {whLength}m x {whWidth}m) — chỉnh lại vị trí/kích thước cho vừa trong kho.");
+        }
+
+        // CHẶN chồng lấn vị trí với khu vực KHÁC đã có trong cùng kho — trước
+        // đây không kiểm tra gì cả, chỉ có 1 dòng CHỮ GỢI Ý ở giao diện nhắc
+        // người dùng tự tính toán, không hề có kiểm tra thật — 2 khu vực có
+        // thể đè hẳn lên nhau trên sơ đồ mà hệ thống vẫn cho tạo bình thường.
+        var existingZones = await _db.WarehouseZones.Where(z => z.WarehouseId == warehouseId).ToListAsync();
+        var overlapping = existingZones.FirstOrDefault(z => RectanglesOverlap(
+            request.PosX, request.PosY, request.WidthMeters, request.HeightMeters,
+            z.PosX, z.PosY, z.WidthMeters, z.HeightMeters));
+        if (overlapping is not null)
+            throw new InvalidOperationException($"Vị trí/kích thước này chồng lấn với khu vực \"{overlapping.Name}\" đã có (X={overlapping.PosX}, Y={overlapping.PosY}, Rộng={overlapping.WidthMeters}, Cao={overlapping.HeightMeters}) — chọn tọa độ khác.");
+
         var zoneType = Enum.TryParse<ZoneType>(request.ZoneType, out var parsed) ? parsed : ZoneType.Normal;
 
         var zone = new WarehouseZone
@@ -160,6 +196,20 @@ public class WarehouseSlottingService : IWarehouseSlottingService
         var zone = await _db.WarehouseZones.FindAsync(zoneId);
         if (zone is null) return new WarehouseActionResult(false, "Không tìm thấy khu vực.");
 
+        var warehouseForBounds = await _db.Warehouses.FindAsync(zone.WarehouseId);
+        if (warehouseForBounds?.LengthMeters is decimal whLength && warehouseForBounds.WidthMeters is decimal whWidth)
+        {
+            if (request.PosX < 0 || request.PosY < 0 || request.PosX + request.WidthMeters > whLength || request.PosY + request.HeightMeters > whWidth)
+                return new WarehouseActionResult(false, $"Khu vực này vượt ra NGOÀI ranh giới kho (kho rộng {whLength}m x {whWidth}m) — chỉnh lại vị trí/kích thước cho vừa trong kho.");
+        }
+
+        var otherZones = await _db.WarehouseZones.Where(z => z.WarehouseId == zone.WarehouseId && z.Id != zoneId).ToListAsync();
+        var overlapping = otherZones.FirstOrDefault(z => RectanglesOverlap(
+            request.PosX, request.PosY, request.WidthMeters, request.HeightMeters,
+            z.PosX, z.PosY, z.WidthMeters, z.HeightMeters));
+        if (overlapping is not null)
+            return new WarehouseActionResult(false, $"Vị trí/kích thước này chồng lấn với khu vực \"{overlapping.Name}\" đã có — chọn tọa độ khác.");
+
         var zoneType = Enum.TryParse<ZoneType>(request.ZoneType, out var parsed) ? parsed : ZoneType.Normal;
 
         zone.Name = request.Name;
@@ -175,36 +225,69 @@ public class WarehouseSlottingService : IWarehouseSlottingService
 
     public async Task<StorageBinDto> CreateBinAsync(int zoneId, CreateBinRequest request)
     {
+        var zone = await _db.WarehouseZones.FindAsync(zoneId);
+        if (zone is null) throw new InvalidOperationException("Không tìm thấy khu vực.");
+
+        // CHẶN vị trí vượt ra NGOÀI ranh giới khu vực chứa nó — đúng thực tế
+        // vật lý: 1 vị trí lưu trữ không thể to hơn hoặc tràn ra khỏi khu vực.
+        if (request.PosX < 0 || request.PosY < 0 || request.PosX + request.WidthMeters > zone.WidthMeters || request.PosY + request.HeightMeters > zone.HeightMeters)
+            throw new InvalidOperationException($"Vị trí này vượt ra NGOÀI ranh giới khu vực \"{zone.Name}\" (khu vực rộng {zone.WidthMeters}m x {zone.HeightMeters}m) — chỉnh lại tọa độ/kích thước cho vừa trong khu vực.");
+
+        // CHẶN đè lên vị trí KHÁC đã có trong cùng khu vực — trước đây chỉ so
+        // Row/Column (chỉ số trừu tượng), giờ so ĐÚNG diện tích thật, phát
+        // hiện đè dù chỉ chồng lấn 1 phần nhỏ.
+        var existingBins = await _db.StorageBins.Where(b => b.WarehouseZoneId == zoneId).ToListAsync();
+        var overlappingBin = existingBins.FirstOrDefault(b => RectanglesOverlap(
+            request.PosX, request.PosY, request.WidthMeters, request.HeightMeters,
+            b.PosX, b.PosY, b.WidthMeters, b.HeightMeters));
+        if (overlappingBin is not null)
+            throw new InvalidOperationException($"Vị trí này đè lên vị trí \"{overlappingBin.Code}\" đã có (X={overlappingBin.PosX}, Y={overlappingBin.PosY}, Rộng={overlappingBin.WidthMeters}, Cao={overlappingBin.HeightMeters}) — chọn tọa độ khác.");
+
         var bin = new StorageBin
         {
             WarehouseZoneId = zoneId,
             Code = request.Code,
             CapacityM3 = request.CapacityM3,
             MaxWeightKg = request.MaxWeightKg,
-            Row = request.Row,
-            Column = request.Column,
+            PosX = request.PosX,
+            PosY = request.PosY,
+            WidthMeters = request.WidthMeters,
+            HeightMeters = request.HeightMeters,
             DistanceFromDoorMeters = request.DistanceFromDoorMeters,
             CurrentUsedM3 = 0,
         };
         _db.StorageBins.Add(bin);
         await _db.SaveChangesAsync();
 
-        return new StorageBinDto(bin.Id, bin.Code, bin.CapacityM3, bin.CurrentUsedM3, bin.MaxWeightKg, bin.Row, bin.Column, bin.DistanceFromDoorMeters);
+        return new StorageBinDto(bin.Id, bin.Code, bin.CapacityM3, bin.CurrentUsedM3, bin.MaxWeightKg, bin.PosX, bin.PosY, bin.WidthMeters, bin.HeightMeters, bin.DistanceFromDoorMeters, new List<BinContentItemDto>());
     }
 
     public async Task<WarehouseActionResult> UpdateBinAsync(int binId, CreateBinRequest request)
     {
-        var bin = await _db.StorageBins.FindAsync(binId);
+        var bin = await _db.StorageBins.Include(b => b.WarehouseZone).FirstOrDefaultAsync(b => b.Id == binId);
         if (bin is null) return new WarehouseActionResult(false, "Không tìm thấy vị trí.");
 
         if (request.CapacityM3 < bin.CurrentUsedM3)
             return new WarehouseActionResult(false, $"Sức chứa mới ({request.CapacityM3} m³) nhỏ hơn lượng hàng đang chứa ({bin.CurrentUsedM3} m³) — không thể sửa.");
 
+        var zone = bin.WarehouseZone;
+        if (request.PosX < 0 || request.PosY < 0 || request.PosX + request.WidthMeters > zone.WidthMeters || request.PosY + request.HeightMeters > zone.HeightMeters)
+            return new WarehouseActionResult(false, $"Vị trí này vượt ra NGOÀI ranh giới khu vực \"{zone.Name}\" (khu vực rộng {zone.WidthMeters}m x {zone.HeightMeters}m) — chỉnh lại tọa độ/kích thước cho vừa trong khu vực.");
+
+        var otherBins = await _db.StorageBins.Where(b => b.Id != binId && b.WarehouseZoneId == bin.WarehouseZoneId).ToListAsync();
+        var overlappingBin = otherBins.FirstOrDefault(b => RectanglesOverlap(
+            request.PosX, request.PosY, request.WidthMeters, request.HeightMeters,
+            b.PosX, b.PosY, b.WidthMeters, b.HeightMeters));
+        if (overlappingBin is not null)
+            return new WarehouseActionResult(false, $"Vị trí này đè lên vị trí \"{overlappingBin.Code}\" đã có — chọn tọa độ khác.");
+
         bin.Code = request.Code;
         bin.CapacityM3 = request.CapacityM3;
         bin.MaxWeightKg = request.MaxWeightKg;
-        bin.Row = request.Row;
-        bin.Column = request.Column;
+        bin.PosX = request.PosX;
+        bin.PosY = request.PosY;
+        bin.WidthMeters = request.WidthMeters;
+        bin.HeightMeters = request.HeightMeters;
         bin.DistanceFromDoorMeters = request.DistanceFromDoorMeters;
 
         await _db.SaveChangesAsync();
@@ -216,6 +299,14 @@ public class WarehouseSlottingService : IWarehouseSlottingService
         var hasStock = await _db.WarehouseStocks.AnyAsync(s => s.WarehouseId == warehouseId && s.QtyOnHand > 0);
         if (hasStock)
             return new WarehouseActionResult(false, "Kho này đang có tồn kho thật — không thể xóa. Cần xuất hết hàng trước.");
+
+        // CHẶN xóa nếu có Trip (chuyến) đang tham chiếu tới kho này — trước
+        // đây không kiểm tra, xóa xong sẽ để lại Trip.WarehouseId "treo" trỏ
+        // tới 1 kho không còn tồn tại, gây lỗi khi tải lại màn Chuyến/lộ trình
+        // sau này (NullReferenceException khi cố đọc Trip.Warehouse.Lat...).
+        var hasTrips = await _db.Trips.AnyAsync(t => t.WarehouseId == warehouseId);
+        if (hasTrips)
+            return new WarehouseActionResult(false, "Kho này đang được 1 hoặc nhiều Chuyến (Trip) tham chiếu tới — không thể xóa. Chỉ xóa được kho chưa từng dùng trong bất kỳ chuyến nào.");
 
         var zones = await _db.WarehouseZones.Include(z => z.StorageBins).Where(z => z.WarehouseId == warehouseId).ToListAsync();
         foreach (var zone in zones)
@@ -263,6 +354,72 @@ public class WarehouseSlottingService : IWarehouseSlottingService
     public async Task<ReceiveGoodsResult> ReceiveGoodsAsync(int warehouseId, int transportOrderId, int cargoLineId,
         decimal qty, int receivedByEmployeeId, int? tripId, int? chosenBinId = null)
     {
+        // CHẶN nhập khống — không cho nhập vượt quá số lượng ĐÃ KHAI BÁO trong
+        // đơn vận chuyển (CargoLine.QtyTotal), tính cả những lần đã nhập trước
+        // đó cộng dồn lại. VD: đơn khai 1, đã nhập 1 rồi thì không cho nhập
+        // thêm 3 nữa — dù là tự động (qua Trip) hay nhập tay đều bị chặn như nhau.
+        var cargoLine = await _db.CargoLines.FindAsync(cargoLineId);
+        if (cargoLine is null)
+            return new ReceiveGoodsResult(false, "Không tìm thấy dòng hàng (CargoLine).", null, null);
+
+        var alreadyReceived = await _db.GoodsReceipts
+            .Where(r => r.CargoLineId == cargoLineId)
+            .SumAsync(r => r.QtyReceived);
+
+        if (alreadyReceived + qty > cargoLine.QtyTotal)
+        {
+            var remaining = cargoLine.QtyTotal - alreadyReceived;
+            return new ReceiveGoodsResult(false,
+                $"Vượt quá số lượng đã khai báo trong đơn — dòng hàng \"{cargoLine.CargoType}\" chỉ khai {cargoLine.QtyTotal}, đã nhập {alreadyReceived}, chỉ còn được nhập tối đa {remaining} nữa.",
+                null, null);
+        }
+
+        // XÁC ĐỊNH + KIỂM TRA VỊ TRÍ ĐÍCH TRƯỚC — KHÔNG tạo GoodsReceipt/cộng
+        // tồn kho trước khi chắc chắn có 1 vị trí ĐÚNG KHU VỰC (theo tính chất
+        // hàng: thường/dễ vỡ/nguy hiểm) và ĐỦ CHỖ. Trước đây làm ngược lại (ghi
+        // nhận tồn kho trước, tìm vị trí sau) khiến hàng "biến mất" khỏi sơ đồ
+        // nếu không tìm được chỗ — số liệu tồn kho tổng có nhưng không thấy ở
+        // đâu trên sơ đồ trực quan. Giờ: KHÔNG có vị trí hợp lệ = KHÔNG cho
+        // nhập luôn, chặn từ đầu, không để lại "hàng ma".
+        var requiredZoneType = cargoLine.IsHazmat ? ZoneType.Hazmat : cargoLine.IsFragile ? ZoneType.Fragile : ZoneType.Normal;
+        StorageBin targetBin;
+
+        if (chosenBinId.HasValue)
+        {
+            // NGƯỜI DÙNG TỰ CHỌN VỊ TRÍ — vẫn phải kiểm tra ĐÚNG KHU VỰC, không
+            // được nhét hàng nguy hiểm vào khu thường chỉ vì người dùng tự chọn tay.
+            var chosenBin = await _db.StorageBins.Include(b => b.WarehouseZone).FirstOrDefaultAsync(b => b.Id == chosenBinId.Value);
+            if (chosenBin is null)
+                return new ReceiveGoodsResult(false, "Vị trí đã chọn không tồn tại.", null, null);
+
+            if (chosenBin.WarehouseZone.ZoneType != requiredZoneType)
+                return new ReceiveGoodsResult(false,
+                    $"Vị trí {chosenBin.Code} thuộc khu '{TranslateZoneType(chosenBin.WarehouseZone.ZoneType)}', không phù hợp với hàng hóa loại '{TranslateZoneType(requiredZoneType)}' — cần chọn đúng vị trí trong khu vực tương ứng.",
+                    null, null);
+
+            if (chosenBin.CapacityM3 - chosenBin.CurrentUsedM3 < qty)
+                return new ReceiveGoodsResult(false,
+                    $"Vị trí {chosenBin.Code} không đủ chỗ trống ({chosenBin.CapacityM3 - chosenBin.CurrentUsedM3:0.00} m³ còn lại, cần {qty} m³).",
+                    null, null);
+
+            targetBin = chosenBin;
+        }
+        else
+        {
+            // Chạy Best-Fit tự động chọn vị trí — nếu KHÔNG tìm được vị trí phù
+            // hợp (VD: chưa từng tạo khu Hazmat) -> CHẶN LUÔN, không cho nhập,
+            // báo rõ lý do để Dispatcher đi tạo đúng khu vực trước.
+            var suggestion = await SuggestBinAsync(warehouseId, new SuggestBinRequest(cargoLineId, qty));
+            if (!suggestion.Found)
+                return new ReceiveGoodsResult(false,
+                    $"Không thể nhập kho — kho này CHƯA CÓ khu vực '{TranslateZoneType(requiredZoneType)}' phù hợp (hoặc đã hết chỗ trống). Cần tạo khu vực đúng loại trước khi nhập loại hàng này. Chi tiết: {suggestion.Message}",
+                    null, null);
+
+            targetBin = (await _db.StorageBins.FindAsync(suggestion.StorageBinId!.Value))!;
+        }
+
+        // Đến đây CHẮC CHẮN đã có targetBin hợp lệ, đúng khu, đủ chỗ — giờ mới
+        // thật sự ghi nhận: tạo GoodsReceipt, cộng tồn kho, gán vào vị trí.
         var receipt = new GoodsReceipt
         {
             TransportOrderId = transportOrderId,
@@ -274,7 +431,6 @@ public class WarehouseSlottingService : IWarehouseSlottingService
         };
         _db.GoodsReceipts.Add(receipt);
 
-        // Cộng dồn tồn kho tổng hợp (Warehouse, CargoLine) — tạo mới nếu chưa có dòng nào
         var stock = await _db.WarehouseStocks.FirstOrDefaultAsync(s => s.WarehouseId == warehouseId && s.CargoLineId == cargoLineId);
         if (stock is null)
         {
@@ -284,57 +440,35 @@ public class WarehouseSlottingService : IWarehouseSlottingService
         stock.QtyOnHand += qty;
         stock.LastUpdatedAt = DateTime.UtcNow;
 
-        // NGƯỜI DÙNG TỰ CHỌN VỊ TRÍ — bỏ qua Best-Fit, dùng đúng vị trí đã chọn
-        if (chosenBinId.HasValue)
-        {
-            var chosenBin = await _db.StorageBins.FindAsync(chosenBinId.Value);
-            if (chosenBin is null)
-            {
-                await _db.SaveChangesAsync();
-                return new ReceiveGoodsResult(true, "⚠️ Vị trí đã chọn không còn tồn tại — hàng đã ghi nhận về kho nhưng chưa xếp vị trí.", null, null);
-            }
-            if (chosenBin.CapacityM3 - chosenBin.CurrentUsedM3 < qty)
-            {
-                return new ReceiveGoodsResult(false, $"Vị trí {chosenBin.Code} không đủ chỗ trống ({chosenBin.CapacityM3 - chosenBin.CurrentUsedM3:0.00} m³ còn lại, cần {qty} m³).", null, null);
-            }
-
-            await _db.SaveChangesAsync(); // cần Id thật của GoodsReceipt trước khi tạo StorageAssignment
-
-            chosenBin.CurrentUsedM3 += qty;
-            _db.StorageAssignments.Add(new StorageAssignment
-            {
-                GoodsReceiptId = receipt.Id,
-                StorageBinId = chosenBin.Id,
-                QtyStored = qty,
-            });
-            await _db.SaveChangesAsync();
-            return new ReceiveGoodsResult(true, null, chosenBin.Id, chosenBin.Code);
-        }
-
-        // Chạy Best-Fit tự động chọn vị trí — nếu kho hết chỗ phù hợp, vẫn ghi
-        // nhận hàng đã về (không chặn nghiệp vụ), chỉ báo thiếu chỗ xếp.
-        var suggestion = await SuggestBinAsync(warehouseId, new SuggestBinRequest(cargoLineId, qty));
-
-        if (!suggestion.Found)
-        {
-            await _db.SaveChangesAsync(); // vẫn lưu GoodsReceipt + WarehouseStock dù chưa xếp được vị trí
-            return new ReceiveGoodsResult(true, "⚠️ Hàng đã ghi nhận về kho, nhưng KHÔNG tìm được vị trí trống phù hợp — cần xếp thủ công sau: " + suggestion.Message, null, null);
-        }
-
         await _db.SaveChangesAsync(); // cần Id thật của GoodsReceipt trước khi tạo StorageAssignment
 
-        var bin = await _db.StorageBins.FindAsync(suggestion.StorageBinId!.Value);
-        bin!.CurrentUsedM3 += qty;
-
+        targetBin.CurrentUsedM3 += qty;
         _db.StorageAssignments.Add(new StorageAssignment
         {
             GoodsReceiptId = receipt.Id,
-            StorageBinId = bin.Id,
+            StorageBinId = targetBin.Id,
             QtyStored = qty,
         });
-
         await _db.SaveChangesAsync();
-        return new ReceiveGoodsResult(true, null, bin.Id, suggestion.BinCode);
+
+        return new ReceiveGoodsResult(true, null, targetBin.Id, targetBin.Code);
+    }
+
+    private static string TranslateZoneType(ZoneType z) => z switch
+    {
+        ZoneType.Hazmat => "Hàng nguy hiểm",
+        ZoneType.Fragile => "Hàng dễ vỡ",
+        _ => "Hàng thường",
+    };
+
+    /// <summary>Kiểm tra 2 hình chữ nhật (khu vực trên sơ đồ) có chồng lấn
+    /// nhau không — dùng thuật toán chuẩn: KHÔNG chồng lấn khi 1 trong 4 điều
+    /// kiện đúng (nằm hẳn bên trái/phải/trên/dưới nhau); ngược lại là có
+    /// chồng lấn dù chỉ 1 phần nhỏ.</summary>
+    private static bool RectanglesOverlap(decimal x1, decimal y1, decimal w1, decimal h1, decimal x2, decimal y2, decimal w2, decimal h2)
+    {
+        bool noOverlap = x1 + w1 <= x2 || x2 + w2 <= x1 || y1 + h1 <= y2 || y2 + h2 <= y1;
+        return !noOverlap;
     }
 
     public async Task<IssueGoodsResult> IssueGoodsAsync(int warehouseId, int transportOrderId, int cargoLineId,
@@ -396,7 +530,7 @@ public class WarehouseSlottingService : IWarehouseSlottingService
             .Include(b => b.WarehouseZone)
             .Where(b => b.WarehouseZone.WarehouseId == warehouseId && b.WarehouseZone.ZoneType == requiredZoneType)
             .OrderBy(b => b.CurrentUsedM3) // ô còn trống nhiều nhất lên đầu, dễ chọn
-            .Select(b => new StorageBinDto(b.Id, b.Code, b.CapacityM3, b.CurrentUsedM3, b.MaxWeightKg, b.Row, b.Column, b.DistanceFromDoorMeters))
+            .Select(b => new StorageBinDto(b.Id, b.Code, b.CapacityM3, b.CurrentUsedM3, b.MaxWeightKg, b.PosX, b.PosY, b.WidthMeters, b.HeightMeters, b.DistanceFromDoorMeters, new List<BinContentItemDto>()))
             .ToListAsync();
     }
 

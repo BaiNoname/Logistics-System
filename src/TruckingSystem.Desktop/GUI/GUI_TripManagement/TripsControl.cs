@@ -56,7 +56,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
             var tripId = GetSelectedTripId();
             if (tripId is null) { ShowNoSelection(); return; }
 
-            var confirm = MessageBox.Show(FindForm(), 
+            var confirm = MessageBox.Show(FindForm(),
                 "Xác nhận chuyến này đã hoàn tất (xe đã tới nơi, hàng đã giao/nhận xong)?",
                 "Xác nhận hoàn tất chuyến", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
             if (confirm != DialogResult.Yes) return;
@@ -98,7 +98,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
 
             if (trip.FromLat is null || trip.FromLng is null || trip.ToLat is null || trip.ToLng is null)
             {
-                MessageBox.Show(FindForm(), 
+                MessageBox.Show(FindForm(),
                     "Chuyến này thiếu tọa độ (điểm khách hàng chưa chọn từ gợi ý VietMap, hoặc kho chưa có tọa độ) — không vẽ được lộ trình.",
                     "Thiếu tọa độ", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
@@ -107,7 +107,8 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
             var legName = trip.LegType == "Pickup" ? "Lấy hàng (Khách gửi → Kho)" : "Giao hàng (Kho → Khách nhận)";
             using var f = new RouteMapForm(
                 _api!, $"Lộ trình chặng {legName} — Đơn {trip.OrderCode}",
-                trip.FromLat.Value, trip.FromLng.Value, trip.ToLat.Value, trip.ToLng.Value);
+                trip.FromLat.Value, trip.FromLng.Value, trip.ToLat.Value, trip.ToLng.Value,
+                tripId: trip.Id);
             f.ShowDialog(FindForm());
         }
 

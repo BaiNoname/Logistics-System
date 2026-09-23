@@ -14,16 +14,21 @@ partial class EditBinForm
 
     private void InitializeComponent()
     {
+        this.lblZoneInfo = new System.Windows.Forms.Label();
         this.lblCode = new System.Windows.Forms.Label();
         this.txtCode = new System.Windows.Forms.TextBox();
         this.lblCapacity = new System.Windows.Forms.Label();
         this.numCapacity = new System.Windows.Forms.NumericUpDown();
         this.lblMaxWeight = new System.Windows.Forms.Label();
         this.numMaxWeight = new System.Windows.Forms.NumericUpDown();
-        this.lblRow = new System.Windows.Forms.Label();
-        this.numRow = new System.Windows.Forms.NumericUpDown();
-        this.lblColumn = new System.Windows.Forms.Label();
-        this.numColumn = new System.Windows.Forms.NumericUpDown();
+        this.lblPosX = new System.Windows.Forms.Label();
+        this.numPosX = new System.Windows.Forms.NumericUpDown();
+        this.lblPosY = new System.Windows.Forms.Label();
+        this.numPosY = new System.Windows.Forms.NumericUpDown();
+        this.lblWidth = new System.Windows.Forms.Label();
+        this.numWidth = new System.Windows.Forms.NumericUpDown();
+        this.lblHeight = new System.Windows.Forms.Label();
+        this.numHeight = new System.Windows.Forms.NumericUpDown();
         this.lblDistanceFromDoor = new System.Windows.Forms.Label();
         this.numDistanceFromDoor = new System.Windows.Forms.NumericUpDown();
         this.lblNote = new System.Windows.Forms.Label();
@@ -31,14 +36,23 @@ partial class EditBinForm
         this.lblStatus = new System.Windows.Forms.Label();
         ((System.ComponentModel.ISupportInitialize)(this.numCapacity)).BeginInit();
         ((System.ComponentModel.ISupportInitialize)(this.numMaxWeight)).BeginInit();
-        ((System.ComponentModel.ISupportInitialize)(this.numRow)).BeginInit();
-        ((System.ComponentModel.ISupportInitialize)(this.numColumn)).BeginInit();
+        ((System.ComponentModel.ISupportInitialize)(this.numPosX)).BeginInit();
+        ((System.ComponentModel.ISupportInitialize)(this.numPosY)).BeginInit();
+        ((System.ComponentModel.ISupportInitialize)(this.numWidth)).BeginInit();
+        ((System.ComponentModel.ISupportInitialize)(this.numHeight)).BeginInit();
         ((System.ComponentModel.ISupportInitialize)(this.numDistanceFromDoor)).BeginInit();
         this.SuspendLayout();
         //
+        // lblZoneInfo
+        //
+        this.lblZoneInfo.Location = new System.Drawing.Point(24, 16);
+        this.lblZoneInfo.Size = new System.Drawing.Size(400, 34);
+        this.lblZoneInfo.ForeColor = TruckingSystem.Desktop.Common.Theme.Primary;
+        this.lblZoneInfo.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
+        //
         // lblCode
         //
-        this.lblCode.Location = new System.Drawing.Point(24, 20);
+        this.lblCode.Location = new System.Drawing.Point(24, 56);
         this.lblCode.Size = new System.Drawing.Size(400, 18);
         this.lblCode.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
         this.lblCode.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
@@ -46,12 +60,12 @@ partial class EditBinForm
         //
         // txtCode
         //
-        this.txtCode.Location = new System.Drawing.Point(24, 40);
+        this.txtCode.Location = new System.Drawing.Point(24, 76);
         this.txtCode.Size = new System.Drawing.Size(400, 23);
         //
         // lblCapacity
         //
-        this.lblCapacity.Location = new System.Drawing.Point(24, 90);
+        this.lblCapacity.Location = new System.Drawing.Point(24, 122);
         this.lblCapacity.Size = new System.Drawing.Size(190, 18);
         this.lblCapacity.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
         this.lblCapacity.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
@@ -59,7 +73,7 @@ partial class EditBinForm
         //
         // numCapacity
         //
-        this.numCapacity.Location = new System.Drawing.Point(24, 110);
+        this.numCapacity.Location = new System.Drawing.Point(24, 142);
         this.numCapacity.Size = new System.Drawing.Size(190, 23);
         this.numCapacity.DecimalPlaces = 2;
         this.numCapacity.Maximum = new decimal(new int[] { 10000, 0, 0, 0 });
@@ -67,7 +81,7 @@ partial class EditBinForm
         //
         // lblMaxWeight
         //
-        this.lblMaxWeight.Location = new System.Drawing.Point(234, 90);
+        this.lblMaxWeight.Location = new System.Drawing.Point(234, 122);
         this.lblMaxWeight.Size = new System.Drawing.Size(190, 18);
         this.lblMaxWeight.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
         this.lblMaxWeight.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
@@ -75,42 +89,76 @@ partial class EditBinForm
         //
         // numMaxWeight
         //
-        this.numMaxWeight.Location = new System.Drawing.Point(234, 110);
+        this.numMaxWeight.Location = new System.Drawing.Point(234, 142);
         this.numMaxWeight.Size = new System.Drawing.Size(190, 23);
         this.numMaxWeight.Maximum = new decimal(new int[] { 100000, 0, 0, 0 });
         this.numMaxWeight.Value = new decimal(new int[] { 2000, 0, 0, 0 });
         //
-        // lblRow
+        // lblPosX
         //
-        this.lblRow.Location = new System.Drawing.Point(24, 160);
-        this.lblRow.Size = new System.Drawing.Size(190, 18);
-        this.lblRow.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
-        this.lblRow.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
-        this.lblRow.Text = "Hàng (Row, bắt đầu từ 0)";
+        this.lblPosX.Location = new System.Drawing.Point(24, 192);
+        this.lblPosX.Size = new System.Drawing.Size(190, 18);
+        this.lblPosX.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
+        this.lblPosX.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
+        this.lblPosX.Text = "Vị trí X (mét, so với góc khu vực) *";
         //
-        // numRow
+        // numPosX
         //
-        this.numRow.Location = new System.Drawing.Point(24, 180);
-        this.numRow.Size = new System.Drawing.Size(190, 23);
-        this.numRow.Maximum = new decimal(new int[] { 100, 0, 0, 0 });
+        this.numPosX.Location = new System.Drawing.Point(24, 212);
+        this.numPosX.Size = new System.Drawing.Size(190, 23);
+        this.numPosX.DecimalPlaces = 2;
+        this.numPosX.Maximum = new decimal(new int[] { 1000, 0, 0, 0 });
         //
-        // lblColumn
+        // lblPosY
         //
-        this.lblColumn.Location = new System.Drawing.Point(234, 160);
-        this.lblColumn.Size = new System.Drawing.Size(190, 18);
-        this.lblColumn.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
-        this.lblColumn.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
-        this.lblColumn.Text = "Cột (Column, bắt đầu từ 0)";
+        this.lblPosY.Location = new System.Drawing.Point(234, 192);
+        this.lblPosY.Size = new System.Drawing.Size(190, 18);
+        this.lblPosY.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
+        this.lblPosY.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
+        this.lblPosY.Text = "Vị trí Y (mét, so với góc khu vực) *";
         //
-        // numColumn
+        // numPosY
         //
-        this.numColumn.Location = new System.Drawing.Point(234, 180);
-        this.numColumn.Size = new System.Drawing.Size(190, 23);
-        this.numColumn.Maximum = new decimal(new int[] { 100, 0, 0, 0 });
+        this.numPosY.Location = new System.Drawing.Point(234, 212);
+        this.numPosY.Size = new System.Drawing.Size(190, 23);
+        this.numPosY.DecimalPlaces = 2;
+        this.numPosY.Maximum = new decimal(new int[] { 1000, 0, 0, 0 });
+        //
+        // lblWidth
+        //
+        this.lblWidth.Location = new System.Drawing.Point(24, 257);
+        this.lblWidth.Size = new System.Drawing.Size(190, 18);
+        this.lblWidth.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
+        this.lblWidth.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
+        this.lblWidth.Text = "Chiều rộng vị trí (mét) *";
+        //
+        // numWidth
+        //
+        this.numWidth.Location = new System.Drawing.Point(24, 277);
+        this.numWidth.Size = new System.Drawing.Size(190, 23);
+        this.numWidth.DecimalPlaces = 2;
+        this.numWidth.Maximum = new decimal(new int[] { 1000, 0, 0, 0 });
+        this.numWidth.Value = new decimal(new int[] { 1, 0, 0, 0 });
+        //
+        // lblHeight
+        //
+        this.lblHeight.Location = new System.Drawing.Point(234, 257);
+        this.lblHeight.Size = new System.Drawing.Size(190, 18);
+        this.lblHeight.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
+        this.lblHeight.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
+        this.lblHeight.Text = "Chiều cao vị trí (mét) *";
+        //
+        // numHeight
+        //
+        this.numHeight.Location = new System.Drawing.Point(234, 277);
+        this.numHeight.Size = new System.Drawing.Size(190, 23);
+        this.numHeight.DecimalPlaces = 2;
+        this.numHeight.Maximum = new decimal(new int[] { 1000, 0, 0, 0 });
+        this.numHeight.Value = new decimal(new int[] { 1, 0, 0, 0 });
         //
         // lblDistanceFromDoor
         //
-        this.lblDistanceFromDoor.Location = new System.Drawing.Point(24, 215);
+        this.lblDistanceFromDoor.Location = new System.Drawing.Point(24, 312);
         this.lblDistanceFromDoor.Size = new System.Drawing.Size(400, 18);
         this.lblDistanceFromDoor.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
         this.lblDistanceFromDoor.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
@@ -118,24 +166,24 @@ partial class EditBinForm
         //
         // numDistanceFromDoor
         //
-        this.numDistanceFromDoor.Location = new System.Drawing.Point(24, 235);
+        this.numDistanceFromDoor.Location = new System.Drawing.Point(24, 332);
         this.numDistanceFromDoor.Size = new System.Drawing.Size(400, 23);
         this.numDistanceFromDoor.DecimalPlaces = 1;
         this.numDistanceFromDoor.Maximum = new decimal(new int[] { 1000, 0, 0, 0 });
         //
         // lblNote
         //
-        this.lblNote.Location = new System.Drawing.Point(24, 270);
+        this.lblNote.Location = new System.Drawing.Point(24, 365);
         this.lblNote.Size = new System.Drawing.Size(400, 40);
         this.lblNote.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
         this.lblNote.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
-        this.lblNote.Text = "💡 Hàng/Cột quyết định vị trí ô này trong lưới sơ đồ — 2 ô trùng Hàng+Cột sẽ đè lên nhau, tránh nhập trùng.";
+        this.lblNote.Text = "💡 Hệ thống tự kiểm tra: vị trí không được đè lên vị trí khác, không được vượt ra ngoài ranh giới khu vực.";
         //
         // btnSave
         //
-        this.btnSave.Location = new System.Drawing.Point(120, 355);
+        this.btnSave.Location = new System.Drawing.Point(135, 450);
         this.btnSave.Size = new System.Drawing.Size(180, 38);
-        this.btnSave.Text = "Lưu vị trí";
+        this.btnSave.Text = "Lưu thay đổi";
         this.btnSave.BackColor = TruckingSystem.Desktop.Common.Theme.Primary;
         this.btnSave.ForeColor = System.Drawing.Color.White;
         this.btnSave.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
@@ -147,8 +195,8 @@ partial class EditBinForm
         //
         // lblStatus
         //
-        this.lblStatus.Location = new System.Drawing.Point(24, 320);
-        this.lblStatus.Size = new System.Drawing.Size(400, 25);
+        this.lblStatus.Location = new System.Drawing.Point(24, 415);
+        this.lblStatus.Size = new System.Drawing.Size(400, 30);
         this.lblStatus.ForeColor = TruckingSystem.Desktop.Common.Theme.Danger;
         this.lblStatus.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
         //
@@ -157,17 +205,22 @@ partial class EditBinForm
         this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
         this.AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
         this.BackColor = System.Drawing.Color.White;
-        this.ClientSize = new System.Drawing.Size(450, 420);
+        this.ClientSize = new System.Drawing.Size(450, 510);
+        this.Controls.Add(this.lblZoneInfo);
         this.Controls.Add(this.lblCode);
         this.Controls.Add(this.txtCode);
         this.Controls.Add(this.lblCapacity);
         this.Controls.Add(this.numCapacity);
         this.Controls.Add(this.lblMaxWeight);
         this.Controls.Add(this.numMaxWeight);
-        this.Controls.Add(this.lblRow);
-        this.Controls.Add(this.numRow);
-        this.Controls.Add(this.lblColumn);
-        this.Controls.Add(this.numColumn);
+        this.Controls.Add(this.lblPosX);
+        this.Controls.Add(this.numPosX);
+        this.Controls.Add(this.lblPosY);
+        this.Controls.Add(this.numPosY);
+        this.Controls.Add(this.lblWidth);
+        this.Controls.Add(this.numWidth);
+        this.Controls.Add(this.lblHeight);
+        this.Controls.Add(this.numHeight);
         this.Controls.Add(this.lblDistanceFromDoor);
         this.Controls.Add(this.numDistanceFromDoor);
         this.Controls.Add(this.lblNote);
@@ -180,8 +233,10 @@ partial class EditBinForm
         this.Text = "Sửa vị trí lưu trữ";
         ((System.ComponentModel.ISupportInitialize)(this.numCapacity)).EndInit();
         ((System.ComponentModel.ISupportInitialize)(this.numMaxWeight)).EndInit();
-        ((System.ComponentModel.ISupportInitialize)(this.numRow)).EndInit();
-        ((System.ComponentModel.ISupportInitialize)(this.numColumn)).EndInit();
+        ((System.ComponentModel.ISupportInitialize)(this.numPosX)).EndInit();
+        ((System.ComponentModel.ISupportInitialize)(this.numPosY)).EndInit();
+        ((System.ComponentModel.ISupportInitialize)(this.numWidth)).EndInit();
+        ((System.ComponentModel.ISupportInitialize)(this.numHeight)).EndInit();
         ((System.ComponentModel.ISupportInitialize)(this.numDistanceFromDoor)).EndInit();
         this.ResumeLayout(false);
         this.PerformLayout();
@@ -189,16 +244,21 @@ partial class EditBinForm
 
     #endregion
 
+    private System.Windows.Forms.Label lblZoneInfo;
     private System.Windows.Forms.Label lblCode;
     private System.Windows.Forms.TextBox txtCode;
     private System.Windows.Forms.Label lblCapacity;
     private System.Windows.Forms.NumericUpDown numCapacity;
     private System.Windows.Forms.Label lblMaxWeight;
     private System.Windows.Forms.NumericUpDown numMaxWeight;
-    private System.Windows.Forms.Label lblRow;
-    private System.Windows.Forms.NumericUpDown numRow;
-    private System.Windows.Forms.Label lblColumn;
-    private System.Windows.Forms.NumericUpDown numColumn;
+    private System.Windows.Forms.Label lblPosX;
+    private System.Windows.Forms.NumericUpDown numPosX;
+    private System.Windows.Forms.Label lblPosY;
+    private System.Windows.Forms.NumericUpDown numPosY;
+    private System.Windows.Forms.Label lblWidth;
+    private System.Windows.Forms.NumericUpDown numWidth;
+    private System.Windows.Forms.Label lblHeight;
+    private System.Windows.Forms.NumericUpDown numHeight;
     private System.Windows.Forms.Label lblDistanceFromDoor;
     private System.Windows.Forms.NumericUpDown numDistanceFromDoor;
     private System.Windows.Forms.Label lblNote;

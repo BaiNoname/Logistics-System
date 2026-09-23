@@ -15,10 +15,16 @@ public class StorageBin : BaseEntity
     /// <summary>Thể tích đang chiếm dụng — cập nhật mỗi khi có StorageAssignment mới/gỡ bỏ.</summary>
     public decimal CurrentUsedM3 { get; set; }
 
-    // Tọa độ hàng/cột trong lưới — dùng để VẼ vị trí này đúng chỗ thật trên sơ
-    // đồ trực quan của kho (không ảnh hưởng logic Best-Fit, chỉ phục vụ hiển thị).
-    public int Row { get; set; }
-    public int Column { get; set; }
+    // Tọa độ + kích thước THẬT (mét), tính TƯƠNG ĐỐI so với góc trên-trái của
+    // Khu vực (WarehouseZone) chứa nó — CÙNG cơ chế với cách Khu vực định vị
+    // trong Kho. Trước đây dùng Row/Column (chỉ số lưới trừu tượng, không
+    // phản ánh không gian thật) — đổi sang mét thật để kiểm tra được: 1) vị
+    // trí có nằm gọn trong khu vực hay không, 2) 2 vị trí có đè lên nhau
+    // không — đúng thực tế vật lý của 1 kho hàng thật.
+    public decimal PosX { get; set; }
+    public decimal PosY { get; set; }
+    public decimal WidthMeters { get; set; }
+    public decimal HeightMeters { get; set; }
 
     /// <summary>Khoảng cách thật (mét) từ vị trí này tới cửa kho — dùng cho
     /// thuật toán tối ưu theo độ khẩn cấp: đơn hàng SẮP tới hạn giao thì ưu

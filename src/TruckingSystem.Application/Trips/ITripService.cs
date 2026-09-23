@@ -19,4 +19,8 @@ public interface ITripService
     // ---- App tài xế (đã có từ trước, giữ nguyên chữ ký) ----
     Task<ServiceResult> PingAsync(int tripId, GpsPingRequest request);
     Task<ServiceResult> ConfirmArrivalAsync(int tripId, ConfirmArrivalRequest request);
+
+    /// <summary>Toàn bộ điểm GPS thật đã ghi nhận của 1 chuyến — dùng để vẽ
+    /// đường đi thực tế trên bản đồ, sắp theo thời gian.</summary>
+    Task<List<WaypointDto>> GetWaypointsAsync(int tripId);
 }

@@ -20,3 +20,12 @@ public class TripActionResultItem
     public bool Success { get; set; }
     public string? Message { get; set; }
 }
+
+/// <summary>1 điểm GPS thật đã ghi nhận — dùng để vẽ đường đi thực tế.</summary>
+public class WaypointItem
+{
+    public double Lat { get; set; }
+    public double Lng { get; set; }
+    public DateTime Timestamp { get; set; }
+    public decimal? SpeedKmh { get; set; }
+}

@@ -12,7 +12,12 @@ public record SuggestBinResponse(
 );
 
 public record WarehouseZoneDto(int Id, string Name, string ZoneType, int BinCount, decimal PosX, decimal PosY, decimal WidthMeters, decimal HeightMeters);
-public record StorageBinDto(int Id, string Code, decimal CapacityM3, decimal CurrentUsedM3, decimal MaxWeightKg, int Row, int Column, decimal DistanceFromDoorMeters);
+/// <summary>1 lô hàng cụ thể đang nằm trong 1 vị trí — cho biết RÕ đây là hàng
+/// của đơn nào, khách nào, loại gì — trước đây sơ đồ chỉ hiện % đầy, hoàn
+/// toàn không biết bên trong là hàng của ai, nhân viên kho khó theo dõi.</summary>
+public record BinContentItemDto(string OrderCode, string CustomerName, string CargoType, decimal QtyStored, DateTime ReceivedAt);
+
+public record StorageBinDto(int Id, string Code, decimal CapacityM3, decimal CurrentUsedM3, decimal MaxWeightKg, decimal PosX, decimal PosY, decimal WidthMeters, decimal HeightMeters, decimal DistanceFromDoorMeters, List<BinContentItemDto> Contents);
 public record WarehouseListItemDto(int Id, string Name, string? Address, decimal? CapacityM3, decimal? LengthMeters, decimal? WidthMeters, double? Lat, double? Lng);
 
 /// <summary>Tạo kho mới — cho phép công ty có NHIỀU kho ở nhiều địa điểm khác
@@ -29,7 +34,7 @@ public record UpdateWarehouseRequest(string Name, string? Address, decimal? Capa
 public record CreateZoneRequest(string Name, string ZoneType, decimal PosX, decimal PosY, decimal WidthMeters, decimal HeightMeters);
 
 /// <summary>Tạo vị trí lưu trữ (StorageBin) mới trong 1 khu vực.</summary>
-public record CreateBinRequest(string Code, decimal CapacityM3, decimal MaxWeightKg, int Row, int Column, decimal DistanceFromDoorMeters);
+public record CreateBinRequest(string Code, decimal CapacityM3, decimal MaxWeightKg, decimal PosX, decimal PosY, decimal WidthMeters, decimal HeightMeters, decimal DistanceFromDoorMeters);
 
 /// <summary>Yêu cầu nhập/xuất kho THỦ CÔNG — dùng chung cho cả 2 chiều.
 /// ChosenBinId: có giá trị = người dùng tự chọn tay vị trí (chỉ áp dụng khi

@@ -131,6 +131,12 @@ public class TripService : ITripService
         if (request.Liters <= 0 || request.Cost <= 0)
             return new TripActionResult(false, "Số lít và chi phí phải lớn hơn 0.");
 
+        // CHẶN ghi xăng cho chuyến CHƯA từng chạy (Planned) hoặc đã hủy —
+        // trước đây cho ghi ở BẤT KỲ trạng thái nào, kể cả chuyến chưa bắt đầu
+        // hoặc đã hủy — không hợp lý (xe chưa chạy sao tốn xăng được).
+        if (trip.Status is TripStatus.Planned or TripStatus.Cancelled)
+            return new TripActionResult(false, "Chỉ ghi nhận đổ xăng cho chuyến ĐANG CHẠY hoặc ĐÃ HOÀN TẤT — chuyến này chưa từng chạy hoặc đã hủy.");
+
         _db.FuelLogs.Add(new FuelLog
         {
             TripId = id,
@@ -183,6 +189,44 @@ public class TripService : ITripService
         await HandleArrivalAsync(trip);
         await _db.SaveChangesAsync();
         return new ServiceResult(true, null);
+    }
+
+    public async Task<List<WaypointDto>> GetWaypointsAsync(int tripId)
+    {
+        return await _db.Waypoints
+            .Where(w => w.TripId == tripId)
+            .OrderBy(w => w.Timestamp)
+            .Select(w => new WaypointDto(w.Lat, w.Lng, w.Timestamp, w.SpeedKmh))
+            .ToListAsync();
+    }
+
+    public async Task<TripRouteDto?> GetTripRouteAsync(int tripId)
+    {
+        var trip = await _db.Trips
+            .Include(t => t.TransportOrder).ThenInclude(o => o.PickupLocation)
+            .Include(t => t.TransportOrder).ThenInclude(o => o.DropoffLocation)
+            .Include(t => t.Warehouse)
+            .FirstOrDefaultAsync(t => t.Id == tripId);
+
+        if (trip is null) return null;
+
+        double? fromLat, fromLng, toLat, toLng;
+        if (trip.LegType == TripLegType.Pickup)
+        {
+            fromLat = trip.TransportOrder.PickupLocation?.Lat;
+            fromLng = trip.TransportOrder.PickupLocation?.Lng;
+            toLat = trip.Warehouse?.Lat;
+            toLng = trip.Warehouse?.Lng;
+        }
+        else
+        {
+            fromLat = trip.Warehouse?.Lat;
+            fromLng = trip.Warehouse?.Lng;
+            toLat = trip.TransportOrder.DropoffLocation?.Lat;
+            toLng = trip.TransportOrder.DropoffLocation?.Lng;
+        }
+
+        return new TripRouteDto(trip.TransportOrder.Code, trip.LegType.ToString(), fromLat, fromLng, toLat, toLng);
     }
 
     // ================= Logic lõi dùng chung =================
