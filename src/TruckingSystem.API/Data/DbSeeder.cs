@@ -183,12 +183,13 @@ public static class DbSeeder
         await db.SaveChangesAsync();
 
         // 4 vị trí ở Khu A với sức chứa khác nhau để thấy rõ thuật toán Best-Fit
-        // chọn đúng ô vừa khít nhất khi test qua Swagger.
+        // chọn đúng ô vừa khít nhất khi test qua Swagger. Tọa độ đặt KHÔNG đè
+        // lên nhau, nằm gọn trong ranh giới từng khu vực (A: 18x20, B: 10x20).
         db.StorageBins.AddRange(
-            new StorageBin { WarehouseZoneId = zoneNormal.Id, Code = "A-01", CapacityM3 = 5.0m, MaxWeightKg = 2000, CurrentUsedM3 = 0, Row = 0, Column = 0 },
-            new StorageBin { WarehouseZoneId = zoneNormal.Id, Code = "A-02", CapacityM3 = 2.3m, MaxWeightKg = 1000, CurrentUsedM3 = 0, Row = 0, Column = 1 },
-            new StorageBin { WarehouseZoneId = zoneNormal.Id, Code = "A-03", CapacityM3 = 8.0m, MaxWeightKg = 3000, CurrentUsedM3 = 0, Row = 1, Column = 0 },
-            new StorageBin { WarehouseZoneId = zoneFragile.Id, Code = "B-01", CapacityM3 = 3.0m, MaxWeightKg = 800, CurrentUsedM3 = 0, Row = 0, Column = 0 }
+            new StorageBin { WarehouseZoneId = zoneNormal.Id, Code = "A-01", CapacityM3 = 5.0m, MaxWeightKg = 2000, CurrentUsedM3 = 0, PosX = 0, PosY = 0, WidthMeters = 5, HeightMeters = 4 },
+            new StorageBin { WarehouseZoneId = zoneNormal.Id, Code = "A-02", CapacityM3 = 2.3m, MaxWeightKg = 1000, CurrentUsedM3 = 0, PosX = 6, PosY = 0, WidthMeters = 5, HeightMeters = 4 },
+            new StorageBin { WarehouseZoneId = zoneNormal.Id, Code = "A-03", CapacityM3 = 8.0m, MaxWeightKg = 3000, CurrentUsedM3 = 0, PosX = 0, PosY = 5, WidthMeters = 6, HeightMeters = 5 },
+            new StorageBin { WarehouseZoneId = zoneFragile.Id, Code = "B-01", CapacityM3 = 3.0m, MaxWeightKg = 800, CurrentUsedM3 = 0, PosX = 0, PosY = 0, WidthMeters = 4, HeightMeters = 4 }
         );
         await db.SaveChangesAsync();
     }

@@ -9,6 +9,10 @@ public class TransportOrderListItem
     public decimal ProgressPercent { get; set; }
     public string PickupPoint { get; set; } = "";
     public string DropoffPoint { get; set; } = "";
+
+    /// <summary>Hiện kèm tên khách hàng trong dropdown — trước đây chỉ hiện mã
+    /// đơn, khó phân biệt khi có nhiều đơn (nhân viên kho dễ chọn nhầm đơn).</summary>
+    public string DisplayText => $"{Code} — {CustomerName}";
     public string PublicTrackingToken { get; set; } = "";
 }
 

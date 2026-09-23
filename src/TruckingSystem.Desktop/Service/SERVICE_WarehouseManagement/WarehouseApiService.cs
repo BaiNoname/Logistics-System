@@ -34,14 +34,14 @@ namespace TruckingSystem.Desktop.SERVICE_WarehouseManagement
                 new { name, zoneType, posX, posY, widthMeters, heightMeters })!;
 
         /// <summary>Tạo vị trí lưu trữ mới trong 1 khu vực.</summary>
-        public Task<StorageBinItem> CreateBinAsync(int zoneId, string code, decimal capacityM3, decimal maxWeightKg, int row, int column, decimal distanceFromDoorMeters)
+        public Task<StorageBinItem> CreateBinAsync(int zoneId, string code, decimal capacityM3, decimal maxWeightKg, decimal posX, decimal posY, decimal widthMeters, decimal heightMeters, decimal distanceFromDoorMeters)
             => _conn.PostAsync<StorageBinItem>($"/api/warehouses/zones/{zoneId}/bins",
-                new { code, capacityM3, maxWeightKg, row, column, distanceFromDoorMeters })!;
+                new { code, capacityM3, maxWeightKg, posX, posY, widthMeters, heightMeters, distanceFromDoorMeters })!;
 
         /// <summary>Sửa vị trí lưu trữ đã có.</summary>
-        public Task<WarehouseActionResultItem> UpdateBinAsync(int binId, string code, decimal capacityM3, decimal maxWeightKg, int row, int column, decimal distanceFromDoorMeters)
+        public Task<WarehouseActionResultItem> UpdateBinAsync(int binId, string code, decimal capacityM3, decimal maxWeightKg, decimal posX, decimal posY, decimal widthMeters, decimal heightMeters, decimal distanceFromDoorMeters)
             => _conn.PutAsync<WarehouseActionResultItem>($"/api/warehouses/zones/bins/{binId}",
-                new { code, capacityM3, maxWeightKg, row, column, distanceFromDoorMeters })!;
+                new { code, capacityM3, maxWeightKg, posX, posY, widthMeters, heightMeters, distanceFromDoorMeters })!;
 
         /// <summary>Nhập kho thủ công (không gắn Trip). chosenBinId có giá trị →
         /// dùng đúng vị trí đó; null → tự động Best-Fit.</summary>

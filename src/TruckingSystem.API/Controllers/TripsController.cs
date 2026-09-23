@@ -42,6 +42,11 @@ public class TripsController : ControllerBase
         return result.Success ? Ok(result) : BadRequest(result);
     }
 
+    /// <summary>Điểm GPS thực tế đã ghi nhận — dùng để vẽ đường đi thật trên bản đồ.</summary>
+    [HttpGet("{id:int}/waypoints")]
+    public async Task<ActionResult<List<WaypointDto>>> GetWaypoints(int id)
+        => Ok(await _tripService.GetWaypointsAsync(id));
+
     // ---- App tài xế (đã có từ trước) ----
     [HttpPost("{id:int}/ping")]
     public async Task<ActionResult<ServiceResult>> Ping(int id, GpsPingRequest request)

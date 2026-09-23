@@ -26,5 +26,9 @@ namespace TruckingSystem.Desktop.SERVICE_TripManagement
         /// <summary>Ghi nhận 1 lần đổ xăng thực tế.</summary>
         public Task<TripActionResultItem> RecordFuelAsync(int id, decimal liters, decimal cost, string? stationName)
             => _conn.PostAsync<TripActionResultItem>($"/api/trips/{id}/fuel", new { liters, cost, stationName })!;
+
+        /// <summary>Toàn bộ điểm GPS thật đã ghi nhận — vẽ đường đi thực tế trên bản đồ.</summary>
+        public Task<List<WaypointItem>> GetWaypointsAsync(int id)
+            => _conn.GetAsync<List<WaypointItem>>($"/api/trips/{id}/waypoints")!;
     }
 }

@@ -187,8 +187,16 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
         /// WidthMeters, HeightMeters, quy đổi ra pixel theo PixelsPerMeter) —
         /// khác bản trước chỉ hiện thẻ rời rạc không theo tỉ lệ nào cả. Bên trong
         /// vẫn vẽ lưới StorageBin theo Row/Column như cũ, nhưng giờ CO GIÃN vừa
-        /// đúng khung của Zone thay vì cỡ ô cố định 90px.</summary>
-        private static Panel BuildZonePanel(WarehouseZoneItem zone, List<StorageBinItem> bins)
+        /// đúng khung của Zone thay vì cỡ ô cố định 90px.
+        ///
+        /// 2 CẢI TIẾN mới:
+        ///  1. Mỗi ô tô màu ĐÚNG TỈ LỆ % đã dùng (VD: dùng 60% -> 60% ô màu đỏ
+        ///     dâng từ dưới lên, 40% còn lại vẫn xanh) — thay vì trước đây cả ô
+        ///     chỉ 1 màu duy nhất theo ngưỡng, khó phân biệt "còn bao nhiêu %".
+        ///  2. Click trực tiếp vào ô/khu vực trên sơ đồ ĐỂ MỞ NGAY form Sửa —
+        ///     không cần vòng qua "Quản lý khu vực" → double-click → "Quản lý
+        ///     vị trí" → chọn dòng → "Sửa vị trí" như trước, nhanh hơn nhiều.</summary>
+        private Panel BuildZonePanel(WarehouseZoneItem zone, List<StorageBinItem> bins)
         {
             const int headerHeight = 26;
             const int padding = 6;
@@ -202,12 +210,15 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                 Width = Math.Max(60, (int)(zone.WidthMeters * PixelsPerMeter)),
                 Height = Math.Max(60, (int)(zone.HeightMeters * PixelsPerMeter)),
                 BackColor = Theme.CardBg,
+                Cursor = Cursors.Hand,
             };
             zonePanel.Paint += (_, e) =>
             {
                 using var pen = new Pen(zoneColor, 2);
                 e.Graphics.DrawRectangle(pen, 1, 1, zonePanel.Width - 3, zonePanel.Height - 3);
             };
+            // Click vào NỀN khu vực (không phải vào 1 ô vị trí cụ thể) -> mở Sửa khu vực
+            zonePanel.Click += async (_, _) => await OpenEditZoneAsync(zone);
 
             var lblZoneName = new Label
             {
@@ -217,32 +228,42 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                 Top = 4,
                 Left = 6,
                 AutoSize = true,
+                Cursor = Cursors.Hand,
             };
+            lblZoneName.Click += async (_, _) => await OpenEditZoneAsync(zone);
             zonePanel.Controls.Add(lblZoneName);
 
             if (bins.Count == 0) return zonePanel;
 
-            int maxRow = bins.Max(b => b.Row);
-            int maxCol = bins.Max(b => b.Column);
-            var gridAreaWidth = zonePanel.Width - padding * 2;
-            var gridAreaHeight = zonePanel.Height - headerHeight - padding;
-            var cellWidth = gridAreaWidth / (maxCol + 1);
-            var cellHeight = gridAreaHeight / (maxRow + 1);
-            var cellGap = Math.Max(2, Math.Min(cellWidth, cellHeight) / 12);
-
             foreach (var bin in bins)
             {
-                var pct = bin.CapacityM3 == 0 ? 0 : (double)(bin.CurrentUsedM3 / bin.CapacityM3);
-                var cellColor = pct switch { >= 0.85 => Theme.Danger, >= 0.5 => Theme.Warning, _ => Theme.Success };
+                var pct = bin.CapacityM3 == 0 ? 0.0 : Math.Min(1.0, (double)(bin.CurrentUsedM3 / bin.CapacityM3));
 
+                // Vẽ ĐÚNG tọa độ + kích thước thật (mét) của vị trí, TƯƠNG ĐỐI so
+                // với góc trên-trái của khu vực (cùng cơ chế PixelsPerMeter như
+                // cách Khu vực định vị trong Kho) — khác bản trước tự chia đều ô
+                // theo lưới Row/Column, không phản ánh kích thước thật.
                 var cell = new Panel
                 {
-                    Left = padding + bin.Column * cellWidth + cellGap / 2,
-                    Top = headerHeight + bin.Row * cellHeight + cellGap / 2,
-                    Width = Math.Max(4, cellWidth - cellGap),
-                    Height = Math.Max(4, cellHeight - cellGap),
-                    BackColor = cellColor,
+                    Left = padding + (int)(bin.PosX * PixelsPerMeter),
+                    Top = headerHeight + (int)(bin.PosY * PixelsPerMeter),
+                    Width = Math.Max(4, (int)(bin.WidthMeters * PixelsPerMeter)),
+                    Height = Math.Max(4, (int)(bin.HeightMeters * PixelsPerMeter)),
+                    BackColor = Theme.Success, // nền XANH = phần còn TRỐNG
                     Cursor = Cursors.Hand,
+                };
+
+                // Vẽ phần ĐÃ DÙNG dâng từ DƯỚI LÊN, đúng tỉ lệ % — không phải cả
+                // ô 1 màu như trước. VD: 60% đã dùng -> 60% chiều cao ô (tính từ
+                // đáy) tô đỏ, 40% phía trên vẫn giữ màu xanh nền.
+                cell.Paint += (_, e) =>
+                {
+                    if (pct <= 0) return;
+                    var usedColor = pct >= 0.85 ? Theme.Danger : Theme.Warning; // gần đầy -> đỏ đậm hơn, còn lại -> vàng cam
+                    var usedHeight = (int)(cell.Height * pct);
+                    var usedRect = new Rectangle(0, cell.Height - usedHeight, cell.Width, usedHeight);
+                    using var brush = new SolidBrush(usedColor);
+                    e.Graphics.FillRectangle(brush, usedRect);
                 };
 
                 // Chỉ hiện chữ nếu ô đủ lớn để đọc được — ô quá nhỏ (kho nhiều vị
@@ -254,21 +275,49 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                         Text = bin.Code,
                         Font = Theme.FontSmall,
                         ForeColor = Color.White,
+                        BackColor = Color.Transparent,
                         Dock = DockStyle.Fill,
                         TextAlign = ContentAlignment.MiddleCenter,
                         AutoEllipsis = true,
+                        Cursor = Cursors.Hand,
                     };
+                    lblCode.Click += async (_, _) => await OpenEditBinAsync(bin, zone);
                     cell.Controls.Add(lblCode);
                 }
 
-                var tooltip = new ToolTip();
-                var tooltipText = $"{bin.Code}\nĐã dùng: {bin.CurrentUsedM3}/{bin.CapacityM3} m³ ({pct:P0})\nTải tối đa: {bin.MaxWeightKg} kg";
+                // Click vào Ô (kể cả phần chưa có Label che lên) -> mở Sửa vị trí ngay
+                cell.Click += async (_, _) => await OpenEditBinAsync(bin, zone);
+
+                var tooltip = new ToolTip { AutoPopDelay = 15000, InitialDelay = 300 }; // để đủ lâu đọc hết danh sách hàng bên trong
+                var tooltipText = $"{bin.Code}\nĐã dùng: {bin.CurrentUsedM3}/{bin.CapacityM3} m³ ({pct:P0})\nTải tối đa: {bin.MaxWeightKg} kg\n\n" +
+                    (bin.Contents.Count == 0
+                        ? "(Trống — chưa có hàng)"
+                        : "📦 Hàng bên trong:\n" + string.Join("\n", bin.Contents.Select(c =>
+                            $"• Đơn {c.OrderCode} — {c.CustomerName}\n   {c.CargoType}: {c.QtyStored} m³ (nhập {c.ReceivedAt.ToLocalTime():dd/MM HH:mm})"))) +
+                    "\n\n(Click để sửa)";
                 tooltip.SetToolTip(cell, tooltipText);
                 foreach (Control child in cell.Controls) tooltip.SetToolTip(child, tooltipText);
 
                 zonePanel.Controls.Add(cell);
             }
             return zonePanel;
+        }
+
+        /// <summary>Mở form Sửa khu vực ngay từ sơ đồ — vẽ lại sơ đồ ngay sau khi lưu.</summary>
+        private async Task OpenEditZoneAsync(WarehouseZoneItem zone)
+        {
+            if (_api is null) return;
+            using var f = new EditZoneForm(_api, zone);
+            if (f.ShowDialog(FindForm()) == DialogResult.OK) await LoadZonesAsync();
+        }
+
+        /// <summary>Mở form Sửa vị trí ngay từ sơ đồ — vẽ lại sơ đồ ngay sau khi lưu
+        /// (thấy ngay màu/tỉ lệ mới nếu vừa đổi sức chứa).</summary>
+        private async Task OpenEditBinAsync(StorageBinItem bin, WarehouseZoneItem zone)
+        {
+            if (_api is null) return;
+            using var f = new EditBinForm(_api, bin, zone.Name, zone.WidthMeters, zone.HeightMeters);
+            if (f.ShowDialog(FindForm()) == DialogResult.OK) await LoadZonesAsync();
         }
 
         private static string ZoneIcon(string zoneType) => zoneType switch { "Fragile" => "🔷", "Hazmat" => "☣️", _ => "📦" };

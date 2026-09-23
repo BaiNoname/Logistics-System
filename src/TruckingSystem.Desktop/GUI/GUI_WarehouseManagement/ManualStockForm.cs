@@ -44,7 +44,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             {
                 _orders = await _api.TransportOrders.GetTransportOrdersAsync();
                 cboOrder.DataSource = _orders;
-                cboOrder.DisplayMember = nameof(TransportOrderListItem.Code);
+                cboOrder.DisplayMember = nameof(TransportOrderListItem.DisplayText);
                 cboOrder.ValueMember = nameof(TransportOrderListItem.Id);
             }
             catch (Exception ex)

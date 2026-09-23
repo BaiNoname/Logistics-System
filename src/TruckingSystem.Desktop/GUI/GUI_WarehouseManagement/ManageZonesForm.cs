@@ -108,9 +108,9 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
         {
             if (_api is null || grid.CurrentRow is null) return;
             var zoneId = (int)grid.CurrentRow.Cells["Id"].Value;
-            var zoneName = _zones.First(z => z.Id == zoneId).Name;
+            var zone = _zones.First(z => z.Id == zoneId);
 
-            using var f = new ManageBinsForm(_api, zoneId, zoneName);
+            using var f = new ManageBinsForm(_api, zoneId, zone.Name, zone.WidthMeters, zone.HeightMeters);
             f.ShowDialog(FindForm());
             _ = LoadAsync(); // cập nhật lại số vị trí sau khi có thể vừa thêm
         }

@@ -42,7 +42,16 @@ public class WarehousesController : ControllerBase
 
     [HttpPost("{warehouseId:int}/zones")]
     public async Task<ActionResult<WarehouseZoneDto>> CreateZone(int warehouseId, CreateZoneRequest request)
-        => Ok(await _slottingService.CreateZoneAsync(warehouseId, request));
+    {
+        try
+        {
+            return Ok(await _slottingService.CreateZoneAsync(warehouseId, request));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
 
     [HttpPut("zones/{zoneId:int}")]
     public async Task<ActionResult<WarehouseActionResult>> UpdateZone(int zoneId, CreateZoneRequest request)
@@ -53,7 +62,16 @@ public class WarehousesController : ControllerBase
 
     [HttpPost("zones/{zoneId:int}/bins")]
     public async Task<ActionResult<StorageBinDto>> CreateBin(int zoneId, CreateBinRequest request)
-        => Ok(await _slottingService.CreateBinAsync(zoneId, request));
+    {
+        try
+        {
+            return Ok(await _slottingService.CreateBinAsync(zoneId, request));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
 
     [HttpPut("zones/bins/{binId:int}")]
     public async Task<ActionResult<WarehouseActionResult>> UpdateBin(int binId, CreateBinRequest request)
