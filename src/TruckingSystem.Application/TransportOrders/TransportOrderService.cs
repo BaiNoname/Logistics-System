@@ -136,6 +136,16 @@ public class TransportOrderService : ITransportOrderService
         if (order.Status == TransportOrderStatus.Cancelled)
             return new OrderActionResult(false, "Đơn này đã bị hủy từ trước.");
 
+        // CHẶN hủy nếu đơn ĐÃ được chia xe (có Trip) — kể cả khi Status vẫn
+        // đang là "Confirmed" (chưa chuyển InProgress, việc này chỉ xảy ra
+        // khi 1 Trip THẬT SỰ bắt đầu chạy). Lỗ hổng thật: đơn SelfDelivery
+        // nhập kho NGAY khi Chia xe (trước khi Trip nào bắt đầu chạy) — nếu
+        // chỉ dựa vào Status, Dispatcher vẫn hủy được đơn NGAY SAU KHI hàng
+        // đã vào kho, để lại tồn kho "mồ côi" cho 1 đơn đã hủy.
+        var hasTrips = await _db.Trips.AnyAsync(t => t.TransportOrderId == id);
+        if (hasTrips)
+            return new OrderActionResult(false, "Đơn này đã được chia xe (có thể hàng đã vào kho) — không thể hủy. Cần xử lý thủ công (xuất trả hàng...) trước khi hủy.");
+
         order.Status = TransportOrderStatus.Cancelled;
         await _db.SaveChangesAsync();
         return new OrderActionResult(true, null);

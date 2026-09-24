@@ -29,3 +29,24 @@ public class WaypointItem
     public DateTime Timestamp { get; set; }
     public decimal? SpeedKmh { get; set; }
 }
+
+/// <summary>So sánh chi phí xăng ƯỚC TÍNH (từ GPS thật) với chi phí THỰC TẾ đã ghi.</summary>
+public class FuelEstimateItem
+{
+    public decimal ActualDistanceKm { get; set; }
+    public decimal? EstimatedLiters { get; set; }
+    public decimal? EstimatedCost { get; set; }
+    public decimal ActualFuelCost { get; set; }
+    public decimal? VarianceCost { get; set; }
+    public string? Message { get; set; }
+}
+
+/// <summary>Sự cố giữa đường ghi nhận cho 1 chuyến (tai nạn/hỏng xe/vi phạm/khác).</summary>
+public class IncidentReportItem
+{
+    public int Id { get; set; }
+    public string Type { get; set; } = "";
+    public string? Description { get; set; }
+    public DateTime Timestamp { get; set; }
+    public decimal? Cost { get; set; }
+}

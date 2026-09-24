@@ -18,6 +18,8 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
         public CreateVehicleForm()
         {
             InitializeComponent();
+            cboFuelType.Items.AddRange(new object[] { "", "Dầu DO", "Xăng RON95", "Xăng RON92", "Xăng E5" });
+            cboFuelType.SelectedIndex = 0;
         }
 
         public CreateVehicleForm(ApiServices api) : this()
@@ -39,7 +41,9 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
             {
                 await _api.Vehicles.CreateVehicleAsync(
                     txtPlateNumber.Text.Trim(), txtVehicleType.Text.Trim(),
-                    numCapacityQty.Value, numCapacityKg.Value, numCapacityM3.Value);
+                    numCapacityQty.Value, numCapacityKg.Value, numCapacityM3.Value,
+                    numFuelConsumption.Value == 0 ? null : numFuelConsumption.Value,
+                    string.IsNullOrEmpty((string)cboFuelType.SelectedItem!) ? null : (string)cboFuelType.SelectedItem!);
 
                 DialogResult = DialogResult.OK;
                 Close();

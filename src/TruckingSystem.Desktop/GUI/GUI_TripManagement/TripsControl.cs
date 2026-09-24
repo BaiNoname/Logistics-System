@@ -89,6 +89,69 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
             }
         }
 
+        private void BtnIncidents_Click(object? sender, EventArgs e)
+        {
+            var tripId = GetSelectedTripId();
+            if (tripId is null) { ShowNoSelection(); return; }
+            var trip = _trips.FirstOrDefault(t => t.Id == tripId.Value);
+            if (trip is null || _api is null) return;
+
+            using var f = new ManageIncidentsForm(_api, tripId.Value, $"Đơn {trip.OrderCode}");
+            f.ShowDialog(FindForm());
+        }
+
+        private async void BtnFuelEstimate_Click(object? sender, EventArgs e)
+        {
+            var tripId = GetSelectedTripId();
+            if (tripId is null) { ShowNoSelection(); return; }
+            if (_api is null) return;
+
+            try
+            {
+                var est = await _api.Trips.GetFuelEstimateAsync(tripId.Value);
+
+                if (est.Message is not null && est.EstimatedCost is null)
+                {
+                    MessageBox.Show(FindForm(), est.Message, "Chưa ước tính được", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+
+                var variance = est.VarianceCost ?? 0;
+                var varianceText = variance > 0
+                    ? $"⚠️ Tốn THỰC TẾ nhiều hơn ước tính {variance:N0} đ"
+                    : variance < 0
+                        ? $"✅ Tiết kiệm hơn ước tính {Math.Abs(variance):N0} đ"
+                        : "Đúng khớp ước tính";
+
+                var message = $"📏 Khoảng cách THẬT (từ GPS): {est.ActualDistanceKm:0.0} km\n" +
+                              $"⛽ Ước tính tiêu hao: {est.EstimatedLiters:0.0} lít\n" +
+                              $"💰 Chi phí ƯỚC TÍNH: {est.EstimatedCost:N0} đ\n" +
+                              $"💰 Chi phí THỰC TẾ (đã ghi): {est.ActualFuelCost:N0} đ\n\n" +
+                              varianceText;
+
+                MessageBox.Show(FindForm(), message, "So sánh chi phí nhiên liệu", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(FindForm(), "Lỗi: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void BtnDriverInfo_Click(object? sender, EventArgs e)
+        {
+            var tripId = GetSelectedTripId();
+            if (tripId is null) { ShowNoSelection(); return; }
+            if (_api is null) return;
+
+            var serverUrl = _api.Connection.BaseUrl;
+            var message = $"Dán 2 thông tin sau vào app tài xế (Delivery GPS Tracker):\n\n" +
+                          $"Server URL:\n{serverUrl}\n\n" +
+                          $"Trip ID:\n{tripId}";
+
+            Clipboard.SetText($"Server URL: {serverUrl}\nTrip ID: {tripId}");
+            MessageBox.Show(FindForm(), message + "\n\n(Đã copy vào Clipboard)", "Thông tin kết nối tài xế", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+
         private void BtnViewRoute_Click(object? sender, EventArgs e)
         {
             var tripId = GetSelectedTripId();

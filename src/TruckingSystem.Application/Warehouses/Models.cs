@@ -2,14 +2,14 @@
 
 public record SuggestBinRequest(int CargoLineId, decimal QtyToStore);
 
-public record SuggestBinResponse(
-    bool Found,
-    int? StorageBinId,
-    string? BinCode,
-    string? ZoneName,
-    decimal? RemainingAfterM3,
-    string? Message
-);
+/// <summary>1 vị trí cụ thể trong gợi ý — có thể có NHIỀU dòng nếu số lượng
+/// phải CHIA RA nhiều vị trí/khu vực mới đủ chỗ chứa (1 khu không đủ).</summary>
+public record SuggestedAllocationDto(int StorageBinId, string BinCode, string ZoneName, decimal QtyToPlace, decimal RemainingAfterM3);
+
+/// <summary>Found=true khi TỔNG các Allocations cộng lại đủ chứa hết số
+/// lượng yêu cầu — có thể là 1 vị trí duy nhất (trường hợp thường gặp) hoặc
+/// NHIỀU vị trí/khu vực khác nhau khi 1 chỗ không đủ chứa hết.</summary>
+public record SuggestBinResponse(bool Found, List<SuggestedAllocationDto> Allocations, string? Message);
 
 public record WarehouseZoneDto(int Id, string Name, string ZoneType, int BinCount, decimal PosX, decimal PosY, decimal WidthMeters, decimal HeightMeters);
 /// <summary>1 lô hàng cụ thể đang nằm trong 1 vị trí — cho biết RÕ đây là hàng
@@ -42,7 +42,10 @@ public record CreateBinRequest(string Code, decimal CapacityM3, decimal MaxWeigh
 public record ManualStockRequest(int TransportOrderId, int CargoLineId, decimal Qty, int? ChosenBinId = null);
 
 /// <summary>Dùng cho ComboBox chọn dòng hàng trong màn Nhập/Xuất kho thủ công.</summary>
-public record CargoLineOptionDto(int Id, string CargoType, decimal QtyTotal, string OrderCode);
+/// <summary>QtyRemaining = QtyTotal trừ đi tổng đã nhập kho trước đó — dùng
+/// để TỰ ĐỘNG điền sẵn số lượng khi chọn dòng hàng, tránh phải gõ tay và
+/// tính nhẩm mỗi lần (dễ gõ sai, dễ vượt số đã khai báo).</summary>
+public record CargoLineOptionDto(int Id, string CargoType, decimal QtyTotal, decimal QtyRemaining, string OrderCode);
 
 /// <summary>1 dòng lịch sử nhập/xuất kho — gộp chung GoodsReceipt/GoodsIssue để hiện trên cùng 1 bảng.</summary>
 public record WarehouseTransactionDto(string Type, DateTime OccurredAt, string OrderCode, string CargoType, decimal Qty, string ByEmployeeName);
@@ -52,7 +55,9 @@ public record WarehouseActionResult(bool Success, string? Message);
 /// <summary>Kết quả nhập kho — dùng chung bởi VehicleAllocationService (khi
 /// SelfDelivery, hàng coi như về kho ngay) và TripService (khi chặng Pickup
 /// hoàn tất, xe thật sự chở hàng về).</summary>
-public record ReceiveGoodsResult(bool Success, string? Message, int? StorageBinId, string? BinCode);
+/// <summary>BinCodesUsed liệt kê TẤT CẢ vị trí đã dùng để xếp — có thể nhiều
+/// hơn 1 nếu số lượng phải chia ra nhiều vị trí/khu vực.</summary>
+public record ReceiveGoodsResult(bool Success, string? Message, List<string> BinCodesUsed);
 
 /// <summary>Kết quả xuất kho — dùng bởi TripService khi chặng Delivery bắt đầu chạy.</summary>
 public record IssueGoodsResult(bool Success, string? Message);

@@ -192,5 +192,218 @@ public static class DbSeeder
             new StorageBin { WarehouseZoneId = zoneFragile.Id, Code = "B-01", CapacityM3 = 3.0m, MaxWeightKg = 800, CurrentUsedM3 = 0, PosX = 0, PosY = 0, WidthMeters = 4, HeightMeters = 4 }
         );
         await db.SaveChangesAsync();
+
+        // ---- 6. Kho THỨ 2 — chuyên để test "chia nhiều KHU VỰC dễ vỡ" khi 1
+        // khu không đủ chứa hết đơn hàng (đúng kịch bản bạn mô tả: 2 khu Dễ vỡ,
+        // đơn số lượng vượt quá 1 khu, phải cộng dồn cả 2 khu mới đủ chỗ). ----
+        var warehouse2 = new Warehouse
+        {
+            Name = "Kho Hà Nội - Test đa khu Dễ vỡ",
+            Address = "Long Biên, Hà Nội",
+            CapacityM3 = 200,
+            LengthMeters = 20,
+            WidthMeters = 20,
+        };
+        db.Warehouses.Add(warehouse2);
+        await db.SaveChangesAsync();
+
+        // 2 khu DỄ VỠ đặt cạnh nhau (mỗi khu 10x20) — CỐ TÌNH để sức chứa mỗi
+        // khu nhỏ (chỉ 4 m³/khu, tổng 8 m³) để dễ tạo đơn hàng VƯỢT quá 1 khu
+        // (VD: đặt 6 m³) — bắt buộc thuật toán phải chia sang khu thứ 2.
+        var zoneFragileC1 = new WarehouseZone
+        {
+            WarehouseId = warehouse2.Id,
+            Name = "Khu C1 - Dễ vỡ",
+            ZoneType = ZoneType.Fragile,
+            PosX = 0,
+            PosY = 0,
+            WidthMeters = 10,
+            HeightMeters = 20,
+        };
+        var zoneFragileC2 = new WarehouseZone
+        {
+            WarehouseId = warehouse2.Id,
+            Name = "Khu C2 - Dễ vỡ",
+            ZoneType = ZoneType.Fragile,
+            PosX = 10,
+            PosY = 0,
+            WidthMeters = 10,
+            HeightMeters = 20,
+        };
+        db.WarehouseZones.AddRange(zoneFragileC1, zoneFragileC2);
+        await db.SaveChangesAsync();
+
+        db.StorageBins.AddRange(
+            new StorageBin { WarehouseZoneId = zoneFragileC1.Id, Code = "C1-01", CapacityM3 = 4.0m, MaxWeightKg = 500, CurrentUsedM3 = 0, PosX = 0, PosY = 0, WidthMeters = 5, HeightMeters = 4 },
+            new StorageBin { WarehouseZoneId = zoneFragileC2.Id, Code = "C2-01", CapacityM3 = 4.0m, MaxWeightKg = 500, CurrentUsedM3 = 0, PosX = 0, PosY = 0, WidthMeters = 5, HeightMeters = 4 }
+        );
+        await db.SaveChangesAsync();
+
+        // Đơn hàng dễ vỡ, số lượng 6 m³ — VƯỢT quá 1 mình C1-01 (chỉ 4 m³) —
+        // bấm "Gợi ý vị trí" ở kho Hà Nội, chọn đúng dòng hàng này để thấy
+        // thuật toán TỰ CHIA ra cả C1-01 (4 m³) và C2-01 (2 m³).
+        var customer2 = new Customer
+        {
+            Name = "Công ty Gốm Sứ Minh Long",
+            CustomerType = CustomerType.Company,
+            Phone = "0922222222",
+            Address = "45 Trần Phú, Hà Nội",
+        };
+        db.Customers.Add(customer2);
+        await db.SaveChangesAsync();
+
+        var orderSplitTest = new TransportOrder
+        {
+            Code = "TO-DEMO-SPLIT",
+            CustomerId = customer2.Id,
+            PickupPoint = "Xưởng gốm Bát Tràng, Hà Nội",
+            DropoffPoint = "Kho Hà Nội - Test đa khu Dễ vỡ",
+            Status = TransportOrderStatus.Confirmed,
+            CommittedDeliveryDate = DateTime.UtcNow.AddDays(10), // KHÔNG gấp — để thấy đúng logic Best-Fit thường, không phải ưu tiên gần cửa
+        };
+        db.TransportOrders.Add(orderSplitTest);
+        await db.SaveChangesAsync();
+
+        db.CargoLines.Add(new CargoLine
+        {
+            TransportOrderId = orderSplitTest.Id,
+            CargoType = "Gốm sứ dễ vỡ",
+            PackageCount = 60,
+            WeightKg = 1200,
+            VolumeM3 = 6,
+            QtyTotal = 6, // đúng 6 m³ — vượt quá C1-01 (4 m³), phải chia sang C2-01
+            IsFragile = true,
+        });
+        await db.SaveChangesAsync();
+
+        // ---- 7. Đơn hàng NGUY HIỂM nhưng CHƯA có khu Hazmat nào — dùng để
+        // test đúng tình huống bạn phát hiện trước đó: hệ thống phải CHẶN
+        // nhập kho, báo rõ "chưa có khu vực Hàng nguy hiểm phù hợp". ----
+        var orderHazmatTest = new TransportOrder
+        {
+            Code = "TO-DEMO-HAZMAT",
+            CustomerId = customer.Id,
+            PickupPoint = "Nhà máy hóa chất, Long An",
+            DropoffPoint = "Kho TP.HCM",
+            Status = TransportOrderStatus.Confirmed,
+        };
+        db.TransportOrders.Add(orderHazmatTest);
+        await db.SaveChangesAsync();
+
+        db.CargoLines.Add(new CargoLine
+        {
+            TransportOrderId = orderHazmatTest.Id,
+            CargoType = "Hóa chất công nghiệp",
+            PackageCount = 20,
+            WeightKg = 800,
+            VolumeM3 = 2,
+            QtyTotal = 2,
+            IsHazmat = true,
+        });
+        await db.SaveChangesAsync();
+
+        // ---- 8. Giấy tờ xe — 1 CÒN HẠN, 1 ĐÃ HẾT HẠN (test Greedy tự loại xe
+        // hết hạn giấy tờ khi chia xe, và test cảnh báo "⚠️ Đã hết hạn" ở màn
+        // Giấy tờ xe). ----
+        db.VehicleDocuments.AddRange(
+            new VehicleDocument
+            {
+                VehicleId = vehicle.Id,
+                DocType = VehicleDocumentType.Registration,
+                IssueDate = DateTime.UtcNow.AddYears(-1),
+                ExpiryDate = DateTime.UtcNow.AddYears(1), // còn hạn
+            },
+            new VehicleDocument
+            {
+                VehicleId = vehicle.Id,
+                DocType = VehicleDocumentType.Insurance,
+                IssueDate = DateTime.UtcNow.AddYears(-2),
+                ExpiryDate = DateTime.UtcNow.AddDays(-10), // ĐÃ HẾT HẠN 10 ngày trước
+            }
+        );
+        await db.SaveChangesAsync();
+
+        // ---- 9. Hãng xăng + lịch sử giá — test màn Nhiên liệu mới ----
+        var fuelProvider1 = new FuelProvider { Name = "Petrolimex", ContactPhone = "1900545422", Address = "Toàn quốc" };
+        var fuelProvider2 = new FuelProvider { Name = "PV Oil", ContactPhone = "1800545458", Address = "Toàn quốc" };
+        db.FuelProviders.AddRange(fuelProvider1, fuelProvider2);
+        await db.SaveChangesAsync();
+
+        db.FuelPriceHistories.AddRange(
+            new FuelPriceHistory { FuelType = "Dầu DO", Price = 19500, EffectiveDate = DateTime.UtcNow.AddDays(-30), FuelProviderId = fuelProvider1.Id },
+            new FuelPriceHistory { FuelType = "Dầu DO", Price = 19800, EffectiveDate = DateTime.UtcNow.AddDays(-5), FuelProviderId = fuelProvider1.Id },
+            new FuelPriceHistory { FuelType = "Xăng RON95", Price = 21200, EffectiveDate = DateTime.UtcNow.AddDays(-5), FuelProviderId = fuelProvider2.Id },
+            new FuelPriceHistory { FuelType = "Dầu DO", Price = 19600, EffectiveDate = DateTime.UtcNow.AddDays(-3), FuelProviderId = null } // giá thị trường chung, không theo hãng
+        );
+        await db.SaveChangesAsync();
+
+        // ---- 10. Xe thứ 2 + tài xế thứ 2 với BẰNG LÁI ĐÃ HẾT HẠN — test Greedy
+        // tự động LOẠI tài xế này khi chia xe (không bao giờ được chọn). ----
+        var vehicle2 = new Vehicle
+        {
+            PlateNumber = "51D-678.90",
+            VehicleType = "Xe tải 3 tấn",
+            CapacityQty = 3000,
+            CapacityKg = 3000,
+            CapacityM3 = 15,
+            Status = VehicleStatus.Available,
+        };
+        db.Vehicles.Add(vehicle2);
+        await db.SaveChangesAsync();
+
+        var driverUser2 = await userManager.FindByNameAsync("driver2");
+        if (driverUser2 is null)
+        {
+            driverUser2 = new ApplicationUser { UserName = "driver2", Email = "driver2@trucking.local", EmailConfirmed = true };
+            await userManager.CreateAsync(driverUser2, "Driver@123");
+            await userManager.AddToRoleAsync(driverUser2, "Driver");
+        }
+
+        var driverEmployee2 = new Employee
+        {
+            Code = "NV002",
+            FullName = "Trần Văn Hết Hạn",
+            Phone = "0900000002",
+            HireDate = DateTime.UtcNow.AddMonths(-6),
+            Status = EmployeeStatus.Active,
+            DepartmentId = department.Id,
+            PositionId = position.Id,
+            UserId = driverUser2.Id,
+        };
+        db.Employees.Add(driverEmployee2);
+        await db.SaveChangesAsync();
+
+        db.DriverProfiles.Add(new DriverProfile
+        {
+            EmployeeId = driverEmployee2.Id,
+            LicenseNumber = "B2-999999",
+            LicenseClass = "B2",
+            LicenseExpiryDate = DateTime.UtcNow.AddDays(-15), // ĐÃ HẾT HẠN — Greedy phải tự loại
+            YearsOfExperience = 2,
+        });
+        await db.SaveChangesAsync();
+
+        // ---- 11. Đơn hàng CHƯA chia xe — dùng để test trực tiếp nút "Chia xe
+        // (Greedy)" từ đầu, xem đúng quy trình đầy đủ (Xác nhận -> Chia xe ->
+        // Bắt đầu chuyến -> Hoàn tất...). Có đủ 2 dòng hàng để test Greedy đóng
+        // gói nhiều dòng vào 1 xe. ----
+        var orderFreshTest = new TransportOrder
+        {
+            Code = "TO-DEMO-FRESH",
+            CustomerId = customer.Id,
+            PickupPoint = "382 Nguyễn Thị Minh Khai, Q3, TP.HCM",
+            DropoffPoint = "Kho TP.HCM",
+            PickupMethod = PickupMethod.CompanyPickup,
+            Status = TransportOrderStatus.Confirmed,
+            CommittedDeliveryDate = DateTime.UtcNow.AddDays(2), // GẤP — test ưu tiên gần cửa khi nhập kho
+        };
+        db.TransportOrders.Add(orderFreshTest);
+        await db.SaveChangesAsync();
+
+        db.CargoLines.AddRange(
+            new CargoLine { TransportOrderId = orderFreshTest.Id, CargoType = "Thiết bị điện tử", PackageCount = 30, WeightKg = 1500, VolumeM3 = 6, QtyTotal = 1500 },
+            new CargoLine { TransportOrderId = orderFreshTest.Id, CargoType = "Phụ kiện nhựa", PackageCount = 200, WeightKg = 800, VolumeM3 = 3, QtyTotal = 800 }
+        );
+        await db.SaveChangesAsync();
     }
 }

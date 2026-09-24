@@ -31,6 +31,20 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             if (f.ShowDialog(FindForm()) == DialogResult.OK) await LoadAsync();
         }
 
+        private void BtnSchedule_Click(object? sender, EventArgs e)
+        {
+            if (_api is null || grid.CurrentRow is null)
+            {
+                MessageBox.Show(FindForm(), "Vui lòng chọn 1 nhân viên trước.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+            var employeeId = (int)grid.CurrentRow.Cells["Id"].Value;
+            var employee = _employees.First(e => e.Id == employeeId);
+
+            using var f = new ManageDriverScheduleForm(_api, employeeId, employee.FullName);
+            f.ShowDialog(FindForm());
+        }
+
         private async void BtnMakeDriver_Click(object? sender, EventArgs e)
         {
             if (_api is null || grid.CurrentRow is null)

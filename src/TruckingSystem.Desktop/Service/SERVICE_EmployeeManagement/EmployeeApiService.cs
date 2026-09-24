@@ -51,5 +51,16 @@ namespace TruckingSystem.Desktop.SERVICE_EmployeeManagement
                 healthCertExpiryDate,
                 yearsOfExperience,
             })!;
+
+        /// <summary>Danh sách ca làm việc đã đăng ký của 1 tài xế.</summary>
+        public Task<List<DriverScheduleItem>> GetSchedulesAsync(int employeeId)
+            => _conn.GetAsync<List<DriverScheduleItem>>($"/api/employees/{employeeId}/schedules")!;
+
+        /// <summary>Đăng ký 1 ca làm việc mới.</summary>
+        public Task<EmployeeActionResultItem> CreateScheduleAsync(int employeeId, DateTime shiftDate, string shiftType)
+            => _conn.PostAsync<EmployeeActionResultItem>($"/api/employees/{employeeId}/schedules", new { shiftDate, shiftType })!;
+
+        public Task<EmployeeActionResultItem> DeleteScheduleAsync(int scheduleId)
+            => _conn.DeleteAsync<EmployeeActionResultItem>($"/api/employees/schedules/{scheduleId}")!;
     }
 }

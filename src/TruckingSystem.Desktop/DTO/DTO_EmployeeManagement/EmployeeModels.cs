@@ -1,4 +1,4 @@
-namespace TruckingSystem.Desktop.DTO_EmployeeManagement
+﻿namespace TruckingSystem.Desktop.DTO_EmployeeManagement
 {
     public class EmployeeListItem
     {
@@ -32,5 +32,14 @@ namespace TruckingSystem.Desktop.DTO_EmployeeManagement
         public DateTime LicenseExpiryDate { get; set; }
         public DateTime? HealthCertExpiryDate { get; set; }
         public int YearsOfExperience { get; set; }
+    }
+
+    /// <summary>1 ca làm việc đã đăng ký cho tài xế — Greedy dùng để chỉ chọn
+    /// tài xế thật sự đang trong ca hôm nay khi chia xe.</summary>
+    public class DriverScheduleItem
+    {
+        public int Id { get; set; }
+        public DateTime ShiftDate { get; set; }
+        public string ShiftType { get; set; } = "";
     }
 }

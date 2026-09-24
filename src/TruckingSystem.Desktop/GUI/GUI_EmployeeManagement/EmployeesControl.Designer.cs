@@ -18,6 +18,7 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             btnRefresh = new Button();
             btnCreate = new Button();
             btnMakeDriver = new Button();
+            btnSchedule = new Button();
             lblStatus = new Label();
             grid = new DataGridView();
             ((System.ComponentModel.ISupportInitialize)grid).BeginInit();
@@ -82,6 +83,22 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             btnMakeDriver.UseVisualStyleBackColor = false;
             btnMakeDriver.Click += BtnMakeDriver_Click;
             // 
+            // btnSchedule
+            // 
+            btnSchedule.BackColor = Color.White;
+            btnSchedule.Cursor = Cursors.Hand;
+            btnSchedule.FlatAppearance.MouseOverBackColor = Color.FromArgb(248, 250, 252);
+            btnSchedule.FlatStyle = FlatStyle.Flat;
+            btnSchedule.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+            btnSchedule.ForeColor = Color.FromArgb(15, 23, 42);
+            btnSchedule.Location = new Point(1060, 11);
+            btnSchedule.Name = "btnSchedule";
+            btnSchedule.Size = new Size(180, 46);
+            btnSchedule.TabIndex = 4;
+            btnSchedule.Text = "📅 Lịch làm việc";
+            btnSchedule.UseVisualStyleBackColor = false;
+            btnSchedule.Click += BtnSchedule_Click;
+            // 
             // lblStatus
             // 
             lblStatus.AutoSize = true;
@@ -110,10 +127,11 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             Controls.Add(btnRefresh);
             Controls.Add(btnCreate);
             Controls.Add(btnMakeDriver);
+            Controls.Add(btnSchedule);
             Controls.Add(lblStatus);
             Controls.Add(grid);
             Name = "EmployeesControl";
-            Size = new Size(1315, 568);
+            Size = new Size(1450, 568);
             ((System.ComponentModel.ISupportInitialize)grid).EndInit();
             ResumeLayout(false);
             PerformLayout();
@@ -125,6 +143,7 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
         private System.Windows.Forms.Button btnRefresh;
         private System.Windows.Forms.Button btnCreate;
         private System.Windows.Forms.Button btnMakeDriver;
+        private System.Windows.Forms.Button btnSchedule;
         private System.Windows.Forms.Label lblStatus;
         private System.Windows.Forms.DataGridView grid;
     }

@@ -14,97 +14,120 @@ partial class ManageBinsForm
 
     private void InitializeComponent()
     {
-        this.lblTitle = new System.Windows.Forms.Label();
-        this.btnAddBin = new System.Windows.Forms.Button();
-        this.btnEditBin = new System.Windows.Forms.Button();
-        this.btnDeleteBin = new System.Windows.Forms.Button();
-        this.lblStatus = new System.Windows.Forms.Label();
-        this.grid = new System.Windows.Forms.DataGridView();
-        this.SuspendLayout();
-        //
+        lblTitle = new Label();
+        btnAddBin = new Button();
+        btnEditBin = new Button();
+        btnDeleteBin = new Button();
+        lblStatus = new Label();
+        grid = new DataGridView();
+        ((System.ComponentModel.ISupportInitialize)grid).BeginInit();
+        SuspendLayout();
+        // 
         // lblTitle
-        //
-        this.lblTitle.Location = new System.Drawing.Point(20, 16);
-        this.lblTitle.Size = new System.Drawing.Size(400, 32);
-        this.lblTitle.Text = "Vị trí lưu trữ";
-        this.lblTitle.Font = TruckingSystem.Desktop.Common.Theme.FontTitle;
-        this.lblTitle.ForeColor = TruckingSystem.Desktop.Common.Theme.TextPrimary;
-        //
-        //
-        // btnEditBin
-        //
-        this.btnEditBin.Location = new System.Drawing.Point(590, 16);
-        this.btnEditBin.Size = new System.Drawing.Size(130, 38);
-        this.btnEditBin.Text = "✏️ Sửa vị trí";
-        this.btnEditBin.BackColor = System.Drawing.Color.White;
-        this.btnEditBin.ForeColor = TruckingSystem.Desktop.Common.Theme.TextPrimary;
-        this.btnEditBin.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-        this.btnEditBin.Font = TruckingSystem.Desktop.Common.Theme.FontBold;
-        this.btnEditBin.Cursor = System.Windows.Forms.Cursors.Hand;
-        this.btnEditBin.FlatAppearance.BorderSize = 1;
-        this.btnEditBin.Click += new System.EventHandler(this.BtnEditBin_Click);
+        // 
+        lblTitle.Font = new Font("Segoe UI", 18F, FontStyle.Bold);
+        lblTitle.ForeColor = Color.FromArgb(15, 23, 42);
+        lblTitle.Location = new Point(30, 24);
+        lblTitle.Margin = new Padding(4, 0, 4, 0);
+        lblTitle.Name = "lblTitle";
+        lblTitle.Size = new Size(277, 48);
+        lblTitle.TabIndex = 0;
+        lblTitle.Text = "Vị trí lưu trữ";
+        // 
         // btnAddBin
-        //
-        this.btnAddBin.Location = new System.Drawing.Point(730, 16);
-        this.btnAddBin.Size = new System.Drawing.Size(160, 38);
-        this.btnAddBin.Text = "➕ Thêm vị trí mới";
-        this.btnAddBin.BackColor = TruckingSystem.Desktop.Common.Theme.Primary;
-        this.btnAddBin.ForeColor = System.Drawing.Color.White;
-        this.btnAddBin.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-        this.btnAddBin.Font = TruckingSystem.Desktop.Common.Theme.FontBold;
-        this.btnAddBin.Cursor = System.Windows.Forms.Cursors.Hand;
-        this.btnAddBin.FlatAppearance.BorderSize = 0;
-        this.btnAddBin.FlatAppearance.MouseOverBackColor = TruckingSystem.Desktop.Common.Theme.PrimaryDark;
-        this.btnAddBin.Click += new System.EventHandler(this.BtnAddBin_Click);
-        //
+        // 
+        btnAddBin.BackColor = Color.FromArgb(37, 99, 235);
+        btnAddBin.Cursor = Cursors.Hand;
+        btnAddBin.FlatAppearance.BorderSize = 0;
+        btnAddBin.FlatAppearance.MouseOverBackColor = Color.FromArgb(29, 78, 216);
+        btnAddBin.FlatStyle = FlatStyle.Flat;
+        btnAddBin.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+        btnAddBin.ForeColor = Color.White;
+        btnAddBin.Location = new Point(503, 24);
+        btnAddBin.Margin = new Padding(4, 4, 4, 4);
+        btnAddBin.Name = "btnAddBin";
+        btnAddBin.Size = new Size(240, 57);
+        btnAddBin.TabIndex = 1;
+        btnAddBin.Text = "➕ Thêm vị trí mới";
+        btnAddBin.UseVisualStyleBackColor = false;
+        btnAddBin.Click += BtnAddBin_Click;
+        // 
+        // btnEditBin
+        // 
+        btnEditBin.BackColor = Color.White;
+        btnEditBin.Cursor = Cursors.Hand;
+        btnEditBin.FlatStyle = FlatStyle.Flat;
+        btnEditBin.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+        btnEditBin.ForeColor = Color.FromArgb(15, 23, 42);
+        btnEditBin.Location = new Point(751, 24);
+        btnEditBin.Margin = new Padding(4, 4, 4, 4);
+        btnEditBin.Name = "btnEditBin";
+        btnEditBin.Size = new Size(195, 57);
+        btnEditBin.TabIndex = 2;
+        btnEditBin.Text = "✏️ Sửa vị trí";
+        btnEditBin.UseVisualStyleBackColor = false;
+        btnEditBin.Click += BtnEditBin_Click;
+        // 
         // btnDeleteBin
-        //
-        this.btnDeleteBin.Location = new System.Drawing.Point(900, 16);
-        this.btnDeleteBin.Size = new System.Drawing.Size(140, 38);
-        this.btnDeleteBin.Text = "🗑️ Xóa vị trí";
-        this.btnDeleteBin.BackColor = System.Drawing.Color.White;
-        this.btnDeleteBin.ForeColor = TruckingSystem.Desktop.Common.Theme.Danger;
-        this.btnDeleteBin.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-        this.btnDeleteBin.Font = TruckingSystem.Desktop.Common.Theme.FontBold;
-        this.btnDeleteBin.Cursor = System.Windows.Forms.Cursors.Hand;
-        this.btnDeleteBin.FlatAppearance.BorderSize = 1;
-        this.btnDeleteBin.FlatAppearance.BorderColor = TruckingSystem.Desktop.Common.Theme.Danger;
-        this.btnDeleteBin.Click += new System.EventHandler(this.BtnDeleteBin_Click);
-        //
+        // 
+        btnDeleteBin.BackColor = Color.White;
+        btnDeleteBin.Cursor = Cursors.Hand;
+        btnDeleteBin.FlatAppearance.BorderColor = Color.FromArgb(220, 38, 38);
+        btnDeleteBin.FlatStyle = FlatStyle.Flat;
+        btnDeleteBin.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+        btnDeleteBin.ForeColor = Color.FromArgb(220, 38, 38);
+        btnDeleteBin.Location = new Point(954, 24);
+        btnDeleteBin.Margin = new Padding(4, 4, 4, 4);
+        btnDeleteBin.Name = "btnDeleteBin";
+        btnDeleteBin.Size = new Size(210, 57);
+        btnDeleteBin.TabIndex = 3;
+        btnDeleteBin.Text = "🗑️ Xóa vị trí";
+        btnDeleteBin.UseVisualStyleBackColor = false;
+        btnDeleteBin.Click += BtnDeleteBin_Click;
+        // 
         // lblStatus
-        //
-        this.lblStatus.Location = new System.Drawing.Point(20, 56);
-        this.lblStatus.AutoSize = true;
-        this.lblStatus.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
-        this.lblStatus.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
-        //
+        // 
+        lblStatus.AutoSize = true;
+        lblStatus.Font = new Font("Segoe UI", 9F);
+        lblStatus.ForeColor = Color.FromArgb(100, 116, 139);
+        lblStatus.Location = new Point(30, 84);
+        lblStatus.Margin = new Padding(4, 0, 4, 0);
+        lblStatus.Name = "lblStatus";
+        lblStatus.Size = new Size(0, 25);
+        lblStatus.TabIndex = 4;
+        // 
         // grid
-        //
-        ((System.ComponentModel.ISupportInitialize)(this.grid)).BeginInit();
-        this.grid.Location = new System.Drawing.Point(20, 76);
-        this.grid.Size = new System.Drawing.Size(1020, 380);
-        this.grid.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
-        //
+        // 
+        grid.ColumnHeadersHeight = 34;
+        grid.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
+        grid.Location = new Point(30, 114);
+        grid.Margin = new Padding(4, 4, 4, 4);
+        grid.Name = "grid";
+        grid.RowHeadersWidth = 62;
+        grid.Size = new Size(1530, 570);
+        grid.TabIndex = 5;
+        // 
         // ManageBinsForm
-        //
-        this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
-        this.AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
-        this.BackColor = System.Drawing.Color.White;
-        this.ClientSize = new System.Drawing.Size(1060, 500);
-        this.Controls.Add(this.lblTitle);
-        this.Controls.Add(this.btnAddBin);
-        this.Controls.Add(this.btnEditBin);
-        this.Controls.Add(this.btnDeleteBin);
-        this.Controls.Add(this.lblStatus);
-        this.Controls.Add(this.grid);
-        this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
-        this.MaximizeBox = false;
-        this.Name = "ManageBinsForm";
-        this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
-        this.Text = "Vị trí lưu trữ";
-        ((System.ComponentModel.ISupportInitialize)(this.grid)).EndInit();
-        this.ResumeLayout(false);
-        this.PerformLayout();
+        // 
+        AutoScaleDimensions = new SizeF(144F, 144F);
+        AutoScaleMode = AutoScaleMode.Dpi;
+        BackColor = Color.White;
+        ClientSize = new Size(1590, 750);
+        Controls.Add(lblTitle);
+        Controls.Add(btnAddBin);
+        Controls.Add(btnEditBin);
+        Controls.Add(btnDeleteBin);
+        Controls.Add(lblStatus);
+        Controls.Add(grid);
+        FormBorderStyle = FormBorderStyle.FixedDialog;
+        Margin = new Padding(6, 6, 6, 6);
+        MaximizeBox = false;
+        Name = "ManageBinsForm";
+        StartPosition = FormStartPosition.CenterParent;
+        Text = "Vị trí lưu trữ";
+        ((System.ComponentModel.ISupportInitialize)grid).EndInit();
+        ResumeLayout(false);
+        PerformLayout();
     }
 
     #endregion

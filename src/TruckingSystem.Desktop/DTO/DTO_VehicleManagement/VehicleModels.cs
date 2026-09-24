@@ -9,6 +9,8 @@ namespace TruckingSystem.Desktop.DTO_VehicleManagement
         public decimal CapacityKg { get; set; }
         public decimal CapacityM3 { get; set; }
         public string Status { get; set; } = "";
+        public decimal? FuelConsumptionPer100Km { get; set; }
+        public string? FuelType { get; set; }
     }
 
     public class VehicleActionResultItem

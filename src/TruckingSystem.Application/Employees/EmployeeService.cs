@@ -102,4 +102,46 @@ public class EmployeeService : IEmployeeService
 
     public async Task<List<LookupItemDto>> GetPositionsAsync()
         => await _db.Positions.Select(p => new LookupItemDto(p.Id, p.Name)).ToListAsync();
+
+    public async Task<List<DriverScheduleDto>> GetSchedulesAsync(int employeeId)
+    {
+        return await _db.DriverSchedules
+            .Where(s => s.DriverEmployeeId == employeeId)
+            .OrderBy(s => s.ShiftDate)
+            .Select(s => new DriverScheduleDto(s.Id, s.ShiftDate, s.ShiftType.ToString()))
+            .ToListAsync();
+    }
+
+    public async Task<EmployeeActionResult> CreateScheduleAsync(int employeeId, CreateDriverScheduleRequest request)
+    {
+        if (!Enum.TryParse<ShiftType>(request.ShiftType, out var shiftType))
+            return new EmployeeActionResult(false, "Loại ca không hợp lệ.");
+
+        // CHẶN đăng ký trùng — 1 tài xế không thể có 2 dòng lịch cho CÙNG 1
+        // ngày + CÙNG 1 ca (dù có thể đăng ký NHIỀU ca khác nhau trong cùng 1
+        // ngày, VD Sáng + Chiều, nhưng không trùng lặp y hệt).
+        var duplicateExists = await _db.DriverSchedules.AnyAsync(s =>
+            s.DriverEmployeeId == employeeId && s.ShiftDate.Date == request.ShiftDate.Date && s.ShiftType == shiftType);
+        if (duplicateExists)
+            return new EmployeeActionResult(false, "Tài xế này đã có đúng ca này vào ngày này rồi.");
+
+        _db.DriverSchedules.Add(new DriverSchedule
+        {
+            DriverEmployeeId = employeeId,
+            ShiftDate = request.ShiftDate.Date,
+            ShiftType = shiftType,
+        });
+        await _db.SaveChangesAsync();
+        return new EmployeeActionResult(true, null);
+    }
+
+    public async Task<EmployeeActionResult> DeleteScheduleAsync(int scheduleId)
+    {
+        var schedule = await _db.DriverSchedules.FindAsync(scheduleId);
+        if (schedule is null) return new EmployeeActionResult(false, "Không tìm thấy lịch làm việc.");
+
+        _db.DriverSchedules.Remove(schedule);
+        await _db.SaveChangesAsync();
+        return new EmployeeActionResult(true, null);
+    }
 }

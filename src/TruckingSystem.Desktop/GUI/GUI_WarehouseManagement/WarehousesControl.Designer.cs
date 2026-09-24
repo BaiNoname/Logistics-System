@@ -27,13 +27,13 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             testPanel = new Panel();
             lblTestTitle = new Label();
             lblCargoLineId = new Label();
-            numCargoLineId = new NumericUpDown();
+            cboOrderSuggest = new ComboBox();
+            cboCargoLineSuggest = new ComboBox();
             lblQty = new Label();
             numQty = new NumericUpDown();
             btnSuggest = new Button();
             lblResult = new Label();
             testPanel.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)numCargoLineId).BeginInit();
             ((System.ComponentModel.ISupportInitialize)numQty).BeginInit();
             SuspendLayout();
             // 
@@ -81,18 +81,18 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             btnCreateWarehouse.Text = "➕ Thêm kho mới";
             btnCreateWarehouse.UseVisualStyleBackColor = false;
             btnCreateWarehouse.Click += BtnCreateWarehouse_Click;
-            //
+            // 
             // btnEditWarehouse
-            //
+            // 
             btnEditWarehouse.BackColor = Color.White;
             btnEditWarehouse.Cursor = Cursors.Hand;
-            btnEditWarehouse.FlatAppearance.BorderSize = 1;
             btnEditWarehouse.FlatStyle = FlatStyle.Flat;
             btnEditWarehouse.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
             btnEditWarehouse.ForeColor = Color.FromArgb(15, 23, 42);
             btnEditWarehouse.Location = new Point(589, 67);
             btnEditWarehouse.Name = "btnEditWarehouse";
             btnEditWarehouse.Size = new Size(130, 38);
+            btnEditWarehouse.TabIndex = 4;
             btnEditWarehouse.Text = "✏️ Sửa kho";
             btnEditWarehouse.UseVisualStyleBackColor = false;
             btnEditWarehouse.Click += BtnEditWarehouse_Click;
@@ -167,17 +167,19 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             // 
             // testPanel
             // 
+            testPanel.AutoScroll = true;
             testPanel.BackColor = Color.White;
             testPanel.Controls.Add(lblTestTitle);
             testPanel.Controls.Add(lblCargoLineId);
-            testPanel.Controls.Add(numCargoLineId);
+            testPanel.Controls.Add(cboOrderSuggest);
+            testPanel.Controls.Add(cboCargoLineSuggest);
             testPanel.Controls.Add(lblQty);
             testPanel.Controls.Add(numQty);
             testPanel.Controls.Add(btnSuggest);
             testPanel.Controls.Add(lblResult);
             testPanel.Location = new Point(0, 570);
             testPanel.Name = "testPanel";
-            testPanel.Size = new Size(1000, 150);
+            testPanel.Size = new Size(1000, 180);
             testPanel.TabIndex = 8;
             // 
             // lblTestTitle
@@ -198,26 +200,32 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             lblCargoLineId.ForeColor = Color.FromArgb(100, 116, 139);
             lblCargoLineId.Location = new Point(20, 56);
             lblCargoLineId.Name = "lblCargoLineId";
-            lblCargoLineId.Size = new Size(244, 25);
+            lblCargoLineId.Size = new Size(390, 25);
             lblCargoLineId.TabIndex = 1;
-            lblCargoLineId.Text = "Mã dòng hàng (CargoLineId):";
+            lblCargoLineId.Text = "Chọn đơn hàng → dòng hàng cần thử xếp vị trí:";
             // 
-            // numCargoLineId
+            // cboOrderSuggest
             // 
-            numCargoLineId.Location = new Point(20, 76);
-            numCargoLineId.Maximum = new decimal(new int[] { 999999, 0, 0, 0 });
-            numCargoLineId.Minimum = new decimal(new int[] { 1, 0, 0, 0 });
-            numCargoLineId.Name = "numCargoLineId";
-            numCargoLineId.Size = new Size(100, 34);
-            numCargoLineId.TabIndex = 2;
-            numCargoLineId.Value = new decimal(new int[] { 1, 0, 0, 0 });
+            cboOrderSuggest.DropDownStyle = ComboBoxStyle.DropDownList;
+            cboOrderSuggest.Location = new Point(20, 76);
+            cboOrderSuggest.Name = "cboOrderSuggest";
+            cboOrderSuggest.Size = new Size(270, 36);
+            cboOrderSuggest.TabIndex = 2;
+            // 
+            // cboCargoLineSuggest
+            // 
+            cboCargoLineSuggest.DropDownStyle = ComboBoxStyle.DropDownList;
+            cboCargoLineSuggest.Location = new Point(300, 76);
+            cboCargoLineSuggest.Name = "cboCargoLineSuggest";
+            cboCargoLineSuggest.Size = new Size(220, 36);
+            cboCargoLineSuggest.TabIndex = 3;
             // 
             // lblQty
             // 
             lblQty.AutoSize = true;
             lblQty.Font = new Font("Segoe UI", 9F);
             lblQty.ForeColor = Color.FromArgb(100, 116, 139);
-            lblQty.Location = new Point(140, 56);
+            lblQty.Location = new Point(540, 56);
             lblQty.Name = "lblQty";
             lblQty.Size = new Size(192, 25);
             lblQty.TabIndex = 3;
@@ -226,7 +234,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             // numQty
             // 
             numQty.DecimalPlaces = 2;
-            numQty.Location = new Point(140, 76);
+            numQty.Location = new Point(540, 76);
             numQty.Maximum = new decimal(new int[] { 999999, 0, 0, 0 });
             numQty.Minimum = new decimal(new int[] { 1, 0, 0, 65536 });
             numQty.Name = "numQty";
@@ -243,7 +251,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             btnSuggest.FlatStyle = FlatStyle.Flat;
             btnSuggest.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
             btnSuggest.ForeColor = Color.White;
-            btnSuggest.Location = new Point(260, 75);
+            btnSuggest.Location = new Point(660, 75);
             btnSuggest.Name = "btnSuggest";
             btnSuggest.Size = new Size(160, 36);
             btnSuggest.TabIndex = 5;
@@ -255,8 +263,8 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             // 
             lblResult.AutoSize = true;
             lblResult.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
-            lblResult.Location = new Point(460, 60);
-            lblResult.MaximumSize = new Size(600, 80);
+            lblResult.Location = new Point(20, 115);
+            lblResult.MaximumSize = new Size(900, 0);
             lblResult.Name = "lblResult";
             lblResult.Size = new Size(0, 28);
             lblResult.TabIndex = 6;
@@ -280,7 +288,6 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             Size = new Size(1420, 568);
             testPanel.ResumeLayout(false);
             testPanel.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)numCargoLineId).EndInit();
             ((System.ComponentModel.ISupportInitialize)numQty).EndInit();
             ResumeLayout(false);
             PerformLayout();
@@ -301,7 +308,8 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
         private System.Windows.Forms.Panel testPanel;
         private System.Windows.Forms.Label lblTestTitle;
         private System.Windows.Forms.Label lblCargoLineId;
-        private System.Windows.Forms.NumericUpDown numCargoLineId;
+        private System.Windows.Forms.ComboBox cboOrderSuggest;
+        private System.Windows.Forms.ComboBox cboCargoLineSuggest;
         private System.Windows.Forms.Label lblQty;
         private System.Windows.Forms.NumericUpDown numQty;
         private System.Windows.Forms.Button btnSuggest;

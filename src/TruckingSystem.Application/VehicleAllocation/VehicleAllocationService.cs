@@ -101,8 +101,25 @@ public class VehicleAllocationService : IVehicleAllocationService
             .ToListAsync();
         driverIds = driverIds.Except(busyDriverIds).ToList();
 
+        // CHỈ chọn tài xế THẬT SỰ đang trong ca làm việc hôm nay (DriverSchedule)
+        // — trước đây HOÀN TOÀN không kiểm tra lịch làm, coi mọi tài xế Active
+        // đều sẵn sàng bất kể có đăng ký ca hay không. Áp dụng MỀM: tài xế nào
+        // CHƯA TỪNG đăng ký lịch (bảng trống với họ) vẫn coi là sẵn sàng như cũ
+        // (không phá vỡ luồng cũ/dữ liệu demo) — CHỈ loại những tài xế ĐÃ CÓ
+        // đăng ký lịch nhưng KHÔNG có ca nào đúng vào hôm nay.
+        var driversWithAnySchedule = await _db.DriverSchedules
+            .Select(s => s.DriverEmployeeId)
+            .Distinct()
+            .ToListAsync();
+        var scheduledTodayIds = await _db.DriverSchedules
+            .Where(s => s.ShiftDate.Date == today.Date)
+            .Select(s => s.DriverEmployeeId)
+            .Distinct()
+            .ToListAsync();
+        driverIds = driverIds.Where(id => !driversWithAnySchedule.Contains(id) || scheduledTodayIds.Contains(id)).ToList();
+
         if (driverIds.Count == 0)
-            return new AllocateVehiclesResponse(false, totalQtyToShip, 0, new(), "Không có tài xế nào khả dụng (đã hết hạn bằng lái, hoặc tất cả đang bận chuyến khác).");
+            return new AllocateVehiclesResponse(false, totalQtyToShip, 0, new(), "Không có tài xế nào khả dụng (đã hết hạn bằng lái, đang bận chuyến khác, hoặc không có ca làm việc hôm nay).");
 
         // Đơn giản hoá: dùng kho ĐẦU TIÊN hiện có làm kho trung chuyển mặc định
         // — hệ thống hiện chưa có bước chọn kho cụ thể lúc Chia xe. Cải tiến

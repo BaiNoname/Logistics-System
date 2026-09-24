@@ -1,6 +1,7 @@
 using System.Drawing;
 using System.Windows.Forms;
 using TruckingSystem.Desktop.Common;
+using TruckingSystem.Desktop.DTO_TransportOrderManagement;
 using TruckingSystem.Desktop.DTO_WarehouseManagement;
 
 namespace TruckingSystem.Desktop.GUI_WarehouseManagement
@@ -30,16 +31,18 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                 null, zonesPanel, new object[] { true });
 
             cboWarehouse.SelectedIndexChanged += async (_, _) => await LoadZonesAsync();
+            cboOrderSuggest.SelectedIndexChanged += async (_, _) => await LoadCargoLinesForSuggestAsync();
+            cboCargoLineSuggest.SelectedIndexChanged += CboCargoLineSuggest_SelectedIndexChanged;
 
             Resize += (_, _) =>
             {
                 testPanel.Width = Width;
-                testPanel.Top = Height - 160;
+                testPanel.Top = Height - 190;
                 zonesPanel.Width = Width;
                 zonesPanel.Height = testPanel.Top - zonesPanel.Top - 10;
             };
 
-            Load += async (_, _) => await LoadWarehousesAsync();
+            Load += async (_, _) => { await LoadWarehousesAsync(); await LoadOrdersForSuggestAsync(); };
         }
 
         public WarehousesControl(ApiServices api) : this()
@@ -322,6 +325,48 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
 
         private static string ZoneIcon(string zoneType) => zoneType switch { "Fragile" => "🔷", "Hazmat" => "☣️", _ => "📦" };
 
+        private async Task LoadOrdersForSuggestAsync()
+        {
+            if (_api is null) return;
+            try
+            {
+                var orders = await _api.TransportOrders.GetTransportOrdersAsync();
+                cboOrderSuggest.DataSource = orders;
+                cboOrderSuggest.DisplayMember = nameof(TransportOrderListItem.DisplayText);
+                cboOrderSuggest.ValueMember = nameof(TransportOrderListItem.Id);
+            }
+            catch (Exception ex)
+            {
+                lblResult.Text = "Lỗi tải danh sách đơn: " + ex.Message;
+            }
+        }
+
+        /// <summary>Đổ dòng hàng ĐÚNG theo đơn đã chọn — hiện rõ LOẠI HÀNG (không
+        /// chỉ mã số ID trơ trọi như trước), để nhân viên kho biết đang thử
+        /// xếp vị trí cho loại hàng gì. Tự động điền sẵn số lượng CÒN LẠI của
+        /// dòng hàng đó — đỡ phải gõ tay/tính nhẩm mỗi lần.</summary>
+        private async Task LoadCargoLinesForSuggestAsync()
+        {
+            if (_api is null || cboOrderSuggest.SelectedValue is not int orderId) return;
+            try
+            {
+                var lines = await _api.Warehouses.GetCargoLinesForOrderAsync(orderId);
+                cboCargoLineSuggest.DataSource = lines;
+                cboCargoLineSuggest.DisplayMember = nameof(CargoLineOptionItem.CargoType);
+                cboCargoLineSuggest.ValueMember = nameof(CargoLineOptionItem.Id);
+            }
+            catch (Exception ex)
+            {
+                lblResult.Text = "Lỗi tải dòng hàng: " + ex.Message;
+            }
+        }
+
+        private void CboCargoLineSuggest_SelectedIndexChanged(object? sender, EventArgs e)
+        {
+            if (cboCargoLineSuggest.SelectedItem is CargoLineOptionItem line && line.QtyRemaining > 0)
+                numQty.Value = Math.Min(numQty.Maximum, line.QtyRemaining);
+        }
+
         private async Task RunSuggestAsync()
         {
             if (_api is null) return;
@@ -331,14 +376,27 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                 lblResult.ForeColor = Theme.Danger;
                 return;
             }
+            if (cboCargoLineSuggest.SelectedValue is not int cargoLineId)
+            {
+                lblResult.Text = "Vui lòng chọn đơn hàng và dòng hàng trước.";
+                lblResult.ForeColor = Theme.Danger;
+                return;
+            }
             lblResult.Text = "Đang tính toán...";
             lblResult.ForeColor = Theme.TextSecondary;
             try
             {
-                var result = await _api.Warehouses.SuggestBinAsync(warehouseId, (int)numCargoLineId.Value, numQty.Value);
+                var result = await _api.Warehouses.SuggestBinAsync(warehouseId, cargoLineId, numQty.Value);
                 if (result.Found)
                 {
-                    lblResult.Text = $"✅ Đề xuất vị trí: {result.BinCode} ({result.ZoneName})\nDư lại sau khi xếp: {result.RemainingAfterM3:0.00} m³";
+                    // Hiện ĐẦY ĐỦ tất cả vị trí được đề xuất — có thể nhiều hơn 1
+                    // nếu số lượng phải chia ra nhiều vị trí/khu vực mới đủ chỗ.
+                    var lines = result.Allocations.Select(a =>
+                        $"• {a.BinCode} ({a.ZoneName}): xếp {a.QtyToPlace:0.00} m³ — dư lại {a.RemainingAfterM3:0.00} m³");
+                    var header = result.Allocations.Count > 1
+                        ? $"✅ Phải chia ra {result.Allocations.Count} vị trí:"
+                        : "✅ Đề xuất vị trí:";
+                    lblResult.Text = header + "\n" + string.Join("\n", lines) + (result.Message is null ? "" : "\n" + result.Message);
                     lblResult.ForeColor = Theme.Success;
                     await LoadZonesAsync(); // vẽ lại sơ đồ ngay để thấy % thay đổi sau khi test
                 }

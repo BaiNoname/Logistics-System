@@ -18,7 +18,7 @@ public class VehicleService : IVehicleService
     {
         return await _db.Vehicles
             .OrderBy(v => v.PlateNumber)
-            .Select(v => new VehicleListItemDto(v.Id, v.PlateNumber, v.VehicleType, v.CapacityQty, v.CapacityKg, v.CapacityM3, v.Status.ToString()))
+            .Select(v => new VehicleListItemDto(v.Id, v.PlateNumber, v.VehicleType, v.CapacityQty, v.CapacityKg, v.CapacityM3, v.Status.ToString(), v.FuelConsumptionPer100Km, v.FuelType))
             .ToListAsync();
     }
 
@@ -31,13 +31,15 @@ public class VehicleService : IVehicleService
             CapacityQty = request.CapacityQty,
             CapacityKg = request.CapacityKg,
             CapacityM3 = request.CapacityM3,
+            FuelConsumptionPer100Km = request.FuelConsumptionPer100Km,
+            FuelType = request.FuelType,
             Status = VehicleStatus.Available,
         };
 
         _db.Vehicles.Add(vehicle);
         await _db.SaveChangesAsync();
 
-        return new VehicleListItemDto(vehicle.Id, vehicle.PlateNumber, vehicle.VehicleType, vehicle.CapacityQty, vehicle.CapacityKg, vehicle.CapacityM3, vehicle.Status.ToString());
+        return new VehicleListItemDto(vehicle.Id, vehicle.PlateNumber, vehicle.VehicleType, vehicle.CapacityQty, vehicle.CapacityKg, vehicle.CapacityM3, vehicle.Status.ToString(), vehicle.FuelConsumptionPer100Km, vehicle.FuelType);
     }
 
     public async Task<VehicleActionResult> UpdateAsync(int id, UpdateVehicleRequest request)
@@ -54,6 +56,8 @@ public class VehicleService : IVehicleService
         vehicle.CapacityKg = request.CapacityKg;
         vehicle.CapacityM3 = request.CapacityM3;
         vehicle.Status = status;
+        vehicle.FuelConsumptionPer100Km = request.FuelConsumptionPer100Km;
+        vehicle.FuelType = request.FuelType;
 
         await _db.SaveChangesAsync();
         return new VehicleActionResult(true, null);

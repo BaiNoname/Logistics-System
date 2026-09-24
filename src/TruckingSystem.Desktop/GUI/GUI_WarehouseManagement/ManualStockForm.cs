@@ -25,6 +25,11 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             InitializeComponent();
             cboOrder.SelectedIndexChanged += async (_, _) => await LoadCargoLinesAsync();
             cboCargoLine.SelectedIndexChanged += async (_, _) => await LoadAvailableBinsAsync();
+            cboCargoLine.SelectedIndexChanged += (_, _) =>
+            {
+                if (cboCargoLine.SelectedItem is CargoLineOptionItem line && line.QtyRemaining > 0)
+                    numQty.Value = Math.Min(numQty.Maximum, line.QtyRemaining);
+            };
             Theme.StyleGrid(gridHistory);
             Theme.StyleGrid(gridBins);
             gridBins.CellFormatting += GridBins_CellFormatting;
@@ -170,8 +175,9 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                 if (isReceive)
                 {
                     var result = await _api.Warehouses.ReceiveManualAsync(_warehouseId, orderId, cargoLineId, numQty.Value, chosenBinId);
+                    var binCodesText = result.BinCodesUsed.Count > 0 ? string.Join(", ", result.BinCodesUsed) : "(chưa xếp được)";
                     lblStatus.Text = result.Success
-                        ? $"✅ Đã nhập kho — vị trí {result.BinCode ?? "(chưa xếp được)"}"
+                        ? $"✅ Đã nhập kho — vị trí {binCodesText}" + (result.Message is null ? "" : "\n" + result.Message)
                         : "⚠️ " + result.Message;
                     lblStatus.ForeColor = result.Success ? Theme.Success : Theme.Warning;
                 }
