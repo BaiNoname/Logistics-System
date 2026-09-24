@@ -25,6 +25,24 @@ public record WaypointDto(double Lat, double Lng, DateTime Timestamp, decimal? S
 /// <summary>Tọa độ đầu-cuối ĐÚNG theo chặng — dùng cho trang điều hướng công khai.</summary>
 public record TripRouteDto(string OrderCode, string LegType, double? FromLat, double? FromLng, double? ToLat, double? ToLng);
 
+/// <summary>So sánh chi phí xăng ƯỚC TÍNH (tính từ khoảng cách GPS thật x định
+/// mức tiêu hao x giá xăng mới nhất) với chi phí THỰC TẾ đã ghi tay qua
+/// FuelLog — dùng để đo lường mức độ chênh lệch/hiệu quả vận hành.</summary>
+public record FuelEstimateDto(
+    decimal ActualDistanceKm,
+    decimal? EstimatedLiters,
+    decimal? EstimatedCost,
+    decimal ActualFuelCost,
+    decimal? VarianceCost,
+    string? Message
+);
+
+public record IncidentReportDto(int Id, string Type, string? Description, DateTime Timestamp, decimal? Cost);
+
+/// <summary>Báo cáo sự cố giữa đường (tai nạn/hỏng xe/vi phạm giao thông/khác)
+/// — tài xế hoặc Dispatcher ghi nhận khi có sự cố xảy ra trong lúc chạy chuyến.</summary>
+public record CreateIncidentReportRequest(string Type, string? Description, decimal? Cost);
+
 public record ConfirmArrivalRequest(string? Note);
 
 public record ServiceResult(bool Success, string? Message);

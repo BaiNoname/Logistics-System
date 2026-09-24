@@ -58,13 +58,19 @@ namespace TruckingSystem.Desktop.DTO_WarehouseManagement
         public DateTime ReceivedAt { get; set; }
     }
 
+    public class SuggestedAllocationItem
+    {
+        public int StorageBinId { get; set; }
+        public string BinCode { get; set; } = "";
+        public string ZoneName { get; set; } = "";
+        public decimal QtyToPlace { get; set; }
+        public decimal RemainingAfterM3 { get; set; }
+    }
+
     public class SuggestBinResult
     {
         public bool Found { get; set; }
-        public int? StorageBinId { get; set; }
-        public string? BinCode { get; set; }
-        public string? ZoneName { get; set; }
-        public decimal? RemainingAfterM3 { get; set; }
+        public List<SuggestedAllocationItem> Allocations { get; set; } = new();
         public string? Message { get; set; }
     }
 
@@ -74,8 +80,7 @@ namespace TruckingSystem.Desktop.DTO_WarehouseManagement
     {
         public bool Success { get; set; }
         public string? Message { get; set; }
-        public int? StorageBinId { get; set; }
-        public string? BinCode { get; set; }
+        public List<string> BinCodesUsed { get; set; } = new();
     }
 
     public class CargoLineOptionItem
@@ -83,8 +88,9 @@ namespace TruckingSystem.Desktop.DTO_WarehouseManagement
         public int Id { get; set; }
         public string CargoType { get; set; } = "";
         public decimal QtyTotal { get; set; }
+        public decimal QtyRemaining { get; set; }
         public string OrderCode { get; set; } = "";
-        public override string ToString() => $"{CargoType} — {QtyTotal} (đơn {OrderCode})";
+        public override string ToString() => $"{CargoType} — còn {QtyRemaining}/{QtyTotal} (đơn {OrderCode})";
     }
 
     public class WarehouseTransactionItem

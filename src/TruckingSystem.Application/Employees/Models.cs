@@ -14,3 +14,10 @@ public record DriverProfileDto(string LicenseNumber, string LicenseClass, DateTi
 public record UpdateDriverProfileRequest(string LicenseNumber, string LicenseClass, DateTime LicenseExpiryDate, DateTime? HealthCertExpiryDate, int YearsOfExperience);
 
 public record EmployeeActionResult(bool Success, string? Message);
+
+public record DriverScheduleDto(int Id, DateTime ShiftDate, string ShiftType);
+
+/// <summary>Đăng ký ca làm việc cho tài xế vào 1 ngày cụ thể — dùng để Greedy
+/// (Chia xe) chỉ chọn những tài xế THẬT SỰ đang trong ca làm việc hôm đó,
+/// thay vì coi mọi tài xế Active đều sẵn sàng bất kể lịch làm.</summary>
+public record CreateDriverScheduleRequest(DateTime ShiftDate, string ShiftType);

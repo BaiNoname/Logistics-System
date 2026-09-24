@@ -42,6 +42,8 @@ public interface IApplicationDbContext
     DbSet<FuelLog> FuelLogs { get; }
     DbSet<Trip> Trips { get; }
     DbSet<Waypoint> Waypoints { get; }
+    DbSet<IncidentReport> IncidentReports { get; }
+    DbSet<DriverSchedule> DriverSchedules { get; }
 
     DbSet<Invoice> Invoices { get; }
     DbSet<Payment> Payments { get; }

@@ -1576,6 +1576,12 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp without time zone");
 
+                    b.Property<decimal?>("FuelConsumptionPer100Km")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("FuelType")
+                        .HasColumnType("text");
+
                     b.Property<string>("PlateNumber")
                         .IsRequired()
                         .HasColumnType("text");

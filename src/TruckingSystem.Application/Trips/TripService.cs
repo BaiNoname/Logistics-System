@@ -229,6 +229,122 @@ public class TripService : ITripService
         return new TripRouteDto(trip.TransportOrder.Code, trip.LegType.ToString(), fromLat, fromLng, toLat, toLng);
     }
 
+    public async Task<FuelEstimateDto> GetFuelEstimateAsync(int tripId)
+    {
+        var trip = await _db.Trips.Include(t => t.Vehicle).FirstOrDefaultAsync(t => t.Id == tripId);
+        if (trip is null)
+            return new FuelEstimateDto(0, null, null, 0, null, "Không tìm thấy chuyến.");
+
+        // Bước 1: Tính khoảng cách THẬT đã đi — cộng dồn khoảng cách giữa các
+        // điểm GPS liên tiếp (Waypoints app tài xế gửi lên mỗi 30 giây) bằng
+        // công thức Haversine (khoảng cách đường chim bay giữa 2 tọa độ trên
+        // mặt cầu Trái Đất) — CHÍNH XÁC hơn nhiều so với khoảng cách lý thuyết
+        // VietMap Route API tính sẵn, vì đây là đường đi THẬT xe đã chạy.
+        var waypoints = await _db.Waypoints
+            .Where(w => w.TripId == tripId)
+            .OrderBy(w => w.Timestamp)
+            .Select(w => new { w.Lat, w.Lng })
+            .ToListAsync();
+
+        decimal actualDistanceKm = 0;
+        for (int i = 1; i < waypoints.Count; i++)
+        {
+            actualDistanceKm += (decimal)HaversineDistanceKm(
+                waypoints[i - 1].Lat, waypoints[i - 1].Lng,
+                waypoints[i].Lat, waypoints[i].Lng);
+        }
+
+        // Bước 2: Chi phí THỰC TẾ — tổng các lần đổ xăng thực tế đã ghi (FuelLog)
+        var actualCost = trip.ActualFuelCost;
+
+        if (waypoints.Count < 2)
+            return new FuelEstimateDto(actualDistanceKm, null, null, actualCost, null,
+                "Chưa đủ dữ liệu GPS để tính khoảng cách (cần ít nhất 2 điểm ping) — chưa ước tính được.");
+
+        if (trip.Vehicle.FuelConsumptionPer100Km is null || string.IsNullOrEmpty(trip.Vehicle.FuelType))
+            return new FuelEstimateDto(actualDistanceKm, null, null, actualCost, null,
+                "Xe này CHƯA khai báo định mức tiêu hao (L/100km) hoặc loại nhiên liệu — vào Sửa xe để khai báo trước khi ước tính được.");
+
+        // Bước 3: Lấy giá nhiên liệu MỚI NHẤT (tính tới thời điểm chuyến kết
+        // thúc) khớp đúng loại nhiên liệu xe này dùng — ưu tiên giá thị trường
+        // chung (không giới hạn hãng) vì đa số xe không cố định 1 hãng đổ xăng.
+        var referenceDate = trip.EndTime ?? DateTime.UtcNow;
+        var latestPrice = await _db.FuelPriceHistories
+            .Where(p => p.FuelType == trip.Vehicle.FuelType && p.EffectiveDate <= referenceDate)
+            .OrderByDescending(p => p.EffectiveDate)
+            .FirstOrDefaultAsync();
+
+        if (latestPrice is null)
+            return new FuelEstimateDto(actualDistanceKm, null, null, actualCost, null,
+                $"Chưa có giá nhiên liệu '{trip.Vehicle.FuelType}' nào được nhập — vào màn Nhiên liệu để thêm giá trước khi ước tính được.");
+
+        // Bước 4: Tính ước tính = (khoảng cách / 100) x định mức x đơn giá
+        var estimatedLiters = (actualDistanceKm / 100m) * trip.Vehicle.FuelConsumptionPer100Km.Value;
+        var estimatedCost = estimatedLiters * latestPrice.Price;
+        var variance = actualCost - estimatedCost; // dương = tốn thực tế NHIỀU hơn ước tính, âm = tiết kiệm hơn
+
+        // Lưu lại vào Trip.PlannedFuelCost để dùng cho báo cáo sau này (dù tên
+        // field là "Planned", ở đây dùng làm nơi lưu giá trị ƯỚC TÍNH tính
+        // ngược từ GPS thật sau khi chuyến đã chạy xong, không phải dự trù
+        // trước chuyến — tái dùng field có sẵn, tránh phải thêm migration mới).
+        trip.PlannedFuelCost = estimatedCost;
+        await _db.SaveChangesAsync();
+
+        return new FuelEstimateDto(actualDistanceKm, estimatedLiters, estimatedCost, actualCost, variance, null);
+    }
+
+    public async Task<List<IncidentReportDto>> GetIncidentsAsync(int tripId)
+    {
+        return await _db.IncidentReports
+            .Where(i => i.TripId == tripId)
+            .OrderByDescending(i => i.Timestamp)
+            .Select(i => new IncidentReportDto(i.Id, i.Type.ToString(), i.Description, i.Timestamp, i.Cost))
+            .ToListAsync();
+    }
+
+    public async Task<IncidentReportDto> CreateIncidentAsync(int tripId, CreateIncidentReportRequest request)
+    {
+        var type = Enum.TryParse<IncidentType>(request.Type, out var parsed) ? parsed : IncidentType.Other;
+
+        var incident = new IncidentReport
+        {
+            TripId = tripId,
+            Type = type,
+            Description = request.Description,
+            Cost = request.Cost,
+            Timestamp = DateTime.UtcNow,
+        };
+        _db.IncidentReports.Add(incident);
+        await _db.SaveChangesAsync();
+
+        return new IncidentReportDto(incident.Id, incident.Type.ToString(), incident.Description, incident.Timestamp, incident.Cost);
+    }
+
+    public async Task<TripActionResult> DeleteIncidentAsync(int incidentId)
+    {
+        var incident = await _db.IncidentReports.FindAsync(incidentId);
+        if (incident is null) return new TripActionResult(false, "Không tìm thấy sự cố.");
+
+        _db.IncidentReports.Remove(incident);
+        await _db.SaveChangesAsync();
+        return new TripActionResult(true, null);
+    }
+
+    /// <summary>Công thức Haversine — tính khoảng cách (km) đường chim bay
+    /// giữa 2 tọa độ (lat/lng) trên mặt cầu Trái Đất, đủ chính xác cho quãng
+    /// đường ngắn giữa các điểm GPS ping liên tiếp (30 giây/lần).</summary>
+    private static double HaversineDistanceKm(double lat1, double lng1, double lat2, double lng2)
+    {
+        const double earthRadiusKm = 6371.0;
+        var dLat = (lat2 - lat1) * Math.PI / 180.0;
+        var dLng = (lng2 - lng1) * Math.PI / 180.0;
+        var a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
+                Math.Cos(lat1 * Math.PI / 180.0) * Math.Cos(lat2 * Math.PI / 180.0) *
+                Math.Sin(dLng / 2) * Math.Sin(dLng / 2);
+        var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
+        return earthRadiusKm * c;
+    }
+
     // ================= Logic lõi dùng chung =================
 
     private Task<Trip?> LoadTripForArrivalAsync(int id) => _db.Trips

@@ -15,6 +15,7 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
         {
             InitializeComponent();
             cboStatus.Items.AddRange(new object[] { "Available", "OnTrip", "UnderMaintenance", "OutOfService" });
+            cboFuelType.Items.AddRange(new object[] { "", "Dầu DO", "Xăng RON95", "Xăng RON92", "Xăng E5" });
         }
 
         public EditVehicleForm(ApiServices api, VehicleListItem vehicle) : this()
@@ -28,6 +29,8 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
             numCapacityKg.Value = vehicle.CapacityKg;
             numCapacityM3.Value = vehicle.CapacityM3;
             cboStatus.SelectedItem = vehicle.Status;
+            numFuelConsumption.Value = vehicle.FuelConsumptionPer100Km ?? 0;
+            cboFuelType.SelectedItem = vehicle.FuelType ?? "";
         }
 
         private async void BtnSave_Click(object? sender, EventArgs e)
@@ -45,7 +48,9 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
                 var result = await _api.Vehicles.UpdateVehicleAsync(
                     _vehicleId, txtPlateNumber.Text.Trim(), txtVehicleType.Text.Trim(),
                     numCapacityQty.Value, numCapacityKg.Value, numCapacityM3.Value,
-                    (string)cboStatus.SelectedItem!);
+                    (string)cboStatus.SelectedItem!,
+                    numFuelConsumption.Value == 0 ? null : numFuelConsumption.Value,
+                    string.IsNullOrEmpty((string)(cboFuelType.SelectedItem ?? "")) ? null : (string)cboFuelType.SelectedItem!);
 
                 if (!result.Success)
                 {

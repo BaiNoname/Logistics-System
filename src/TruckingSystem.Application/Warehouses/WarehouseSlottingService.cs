@@ -24,57 +24,85 @@ public class WarehouseSlottingService : IWarehouseSlottingService
     {
         var cargo = await _db.CargoLines.Include(c => c.TransportOrder).FirstOrDefaultAsync(c => c.Id == request.CargoLineId);
         if (cargo is null)
-            return new SuggestBinResponse(false, null, null, null, null, "Không tìm thấy dòng hàng (CargoLine).");
+            return new SuggestBinResponse(false, new List<SuggestedAllocationDto>(), "Không tìm thấy dòng hàng (CargoLine).");
 
         // Bước 1: Xác định khu vực phù hợp theo tính chất hàng hóa
         var requiredZoneType = cargo.IsHazmat ? ZoneType.Hazmat
                               : cargo.IsFragile ? ZoneType.Fragile
                               : ZoneType.Normal;
 
-        // Bước 2: Lọc các StorageBin còn đủ chỗ, đúng Zone, thuộc đúng Warehouse
+        // Bước 2: Lọc TẤT CẢ StorageBin còn CHÚT ÍT chỗ trống (> 0), đúng Zone,
+        // thuộc đúng Warehouse — khác bản trước CHỈ lấy bin đủ chứa TOÀN BỘ số
+        // lượng ngay từ đầu, khiến không tìm được gì nếu không có 1 ô nào đủ
+        // lớn, dù CỘNG DỒN nhiều ô lại vẫn thừa sức chứa hết.
         var candidateBins = await _db.StorageBins
             .Include(b => b.WarehouseZone)
             .Where(b => b.WarehouseZone.WarehouseId == warehouseId
                      && b.WarehouseZone.ZoneType == requiredZoneType
-                     && (b.CapacityM3 - b.CurrentUsedM3) >= request.QtyToStore)
+                     && (b.CapacityM3 - b.CurrentUsedM3) > 0)
             .ToListAsync();
 
         if (!candidateBins.Any())
         {
-            return new SuggestBinResponse(false, null, null, null, null,
-                $"Không còn vị trí trống phù hợp trong khu vực '{requiredZoneType}' của kho này.");
+            return new SuggestBinResponse(false, new List<SuggestedAllocationDto>(),
+                $"Không còn vị trí trống nào trong khu vực '{TranslateZoneType(requiredZoneType)}' của kho này.");
         }
 
         // Bước 3: TỐI ƯU THEO ĐỘ KHẨN CẤP (Turnover-based Slotting) + Best-Fit —
-        // Đơn hàng SẮP tới hạn giao (trong vòng 3 ngày) → ưu tiên GẦN CỬA
-        // (DistanceFromDoorMeters nhỏ nhất) trước, Best-Fit chỉ là tiêu chí phụ.
-        // Đơn hàng CHƯA gấp (hoặc không có hẹn giao) → vẫn ưu tiên Best-Fit như
-        // cũ (khoảng trống dư ra nhỏ nhất), nhưng nếu 2 vị trí dư ra bằng nhau
-        // thì cố tình chọn vị trí XA CỬA hơn — để dành chỗ gần cửa cho đơn nào
-        // sau này thật sự gấp.
+        // Đơn hàng SẮP tới hạn giao (trong vòng 3 ngày) → ưu tiên GẦN CỬA trước.
+        // Đơn hàng CHƯA gấp → ưu tiên Best-Fit (khoảng trống dư ra nhỏ nhất khi
+        // xếp HẾT vào đúng 1 ô này), xa cửa hơn nếu bằng nhau.
         var committedDate = cargo.TransportOrder.CommittedDeliveryDate;
         var isUrgent = committedDate.HasValue && (committedDate.Value - DateTime.UtcNow).TotalDays <= 3;
 
-        var scored = candidateBins.Select(b => new
+        // Bước 4: THỬ VỪA 1 Ô DUY NHẤT trước (trường hợp thường gặp nhất) —
+        // trong số các ô ĐỦ CHỖ chứa TOÀN BỘ số lượng, chọn đúng theo tiêu chí
+        // Best-Fit/khẩn cấp như thuật toán gốc.
+        var singleFitCandidates = candidateBins.Where(b => (b.CapacityM3 - b.CurrentUsedM3) >= request.QtyToStore).ToList();
+        if (singleFitCandidates.Any())
         {
-            Bin = b,
-            RemainingAfter = (b.CapacityM3 - b.CurrentUsedM3) - request.QtyToStore,
-        });
+            var scored = singleFitCandidates.Select(b => new { Bin = b, RemainingAfter = (b.CapacityM3 - b.CurrentUsedM3) - request.QtyToStore });
+            var best = isUrgent
+                ? scored.OrderBy(x => x.Bin.DistanceFromDoorMeters).ThenBy(x => x.RemainingAfter).First()
+                : scored.OrderBy(x => x.RemainingAfter).ThenByDescending(x => x.Bin.DistanceFromDoorMeters).First();
 
-        var best = isUrgent
-            ? scored.OrderBy(x => x.Bin.DistanceFromDoorMeters).ThenBy(x => x.RemainingAfter).First()
-            : scored.OrderBy(x => x.RemainingAfter).ThenByDescending(x => x.Bin.DistanceFromDoorMeters).First();
+            var urgencyNote = isUrgent ? " (ưu tiên GẦN CỬA vì đơn sắp tới hạn giao)" : "";
+            return new SuggestBinResponse(true,
+                new List<SuggestedAllocationDto> { new(best.Bin.Id, best.Bin.Code, best.Bin.WarehouseZone.Name, request.QtyToStore, best.RemainingAfter) },
+                isUrgent ? $"Đã chọn vị trí{urgencyNote}." : null);
+        }
 
-        var urgencyNote = isUrgent ? " (ưu tiên GẦN CỬA vì đơn sắp tới hạn giao)" : "";
+        // Bước 5: KHÔNG có ô nào đủ chứa MỘT MÌNH — thử CHIA RA nhiều ô, có
+        // thể ở nhiều KHU VỰC khác nhau (miễn cùng đúng loại Zone yêu cầu).
+        // Sắp theo cùng tiêu chí ưu tiên (gần cửa nếu gấp, còn không thì ô CÒN
+        // ÍT CHỖ NHẤT trước — dồn hàng vào ô gần đầy trước để đỡ phân mảnh),
+        // rồi lấp đầy dần từng ô cho tới khi đủ số lượng.
+        var sortedForSplit = isUrgent
+            ? candidateBins.OrderBy(b => b.DistanceFromDoorMeters).ToList()
+            : candidateBins.OrderBy(b => b.CapacityM3 - b.CurrentUsedM3).ToList();
 
-        return new SuggestBinResponse(
-            Found: true,
-            StorageBinId: best.Bin.Id,
-            BinCode: best.Bin.Code,
-            ZoneName: best.Bin.WarehouseZone.Name,
-            RemainingAfterM3: best.RemainingAfter,
-            Message: isUrgent ? $"Đã chọn vị trí{urgencyNote}." : null
-        );
+        var allocations = new List<SuggestedAllocationDto>();
+        var remainingToPlace = request.QtyToStore;
+        foreach (var bin in sortedForSplit)
+        {
+            if (remainingToPlace <= 0) break;
+            var available = bin.CapacityM3 - bin.CurrentUsedM3;
+            var take = Math.Min(available, remainingToPlace);
+            allocations.Add(new SuggestedAllocationDto(bin.Id, bin.Code, bin.WarehouseZone.Name, take, available - take));
+            remainingToPlace -= take;
+        }
+
+        if (remainingToPlace > 0)
+        {
+            return new SuggestBinResponse(false, new List<SuggestedAllocationDto>(),
+                $"Không đủ chỗ trống trong khu vực '{TranslateZoneType(requiredZoneType)}' — dù cộng dồn TẤT CẢ vị trí còn trống vẫn thiếu {remainingToPlace:0.00} m³. Cần tạo thêm vị trí/khu vực mới.");
+        }
+
+        var zonesUsed = allocations.Select(a => a.ZoneName).Distinct().Count();
+        var splitNote = zonesUsed > 1
+            ? $"⚠️ Số lượng quá lớn, phải CHIA RA {allocations.Count} vị trí thuộc {zonesUsed} khu vực khác nhau mới đủ chỗ."
+            : $"⚠️ Số lượng quá lớn cho 1 vị trí, đã chia ra {allocations.Count} vị trí trong cùng khu vực.";
+        return new SuggestBinResponse(true, allocations, splitNote);
     }
 
     public async Task<List<WarehouseZoneDto>> GetZonesAsync(int warehouseId)
@@ -135,6 +163,18 @@ public class WarehouseSlottingService : IWarehouseSlottingService
     {
         var warehouse = await _db.Warehouses.FindAsync(warehouseId);
         if (warehouse is null) return new WarehouseActionResult(false, "Không tìm thấy kho.");
+
+        // CHẶN thu nhỏ kho khiến các KHU VỰC đã có bên trong bị TRÀN RA NGOÀI
+        // ranh giới mới — trước đây không kiểm tra, đổi kích thước kho nhỏ lại
+        // vẫn cho qua dù khu vực bên trong giờ "lòi ra ngoài" trên sơ đồ.
+        if (request.LengthMeters is decimal newLength && request.WidthMeters is decimal newWidth)
+        {
+            var zones = await _db.WarehouseZones.Where(z => z.WarehouseId == warehouseId).ToListAsync();
+            var overflowingZone = zones.FirstOrDefault(z => z.PosX + z.WidthMeters > newLength || z.PosY + z.HeightMeters > newWidth);
+            if (overflowingZone is not null)
+                return new WarehouseActionResult(false,
+                    $"Không thể thu nhỏ kho xuống {newLength}m x {newWidth}m — khu vực \"{overflowingZone.Name}\" (X={overflowingZone.PosX}, Y={overflowingZone.PosY}, Rộng={overflowingZone.WidthMeters}, Cao={overflowingZone.HeightMeters}) sẽ bị tràn ra ngoài. Cần sửa/xóa khu vực đó trước.");
+        }
 
         warehouse.Name = request.Name;
         warehouse.Address = request.Address;
@@ -209,6 +249,15 @@ public class WarehouseSlottingService : IWarehouseSlottingService
             z.PosX, z.PosY, z.WidthMeters, z.HeightMeters));
         if (overlapping is not null)
             return new WarehouseActionResult(false, $"Vị trí/kích thước này chồng lấn với khu vực \"{overlapping.Name}\" đã có — chọn tọa độ khác.");
+
+        // CHẶN thu nhỏ khu vực khiến các VỊ TRÍ (StorageBin) đã có bên trong
+        // bị TRÀN RA NGOÀI ranh giới mới — cùng logic với Kho→Khu vực ở trên,
+        // áp dụng thêm 1 cấp xuống Khu vực→Vị trí.
+        var binsInZone = await _db.StorageBins.Where(b => b.WarehouseZoneId == zoneId).ToListAsync();
+        var overflowingBin = binsInZone.FirstOrDefault(b => b.PosX + b.WidthMeters > request.WidthMeters || b.PosY + b.HeightMeters > request.HeightMeters);
+        if (overflowingBin is not null)
+            return new WarehouseActionResult(false,
+                $"Không thể thu nhỏ khu vực xuống {request.WidthMeters}m x {request.HeightMeters}m — vị trí \"{overflowingBin.Code}\" (X={overflowingBin.PosX}, Y={overflowingBin.PosY}, Rộng={overflowingBin.WidthMeters}, Cao={overflowingBin.HeightMeters}) sẽ bị tràn ra ngoài. Cần sửa/xóa vị trí đó trước.");
 
         var zoneType = Enum.TryParse<ZoneType>(request.ZoneType, out var parsed) ? parsed : ZoneType.Normal;
 
@@ -360,7 +409,7 @@ public class WarehouseSlottingService : IWarehouseSlottingService
         // thêm 3 nữa — dù là tự động (qua Trip) hay nhập tay đều bị chặn như nhau.
         var cargoLine = await _db.CargoLines.FindAsync(cargoLineId);
         if (cargoLine is null)
-            return new ReceiveGoodsResult(false, "Không tìm thấy dòng hàng (CargoLine).", null, null);
+            return new ReceiveGoodsResult(false, "Không tìm thấy dòng hàng (CargoLine).", new List<string>());
 
         var alreadyReceived = await _db.GoodsReceipts
             .Where(r => r.CargoLineId == cargoLineId)
@@ -371,55 +420,58 @@ public class WarehouseSlottingService : IWarehouseSlottingService
             var remaining = cargoLine.QtyTotal - alreadyReceived;
             return new ReceiveGoodsResult(false,
                 $"Vượt quá số lượng đã khai báo trong đơn — dòng hàng \"{cargoLine.CargoType}\" chỉ khai {cargoLine.QtyTotal}, đã nhập {alreadyReceived}, chỉ còn được nhập tối đa {remaining} nữa.",
-                null, null);
+                new List<string>());
         }
 
-        // XÁC ĐỊNH + KIỂM TRA VỊ TRÍ ĐÍCH TRƯỚC — KHÔNG tạo GoodsReceipt/cộng
-        // tồn kho trước khi chắc chắn có 1 vị trí ĐÚNG KHU VỰC (theo tính chất
-        // hàng: thường/dễ vỡ/nguy hiểm) và ĐỦ CHỖ. Trước đây làm ngược lại (ghi
-        // nhận tồn kho trước, tìm vị trí sau) khiến hàng "biến mất" khỏi sơ đồ
-        // nếu không tìm được chỗ — số liệu tồn kho tổng có nhưng không thấy ở
-        // đâu trên sơ đồ trực quan. Giờ: KHÔNG có vị trí hợp lệ = KHÔNG cho
-        // nhập luôn, chặn từ đầu, không để lại "hàng ma".
+        // XÁC ĐỊNH + KIỂM TRA (các) VỊ TRÍ ĐÍCH TRƯỚC — KHÔNG tạo GoodsReceipt/
+        // cộng tồn kho trước khi chắc chắn có đủ vị trí hợp lệ. Có thể là 1 vị
+        // trí (trường hợp thường gặp) hoặc NHIỀU vị trí/khu vực nếu số lượng
+        // quá lớn cho 1 chỗ — targetAllocations gom (Bin, Số lượng xếp vào bin đó).
         var requiredZoneType = cargoLine.IsHazmat ? ZoneType.Hazmat : cargoLine.IsFragile ? ZoneType.Fragile : ZoneType.Normal;
-        StorageBin targetBin;
+        var targetAllocations = new List<(StorageBin Bin, decimal Qty)>();
 
         if (chosenBinId.HasValue)
         {
-            // NGƯỜI DÙNG TỰ CHỌN VỊ TRÍ — vẫn phải kiểm tra ĐÚNG KHU VỰC, không
-            // được nhét hàng nguy hiểm vào khu thường chỉ vì người dùng tự chọn tay.
+            // NGƯỜI DÙNG TỰ CHỌN VỊ TRÍ — CHỈ 1 vị trí duy nhất (chọn tay thì
+            // không tự động chia nhỏ hộ — nếu không đủ chỗ, báo lỗi để người
+            // dùng tự chọn vị trí khác hoặc chuyển sang chế độ Tự động).
             var chosenBin = await _db.StorageBins.Include(b => b.WarehouseZone).FirstOrDefaultAsync(b => b.Id == chosenBinId.Value);
             if (chosenBin is null)
-                return new ReceiveGoodsResult(false, "Vị trí đã chọn không tồn tại.", null, null);
+                return new ReceiveGoodsResult(false, "Vị trí đã chọn không tồn tại.", new List<string>());
 
             if (chosenBin.WarehouseZone.ZoneType != requiredZoneType)
                 return new ReceiveGoodsResult(false,
                     $"Vị trí {chosenBin.Code} thuộc khu '{TranslateZoneType(chosenBin.WarehouseZone.ZoneType)}', không phù hợp với hàng hóa loại '{TranslateZoneType(requiredZoneType)}' — cần chọn đúng vị trí trong khu vực tương ứng.",
-                    null, null);
+                    new List<string>());
 
             if (chosenBin.CapacityM3 - chosenBin.CurrentUsedM3 < qty)
                 return new ReceiveGoodsResult(false,
-                    $"Vị trí {chosenBin.Code} không đủ chỗ trống ({chosenBin.CapacityM3 - chosenBin.CurrentUsedM3:0.00} m³ còn lại, cần {qty} m³).",
-                    null, null);
+                    $"Vị trí {chosenBin.Code} không đủ chỗ trống ({chosenBin.CapacityM3 - chosenBin.CurrentUsedM3:0.00} m³ còn lại, cần {qty} m³) — thử chọn vị trí khác hoặc chuyển sang \"Tự động (Best-Fit)\" để hệ thống tự chia ra nhiều vị trí nếu cần.",
+                    new List<string>());
 
-            targetBin = chosenBin;
+            targetAllocations.Add((chosenBin, qty));
         }
         else
         {
-            // Chạy Best-Fit tự động chọn vị trí — nếu KHÔNG tìm được vị trí phù
-            // hợp (VD: chưa từng tạo khu Hazmat) -> CHẶN LUÔN, không cho nhập,
-            // báo rõ lý do để Dispatcher đi tạo đúng khu vực trước.
+            // Chạy Best-Fit tự động — CÓ THỂ trả về NHIỀU vị trí nếu 1 chỗ
+            // không đủ chứa hết (SuggestBinAsync tự chia nhỏ khi cần). Nếu
+            // hoàn toàn KHÔNG tìm được đủ chỗ (kể cả cộng dồn) -> CHẶN LUÔN.
             var suggestion = await SuggestBinAsync(warehouseId, new SuggestBinRequest(cargoLineId, qty));
             if (!suggestion.Found)
                 return new ReceiveGoodsResult(false,
-                    $"Không thể nhập kho — kho này CHƯA CÓ khu vực '{TranslateZoneType(requiredZoneType)}' phù hợp (hoặc đã hết chỗ trống). Cần tạo khu vực đúng loại trước khi nhập loại hàng này. Chi tiết: {suggestion.Message}",
-                    null, null);
+                    $"Không thể nhập kho — kho này CHƯA CÓ khu vực '{TranslateZoneType(requiredZoneType)}' phù hợp (hoặc đã hết chỗ trống, kể cả cộng dồn nhiều vị trí). Cần tạo khu vực/vị trí mới trước khi nhập loại hàng này. Chi tiết: {suggestion.Message}",
+                    new List<string>());
 
-            targetBin = (await _db.StorageBins.FindAsync(suggestion.StorageBinId!.Value))!;
+            foreach (var alloc in suggestion.Allocations)
+            {
+                var bin = (await _db.StorageBins.FindAsync(alloc.StorageBinId))!;
+                targetAllocations.Add((bin, alloc.QtyToPlace));
+            }
         }
 
-        // Đến đây CHẮC CHẮN đã có targetBin hợp lệ, đúng khu, đủ chỗ — giờ mới
-        // thật sự ghi nhận: tạo GoodsReceipt, cộng tồn kho, gán vào vị trí.
+        // Đến đây CHẮC CHẮN đã có đủ vị trí hợp lệ, đúng khu, đủ chỗ — giờ mới
+        // thật sự ghi nhận: tạo 1 GoodsReceipt DUY NHẤT (đại diện cho cả lô
+        // hàng), nhưng có thể tạo NHIỀU StorageAssignment (mỗi vị trí 1 dòng).
         var receipt = new GoodsReceipt
         {
             TransportOrderId = transportOrderId,
@@ -442,16 +494,21 @@ public class WarehouseSlottingService : IWarehouseSlottingService
 
         await _db.SaveChangesAsync(); // cần Id thật của GoodsReceipt trước khi tạo StorageAssignment
 
-        targetBin.CurrentUsedM3 += qty;
-        _db.StorageAssignments.Add(new StorageAssignment
+        foreach (var (bin, allocQty) in targetAllocations)
         {
-            GoodsReceiptId = receipt.Id,
-            StorageBinId = targetBin.Id,
-            QtyStored = qty,
-        });
+            bin.CurrentUsedM3 += allocQty;
+            _db.StorageAssignments.Add(new StorageAssignment
+            {
+                GoodsReceiptId = receipt.Id,
+                StorageBinId = bin.Id,
+                QtyStored = allocQty,
+            });
+        }
         await _db.SaveChangesAsync();
 
-        return new ReceiveGoodsResult(true, null, targetBin.Id, targetBin.Code);
+        var binCodesUsed = targetAllocations.Select(a => a.Bin.Code).ToList();
+        var multiNote = binCodesUsed.Count > 1 ? $"⚠️ Đã chia ra {binCodesUsed.Count} vị trí: {string.Join(", ", binCodesUsed)}." : null;
+        return new ReceiveGoodsResult(true, multiNote, binCodesUsed);
     }
 
     private static string TranslateZoneType(ZoneType z) => z switch
@@ -536,11 +593,18 @@ public class WarehouseSlottingService : IWarehouseSlottingService
 
     public async Task<List<CargoLineOptionDto>> GetCargoLinesForOrderAsync(int transportOrderId)
     {
-        return await _db.CargoLines
+        var lines = await _db.CargoLines
             .Include(c => c.TransportOrder)
             .Where(c => c.TransportOrderId == transportOrderId)
-            .Select(c => new CargoLineOptionDto(c.Id, c.CargoType, c.QtyTotal, c.TransportOrder.Code))
             .ToListAsync();
+
+        var result = new List<CargoLineOptionDto>();
+        foreach (var c in lines)
+        {
+            var alreadyReceived = await _db.GoodsReceipts.Where(r => r.CargoLineId == c.Id).SumAsync(r => r.QtyReceived);
+            result.Add(new CargoLineOptionDto(c.Id, c.CargoType, c.QtyTotal, c.QtyTotal - alreadyReceived, c.TransportOrder.Code));
+        }
+        return result;
     }
 
     public async Task<List<WarehouseTransactionDto>> GetTransactionHistoryAsync(int warehouseId)

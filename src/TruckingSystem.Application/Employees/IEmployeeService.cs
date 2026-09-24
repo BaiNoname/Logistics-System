@@ -16,4 +16,12 @@ public interface IEmployeeService
 
     /// <summary>Sửa hồ sơ tài xế đã có.</summary>
     Task<EmployeeActionResult> UpdateDriverProfileAsync(int employeeId, UpdateDriverProfileRequest request);
+
+    /// <summary>Danh sách ca làm việc đã đăng ký của 1 tài xế.</summary>
+    Task<List<DriverScheduleDto>> GetSchedulesAsync(int employeeId);
+
+    /// <summary>Đăng ký 1 ca làm việc mới cho tài xế.</summary>
+    Task<EmployeeActionResult> CreateScheduleAsync(int employeeId, CreateDriverScheduleRequest request);
+
+    Task<EmployeeActionResult> DeleteScheduleAsync(int scheduleId);
 }

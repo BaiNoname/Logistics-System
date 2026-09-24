@@ -42,7 +42,7 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
             btnRefresh.FlatStyle = FlatStyle.Flat;
             btnRefresh.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
             btnRefresh.ForeColor = Color.FromArgb(15, 23, 42);
-            btnRefresh.Location = new Point(741, 0);
+            btnRefresh.Location = new Point(373, 11);
             btnRefresh.Name = "btnRefresh";
             btnRefresh.Size = new Size(149, 38);
             btnRefresh.TabIndex = 1;
@@ -50,24 +50,6 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
             btnRefresh.UseVisualStyleBackColor = false;
             btnRefresh.Click += BtnRefresh_Click;
             // 
-            //
-            // btnEdit
-            //
-            btnEdit.BackColor = Color.White;
-            btnEdit.Cursor = Cursors.Hand;
-            btnEdit.FlatAppearance.BorderSize = 1;
-            btnEdit.FlatAppearance.MouseOverBackColor = Color.FromArgb(248, 250, 252);
-            btnEdit.FlatStyle = FlatStyle.Flat;
-            btnEdit.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
-            btnEdit.ForeColor = Color.FromArgb(15, 23, 42);
-            btnEdit.Location = new Point(730, 0);
-            btnEdit.Name = "btnEdit";
-            btnEdit.Size = new Size(150, 38);
-            btnEdit.TabIndex = 3;
-            btnEdit.Text = "✏️ Sửa xe";
-            btnEdit.UseVisualStyleBackColor = false;
-            btnEdit.Click += BtnEdit_Click;
-            //
             // btnCreate
             // 
             btnCreate.BackColor = Color.FromArgb(37, 99, 235);
@@ -77,28 +59,44 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
             btnCreate.FlatStyle = FlatStyle.Flat;
             btnCreate.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
             btnCreate.ForeColor = Color.White;
-            btnCreate.Location = new Point(900, 0);
+            btnCreate.Location = new Point(528, 11);
             btnCreate.Name = "btnCreate";
             btnCreate.Size = new Size(150, 38);
             btnCreate.TabIndex = 2;
             btnCreate.Text = "➕ Thêm xe mới";
             btnCreate.UseVisualStyleBackColor = false;
             btnCreate.Click += BtnCreate_Click;
-            //
+            // 
             // btnDocuments
-            //
+            // 
             btnDocuments.BackColor = Color.White;
             btnDocuments.Cursor = Cursors.Hand;
-            btnDocuments.FlatAppearance.BorderSize = 1;
             btnDocuments.FlatStyle = FlatStyle.Flat;
             btnDocuments.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
             btnDocuments.ForeColor = Color.FromArgb(15, 23, 42);
-            btnDocuments.Location = new Point(1060, 0);
+            btnDocuments.Location = new Point(840, 11);
             btnDocuments.Name = "btnDocuments";
             btnDocuments.Size = new Size(160, 38);
+            btnDocuments.TabIndex = 3;
             btnDocuments.Text = "📄 Giấy tờ xe";
             btnDocuments.UseVisualStyleBackColor = false;
             btnDocuments.Click += BtnDocuments_Click;
+            // 
+            // btnEdit
+            // 
+            btnEdit.BackColor = Color.White;
+            btnEdit.Cursor = Cursors.Hand;
+            btnEdit.FlatAppearance.MouseOverBackColor = Color.FromArgb(248, 250, 252);
+            btnEdit.FlatStyle = FlatStyle.Flat;
+            btnEdit.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+            btnEdit.ForeColor = Color.FromArgb(15, 23, 42);
+            btnEdit.Location = new Point(684, 11);
+            btnEdit.Name = "btnEdit";
+            btnEdit.Size = new Size(150, 38);
+            btnEdit.TabIndex = 3;
+            btnEdit.Text = "✏️ Sửa xe";
+            btnEdit.UseVisualStyleBackColor = false;
+            btnEdit.Click += BtnEdit_Click;
             // 
             // lblStatus
             // 

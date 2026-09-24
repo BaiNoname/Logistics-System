@@ -15,11 +15,11 @@ namespace TruckingSystem.Desktop.SERVICE_VehicleManagement
         public Task<List<VehicleListItem>> GetVehiclesAsync()
             => _conn.GetAsync<List<VehicleListItem>>("/api/vehicles")!;
 
-        public Task CreateVehicleAsync(string plateNumber, string vehicleType, decimal capacityQty, decimal capacityKg, decimal capacityM3)
-            => _conn.PostAsync<object>("/api/vehicles", new { plateNumber, vehicleType, capacityQty, capacityKg, capacityM3 });
+        public Task CreateVehicleAsync(string plateNumber, string vehicleType, decimal capacityQty, decimal capacityKg, decimal capacityM3, decimal? fuelConsumptionPer100Km, string? fuelType)
+            => _conn.PostAsync<object>("/api/vehicles", new { plateNumber, vehicleType, capacityQty, capacityKg, capacityM3, fuelConsumptionPer100Km, fuelType });
 
-        public Task<VehicleActionResultItem> UpdateVehicleAsync(int id, string plateNumber, string vehicleType, decimal capacityQty, decimal capacityKg, decimal capacityM3, string status)
-            => _conn.PutAsync<VehicleActionResultItem>($"/api/vehicles/{id}", new { plateNumber, vehicleType, capacityQty, capacityKg, capacityM3, status })!;
+        public Task<VehicleActionResultItem> UpdateVehicleAsync(int id, string plateNumber, string vehicleType, decimal capacityQty, decimal capacityKg, decimal capacityM3, string status, decimal? fuelConsumptionPer100Km, string? fuelType)
+            => _conn.PutAsync<VehicleActionResultItem>($"/api/vehicles/{id}", new { plateNumber, vehicleType, capacityQty, capacityKg, capacityM3, status, fuelConsumptionPer100Km, fuelType })!;
 
         public Task<List<VehicleDocumentItem>> GetDocumentsAsync(int vehicleId)
             => _conn.GetAsync<List<VehicleDocumentItem>>($"/api/vehicles/{vehicleId}/documents")!;

@@ -14,97 +14,120 @@ partial class ManageZonesForm
 
     private void InitializeComponent()
     {
-        this.lblTitle = new System.Windows.Forms.Label();
-        this.btnAddZone = new System.Windows.Forms.Button();
-        this.btnEditZone = new System.Windows.Forms.Button();
-        this.btnDeleteZone = new System.Windows.Forms.Button();
-        this.lblStatus = new System.Windows.Forms.Label();
-        this.grid = new System.Windows.Forms.DataGridView();
-        this.SuspendLayout();
-        //
+        lblTitle = new Label();
+        btnAddZone = new Button();
+        btnEditZone = new Button();
+        btnDeleteZone = new Button();
+        lblStatus = new Label();
+        grid = new DataGridView();
+        ((System.ComponentModel.ISupportInitialize)grid).BeginInit();
+        SuspendLayout();
+        // 
         // lblTitle
-        //
-        this.lblTitle.Location = new System.Drawing.Point(20, 16);
-        this.lblTitle.Size = new System.Drawing.Size(400, 32);
-        this.lblTitle.Text = "Quản lý khu vực trong kho";
-        this.lblTitle.Font = TruckingSystem.Desktop.Common.Theme.FontTitle;
-        this.lblTitle.ForeColor = TruckingSystem.Desktop.Common.Theme.TextPrimary;
-        //
-        //
-        // btnEditZone
-        //
-        this.btnEditZone.Location = new System.Drawing.Point(590, 16);
-        this.btnEditZone.Size = new System.Drawing.Size(130, 38);
-        this.btnEditZone.Text = "✏️ Sửa khu vực";
-        this.btnEditZone.BackColor = System.Drawing.Color.White;
-        this.btnEditZone.ForeColor = TruckingSystem.Desktop.Common.Theme.TextPrimary;
-        this.btnEditZone.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-        this.btnEditZone.Font = TruckingSystem.Desktop.Common.Theme.FontBold;
-        this.btnEditZone.Cursor = System.Windows.Forms.Cursors.Hand;
-        this.btnEditZone.FlatAppearance.BorderSize = 1;
-        this.btnEditZone.Click += new System.EventHandler(this.BtnEditZone_Click);
+        // 
+        lblTitle.Font = new Font("Segoe UI", 18F, FontStyle.Bold);
+        lblTitle.ForeColor = Color.FromArgb(15, 23, 42);
+        lblTitle.Location = new Point(30, 24);
+        lblTitle.Margin = new Padding(4, 0, 4, 0);
+        lblTitle.Name = "lblTitle";
+        lblTitle.Size = new Size(600, 48);
+        lblTitle.TabIndex = 0;
+        lblTitle.Text = "Quản lý khu vực trong kho";
+        // 
         // btnAddZone
-        //
-        this.btnAddZone.Location = new System.Drawing.Point(730, 16);
-        this.btnAddZone.Size = new System.Drawing.Size(160, 38);
-        this.btnAddZone.Text = "➕ Thêm khu vực mới";
-        this.btnAddZone.BackColor = TruckingSystem.Desktop.Common.Theme.Primary;
-        this.btnAddZone.ForeColor = System.Drawing.Color.White;
-        this.btnAddZone.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-        this.btnAddZone.Font = TruckingSystem.Desktop.Common.Theme.FontBold;
-        this.btnAddZone.Cursor = System.Windows.Forms.Cursors.Hand;
-        this.btnAddZone.FlatAppearance.BorderSize = 0;
-        this.btnAddZone.FlatAppearance.MouseOverBackColor = TruckingSystem.Desktop.Common.Theme.PrimaryDark;
-        this.btnAddZone.Click += new System.EventHandler(this.BtnAddZone_Click);
-        //
+        // 
+        btnAddZone.BackColor = Color.FromArgb(37, 99, 235);
+        btnAddZone.Cursor = Cursors.Hand;
+        btnAddZone.FlatAppearance.BorderSize = 0;
+        btnAddZone.FlatAppearance.MouseOverBackColor = Color.FromArgb(29, 78, 216);
+        btnAddZone.FlatStyle = FlatStyle.Flat;
+        btnAddZone.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+        btnAddZone.ForeColor = Color.White;
+        btnAddZone.Location = new Point(886, 24);
+        btnAddZone.Margin = new Padding(4, 4, 4, 4);
+        btnAddZone.Name = "btnAddZone";
+        btnAddZone.Size = new Size(240, 57);
+        btnAddZone.TabIndex = 1;
+        btnAddZone.Text = "➕ Thêm khu vực mới";
+        btnAddZone.UseVisualStyleBackColor = false;
+        btnAddZone.Click += BtnAddZone_Click;
+        // 
+        // btnEditZone
+        // 
+        btnEditZone.BackColor = Color.White;
+        btnEditZone.Cursor = Cursors.Hand;
+        btnEditZone.FlatStyle = FlatStyle.Flat;
+        btnEditZone.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+        btnEditZone.ForeColor = Color.FromArgb(15, 23, 42);
+        btnEditZone.Location = new Point(676, 24);
+        btnEditZone.Margin = new Padding(4, 4, 4, 4);
+        btnEditZone.Name = "btnEditZone";
+        btnEditZone.Size = new Size(195, 57);
+        btnEditZone.TabIndex = 2;
+        btnEditZone.Text = "✏️ Sửa khu vực";
+        btnEditZone.UseVisualStyleBackColor = false;
+        btnEditZone.Click += BtnEditZone_Click;
+        // 
         // btnDeleteZone
-        //
-        this.btnDeleteZone.Location = new System.Drawing.Point(900, 16);
-        this.btnDeleteZone.Size = new System.Drawing.Size(140, 38);
-        this.btnDeleteZone.Text = "🗑️ Xóa khu vực";
-        this.btnDeleteZone.BackColor = System.Drawing.Color.White;
-        this.btnDeleteZone.ForeColor = TruckingSystem.Desktop.Common.Theme.Danger;
-        this.btnDeleteZone.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-        this.btnDeleteZone.Font = TruckingSystem.Desktop.Common.Theme.FontBold;
-        this.btnDeleteZone.Cursor = System.Windows.Forms.Cursors.Hand;
-        this.btnDeleteZone.FlatAppearance.BorderSize = 1;
-        this.btnDeleteZone.FlatAppearance.BorderColor = TruckingSystem.Desktop.Common.Theme.Danger;
-        this.btnDeleteZone.Click += new System.EventHandler(this.BtnDeleteZone_Click);
-        //
+        // 
+        btnDeleteZone.BackColor = Color.White;
+        btnDeleteZone.Cursor = Cursors.Hand;
+        btnDeleteZone.FlatAppearance.BorderColor = Color.FromArgb(220, 38, 38);
+        btnDeleteZone.FlatStyle = FlatStyle.Flat;
+        btnDeleteZone.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+        btnDeleteZone.ForeColor = Color.FromArgb(220, 38, 38);
+        btnDeleteZone.Location = new Point(1141, 24);
+        btnDeleteZone.Margin = new Padding(4, 4, 4, 4);
+        btnDeleteZone.Name = "btnDeleteZone";
+        btnDeleteZone.Size = new Size(210, 57);
+        btnDeleteZone.TabIndex = 3;
+        btnDeleteZone.Text = "🗑️ Xóa khu vực";
+        btnDeleteZone.UseVisualStyleBackColor = false;
+        btnDeleteZone.Click += BtnDeleteZone_Click;
+        // 
         // lblStatus
-        //
-        this.lblStatus.Location = new System.Drawing.Point(20, 56);
-        this.lblStatus.AutoSize = true;
-        this.lblStatus.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
-        this.lblStatus.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
-        //
+        // 
+        lblStatus.AutoSize = true;
+        lblStatus.Font = new Font("Segoe UI", 9F);
+        lblStatus.ForeColor = Color.FromArgb(100, 116, 139);
+        lblStatus.Location = new Point(30, 84);
+        lblStatus.Margin = new Padding(4, 0, 4, 0);
+        lblStatus.Name = "lblStatus";
+        lblStatus.Size = new Size(0, 25);
+        lblStatus.TabIndex = 4;
+        // 
         // grid
-        //
-        ((System.ComponentModel.ISupportInitialize)(this.grid)).BeginInit();
-        this.grid.Location = new System.Drawing.Point(20, 76);
-        this.grid.Size = new System.Drawing.Size(1020, 380);
-        this.grid.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
-        //
+        // 
+        grid.ColumnHeadersHeight = 34;
+        grid.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
+        grid.Location = new Point(30, 114);
+        grid.Margin = new Padding(4, 4, 4, 4);
+        grid.Name = "grid";
+        grid.RowHeadersWidth = 62;
+        grid.Size = new Size(1530, 570);
+        grid.TabIndex = 5;
+        // 
         // ManageZonesForm
-        //
-        this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
-        this.AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
-        this.BackColor = System.Drawing.Color.White;
-        this.ClientSize = new System.Drawing.Size(1060, 500);
-        this.Controls.Add(this.lblTitle);
-        this.Controls.Add(this.btnAddZone);
-        this.Controls.Add(this.btnEditZone);
-        this.Controls.Add(this.btnDeleteZone);
-        this.Controls.Add(this.lblStatus);
-        this.Controls.Add(this.grid);
-        this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
-        this.MaximizeBox = false;
-        this.Name = "ManageZonesForm";
-        this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
-        this.Text = "Quản lý khu vực trong kho";
-        ((System.ComponentModel.ISupportInitialize)(this.grid)).EndInit();
-        this.ResumeLayout(false);
-        this.PerformLayout();
+        // 
+        AutoScaleDimensions = new SizeF(144F, 144F);
+        AutoScaleMode = AutoScaleMode.Dpi;
+        BackColor = Color.White;
+        ClientSize = new Size(1590, 750);
+        Controls.Add(lblTitle);
+        Controls.Add(btnAddZone);
+        Controls.Add(btnEditZone);
+        Controls.Add(btnDeleteZone);
+        Controls.Add(lblStatus);
+        Controls.Add(grid);
+        FormBorderStyle = FormBorderStyle.FixedDialog;
+        Margin = new Padding(6, 6, 6, 6);
+        MaximizeBox = false;
+        Name = "ManageZonesForm";
+        StartPosition = FormStartPosition.CenterParent;
+        Text = "Quản lý khu vực trong kho";
+        ((System.ComponentModel.ISupportInitialize)grid).EndInit();
+        ResumeLayout(false);
+        PerformLayout();
     }
 
     #endregion
