@@ -26,8 +26,7 @@ public class Employee : BaseEntity
     // FK tới AspNetUsers.Id (kiểu string vì Identity dùng string Id) — nullable
     public string? UserId { get; set; }
 
-    public int? BranchId { get; set; }
-    public Branch? Branch { get; set; }
+
 
     public DriverProfile? DriverProfile { get; set; }
     public ICollection<EmployeeDocument> Documents { get; set; } = new List<EmployeeDocument>();

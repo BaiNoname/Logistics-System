@@ -23,8 +23,15 @@ public class Vehicle : BaseEntity
     /// đúng giá mới nhất khi tính chi phí ước tính.</summary>
     public string? FuelType { get; set; }
 
-    public int? BranchId { get; set; }
-    public Branch? Branch { get; set; }
+
+
+    /// <summary>Kho/bãi mà xe này ĐÓNG QUÂN (xuất phát + quay về sau mỗi
+    /// chuyến) — dùng để Greedy CHỈ chọn xe đang đậu ĐÚNG kho của đơn hàng,
+    /// tránh trường hợp vô lý điều xe đang đậu Hà Nội đi lấy hàng ở Bình
+    /// Dương. NULL = xe CHƯA gán kho cố định, vẫn coi là dùng được cho MỌI
+    /// đơn (áp dụng mềm, không phá dữ liệu demo/xe cũ chưa kịp gán kho).</summary>
+    public int? WarehouseId { get; set; }
+    public Warehouse? Warehouse { get; set; }
 
     public ICollection<VehicleDocument> Documents { get; set; } = new List<VehicleDocument>();
     public ICollection<Trip> Trips { get; set; } = new List<Trip>();

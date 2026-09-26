@@ -20,6 +20,15 @@ public class TransportOrder : BaseEntity
     public string PickupPoint { get; set; } = string.Empty;
     public string DropoffPoint { get; set; } = string.Empty;
 
+    /// <summary>Kho trung chuyển dùng cho đơn này — chọn NGAY LÚC TẠO ĐƠN, do
+    /// Dispatcher biết rõ tuyến đường (VD: đơn từ Bình Dương ra Hà Nội thì nên
+    /// chọn Kho Hà Nội hoặc kho gần điểm giao nhất). Trước đây hệ thống TỰ
+    /// ĐỘNG lấy kho ĐẦU TIÊN trong hệ thống bất kể đơn đi đâu — sai thực tế,
+    /// gây ra lộ trình vô lý (kho không liên quan gì tới tuyến đường của đơn).
+    /// Cả 2 chặng (Pickup + Delivery) đều dùng ĐÚNG kho này làm điểm giữa.</summary>
+    public int WarehouseId { get; set; }
+    public Warehouse Warehouse { get; set; } = null!;
+
     // Tùy chọn — nếu chọn từ Location đã lưu thì có tọa độ, nếu gõ tay thì chỉ có text ở trên.
     public int? PickupLocationId { get; set; }
     public Location? PickupLocation { get; set; }
@@ -36,8 +45,7 @@ public class TransportOrder : BaseEntity
     /// <summary>Tiến độ %, tính lại mỗi khi TripLine cập nhật QtyDelivered.</summary>
     public decimal ProgressPercent { get; set; }
 
-    public int? BranchId { get; set; }
-    public Branch? Branch { get; set; }
+
 
     /// <summary>Token ngẫu nhiên (GUID) dùng cho link công khai /track/{token} — không cần đăng nhập.</summary>
     public string PublicTrackingToken { get; set; } = Guid.NewGuid().ToString("N");

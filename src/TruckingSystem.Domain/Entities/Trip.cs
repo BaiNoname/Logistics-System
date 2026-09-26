@@ -32,6 +32,15 @@ public class Trip : BaseEntity
     public Warehouse? Warehouse { get; set; }
 
     public decimal PlannedFuelCost { get; set; }
+
+    // Số liệu ƯỚC TÍNH từ VietMap (khoảng cách/thời gian THEO ĐƯỜNG THẬT,
+    // không phải đường chim bay) — LƯU LẠI ngay khi tính (tự động lúc Chia
+    // xe, hoặc lúc Dispatcher bấm "📏 Ước tính") để SAU NÀY làm được bảng
+    // thống kê so sánh với số liệu THỰC TẾ (StartTime/EndTime, khoảng cách
+    // GPS thật) — nếu chỉ hiện tạm thời trong hộp thoại rồi bỏ đi thì không
+    // còn gì để tra cứu lại phục vụ thống kê.
+    public decimal? EstimatedDistanceKm { get; set; }
+    public int? EstimatedDurationMinutes { get; set; }
     public decimal ActualFuelCost { get; set; }
 
     // Route/GPS — giữ tối giản, mở rộng thêm khi tích hợp VietMap thật

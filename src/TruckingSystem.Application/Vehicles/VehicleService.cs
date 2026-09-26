@@ -17,8 +17,9 @@ public class VehicleService : IVehicleService
     public async Task<List<VehicleListItemDto>> GetAllAsync()
     {
         return await _db.Vehicles
+            .Include(v => v.Warehouse)
             .OrderBy(v => v.PlateNumber)
-            .Select(v => new VehicleListItemDto(v.Id, v.PlateNumber, v.VehicleType, v.CapacityQty, v.CapacityKg, v.CapacityM3, v.Status.ToString(), v.FuelConsumptionPer100Km, v.FuelType))
+            .Select(v => new VehicleListItemDto(v.Id, v.PlateNumber, v.VehicleType, v.CapacityQty, v.CapacityKg, v.CapacityM3, v.Status.ToString(), v.FuelConsumptionPer100Km, v.FuelType, v.WarehouseId, v.Warehouse == null ? null : v.Warehouse.Name))
             .ToListAsync();
     }
 
@@ -33,13 +34,18 @@ public class VehicleService : IVehicleService
             CapacityM3 = request.CapacityM3,
             FuelConsumptionPer100Km = request.FuelConsumptionPer100Km,
             FuelType = request.FuelType,
+            WarehouseId = request.WarehouseId,
             Status = VehicleStatus.Available,
         };
 
         _db.Vehicles.Add(vehicle);
         await _db.SaveChangesAsync();
 
-        return new VehicleListItemDto(vehicle.Id, vehicle.PlateNumber, vehicle.VehicleType, vehicle.CapacityQty, vehicle.CapacityKg, vehicle.CapacityM3, vehicle.Status.ToString(), vehicle.FuelConsumptionPer100Km, vehicle.FuelType);
+        string? warehouseName = null;
+        if (request.WarehouseId.HasValue)
+            warehouseName = (await _db.Warehouses.FindAsync(request.WarehouseId.Value))?.Name;
+
+        return new VehicleListItemDto(vehicle.Id, vehicle.PlateNumber, vehicle.VehicleType, vehicle.CapacityQty, vehicle.CapacityKg, vehicle.CapacityM3, vehicle.Status.ToString(), vehicle.FuelConsumptionPer100Km, vehicle.FuelType, vehicle.WarehouseId, warehouseName);
     }
 
     public async Task<VehicleActionResult> UpdateAsync(int id, UpdateVehicleRequest request)
@@ -58,6 +64,7 @@ public class VehicleService : IVehicleService
         vehicle.Status = status;
         vehicle.FuelConsumptionPer100Km = request.FuelConsumptionPer100Km;
         vehicle.FuelType = request.FuelType;
+        vehicle.WarehouseId = request.WarehouseId;
 
         await _db.SaveChangesAsync();
         return new VehicleActionResult(true, null);

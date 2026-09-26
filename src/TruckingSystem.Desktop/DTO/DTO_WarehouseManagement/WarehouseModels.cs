@@ -89,6 +89,7 @@ namespace TruckingSystem.Desktop.DTO_WarehouseManagement
         public string CargoType { get; set; } = "";
         public decimal QtyTotal { get; set; }
         public decimal QtyRemaining { get; set; }
+        public decimal QtyOnHand { get; set; }
         public string OrderCode { get; set; } = "";
         public override string ToString() => $"{CargoType} — còn {QtyRemaining}/{QtyTotal} (đơn {OrderCode})";
     }

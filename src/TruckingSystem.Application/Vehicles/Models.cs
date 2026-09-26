@@ -1,11 +1,11 @@
 ﻿namespace TruckingSystem.Application.Vehicles;
 
-public record CreateVehicleRequest(string PlateNumber, string VehicleType, decimal CapacityQty, decimal CapacityKg, decimal CapacityM3, decimal? FuelConsumptionPer100Km, string? FuelType);
-public record VehicleListItemDto(int Id, string PlateNumber, string VehicleType, decimal CapacityQty, decimal CapacityKg, decimal CapacityM3, string Status, decimal? FuelConsumptionPer100Km, string? FuelType);
+public record CreateVehicleRequest(string PlateNumber, string VehicleType, decimal CapacityQty, decimal CapacityKg, decimal CapacityM3, decimal? FuelConsumptionPer100Km, string? FuelType, int? WarehouseId);
+public record VehicleListItemDto(int Id, string PlateNumber, string VehicleType, decimal CapacityQty, decimal CapacityKg, decimal CapacityM3, string Status, decimal? FuelConsumptionPer100Km, string? FuelType, int? WarehouseId, string? WarehouseName);
 
 /// <summary>Sửa thông tin xe — CHO PHÉP đổi cả Status thủ công (VD: đánh dấu
 /// đang bảo dưỡng/ngừng hoạt động — Greedy sẽ tự loại trừ xe không Available).</summary>
-public record UpdateVehicleRequest(string PlateNumber, string VehicleType, decimal CapacityQty, decimal CapacityKg, decimal CapacityM3, string Status, decimal? FuelConsumptionPer100Km, string? FuelType);
+public record UpdateVehicleRequest(string PlateNumber, string VehicleType, decimal CapacityQty, decimal CapacityKg, decimal CapacityM3, string Status, decimal? FuelConsumptionPer100Km, string? FuelType, int? WarehouseId);
 
 public record VehicleActionResult(bool Success, string? Message);
 

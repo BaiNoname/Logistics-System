@@ -22,8 +22,15 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
             this.txtTaxCode = new System.Windows.Forms.TextBox();
             this.lblType = new System.Windows.Forms.Label();
             this.cboType = new System.Windows.Forms.ComboBox();
+            this.lblAddress = new System.Windows.Forms.Label();
+            this.txtAddress = new System.Windows.Forms.TextBox();
+            this.lblCreditLimit = new System.Windows.Forms.Label();
+            this.numCreditLimit = new System.Windows.Forms.NumericUpDown();
+            this.lblGoogleCalendarId = new System.Windows.Forms.Label();
+            this.txtGoogleCalendarId = new System.Windows.Forms.TextBox();
             this.btnSave = new System.Windows.Forms.Button();
             this.lblStatus = new System.Windows.Forms.Label();
+            ((System.ComponentModel.ISupportInitialize)(this.numCreditLimit)).BeginInit();
             this.SuspendLayout();
             //
             // lblName
@@ -87,9 +94,49 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
             this.cboType.Name = "cboType";
             this.cboType.Size = new System.Drawing.Size(400, 23);
             //
+            // lblAddress
+            //
+            this.lblAddress.Location = new System.Drawing.Point(24, 290);
+            this.lblAddress.Size = new System.Drawing.Size(400, 18);
+            this.lblAddress.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
+            this.lblAddress.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
+            this.lblAddress.Text = "Địa chỉ";
+            //
+            // txtAddress
+            //
+            this.txtAddress.Location = new System.Drawing.Point(24, 310);
+            this.txtAddress.Size = new System.Drawing.Size(400, 23);
+            //
+            // lblCreditLimit
+            //
+            this.lblCreditLimit.Location = new System.Drawing.Point(24, 350);
+            this.lblCreditLimit.Size = new System.Drawing.Size(400, 18);
+            this.lblCreditLimit.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
+            this.lblCreditLimit.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
+            this.lblCreditLimit.Text = "Hạn mức công nợ (đ, tuỳ chọn)";
+            //
+            // numCreditLimit
+            //
+            this.numCreditLimit.Location = new System.Drawing.Point(24, 370);
+            this.numCreditLimit.Size = new System.Drawing.Size(400, 23);
+            this.numCreditLimit.Maximum = new decimal(new int[] { 999999999, 0, 0, 0 });
+            //
+            // lblGoogleCalendarId
+            //
+            this.lblGoogleCalendarId.Location = new System.Drawing.Point(24, 410);
+            this.lblGoogleCalendarId.Size = new System.Drawing.Size(400, 18);
+            this.lblGoogleCalendarId.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
+            this.lblGoogleCalendarId.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
+            this.lblGoogleCalendarId.Text = "Google Calendar ID (tuỳ chọn — để đồng bộ lịch giao hàng)";
+            //
+            // txtGoogleCalendarId
+            //
+            this.txtGoogleCalendarId.Location = new System.Drawing.Point(24, 430);
+            this.txtGoogleCalendarId.Size = new System.Drawing.Size(400, 23);
+            //
             // btnSave
             //
-            this.btnSave.Location = new System.Drawing.Point(244, 310);
+            this.btnSave.Location = new System.Drawing.Point(140, 505);
             this.btnSave.Name = "btnSave";
             this.btnSave.Size = new System.Drawing.Size(180, 38);
             this.btnSave.Text = "Lưu khách hàng";
@@ -104,7 +151,7 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
             //
             // lblStatus
             //
-            this.lblStatus.Location = new System.Drawing.Point(24, 300);
+            this.lblStatus.Location = new System.Drawing.Point(24, 470);
             this.lblStatus.Name = "lblStatus";
             this.lblStatus.AutoSize = true;
             this.lblStatus.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
@@ -115,7 +162,7 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
             this.AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
             this.BackColor = System.Drawing.Color.White;
-            this.ClientSize = new System.Drawing.Size(460, 400);
+            this.ClientSize = new System.Drawing.Size(460, 560);
             this.Controls.Add(this.lblName);
             this.Controls.Add(this.txtName);
             this.Controls.Add(this.lblPhone);
@@ -124,6 +171,12 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
             this.Controls.Add(this.txtTaxCode);
             this.Controls.Add(this.lblType);
             this.Controls.Add(this.cboType);
+            this.Controls.Add(this.lblAddress);
+            this.Controls.Add(this.txtAddress);
+            this.Controls.Add(this.lblCreditLimit);
+            this.Controls.Add(this.numCreditLimit);
+            this.Controls.Add(this.lblGoogleCalendarId);
+            this.Controls.Add(this.txtGoogleCalendarId);
             this.Controls.Add(this.btnSave);
             this.Controls.Add(this.lblStatus);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
@@ -131,6 +184,7 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
             this.Name = "CreateCustomerForm";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
             this.Text = "Thêm khách hàng mới";
+            ((System.ComponentModel.ISupportInitialize)(this.numCreditLimit)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
         }
@@ -145,6 +199,12 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
         private System.Windows.Forms.TextBox txtTaxCode;
         private System.Windows.Forms.Label lblType;
         private System.Windows.Forms.ComboBox cboType;
+        private System.Windows.Forms.Label lblAddress;
+        private System.Windows.Forms.TextBox txtAddress;
+        private System.Windows.Forms.Label lblCreditLimit;
+        private System.Windows.Forms.NumericUpDown numCreditLimit;
+        private System.Windows.Forms.Label lblGoogleCalendarId;
+        private System.Windows.Forms.TextBox txtGoogleCalendarId;
         private System.Windows.Forms.Button btnSave;
         private System.Windows.Forms.Label lblStatus;
     }

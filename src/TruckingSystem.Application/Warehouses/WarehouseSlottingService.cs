@@ -407,9 +407,25 @@ public class WarehouseSlottingService : IWarehouseSlottingService
         // đơn vận chuyển (CargoLine.QtyTotal), tính cả những lần đã nhập trước
         // đó cộng dồn lại. VD: đơn khai 1, đã nhập 1 rồi thì không cho nhập
         // thêm 3 nữa — dù là tự động (qua Trip) hay nhập tay đều bị chặn như nhau.
-        var cargoLine = await _db.CargoLines.FindAsync(cargoLineId);
+        var cargoLine = await _db.CargoLines.Include(c => c.TransportOrder).FirstOrDefaultAsync(c => c.Id == cargoLineId);
         if (cargoLine is null)
             return new ReceiveGoodsResult(false, "Không tìm thấy dòng hàng (CargoLine).", new List<string>());
+
+        // CHẶN nhập kho THỦ CÔNG khi đơn CompanyPickup nhưng chặng Lấy hàng
+        // CHƯA hoàn tất — về mặt vật lý, hàng KHÔNG THỂ đã có mặt tại kho khi
+        // xe vẫn còn đang trên đường đi lấy/chưa hoàn tất chuyến. Chỉ áp dụng
+        // khi tripId == null (nhập THỦ CÔNG, không qua completing 1 Trip) —
+        // luồng TỰ ĐỘNG (tripId có giá trị) không cần kiểm tra vì bản thân nó
+        // CHỈ được gọi đúng lúc chặng Pickup vừa Complete xong (đã đảm bảo).
+        if (!tripId.HasValue && cargoLine.TransportOrder.PickupMethod == PickupMethod.CompanyPickup)
+        {
+            var pickupCompleted = await _db.Trips.AnyAsync(t =>
+                t.TransportOrderId == cargoLine.TransportOrderId && t.LegType == TripLegType.Pickup && t.Status == TripStatus.Completed);
+            if (!pickupCompleted)
+                return new ReceiveGoodsResult(false,
+                    "Đơn này là \"Công ty cử xe đến lấy\" — chặng Lấy hàng CHƯA hoàn tất, hàng chưa thể có mặt tại kho. Chờ tài xế hoàn tất chuyến Lấy hàng trước khi nhập kho.",
+                    new List<string>());
+        }
 
         var alreadyReceived = await _db.GoodsReceipts
             .Where(r => r.CargoLineId == cargoLineId)
@@ -591,7 +607,7 @@ public class WarehouseSlottingService : IWarehouseSlottingService
             .ToListAsync();
     }
 
-    public async Task<List<CargoLineOptionDto>> GetCargoLinesForOrderAsync(int transportOrderId)
+    public async Task<List<CargoLineOptionDto>> GetCargoLinesForOrderAsync(int transportOrderId, int warehouseId)
     {
         var lines = await _db.CargoLines
             .Include(c => c.TransportOrder)
@@ -602,7 +618,8 @@ public class WarehouseSlottingService : IWarehouseSlottingService
         foreach (var c in lines)
         {
             var alreadyReceived = await _db.GoodsReceipts.Where(r => r.CargoLineId == c.Id).SumAsync(r => r.QtyReceived);
-            result.Add(new CargoLineOptionDto(c.Id, c.CargoType, c.QtyTotal, c.QtyTotal - alreadyReceived, c.TransportOrder.Code));
+            var stock = await _db.WarehouseStocks.FirstOrDefaultAsync(s => s.WarehouseId == warehouseId && s.CargoLineId == c.Id);
+            result.Add(new CargoLineOptionDto(c.Id, c.CargoType, c.QtyTotal, c.QtyTotal - alreadyReceived, stock?.QtyOnHand ?? 0, c.TransportOrder.Code));
         }
         return result;
     }

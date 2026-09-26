@@ -1,4 +1,5 @@
 ﻿using TruckingSystem.Desktop.Common;
+using TruckingSystem.Desktop.DTO_WarehouseManagement;
 
 namespace TruckingSystem.Desktop.GUI_EmployeeManagement
 {
@@ -28,7 +29,27 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             _api = api;
             _employeeId = employeeId;
             Text = $"Tạo hồ sơ tài xế — {employeeName}";
-            Load += async (_, _) => await TryLoadExistingProfileAsync();
+            Load += async (_, _) => { await LoadWarehousesAsync(); await TryLoadExistingProfileAsync(); };
+        }
+
+        /// <summary>Đổ dropdown "Kho đóng quân" — để tuỳ chọn (có thể để trống,
+        /// nghĩa là tài xế CHƯA gán kho cố định, vẫn dùng được cho mọi đơn).</summary>
+        private async Task LoadWarehousesAsync()
+        {
+            if (_api is null) return;
+            try
+            {
+                var warehouses = await _api.Warehouses.GetWarehousesAsync();
+                var items = new List<object> { new { Id = (int?)null, Name = "(Không cố định — dùng được mọi kho)" } };
+                items.AddRange(warehouses.Select(w => new { Id = (int?)w.Id, w.Name }));
+                cboWarehouse.DataSource = items;
+                cboWarehouse.DisplayMember = "Name";
+                cboWarehouse.ValueMember = "Id";
+            }
+            catch (Exception ex)
+            {
+                lblStatus.Text = "Không tải được danh sách kho: " + ex.Message;
+            }
         }
 
         /// <summary>Nhân viên này ĐÃ có hồ sơ từ trước -> tự chuyển sang chế độ
@@ -50,6 +71,8 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
                 cboLicenseClass.SelectedItem = existing.LicenseClass;
                 dtLicenseExpiry.Value = existing.LicenseExpiryDate;
                 numYearsExp.Value = existing.YearsOfExperience;
+                txtGoogleCalendarId.Text = existing.GoogleCalendarId ?? "";
+                cboWarehouse.SelectedValue = existing.WarehouseId; // đã đổ dropdown ở LoadWarehousesAsync trước đó, giờ chỉ chọn lại đúng giá trị
                 if (existing.HealthCertExpiryDate.HasValue)
                 {
                     chkHasHealthCert.Checked = true;
@@ -75,13 +98,15 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             try
             {
                 var healthCert = chkHasHealthCert.Checked ? dtHealthCertExpiry.Value : (DateTime?)null;
+                var googleCalendarId = string.IsNullOrWhiteSpace(txtGoogleCalendarId.Text) ? null : txtGoogleCalendarId.Text.Trim();
+                var warehouseId = cboWarehouse.SelectedValue as int?;
                 var result = _isEditMode
                     ? await _api.Employees.UpdateDriverProfileAsync(
                         _employeeId, txtLicenseNumber.Text.Trim(), (string)cboLicenseClass.SelectedItem!,
-                        dtLicenseExpiry.Value, healthCert, (int)numYearsExp.Value)
+                        dtLicenseExpiry.Value, healthCert, (int)numYearsExp.Value, googleCalendarId, warehouseId)
                     : await _api.Employees.CreateDriverProfileAsync(
                         _employeeId, txtLicenseNumber.Text.Trim(), (string)cboLicenseClass.SelectedItem!,
-                        dtLicenseExpiry.Value, healthCert, (int)numYearsExp.Value);
+                        dtLicenseExpiry.Value, healthCert, (int)numYearsExp.Value, googleCalendarId, warehouseId);
 
                 if (!result.Success)
                 {

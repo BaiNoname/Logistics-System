@@ -26,7 +26,7 @@ namespace TruckingSystem.Desktop.SERVICE_EmployeeManagement
 
         /// <summary>Tạo hồ sơ tài xế cho 1 nhân viên đã có sẵn.</summary>
         public Task<EmployeeActionResultItem> CreateDriverProfileAsync(int employeeId, string licenseNumber, string licenseClass,
-            DateTime licenseExpiryDate, DateTime? healthCertExpiryDate, int yearsOfExperience)
+            DateTime licenseExpiryDate, DateTime? healthCertExpiryDate, int yearsOfExperience, string? googleCalendarId, int? warehouseId)
             => _conn.PostAsync<EmployeeActionResultItem>($"/api/employees/{employeeId}/driver-profile", new
             {
                 licenseNumber,
@@ -34,6 +34,8 @@ namespace TruckingSystem.Desktop.SERVICE_EmployeeManagement
                 licenseExpiryDate,
                 healthCertExpiryDate,
                 yearsOfExperience,
+                googleCalendarId,
+                warehouseId,
             })!;
 
         /// <summary>Lấy hồ sơ tài xế hiện tại — null nếu chưa có.</summary>
@@ -42,7 +44,7 @@ namespace TruckingSystem.Desktop.SERVICE_EmployeeManagement
 
         /// <summary>Sửa hồ sơ tài xế đã có.</summary>
         public Task<EmployeeActionResultItem> UpdateDriverProfileAsync(int employeeId, string licenseNumber, string licenseClass,
-            DateTime licenseExpiryDate, DateTime? healthCertExpiryDate, int yearsOfExperience)
+            DateTime licenseExpiryDate, DateTime? healthCertExpiryDate, int yearsOfExperience, string? googleCalendarId, int? warehouseId)
             => _conn.PutAsync<EmployeeActionResultItem>($"/api/employees/{employeeId}/driver-profile", new
             {
                 licenseNumber,
@@ -50,6 +52,8 @@ namespace TruckingSystem.Desktop.SERVICE_EmployeeManagement
                 licenseExpiryDate,
                 healthCertExpiryDate,
                 yearsOfExperience,
+                googleCalendarId,
+                warehouseId,
             })!;
 
         /// <summary>Danh sách ca làm việc đã đăng ký của 1 tài xế.</summary>

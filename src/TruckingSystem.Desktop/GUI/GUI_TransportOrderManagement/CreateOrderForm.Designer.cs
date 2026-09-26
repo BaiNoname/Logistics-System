@@ -14,335 +14,272 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
 
         private void InitializeComponent()
         {
-            lblCustomer = new Label();
-            cboCustomer = new ComboBox();
-            lblPickup = new Label();
-            txtPickup = new TextBox();
-            lblPickupQuick = new Label();
-            cboPickupLocation = new ComboBox();
-            lblDropoff = new Label();
-            txtDropoff = new TextBox();
-            lblDropoffQuick = new Label();
-            cboDropoffLocation = new ComboBox();
-            lblCommitted = new Label();
-            dtCommitted = new DateTimePicker();
-            chkHasCommittedDate = new CheckBox();
-            lblPickupMethod = new Label();
-            rbCompanyPickup = new RadioButton();
-            rbSelfDelivery = new RadioButton();
-            lblCargoTitle = new Label();
-            btnRemoveCargoLine = new Button();
-            gridCargoLines = new DataGridView();
-            colCargoType = new DataGridViewTextBoxColumn();
-            colPackageCount = new DataGridViewTextBoxColumn();
-            colWeightKg = new DataGridViewTextBoxColumn();
-            colVolumeM3 = new DataGridViewTextBoxColumn();
-            colIsFragile = new DataGridViewCheckBoxColumn();
-            colIsHazmat = new DataGridViewCheckBoxColumn();
-            colQtyTotal = new DataGridViewTextBoxColumn();
-            btnSave = new Button();
-            lblStatus = new Label();
-            ((System.ComponentModel.ISupportInitialize)gridCargoLines).BeginInit();
-            SuspendLayout();
-            // 
+            this.lblCustomer = new System.Windows.Forms.Label();
+            this.cboCustomer = new System.Windows.Forms.ComboBox();
+            this.lblPickup = new System.Windows.Forms.Label();
+            this.txtPickup = new System.Windows.Forms.TextBox();
+            this.lblPickupQuick = new System.Windows.Forms.Label();
+            this.cboPickupLocation = new System.Windows.Forms.ComboBox();
+            this.lblDropoff = new System.Windows.Forms.Label();
+            this.txtDropoff = new System.Windows.Forms.TextBox();
+            this.lblDropoffQuick = new System.Windows.Forms.Label();
+            this.cboDropoffLocation = new System.Windows.Forms.ComboBox();
+            this.lblCommitted = new System.Windows.Forms.Label();
+            this.dtCommitted = new System.Windows.Forms.DateTimePicker();
+            this.chkHasCommittedDate = new System.Windows.Forms.CheckBox();
+            this.lblPickupMethod = new System.Windows.Forms.Label();
+            this.rbCompanyPickup = new System.Windows.Forms.RadioButton();
+            this.rbSelfDelivery = new System.Windows.Forms.RadioButton();
+            this.lblWarehouse = new System.Windows.Forms.Label();
+            this.cboWarehouse = new System.Windows.Forms.ComboBox();
+            this.lblCargoTitle = new System.Windows.Forms.Label();
+            this.btnRemoveCargoLine = new System.Windows.Forms.Button();
+            this.gridCargoLines = new System.Windows.Forms.DataGridView();
+            this.colCargoType = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.colPackageCount = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.colWeightKg = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.colVolumeM3 = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.colIsFragile = new System.Windows.Forms.DataGridViewCheckBoxColumn();
+            this.colIsHazmat = new System.Windows.Forms.DataGridViewCheckBoxColumn();
+            this.colQtyTotal = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.btnSave = new System.Windows.Forms.Button();
+            this.lblStatus = new System.Windows.Forms.Label();
+            ((System.ComponentModel.ISupportInitialize)(this.gridCargoLines)).BeginInit();
+            this.SuspendLayout();
+            //
             // lblCustomer
-            // 
-            lblCustomer.Location = new Point(22, 34);
-            lblCustomer.Margin = new Padding(4, 0, 4, 0);
-            lblCustomer.Name = "lblCustomer";
-            lblCustomer.Size = new Size(195, 34);
-            lblCustomer.TabIndex = 0;
-            lblCustomer.Text = "Khách hàng:";
-            // 
+            //
+            this.lblCustomer.Location = new System.Drawing.Point(15, 23);
+            this.lblCustomer.Size = new System.Drawing.Size(130, 23);
+            this.lblCustomer.Text = "Khách hàng:";
+            //
             // cboCustomer
-            // 
-            cboCustomer.DropDownStyle = ComboBoxStyle.DropDownList;
-            cboCustomer.Location = new Point(225, 30);
-            cboCustomer.Margin = new Padding(4, 4, 4, 4);
-            cboCustomer.Name = "cboCustomer";
-            cboCustomer.Size = new Size(448, 36);
-            cboCustomer.TabIndex = 1;
-            // 
+            //
+            this.cboCustomer.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cboCustomer.Location = new System.Drawing.Point(150, 20);
+            this.cboCustomer.Size = new System.Drawing.Size(300, 23);
+            //
             // lblPickup
-            // 
-            lblPickup.Location = new Point(22, 87);
-            lblPickup.Margin = new Padding(4, 0, 4, 0);
-            lblPickup.Name = "lblPickup";
-            lblPickup.Size = new Size(195, 34);
-            lblPickup.TabIndex = 2;
-            lblPickup.Text = "Điểm lấy hàng:";
-            // 
+            //
+            this.lblPickup.Location = new System.Drawing.Point(15, 58);
+            this.lblPickup.Size = new System.Drawing.Size(130, 23);
+            this.lblPickup.Text = "Điểm lấy hàng:";
+            //
             // txtPickup
-            // 
-            txtPickup.Location = new Point(225, 82);
-            txtPickup.Margin = new Padding(4, 4, 4, 4);
-            txtPickup.Name = "txtPickup";
-            txtPickup.Size = new Size(448, 34);
-            txtPickup.TabIndex = 3;
-            // 
+            //
+            this.txtPickup.Location = new System.Drawing.Point(150, 55);
+            this.txtPickup.Size = new System.Drawing.Size(300, 23);
+            //
             // lblPickupQuick
-            // 
-            lblPickupQuick.Location = new Point(22, 136);
-            lblPickupQuick.Margin = new Padding(4, 0, 4, 0);
-            lblPickupQuick.Name = "lblPickupQuick";
-            lblPickupQuick.Size = new Size(195, 34);
-            lblPickupQuick.TabIndex = 4;
-            lblPickupQuick.Text = "🔽 chọn nhanh:";
-            // 
+            //
+            this.lblPickupQuick.Location = new System.Drawing.Point(15, 91);
+            this.lblPickupQuick.Size = new System.Drawing.Size(130, 23);
+            this.lblPickupQuick.Text = "🔽 chọn nhanh:";
+            //
             // cboPickupLocation
-            // 
-            cboPickupLocation.DropDownStyle = ComboBoxStyle.DropDownList;
-            cboPickupLocation.Location = new Point(225, 132);
-            cboPickupLocation.Margin = new Padding(4, 4, 4, 4);
-            cboPickupLocation.Name = "cboPickupLocation";
-            cboPickupLocation.Size = new Size(448, 36);
-            cboPickupLocation.TabIndex = 5;
-            // 
+            //
+            this.cboPickupLocation.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cboPickupLocation.Location = new System.Drawing.Point(150, 88);
+            this.cboPickupLocation.Size = new System.Drawing.Size(300, 23);
+            //
             // lblDropoff
-            // 
-            lblDropoff.Location = new Point(22, 189);
-            lblDropoff.Margin = new Padding(4, 0, 4, 0);
-            lblDropoff.Name = "lblDropoff";
-            lblDropoff.Size = new Size(195, 34);
-            lblDropoff.TabIndex = 6;
-            lblDropoff.Text = "Điểm giao hàng:";
-            // 
+            //
+            this.lblDropoff.Location = new System.Drawing.Point(15, 126);
+            this.lblDropoff.Size = new System.Drawing.Size(130, 23);
+            this.lblDropoff.Text = "Điểm giao hàng:";
+            //
             // txtDropoff
-            // 
-            txtDropoff.Location = new Point(225, 184);
-            txtDropoff.Margin = new Padding(4, 4, 4, 4);
-            txtDropoff.Name = "txtDropoff";
-            txtDropoff.Size = new Size(448, 34);
-            txtDropoff.TabIndex = 7;
-            // 
+            //
+            this.txtDropoff.Location = new System.Drawing.Point(150, 123);
+            this.txtDropoff.Size = new System.Drawing.Size(300, 23);
+            //
             // lblDropoffQuick
-            // 
-            lblDropoffQuick.Location = new Point(22, 238);
-            lblDropoffQuick.Margin = new Padding(4, 0, 4, 0);
-            lblDropoffQuick.Name = "lblDropoffQuick";
-            lblDropoffQuick.Size = new Size(195, 34);
-            lblDropoffQuick.TabIndex = 8;
-            lblDropoffQuick.Text = "🔽 chọn nhanh:";
-            // 
+            //
+            this.lblDropoffQuick.Location = new System.Drawing.Point(15, 159);
+            this.lblDropoffQuick.Size = new System.Drawing.Size(130, 23);
+            this.lblDropoffQuick.Text = "🔽 chọn nhanh:";
+            //
             // cboDropoffLocation
-            // 
-            cboDropoffLocation.DropDownStyle = ComboBoxStyle.DropDownList;
-            cboDropoffLocation.Location = new Point(225, 234);
-            cboDropoffLocation.Margin = new Padding(4, 4, 4, 4);
-            cboDropoffLocation.Name = "cboDropoffLocation";
-            cboDropoffLocation.Size = new Size(448, 36);
-            cboDropoffLocation.TabIndex = 9;
-            // 
+            //
+            this.cboDropoffLocation.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cboDropoffLocation.Location = new System.Drawing.Point(150, 156);
+            this.cboDropoffLocation.Size = new System.Drawing.Size(300, 23);
+            //
             // lblCommitted
-            // 
-            lblCommitted.Location = new Point(22, 297);
-            lblCommitted.Margin = new Padding(4, 0, 4, 0);
-            lblCommitted.Name = "lblCommitted";
-            lblCommitted.Size = new Size(195, 34);
-            lblCommitted.TabIndex = 10;
-            lblCommitted.Text = "Ngày hẹn giao:";
-            // 
+            //
+            this.lblCommitted.Location = new System.Drawing.Point(15, 198);
+            this.lblCommitted.Size = new System.Drawing.Size(130, 23);
+            this.lblCommitted.Text = "Ngày hẹn giao:";
+            //
             // dtCommitted
-            // 
-            dtCommitted.Location = new Point(225, 292);
-            dtCommitted.Margin = new Padding(4, 4, 4, 4);
-            dtCommitted.Name = "dtCommitted";
-            dtCommitted.Size = new Size(344, 34);
-            dtCommitted.TabIndex = 11;
-            // 
+            //
+            this.dtCommitted.Location = new System.Drawing.Point(150, 195);
+            this.dtCommitted.Size = new System.Drawing.Size(200, 23);
+            //
             // chkHasCommittedDate
-            // 
-            chkHasCommittedDate.Location = new Point(592, 290);
-            chkHasCommittedDate.Margin = new Padding(4, 4, 4, 4);
-            chkHasCommittedDate.Name = "chkHasCommittedDate";
-            chkHasCommittedDate.Size = new Size(165, 36);
-            chkHasCommittedDate.TabIndex = 12;
-            chkHasCommittedDate.Text = "Có hẹn giao";
-            // 
+            //
+            this.chkHasCommittedDate.Location = new System.Drawing.Point(360, 198);
+            this.chkHasCommittedDate.Size = new System.Drawing.Size(110, 24);
+            this.chkHasCommittedDate.Text = "Có hẹn giao";
+            //
             // lblPickupMethod
-            // 
-            lblPickupMethod.Location = new Point(22, 352);
-            lblPickupMethod.Margin = new Padding(4, 0, 4, 0);
-            lblPickupMethod.Name = "lblPickupMethod";
-            lblPickupMethod.Size = new Size(195, 34);
-            lblPickupMethod.TabIndex = 13;
-            lblPickupMethod.Text = "Phương thức lấy:";
-            // 
+            //
+            this.lblPickupMethod.Location = new System.Drawing.Point(15, 235);
+            this.lblPickupMethod.Size = new System.Drawing.Size(130, 23);
+            this.lblPickupMethod.Text = "Phương thức lấy:";
+            //
             // rbCompanyPickup
-            // 
-            rbCompanyPickup.Checked = true;
-            rbCompanyPickup.Location = new Point(225, 350);
-            rbCompanyPickup.Margin = new Padding(4, 4, 4, 4);
-            rbCompanyPickup.Name = "rbCompanyPickup";
-            rbCompanyPickup.Size = new Size(270, 36);
-            rbCompanyPickup.TabIndex = 14;
-            rbCompanyPickup.TabStop = true;
-            rbCompanyPickup.Text = "Công ty cử xe đến lấy";
-            // 
+            //
+            this.rbCompanyPickup.Location = new System.Drawing.Point(150, 233);
+            this.rbCompanyPickup.Size = new System.Drawing.Size(180, 24);
+            this.rbCompanyPickup.Text = "Công ty cử xe đến lấy";
+            this.rbCompanyPickup.Checked = true;
+            //
             // rbSelfDelivery
+            //
+            this.rbSelfDelivery.Location = new System.Drawing.Point(340, 233);
+            this.rbSelfDelivery.Size = new System.Drawing.Size(180, 24);
+            this.rbSelfDelivery.Text = "Khách tự mang tới kho";
             // 
-            rbSelfDelivery.Location = new Point(510, 350);
-            rbSelfDelivery.Margin = new Padding(4, 4, 4, 4);
-            rbSelfDelivery.Name = "rbSelfDelivery";
-            rbSelfDelivery.Size = new Size(270, 36);
-            rbSelfDelivery.TabIndex = 15;
-            rbSelfDelivery.Text = "Khách tự mang tới kho";
+            // lblWarehouse
             // 
+            this.lblWarehouse.Location = new System.Drawing.Point(15, 265);
+            this.lblWarehouse.Size = new System.Drawing.Size(130, 23);
+            this.lblWarehouse.Text = "Kho trung chuyển *:";
+            // 
+            // cboWarehouse
+            // 
+            this.cboWarehouse.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cboWarehouse.Location = new System.Drawing.Point(150, 262);
+            this.cboWarehouse.Size = new System.Drawing.Size(300, 23);
+            //
             // lblCargoTitle
-            // 
-            lblCargoTitle.AutoSize = true;
-            lblCargoTitle.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
-            lblCargoTitle.Location = new Point(22, 412);
-            lblCargoTitle.Margin = new Padding(4, 0, 4, 0);
-            lblCargoTitle.Name = "lblCargoTitle";
-            lblCargoTitle.Size = new Size(663, 28);
-            lblCargoTitle.TabIndex = 16;
-            lblCargoTitle.Text = "Danh sách hàng hóa (bấm dòng trống cuối bảng để thêm dòng mới):";
-            // 
+            //
+            this.lblCargoTitle.Location = new System.Drawing.Point(15, 315);
+            this.lblCargoTitle.AutoSize = true;
+            this.lblCargoTitle.Text = "Danh sách hàng hóa (bấm dòng trống cuối bảng để thêm dòng mới):";
+            this.lblCargoTitle.Font = TruckingSystem.Desktop.Common.Theme.FontBold;
+            //
             // btnRemoveCargoLine
-            // 
-            btnRemoveCargoLine.BackColor = Color.White;
-            btnRemoveCargoLine.FlatStyle = FlatStyle.Flat;
-            btnRemoveCargoLine.Location = new Point(813, 405);
-            btnRemoveCargoLine.Margin = new Padding(4, 4, 4, 4);
-            btnRemoveCargoLine.Name = "btnRemoveCargoLine";
-            btnRemoveCargoLine.Size = new Size(237, 45);
-            btnRemoveCargoLine.TabIndex = 17;
-            btnRemoveCargoLine.Text = "🗑 Xóa dòng đã chọn";
-            btnRemoveCargoLine.UseVisualStyleBackColor = false;
-            // 
+            //
+            this.btnRemoveCargoLine.Location = new System.Drawing.Point(560, 310);
+            this.btnRemoveCargoLine.Size = new System.Drawing.Size(140, 30);
+            this.btnRemoveCargoLine.Text = "🗑 Xóa dòng đã chọn";
+            this.btnRemoveCargoLine.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnRemoveCargoLine.BackColor = System.Drawing.Color.White;
+            this.btnRemoveCargoLine.FlatAppearance.BorderSize = 1;
+            //
             // gridCargoLines
-            // 
-            gridCargoLines.ColumnHeadersHeight = 34;
-            gridCargoLines.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
-            gridCargoLines.Columns.AddRange(new DataGridViewColumn[] { colCargoType, colPackageCount, colWeightKg, colVolumeM3, colIsFragile, colIsHazmat, colQtyTotal });
-            gridCargoLines.Location = new Point(22, 458);
-            gridCargoLines.Margin = new Padding(4, 4, 4, 4);
-            gridCargoLines.Name = "gridCargoLines";
-            gridCargoLines.RowHeadersVisible = false;
-            gridCargoLines.RowHeadersWidth = 62;
-            gridCargoLines.Size = new Size(1028, 270);
-            gridCargoLines.TabIndex = 18;
-            // 
+            //
+            this.gridCargoLines.Location = new System.Drawing.Point(15, 345);
+            this.gridCargoLines.Size = new System.Drawing.Size(685, 180);
+            this.gridCargoLines.AllowUserToAddRows = true;
+            this.gridCargoLines.AllowUserToDeleteRows = true;
+            this.gridCargoLines.RowHeadersVisible = false;
+            this.gridCargoLines.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
+            this.gridCargoLines.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
+                this.colCargoType, this.colPackageCount, this.colWeightKg, this.colVolumeM3,
+                this.colIsFragile, this.colIsHazmat, this.colQtyTotal });
+            //
             // colCargoType
-            // 
-            colCargoType.DataPropertyName = "CargoType";
-            colCargoType.HeaderText = "Loại hàng";
-            colCargoType.MinimumWidth = 8;
-            colCargoType.Name = "colCargoType";
-            colCargoType.Width = 160;
-            // 
+            //
+            this.colCargoType.DataPropertyName = "CargoType";
+            this.colCargoType.HeaderText = "Loại hàng";
+            this.colCargoType.Width = 160;
+            //
             // colPackageCount
-            // 
-            colPackageCount.DataPropertyName = "PackageCount";
-            colPackageCount.HeaderText = "Số kiện";
-            colPackageCount.MinimumWidth = 8;
-            colPackageCount.Name = "colPackageCount";
-            colPackageCount.Width = 70;
-            // 
+            //
+            this.colPackageCount.DataPropertyName = "PackageCount";
+            this.colPackageCount.HeaderText = "Số kiện";
+            this.colPackageCount.Width = 70;
+            //
             // colWeightKg
-            // 
-            colWeightKg.DataPropertyName = "WeightKg";
-            colWeightKg.HeaderText = "KL (kg)";
-            colWeightKg.MinimumWidth = 8;
-            colWeightKg.Name = "colWeightKg";
-            colWeightKg.Width = 80;
-            // 
+            //
+            this.colWeightKg.DataPropertyName = "WeightKg";
+            this.colWeightKg.HeaderText = "KL (kg)";
+            this.colWeightKg.Width = 80;
+            //
             // colVolumeM3
-            // 
-            colVolumeM3.DataPropertyName = "VolumeM3";
-            colVolumeM3.HeaderText = "TT (m³)";
-            colVolumeM3.MinimumWidth = 8;
-            colVolumeM3.Name = "colVolumeM3";
-            colVolumeM3.Width = 80;
-            // 
+            //
+            this.colVolumeM3.DataPropertyName = "VolumeM3";
+            this.colVolumeM3.HeaderText = "TT (m³)";
+            this.colVolumeM3.Width = 80;
+            //
             // colIsFragile
-            // 
-            colIsFragile.DataPropertyName = "IsFragile";
-            colIsFragile.HeaderText = "Dễ vỡ";
-            colIsFragile.MinimumWidth = 8;
-            colIsFragile.Name = "colIsFragile";
-            colIsFragile.Width = 55;
-            // 
+            //
+            this.colIsFragile.DataPropertyName = "IsFragile";
+            this.colIsFragile.HeaderText = "Dễ vỡ";
+            this.colIsFragile.Width = 55;
+            //
             // colIsHazmat
-            // 
-            colIsHazmat.DataPropertyName = "IsHazmat";
-            colIsHazmat.HeaderText = "Nguy hiểm";
-            colIsHazmat.MinimumWidth = 8;
-            colIsHazmat.Name = "colIsHazmat";
-            colIsHazmat.Width = 75;
-            // 
+            //
+            this.colIsHazmat.DataPropertyName = "IsHazmat";
+            this.colIsHazmat.HeaderText = "Nguy hiểm";
+            this.colIsHazmat.Width = 75;
+            //
             // colQtyTotal
-            // 
-            colQtyTotal.DataPropertyName = "QtyTotal";
-            colQtyTotal.HeaderText = "SL (để chia xe)";
-            colQtyTotal.MinimumWidth = 8;
-            colQtyTotal.Name = "colQtyTotal";
-            colQtyTotal.Width = 105;
-            // 
+            //
+            this.colQtyTotal.DataPropertyName = "QtyTotal";
+            this.colQtyTotal.HeaderText = "SL (để chia xe)";
+            this.colQtyTotal.Width = 105;
+            //
             // btnSave
-            // 
-            btnSave.BackColor = Color.FromArgb(37, 99, 235);
-            btnSave.Cursor = Cursors.Hand;
-            btnSave.FlatAppearance.BorderSize = 0;
-            btnSave.FlatAppearance.MouseOverBackColor = Color.FromArgb(29, 78, 216);
-            btnSave.FlatStyle = FlatStyle.Flat;
-            btnSave.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
-            btnSave.ForeColor = Color.White;
-            btnSave.Location = new Point(22, 750);
-            btnSave.Margin = new Padding(4, 4, 4, 4);
-            btnSave.Name = "btnSave";
-            btnSave.Size = new Size(270, 60);
-            btnSave.TabIndex = 19;
-            btnSave.Text = "Lưu đơn";
-            btnSave.UseVisualStyleBackColor = false;
-            btnSave.Click += BtnSave_Click;
-            // 
+            //
+            this.btnSave.Location = new System.Drawing.Point(15, 540);
+            this.btnSave.Size = new System.Drawing.Size(180, 40);
+            this.btnSave.Text = "Lưu đơn";
+            this.btnSave.BackColor = TruckingSystem.Desktop.Common.Theme.Primary;
+            this.btnSave.ForeColor = System.Drawing.Color.White;
+            this.btnSave.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnSave.Font = TruckingSystem.Desktop.Common.Theme.FontBold;
+            this.btnSave.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.btnSave.FlatAppearance.BorderSize = 0;
+            this.btnSave.FlatAppearance.MouseOverBackColor = TruckingSystem.Desktop.Common.Theme.PrimaryDark;
+            this.btnSave.Click += new System.EventHandler(this.BtnSave_Click);
+            //
             // lblStatus
-            // 
-            lblStatus.ForeColor = Color.Red;
-            lblStatus.Location = new Point(315, 750);
-            lblStatus.Margin = new Padding(4, 0, 4, 0);
-            lblStatus.Name = "lblStatus";
-            lblStatus.Size = new Size(735, 60);
-            lblStatus.TabIndex = 20;
-            // 
+            //
+            this.lblStatus.Location = new System.Drawing.Point(210, 540);
+            this.lblStatus.Size = new System.Drawing.Size(490, 40);
+            this.lblStatus.ForeColor = System.Drawing.Color.Red;
+            //
             // CreateOrderForm
-            // 
-            AutoScaleDimensions = new SizeF(144F, 144F);
-            AutoScaleMode = AutoScaleMode.Dpi;
-            BackColor = Color.White;
-            ClientSize = new Size(1080, 840);
-            Controls.Add(lblCustomer);
-            Controls.Add(cboCustomer);
-            Controls.Add(lblPickup);
-            Controls.Add(txtPickup);
-            Controls.Add(lblPickupQuick);
-            Controls.Add(cboPickupLocation);
-            Controls.Add(lblDropoff);
-            Controls.Add(txtDropoff);
-            Controls.Add(lblDropoffQuick);
-            Controls.Add(cboDropoffLocation);
-            Controls.Add(lblCommitted);
-            Controls.Add(dtCommitted);
-            Controls.Add(chkHasCommittedDate);
-            Controls.Add(lblPickupMethod);
-            Controls.Add(rbCompanyPickup);
-            Controls.Add(rbSelfDelivery);
-            Controls.Add(lblCargoTitle);
-            Controls.Add(btnRemoveCargoLine);
-            Controls.Add(gridCargoLines);
-            Controls.Add(btnSave);
-            Controls.Add(lblStatus);
-            FormBorderStyle = FormBorderStyle.FixedDialog;
-            Margin = new Padding(6, 6, 6, 6);
-            MaximizeBox = false;
-            Name = "CreateOrderForm";
-            StartPosition = FormStartPosition.CenterParent;
-            Text = "Tạo đơn vận chuyển mới";
-            ((System.ComponentModel.ISupportInitialize)gridCargoLines).EndInit();
-            ResumeLayout(false);
-            PerformLayout();
+            //
+            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
+            this.AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
+            this.BackColor = System.Drawing.Color.White;
+            this.ClientSize = new System.Drawing.Size(720, 610);
+            this.Controls.Add(this.lblCustomer);
+            this.Controls.Add(this.cboCustomer);
+            this.Controls.Add(this.lblPickup);
+            this.Controls.Add(this.txtPickup);
+            this.Controls.Add(this.lblPickupQuick);
+            this.Controls.Add(this.cboPickupLocation);
+            this.Controls.Add(this.lblDropoff);
+            this.Controls.Add(this.txtDropoff);
+            this.Controls.Add(this.lblDropoffQuick);
+            this.Controls.Add(this.cboDropoffLocation);
+            this.Controls.Add(this.lblCommitted);
+            this.Controls.Add(this.dtCommitted);
+            this.Controls.Add(this.chkHasCommittedDate);
+            this.Controls.Add(this.lblPickupMethod);
+            this.Controls.Add(this.rbCompanyPickup);
+            this.Controls.Add(this.rbSelfDelivery);
+            this.Controls.Add(this.lblWarehouse);
+            this.Controls.Add(this.cboWarehouse);
+            this.Controls.Add(this.lblCargoTitle);
+            this.Controls.Add(this.btnRemoveCargoLine);
+            this.Controls.Add(this.gridCargoLines);
+            this.Controls.Add(this.btnSave);
+            this.Controls.Add(this.lblStatus);
+            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
+            this.MaximizeBox = false;
+            this.Name = "CreateOrderForm";
+            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
+            this.Text = "Tạo đơn vận chuyển mới";
+            ((System.ComponentModel.ISupportInitialize)(this.gridCargoLines)).EndInit();
+            this.ResumeLayout(false);
+            this.PerformLayout();
         }
 
         #endregion
@@ -363,6 +300,8 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
         private System.Windows.Forms.Label lblPickupMethod;
         private System.Windows.Forms.RadioButton rbCompanyPickup;
         private System.Windows.Forms.RadioButton rbSelfDelivery;
+        private System.Windows.Forms.Label lblWarehouse;
+        private System.Windows.Forms.ComboBox cboWarehouse;
         private System.Windows.Forms.Label lblCargoTitle;
         private System.Windows.Forms.Button btnRemoveCargoLine;
         private System.Windows.Forms.DataGridView gridCargoLines;

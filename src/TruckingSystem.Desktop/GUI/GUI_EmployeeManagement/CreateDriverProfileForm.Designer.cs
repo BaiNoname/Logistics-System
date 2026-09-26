@@ -24,6 +24,10 @@ partial class CreateDriverProfileForm
         this.dtHealthCertExpiry = new System.Windows.Forms.DateTimePicker();
         this.lblYearsExp = new System.Windows.Forms.Label();
         this.numYearsExp = new System.Windows.Forms.NumericUpDown();
+        this.lblGoogleCalendarId = new System.Windows.Forms.Label();
+        this.txtGoogleCalendarId = new System.Windows.Forms.TextBox();
+        this.lblWarehouse = new System.Windows.Forms.Label();
+        this.cboWarehouse = new System.Windows.Forms.ComboBox();
         this.btnSave = new System.Windows.Forms.Button();
         this.lblStatus = new System.Windows.Forms.Label();
         ((System.ComponentModel.ISupportInitialize)(this.numYearsExp)).BeginInit();
@@ -97,9 +101,36 @@ partial class CreateDriverProfileForm
         this.numYearsExp.Size = new System.Drawing.Size(190, 23);
         this.numYearsExp.Maximum = new decimal(new int[] { 60, 0, 0, 0 });
         //
+        // lblGoogleCalendarId
+        //
+        this.lblGoogleCalendarId.Location = new System.Drawing.Point(24, 218);
+        this.lblGoogleCalendarId.Size = new System.Drawing.Size(400, 18);
+        this.lblGoogleCalendarId.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
+        this.lblGoogleCalendarId.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
+        this.lblGoogleCalendarId.Text = "Google Calendar ID (tuỳ chọn — để đồng bộ lịch chuyến)";
+        //
+        // txtGoogleCalendarId
+        //
+        this.txtGoogleCalendarId.Location = new System.Drawing.Point(24, 238);
+        this.txtGoogleCalendarId.Size = new System.Drawing.Size(400, 23);
+        //
+        // lblWarehouse
+        //
+        this.lblWarehouse.Location = new System.Drawing.Point(24, 275);
+        this.lblWarehouse.Size = new System.Drawing.Size(400, 18);
+        this.lblWarehouse.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
+        this.lblWarehouse.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
+        this.lblWarehouse.Text = "Kho đóng quân (tuỳ chọn)";
+        //
+        // cboWarehouse
+        //
+        this.cboWarehouse.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+        this.cboWarehouse.Location = new System.Drawing.Point(24, 295);
+        this.cboWarehouse.Size = new System.Drawing.Size(400, 23);
+        //
         // btnSave
         //
-        this.btnSave.Location = new System.Drawing.Point(140, 280);
+        this.btnSave.Location = new System.Drawing.Point(140, 380);
         this.btnSave.Size = new System.Drawing.Size(180, 38);
         this.btnSave.Text = "Lưu hồ sơ tài xế";
         this.btnSave.BackColor = TruckingSystem.Desktop.Common.Theme.Primary;
@@ -113,7 +144,7 @@ partial class CreateDriverProfileForm
         //
         // lblStatus
         //
-        this.lblStatus.Location = new System.Drawing.Point(24, 245);
+        this.lblStatus.Location = new System.Drawing.Point(24, 345);
         this.lblStatus.Size = new System.Drawing.Size(400, 25);
         this.lblStatus.ForeColor = TruckingSystem.Desktop.Common.Theme.Danger;
         this.lblStatus.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
@@ -123,7 +154,7 @@ partial class CreateDriverProfileForm
         this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
         this.AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
         this.BackColor = System.Drawing.Color.White;
-        this.ClientSize = new System.Drawing.Size(450, 340);
+        this.ClientSize = new System.Drawing.Size(450, 440);
         this.Controls.Add(this.lblLicenseNumber);
         this.Controls.Add(this.txtLicenseNumber);
         this.Controls.Add(this.lblLicenseClass);
@@ -134,7 +165,11 @@ partial class CreateDriverProfileForm
         this.Controls.Add(this.dtHealthCertExpiry);
         this.Controls.Add(this.lblYearsExp);
         this.Controls.Add(this.numYearsExp);
+        this.Controls.Add(this.lblGoogleCalendarId);
+        this.Controls.Add(this.txtGoogleCalendarId);
         this.Controls.Add(this.lblStatus);
+        this.Controls.Add(this.lblWarehouse);
+        this.Controls.Add(this.cboWarehouse);
         this.Controls.Add(this.btnSave);
         this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
         this.MaximizeBox = false;
@@ -158,6 +193,10 @@ partial class CreateDriverProfileForm
     private System.Windows.Forms.DateTimePicker dtHealthCertExpiry;
     private System.Windows.Forms.Label lblYearsExp;
     private System.Windows.Forms.NumericUpDown numYearsExp;
+    private System.Windows.Forms.Label lblGoogleCalendarId;
+    private System.Windows.Forms.TextBox txtGoogleCalendarId;
+    private System.Windows.Forms.Label lblWarehouse;
+    private System.Windows.Forms.ComboBox cboWarehouse;
     private System.Windows.Forms.Button btnSave;
     private System.Windows.Forms.Label lblStatus;
 }

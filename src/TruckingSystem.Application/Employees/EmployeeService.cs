@@ -47,6 +47,8 @@ public class EmployeeService : IEmployeeService
             LicenseExpiryDate = request.LicenseExpiryDate,
             HealthCertExpiryDate = request.HealthCertExpiryDate,
             YearsOfExperience = request.YearsOfExperience,
+            GoogleCalendarId = request.GoogleCalendarId,
+            WarehouseId = request.WarehouseId,
         });
         await _db.SaveChangesAsync();
         return new EmployeeActionResult(true, null);
@@ -57,7 +59,7 @@ public class EmployeeService : IEmployeeService
         var profile = await _db.DriverProfiles.FirstOrDefaultAsync(dp => dp.EmployeeId == employeeId);
         if (profile is null) return null;
 
-        return new DriverProfileDto(profile.LicenseNumber, profile.LicenseClass, profile.LicenseExpiryDate, profile.HealthCertExpiryDate, profile.YearsOfExperience);
+        return new DriverProfileDto(profile.LicenseNumber, profile.LicenseClass, profile.LicenseExpiryDate, profile.HealthCertExpiryDate, profile.YearsOfExperience, profile.GoogleCalendarId, profile.WarehouseId);
     }
 
     public async Task<EmployeeActionResult> UpdateDriverProfileAsync(int employeeId, UpdateDriverProfileRequest request)
@@ -70,6 +72,8 @@ public class EmployeeService : IEmployeeService
         profile.LicenseExpiryDate = request.LicenseExpiryDate;
         profile.HealthCertExpiryDate = request.HealthCertExpiryDate;
         profile.YearsOfExperience = request.YearsOfExperience;
+        profile.GoogleCalendarId = request.GoogleCalendarId;
+        profile.WarehouseId = request.WarehouseId;
 
         await _db.SaveChangesAsync();
         return new EmployeeActionResult(true, null);

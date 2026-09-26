@@ -25,21 +25,21 @@ public class TripsController : ControllerBase
     public async Task<ActionResult<TripActionResult>> Start(int id)
     {
         var result = await _tripService.StartAsync(id);
-        return result.Success ? Ok(result) : BadRequest(result);
+        return Ok(result); // luôn 200 OK — Desktop tự đọc result.Success/Message, tránh PostAsync throw exception khi 400 làm mất thông báo rõ ràng
     }
 
     [HttpPost("{id:int}/complete")]
     public async Task<ActionResult<TripActionResult>> Complete(int id)
     {
         var result = await _tripService.CompleteAsync(id);
-        return result.Success ? Ok(result) : BadRequest(result);
+        return Ok(result); // luôn 200 OK — Desktop tự đọc result.Success/Message, tránh PostAsync throw exception khi 400 làm mất thông báo rõ ràng
     }
 
     [HttpPost("{id:int}/fuel")]
     public async Task<ActionResult<TripActionResult>> RecordFuel(int id, RecordFuelRequest request)
     {
         var result = await _tripService.RecordFuelAsync(id, request);
-        return result.Success ? Ok(result) : BadRequest(result);
+        return Ok(result); // luôn 200 OK — Desktop tự đọc result.Success/Message, tránh PostAsync throw exception khi 400 làm mất thông báo rõ ràng
     }
 
     /// <summary>Điểm GPS thực tế đã ghi nhận — dùng để vẽ đường đi thật trên bản đồ.</summary>
@@ -56,6 +56,12 @@ public class TripsController : ControllerBase
         var route = await _tripService.GetTripRouteAsync(id);
         return route is null ? NotFound() : Ok(route);
     }
+
+    /// <summary>Tính khoảng cách/thời gian ước tính từ VietMap cho chuyến này
+    /// và LƯU LẠI vào Trip (phục vụ thống kê so sánh Ước tính vs Thực tế sau này).</summary>
+    [HttpPost("{id:int}/calculate-estimate")]
+    public async Task<ActionResult<TripRouteEstimateDto>> CalculateEstimate(int id)
+        => Ok(await _tripService.CalculateAndSaveRouteEstimateAsync(id));
 
     /// <summary>So sánh chi phí xăng ước tính (từ GPS thật) với chi phí thực tế đã ghi.</summary>
     [HttpGet("{id:int}/fuel-estimate")]
@@ -75,8 +81,29 @@ public class TripsController : ControllerBase
     public async Task<ActionResult<TripActionResult>> DeleteIncident(int incidentId)
     {
         var result = await _tripService.DeleteIncidentAsync(incidentId);
-        return result.Success ? Ok(result) : BadRequest(result);
+        return Ok(result); // luôn 200 OK — Desktop tự đọc result.Success/Message, tránh PostAsync throw exception khi 400 làm mất thông báo rõ ràng
     }
+
+    /// <summary>Đồng bộ lịch chuyến lên Google Calendar của tài xế + khách hàng.</summary>
+    [HttpPost("{id:int}/sync-calendar")]
+    public async Task<ActionResult<CalendarSyncResultDto>> SyncCalendar(int id)
+    {
+        var baseUrl = $"{Request.Scheme}://{Request.Host}";
+        return Ok(await _tripService.SyncCalendarAsync(id, baseUrl));
+    }
+
+    /// <summary>Danh sách chi phí khác (ngoài xăng) đã ghi cho 1 chuyến.</summary>
+    [HttpGet("{id:int}/expenses")]
+    public async Task<ActionResult<List<TripExpenseDto>>> GetExpenses(int id)
+        => Ok(await _tripService.GetExpensesAsync(id));
+
+    [HttpPost("{id:int}/expenses")]
+    public async Task<ActionResult<TripExpenseDto>> CreateExpense(int id, CreateTripExpenseRequest request)
+        => Ok(await _tripService.CreateExpenseAsync(id, request));
+
+    [HttpDelete("expenses/{expenseId:int}")]
+    public async Task<ActionResult<TripActionResult>> DeleteExpense(int expenseId)
+        => Ok(await _tripService.DeleteExpenseAsync(expenseId));
 
     // ---- App tài xế (đã có từ trước) — [AllowAnonymous] vì app KHÔNG có
     // luồng đăng nhập (chỉ nhập Server URL + Trip ID) — khác các endpoint

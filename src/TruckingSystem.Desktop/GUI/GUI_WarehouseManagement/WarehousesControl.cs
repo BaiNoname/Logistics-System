@@ -347,10 +347,10 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
         /// dòng hàng đó — đỡ phải gõ tay/tính nhẩm mỗi lần.</summary>
         private async Task LoadCargoLinesForSuggestAsync()
         {
-            if (_api is null || cboOrderSuggest.SelectedValue is not int orderId) return;
+            if (_api is null || cboOrderSuggest.SelectedValue is not int orderId || cboWarehouse.SelectedValue is not int warehouseId) return;
             try
             {
-                var lines = await _api.Warehouses.GetCargoLinesForOrderAsync(orderId);
+                var lines = await _api.Warehouses.GetCargoLinesForOrderAsync(orderId, warehouseId);
                 cboCargoLineSuggest.DataSource = lines;
                 cboCargoLineSuggest.DisplayMember = nameof(CargoLineOptionItem.CargoType);
                 cboCargoLineSuggest.ValueMember = nameof(CargoLineOptionItem.Id);

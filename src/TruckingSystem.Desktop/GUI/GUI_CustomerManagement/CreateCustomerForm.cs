@@ -30,7 +30,11 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
 
             try
             {
-                await _api.Customers.CreateCustomerAsync(txtName.Text.Trim(), txtPhone.Text.Trim(), txtTaxCode.Text.Trim(), (string)cboType.SelectedItem!);
+                await _api.Customers.CreateCustomerAsync(
+                    txtName.Text.Trim(), txtPhone.Text.Trim(), txtTaxCode.Text.Trim(), (string)cboType.SelectedItem!,
+                    string.IsNullOrWhiteSpace(txtAddress.Text) ? null : txtAddress.Text.Trim(),
+                    numCreditLimit.Value == 0 ? null : numCreditLimit.Value,
+                    string.IsNullOrWhiteSpace(txtGoogleCalendarId.Text) ? null : txtGoogleCalendarId.Text.Trim());
                 DialogResult = DialogResult.OK;
                 Close();
             }

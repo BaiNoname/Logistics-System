@@ -11,6 +11,7 @@
          ProjectReference, đúng nguyên tắc API không ôm chi tiết kỹ thuật. -->
     <!-- Khai báo cố định ở đây thay vì để tự cài qua NuGet UI — tránh NuGet UI
          tự chọn bản mới nhất (có thể là 10.x) gây lệch version như đã gặp trước đó. -->
+    <PackageReference Include="Google.Apis.Calendar.v3" Version="1.34.0.1237" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

@@ -15,13 +15,14 @@ namespace TruckingSystem.Desktop.SERVICE_TransportOrderManagement
         public Task<List<TransportOrderListItem>> GetTransportOrdersAsync()
             => _conn.GetAsync<List<TransportOrderListItem>>("/api/transport-orders")!;
 
-        public Task CreateTransportOrderAsync(int customerId, string pickup, string dropoff, DateTime? committedDate,
+        public Task CreateTransportOrderAsync(int customerId, string pickup, string dropoff, int warehouseId, DateTime? committedDate,
             List<CargoLineItem> cargoLines, int? pickupLocationId = null, int? dropoffLocationId = null, string pickupMethod = "CompanyPickup")
             => _conn.PostAsync<object>("/api/transport-orders", new
             {
                 customerId,
                 pickupPoint = pickup,
                 dropoffPoint = dropoff,
+                warehouseId,
                 committedDeliveryDate = committedDate,
                 cargoLines,
                 pickupLocationId,
@@ -30,12 +31,13 @@ namespace TruckingSystem.Desktop.SERVICE_TransportOrderManagement
             });
 
         /// <summary>Sửa đơn — CHỈ áp dụng được khi đơn còn Draft (Backend tự kiểm tra lại).</summary>
-        public Task<OrderActionResultItem> UpdateTransportOrderAsync(int id, string pickup, string dropoff, DateTime? committedDate,
+        public Task<OrderActionResultItem> UpdateTransportOrderAsync(int id, string pickup, string dropoff, int warehouseId, DateTime? committedDate,
             List<CargoLineItem> cargoLines, int? pickupLocationId, int? dropoffLocationId, string pickupMethod)
             => _conn.PutAsync<OrderActionResultItem>($"/api/transport-orders/{id}", new
             {
                 pickupPoint = pickup,
                 dropoffPoint = dropoff,
+                warehouseId,
                 committedDeliveryDate = committedDate,
                 cargoLines,
                 pickupLocationId,

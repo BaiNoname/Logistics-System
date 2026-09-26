@@ -21,4 +21,11 @@ public class DriverProfile : BaseEntity
     // lịch cá nhân cho 1 email Service Account cố định, gửi lại Calendar ID
     // này để nhập vào hệ thống — làm 1 lần duy nhất, không cần đăng nhập OAuth.
     public string? GoogleCalendarId { get; set; }
+
+    /// <summary>Kho/chi nhánh mà tài xế này ĐÓNG QUÂN — dùng để Greedy CHỈ
+    /// chọn tài xế đang ở ĐÚNG kho của đơn hàng, cùng logic với
+    /// Vehicle.WarehouseId (thường xe và tài xế ở cùng 1 kho). NULL = tài xế
+    /// CHƯA gán kho cố định, vẫn coi là dùng được cho MỌI đơn (áp dụng mềm).</summary>
+    public int? WarehouseId { get; set; }
+    public Warehouse? Warehouse { get; set; }
 }

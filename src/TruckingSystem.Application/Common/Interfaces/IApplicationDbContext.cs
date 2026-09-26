@@ -43,6 +43,8 @@ public interface IApplicationDbContext
     DbSet<Trip> Trips { get; }
     DbSet<Waypoint> Waypoints { get; }
     DbSet<IncidentReport> IncidentReports { get; }
+    DbSet<TripExpense> TripExpenses { get; }
+    DbSet<Notification> Notifications { get; }
     DbSet<DriverSchedule> DriverSchedules { get; }
 
     DbSet<Invoice> Invoices { get; }

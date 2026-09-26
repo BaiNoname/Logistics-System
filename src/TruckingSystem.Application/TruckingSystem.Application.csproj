@@ -10,6 +10,7 @@
          khác biệt cốt lõi so với N-layer/3-layer cũ (nơi Service có thể gọi thẳng
          DbContext). Application chỉ biết tới INTERFACE (IApplicationDbContext),
          không biết Postgres/EF Core là gì. -->
+    <PackageReference Include="Google.Apis.Calendar.v3" Version="1.34.0.1237" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

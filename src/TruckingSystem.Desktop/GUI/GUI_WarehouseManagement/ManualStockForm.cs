@@ -63,7 +63,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             if (_api is null || cboOrder.SelectedValue is not int orderId) return;
             try
             {
-                var lines = await _api.Warehouses.GetCargoLinesForOrderAsync(orderId);
+                var lines = await _api.Warehouses.GetCargoLinesForOrderAsync(orderId, _warehouseId);
                 cboCargoLine.DataSource = lines;
                 cboCargoLine.DisplayMember = nameof(CargoLineOptionItem.CargoType);
                 cboCargoLine.ValueMember = nameof(CargoLineOptionItem.Id);
@@ -164,6 +164,24 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                 return;
             }
 
+            // CẢNH BÁO (không chặn cứng) khi số nhập/xuất CHƯA đủ hết phần còn
+            // lại — tránh nhập/xuất THIẾU DO NHẦM (VD: khai 5, gõ nhầm 3 thay
+            // vì 5), nhưng vẫn CHO PHÉP cố tình làm từng phần (hàng hỏng/thiếu
+            // thực tế, kiểm đếm theo đợt...) nếu người dùng xác nhận đúng ý.
+            if (cboCargoLine.SelectedItem is CargoLineOptionItem selectedLine)
+            {
+                var referenceQty = isReceive ? selectedLine.QtyRemaining : selectedLine.QtyOnHand;
+                var actionText = isReceive ? "nhập" : "xuất";
+                if (numQty.Value < referenceQty)
+                {
+                    var confirm = MessageBox.Show(FindForm(),
+                        $"Số lượng {actionText} ({numQty.Value}) CHƯA đủ hết phần còn lại ({referenceQty}) — sau khi {actionText} vẫn còn dư {referenceQty - numQty.Value}.\n\n" +
+                        "Bạn có chắc muốn làm THEO PHẦN (không phải nhầm số lượng) không?",
+                        "Xác nhận nhập/xuất từng phần", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                    if (confirm != DialogResult.Yes) return;
+                }
+            }
+
             // Vị trí đã chọn tay (nếu có) — chỉ áp dụng cho chiều NHẬP; dòng "Tự
             // động" (Id=0) hoặc chưa chọn gì thì để null (hệ thống tự Best-Fit)
             int? chosenBinId = null;
@@ -189,6 +207,18 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                 }
                 await LoadHistoryAsync();
                 await LoadAvailableBinsAsync(); // vẽ lại danh sách NGAY để thấy màu/vị trí vừa đổi
+
+                // Tải lại danh sách dòng hàng để cập nhật NGAY số lượng CÒN LẠI
+                // hiện trong dropdown (VD: khai 5, vừa nhập 3 -> phải thấy ngay
+                // "còn 2/5" thay vì vẫn hiện "còn 5/5" cũ cho tới khi đổi qua
+                // đơn khác rồi đổi lại) — giữ nguyên đúng dòng đang chọn.
+                var previousCargoLineId = cargoLineId;
+                await LoadCargoLinesAsync();
+                if (cboCargoLine.Items.Count > 0)
+                {
+                    var matched = ((List<CargoLineOptionItem>)cboCargoLine.DataSource!).FirstOrDefault(l => l.Id == previousCargoLineId);
+                    if (matched is not null) cboCargoLine.SelectedItem = matched;
+                }
             }
             catch (Exception ex)
             {

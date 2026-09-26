@@ -6,6 +6,7 @@
   </PropertyGroup>
   <ItemGroup>
     <!-- Cần package Identity ở Domain vì ApplicationUser/ApplicationRole kế thừa IdentityUser/IdentityRole -->
+    <PackageReference Include="Google.Apis.Calendar.v3" Version="1.34.0.1237" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

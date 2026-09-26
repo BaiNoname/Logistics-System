@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using TruckingSystem.Application.Calendar;
 using TruckingSystem.Application.Common.Interfaces;
+using TruckingSystem.Application.Routing;
 using TruckingSystem.Application.Warehouses;
 using TruckingSystem.Domain.Entities;
 using TruckingSystem.Domain.Enums;
@@ -28,10 +30,15 @@ public class TripService : ITripService
     private readonly IApplicationDbContext _db;
     private readonly IWarehouseSlottingService _warehouseService;
 
-    public TripService(IApplicationDbContext db, IWarehouseSlottingService warehouseService)
+    private readonly IGoogleCalendarService _calendarService;
+    private readonly IRouteProvider _routeProvider;
+
+    public TripService(IApplicationDbContext db, IWarehouseSlottingService warehouseService, IGoogleCalendarService calendarService, IRouteProvider routeProvider)
     {
         _db = db;
         _warehouseService = warehouseService;
+        _calendarService = calendarService;
+        _routeProvider = routeProvider;
     }
 
     // ================= Quản lý Trip (Desktop) =================
@@ -210,23 +217,78 @@ public class TripService : ITripService
 
         if (trip is null) return null;
 
-        double? fromLat, fromLng, toLat, toLng;
+        var stops = BuildRouteStops(trip);
+        return new TripRouteDto(trip.TransportOrder.Code, trip.LegType.ToString(), stops);
+    }
+
+    /// <summary>Dựng danh sách điểm dừng ĐÚNG theo chặng — dùng CHUNG cho cả
+    /// "Xem lộ trình" (GetTripRouteAsync) lẫn tính+lưu ước tính
+    /// (CalculateAndSaveRouteEstimateAsync), tránh viết trùng lặp logic.
+    /// Chặng Lấy hàng có 3 điểm (round-trip Kho→Đối tác→Kho, xe phải quay về
+    /// đúng kho); chặng Giao hàng chỉ 2 điểm (1 chiều, xong việc cho đơn này).</summary>
+    private static List<RouteStopDto> BuildRouteStops(Trip trip)
+    {
+        var warehouseLat = trip.Warehouse?.Lat;
+        var warehouseLng = trip.Warehouse?.Lng;
+
         if (trip.LegType == TripLegType.Pickup)
         {
-            fromLat = trip.TransportOrder.PickupLocation?.Lat;
-            fromLng = trip.TransportOrder.PickupLocation?.Lng;
-            toLat = trip.Warehouse?.Lat;
-            toLng = trip.Warehouse?.Lng;
+            return new List<RouteStopDto>
+            {
+                new(warehouseLat, warehouseLng, "🏭 Xuất phát từ Kho (xe chạy rỗng)"),
+                new(trip.TransportOrder.PickupLocation?.Lat, trip.TransportOrder.PickupLocation?.Lng, "📦 Lấy hàng tại đối tác"),
+                new(warehouseLat, warehouseLng, "🏭 Về Kho nộp hàng"),
+            };
         }
-        else
+        return new List<RouteStopDto>
         {
-            fromLat = trip.Warehouse?.Lat;
-            fromLng = trip.Warehouse?.Lng;
-            toLat = trip.TransportOrder.DropoffLocation?.Lat;
-            toLng = trip.TransportOrder.DropoffLocation?.Lng;
+            new(warehouseLat, warehouseLng, "🏭 Xuất phát từ Kho"),
+            new(trip.TransportOrder.DropoffLocation?.Lat, trip.TransportOrder.DropoffLocation?.Lng, "🏁 Giao hàng tại điểm đến"),
+        };
+    }
+
+    public async Task<TripRouteEstimateDto> CalculateAndSaveRouteEstimateAsync(int tripId)
+    {
+        var trip = await _db.Trips
+            .Include(t => t.TransportOrder).ThenInclude(o => o.PickupLocation)
+            .Include(t => t.TransportOrder).ThenInclude(o => o.DropoffLocation)
+            .Include(t => t.Warehouse)
+            .FirstOrDefaultAsync(t => t.Id == tripId);
+
+        if (trip is null)
+            return new TripRouteEstimateDto(0, 0, "Không tìm thấy chuyến.");
+
+        var stops = BuildRouteStops(trip).Where(s => s.Lat.HasValue && s.Lng.HasValue).ToList();
+        if (stops.Count < 2)
+            return new TripRouteEstimateDto(0, 0, "Thiếu tọa độ ở 1 hoặc nhiều điểm dừng — không ước tính được.");
+
+        decimal totalDistanceKm = 0;
+        int totalDurationMinutes = 0;
+        bool gotAnyRealRoute = false;
+
+        for (int i = 0; i < stops.Count - 1; i++)
+        {
+            var route = await _routeProvider.GetRouteAsync(new RouteRequest(
+                stops[i].Lat!.Value, stops[i].Lng!.Value, stops[i + 1].Lat!.Value, stops[i + 1].Lng!.Value));
+            if (route.Success)
+            {
+                totalDistanceKm += (decimal)route.DistanceKm;
+                totalDurationMinutes += route.DurationMinutes;
+                gotAnyRealRoute = true;
+            }
         }
 
-        return new TripRouteDto(trip.TransportOrder.Code, trip.LegType.ToString(), fromLat, fromLng, toLat, toLng);
+        if (!gotAnyRealRoute)
+            return new TripRouteEstimateDto(0, 0, "VietMap không tính được lộ trình (lỗi mạng hoặc hết quota) — thử lại sau.");
+
+        // LƯU LẠI vào Trip — không chỉ hiện tạm thời rồi bỏ đi, để SAU NÀY có
+        // thể làm bảng thống kê so sánh với số liệu THỰC TẾ (StartTime/
+        // EndTime, khoảng cách GPS thật) của chính chuyến này.
+        trip.EstimatedDistanceKm = totalDistanceKm;
+        trip.EstimatedDurationMinutes = totalDurationMinutes;
+        await _db.SaveChangesAsync();
+
+        return new TripRouteEstimateDto(totalDistanceKm, totalDurationMinutes, null);
     }
 
     public async Task<FuelEstimateDto> GetFuelEstimateAsync(int tripId)
@@ -326,6 +388,116 @@ public class TripService : ITripService
         if (incident is null) return new TripActionResult(false, "Không tìm thấy sự cố.");
 
         _db.IncidentReports.Remove(incident);
+        await _db.SaveChangesAsync();
+        return new TripActionResult(true, null);
+    }
+
+    public async Task<CalendarSyncResultDto> SyncCalendarAsync(int tripId, string publicTrackingBaseUrl)
+    {
+        var trip = await _db.Trips
+            .Include(t => t.TransportOrder).ThenInclude(o => o.Customer)
+            .Include(t => t.DriverEmployee).ThenInclude(e => e.DriverProfile)
+            .FirstOrDefaultAsync(t => t.Id == tripId);
+
+        if (trip is null)
+            return new CalendarSyncResultDto(false, "Không tìm thấy chuyến.", false, "Không tìm thấy chuyến.");
+
+        var order = trip.TransportOrder;
+        var legText = trip.LegType == TripLegType.Pickup ? "Lấy hàng" : "Giao hàng";
+        var location = trip.LegType == TripLegType.Pickup ? order.PickupPoint : order.DropoffPoint;
+
+        // Ưu tiên giờ THẬT nếu chuyến đã/đang chạy; chưa chạy thì dùng hẹn giao
+        // của đơn làm mốc tạm; cuối cùng mới rơi về "1 giờ nữa" cho có giá trị
+        // hiển thị hợp lý trên Calendar (không để trống ngày giờ).
+        var startUtc = trip.StartTime ?? order.CommittedDeliveryDate ?? DateTime.UtcNow.AddHours(1);
+        var endUtc = trip.EndTime ?? startUtc.AddHours(2);
+
+        var trackingLink = $"{publicTrackingBaseUrl.TrimEnd('/')}/track.html?token={order.PublicTrackingToken}";
+        var description = $"Đơn hàng: {order.Code}\nChặng: {legText}\nĐịa điểm: {location}\n\n🔗 Theo dõi trực tiếp: {trackingLink}";
+        var title = $"🚚 {legText} — Đơn {order.Code}";
+
+        var driverCalendarId = trip.DriverEmployee.DriverProfile?.GoogleCalendarId;
+        var (driverSynced, driverMessage) = string.IsNullOrWhiteSpace(driverCalendarId)
+            ? (false, "Tài xế này chưa khai báo Google Calendar ID.")
+            : await SyncOneCalendarAsync(tripId, driverCalendarId!, title, description, startUtc, endUtc, location);
+
+        var customerCalendarId = order.Customer.GoogleCalendarId;
+        var (customerSynced, customerMessage) = string.IsNullOrWhiteSpace(customerCalendarId)
+            ? (false, "Khách hàng này chưa khai báo Google Calendar ID.")
+            : await SyncOneCalendarAsync(tripId, customerCalendarId!, title, description, startUtc, endUtc, location);
+
+        return new CalendarSyncResultDto(driverSynced, driverMessage, customerSynced, customerMessage);
+    }
+
+    /// <summary>Đồng bộ 1 sự kiện lên ĐÚNG 1 Calendar cụ thể — tra cứu lại
+    /// bảng TripCalendarEvent (dùng CHUNG cho cả tài xế lẫn khách hàng, không
+    /// phân biệt) để biết ĐÃ TỪNG đồng bộ Calendar này cho Trip này chưa (nếu
+    /// có -> CẬP NHẬT đúng sự kiện cũ, tránh tạo trùng lặp mỗi lần đồng bộ
+    /// lại). Trước đây lưu Event ID trực tiếp vào 2 field cố định trên Trip
+    /// (GoogleCalendarEventIdDriver/Customer) — kém linh hoạt hơn bảng riêng
+    /// này (vốn đã được thiết kế sẵn từ đầu đúng cho việc này, hỗ trợ mở rộng
+    /// thêm loại lịch khác sau này mà không cần đổi schema Trip nữa).</summary>
+    private async Task<(bool Success, string? Message)> SyncOneCalendarAsync(
+        int tripId, string calendarId, string title, string description, DateTime startUtc, DateTime endUtc, string? location)
+    {
+        var existing = await _db.TripCalendarEvents.FirstOrDefaultAsync(e => e.TripId == tripId && e.CalendarId == calendarId);
+
+        var result = await _calendarService.CreateOrUpdateEventAsync(new CalendarEventRequest(
+            calendarId, existing?.GoogleEventId, title, description, startUtc, endUtc, location));
+
+        if (!result.Success) return (false, result.Message);
+
+        if (existing is null)
+        {
+            _db.TripCalendarEvents.Add(new TripCalendarEvent
+            {
+                TripId = tripId,
+                CalendarId = calendarId,
+                GoogleEventId = result.EventId!,
+                SyncedAt = DateTime.UtcNow,
+            });
+        }
+        else
+        {
+            existing.GoogleEventId = result.EventId!;
+            existing.SyncedAt = DateTime.UtcNow;
+        }
+        await _db.SaveChangesAsync();
+
+        return (true, null);
+    }
+
+    public async Task<List<TripExpenseDto>> GetExpensesAsync(int tripId)
+    {
+        return await _db.TripExpenses
+            .Where(e => e.TripId == tripId)
+            .Select(e => new TripExpenseDto(e.Id, e.Type.ToString(), e.Amount, e.Note))
+            .ToListAsync();
+    }
+
+    public async Task<TripExpenseDto> CreateExpenseAsync(int tripId, CreateTripExpenseRequest request)
+    {
+        var type = Enum.TryParse<TripExpenseType>(request.Type, out var parsed) ? parsed : TripExpenseType.Other;
+
+        var expense = new TripExpense
+        {
+            TripId = tripId,
+            Type = type,
+            Amount = request.Amount,
+            Note = request.Note,
+        };
+        _db.TripExpenses.Add(expense);
+        await _db.SaveChangesAsync();
+
+        return new TripExpenseDto(expense.Id, expense.Type.ToString(), expense.Amount, expense.Note);
+    }
+
+    public async Task<TripActionResult> DeleteExpenseAsync(int expenseId)
+    {
+        var expense = await _db.TripExpenses.FindAsync(expenseId);
+        if (expense is null) return new TripActionResult(false, "Không tìm thấy chi phí.");
+
+        _db.TripExpenses.Remove(expense);
         await _db.SaveChangesAsync();
         return new TripActionResult(true, null);
     }

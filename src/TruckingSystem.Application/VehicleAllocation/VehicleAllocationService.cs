@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using TruckingSystem.Application.Common.Interfaces;
+using TruckingSystem.Application.Routing;
 using TruckingSystem.Application.Warehouses;
 using TruckingSystem.Domain.Entities;
 using TruckingSystem.Domain.Enums;
@@ -27,25 +28,38 @@ namespace TruckingSystem.Application.VehicleAllocation;
 ///     lượng" vẫn còn chỗ trên xe.
 ///  5. Chỉ chọn tài xế có bằng lái CÒN HẠN (LicenseExpiryDate) — trước đây
 ///     không kiểm tra, có thể gán tài xế đã hết hạn bằng lái.
-///  6. Loại trừ xe có giấy tờ (Đăng kiểm/Bảo hiểm/Giấy phép vận tải) ĐÃ HẾT
-///     HẠN — xe chưa nhập giấy tờ nào vẫn cho qua bình thường, chỉ chặn khi
-///     phát hiện thật sự hết hạn.
+///  6. BẮT BUỘC phải có ĐĂNG KIỂM CÒN HẠN mới cho dùng (đúng luật giao
+///     thông — xe không đăng kiểm không được lưu thông); xe CHƯA nhập
+///     Đăng kiểm nào cũng bị loại như đã hết hạn. Các giấy tờ KHÁC (Bảo
+///     hiểm/Giấy phép vận tải) vẫn áp dụng kiểu MỀM — chưa nhập thì vẫn
+///     cho qua, chỉ chặn khi phát hiện THẬT SỰ hết hạn.
+///  7. BẮT BUỘC tài xế phải có LỊCH LÀM VIỆC đăng ký sẵn, đủ hết tất cả
+///     các ngày dự kiến chuyến chạy (ước tính qua VietMap) — tài xế CHƯA
+///     đăng ký lịch nào cũng bị loại, không còn kiểu "mềm" như DriverProfile
+///     (nhất quán với quy tắc Đăng kiểm xe ở trên).
 /// </summary>
 public class VehicleAllocationService : IVehicleAllocationService
 {
     private readonly IApplicationDbContext _db;
     private readonly IWarehouseSlottingService _warehouseService;
+    private readonly IRouteProvider _routeProvider;
+    private readonly TruckingSystem.Application.Trips.ITripService _tripService;
 
-    public VehicleAllocationService(IApplicationDbContext db, IWarehouseSlottingService warehouseService)
+    public VehicleAllocationService(IApplicationDbContext db, IWarehouseSlottingService warehouseService, IRouteProvider routeProvider, TruckingSystem.Application.Trips.ITripService tripService)
     {
         _db = db;
         _warehouseService = warehouseService;
+        _routeProvider = routeProvider;
+        _tripService = tripService;
     }
 
     public async Task<AllocateVehiclesResponse> AllocateAsync(int transportOrderId)
     {
         var order = await _db.TransportOrders
             .Include(o => o.CargoLines)
+            .Include(o => o.PickupLocation)
+            .Include(o => o.DropoffLocation)
+            .Include(o => o.Warehouse)
             .FirstOrDefaultAsync(o => o.Id == transportOrderId);
 
         if (order is null)
@@ -65,23 +79,35 @@ public class VehicleAllocationService : IVehicleAllocationService
             return new AllocateVehiclesResponse(false, 0, 0, new(), "Đơn hàng chưa khai báo số lượng hàng hóa.");
 
         // Bước 1: sắp xếp giảm dần theo sức chứa — cốt lõi của tính "tham lam"
-        // LOẠI TRỪ xe có giấy tờ quan trọng (Đăng kiểm/Bảo hiểm/Giấy phép vận
-        // tải) ĐÃ HẾT HẠN — xe chưa hề nhập giấy tờ nào vẫn cho qua bình thường
-        // (không ép buộc phải có dữ liệu, chỉ chặn khi PHÁT HIỆN thật sự hết hạn).
+        // BẮT BUỘC phải có ĐĂNG KIỂM CÒN HẠN mới cho dùng — đúng luật giao
+        // thông thực tế (xe không đăng kiểm KHÔNG ĐƯỢC PHÉP lưu thông), khác
+        // với các giấy tờ khác (Bảo hiểm/Giấy phép vận tải) vẫn áp dụng kiểu
+        // MỀM như cũ (chưa nhập thì vẫn cho qua, chỉ chặn khi PHÁT HIỆN thật
+        // sự hết hạn) — Đăng kiểm là giấy tờ DUY NHẤT bị siết chặt vì đây là
+        // điều kiện PHÁP LÝ bắt buộc để xe được lưu thông trên đường.
         var today = DateTime.UtcNow;
-        var vehicleIdsWithExpiredDocs = await _db.VehicleDocuments
-            .Where(d => d.DocType != VehicleDocumentType.Other && d.ExpiryDate <= today)
+        var vehicleIdsWithValidRegistration = await _db.VehicleDocuments
+            .Where(d => d.DocType == VehicleDocumentType.Registration && d.ExpiryDate > today)
+            .Select(d => d.VehicleId)
+            .Distinct()
+            .ToListAsync();
+
+        var vehicleIdsWithExpiredOtherDocs = await _db.VehicleDocuments
+            .Where(d => d.DocType != VehicleDocumentType.Other && d.DocType != VehicleDocumentType.Registration && d.ExpiryDate <= today)
             .Select(d => d.VehicleId)
             .Distinct()
             .ToListAsync();
 
         var availableVehicles = await _db.Vehicles
-            .Where(v => v.Status == VehicleStatus.Available && !vehicleIdsWithExpiredDocs.Contains(v.Id))
+            .Where(v => v.Status == VehicleStatus.Available
+                     && vehicleIdsWithValidRegistration.Contains(v.Id)
+                     && !vehicleIdsWithExpiredOtherDocs.Contains(v.Id)
+                     && (v.WarehouseId == null || v.WarehouseId == order.WarehouseId))
             .OrderByDescending(v => v.CapacityQty)
             .ToListAsync();
 
         if (!availableVehicles.Any())
-            return new AllocateVehiclesResponse(false, totalQtyToShip, 0, new(), "Không còn xe nào đang rảnh (hoặc tất cả xe rảnh đều có giấy tờ đã hết hạn).");
+            return new AllocateVehiclesResponse(false, totalQtyToShip, 0, new(), "Không còn xe nào đang rảnh VÀ đang đóng quân đúng kho của đơn này VÀ có Đăng kiểm còn hạn (xe chưa nhập Đăng kiểm hoặc Đăng kiểm đã hết hạn đều bị loại — bắt buộc theo luật giao thông).");
 
         // Danh sách tài xế hợp lệ (có DriverProfile thật + đang Active + bằng
         // lái CÒN HẠN) — xoay vòng nếu cần nhiều xe hơn số tài xế rảnh (đơn
@@ -96,37 +122,49 @@ public class VehicleAllocationService : IVehicleAllocationService
 
         var driverIds = await _db.DriverProfiles
             .Include(dp => dp.Employee)
-            .Where(dp => dp.Employee.Status == EmployeeStatus.Active && dp.LicenseExpiryDate > today)
+            .Where(dp => dp.Employee.Status == EmployeeStatus.Active && dp.LicenseExpiryDate > today
+                      && (dp.WarehouseId == null || dp.WarehouseId == order.WarehouseId))
             .Select(dp => dp.EmployeeId)
             .ToListAsync();
         driverIds = driverIds.Except(busyDriverIds).ToList();
 
-        // CHỈ chọn tài xế THẬT SỰ đang trong ca làm việc hôm nay (DriverSchedule)
-        // — trước đây HOÀN TOÀN không kiểm tra lịch làm, coi mọi tài xế Active
-        // đều sẵn sàng bất kể có đăng ký ca hay không. Áp dụng MỀM: tài xế nào
-        // CHƯA TỪNG đăng ký lịch (bảng trống với họ) vẫn coi là sẵn sàng như cũ
-        // (không phá vỡ luồng cũ/dữ liệu demo) — CHỈ loại những tài xế ĐÃ CÓ
-        // đăng ký lịch nhưng KHÔNG có ca nào đúng vào hôm nay.
-        var driversWithAnySchedule = await _db.DriverSchedules
-            .Select(s => s.DriverEmployeeId)
-            .Distinct()
+        // BẮT BUỘC tài xế phải có ca làm việc ĐĂNG KÝ SẴN, đủ hết TẤT CẢ các
+        // ngày trong toàn bộ thời gian chuyến dự kiến chạy — nhất quán với quy
+        // tắc Đăng kiểm xe (cũng bắt buộc phải có, không cho qua nếu thiếu dữ
+        // liệu). Tài xế CHƯA đăng ký lịch nào cũng bị loại giống như thiếu ca
+        // — quan trọng với tuyến ĐƯỜNG DÀI (VD Hà Nội - Sài Gòn ~1.700km,
+        // thực tế thường mất HƠN 1 NGÀY do quy định giờ lái xe liên tục + nghỉ
+        // ngơi bắt buộc), tránh trường hợp tài xế "hết ca" giữa đường mà hệ
+        // thống không hề biết.
+        var estimatedTripDays = await EstimateTripDurationDaysAsync(order);
+        var neededDates = Enumerable.Range(0, estimatedTripDays).Select(offset => today.Date.AddDays(offset)).ToList();
+
+        var scheduleDatesByDriver = await _db.DriverSchedules
+            .Where(s => driverIds.Contains(s.DriverEmployeeId))
+            .Select(s => new { s.DriverEmployeeId, s.ShiftDate })
             .ToListAsync();
-        var scheduledTodayIds = await _db.DriverSchedules
-            .Where(s => s.ShiftDate.Date == today.Date)
-            .Select(s => s.DriverEmployeeId)
-            .Distinct()
-            .ToListAsync();
-        driverIds = driverIds.Where(id => !driversWithAnySchedule.Contains(id) || scheduledTodayIds.Contains(id)).ToList();
+        var scheduledDateSetByDriver = scheduleDatesByDriver
+            .GroupBy(s => s.DriverEmployeeId)
+            .ToDictionary(g => g.Key, g => g.Select(x => x.ShiftDate.Date).ToHashSet());
+
+        driverIds = driverIds.Where(id =>
+            scheduledDateSetByDriver.TryGetValue(id, out var dates) && neededDates.All(d => dates.Contains(d))
+        ).ToList();
 
         if (driverIds.Count == 0)
-            return new AllocateVehiclesResponse(false, totalQtyToShip, 0, new(), "Không có tài xế nào khả dụng (đã hết hạn bằng lái, đang bận chuyến khác, hoặc không có ca làm việc hôm nay).");
+        {
+            var dayRangeText = estimatedTripDays > 1
+                ? $" từ {neededDates.First():dd/MM} tới {neededDates.Last():dd/MM} (ước tính chuyến kéo dài {estimatedTripDays} ngày do quãng đường xa)"
+                : $" ngày {neededDates.First():dd/MM}";
+            return new AllocateVehiclesResponse(false, totalQtyToShip, 0, new(),
+                $"Không có tài xế nào khả dụng (đã hết hạn bằng lái, đang bận chuyến khác, không đóng quân đúng kho của đơn này, hoặc CHƯA đăng ký ĐỦ ca làm việc{dayRangeText} — bắt buộc phải đăng ký lịch trước).");
+        }
 
-        // Đơn giản hoá: dùng kho ĐẦU TIÊN hiện có làm kho trung chuyển mặc định
-        // — hệ thống hiện chưa có bước chọn kho cụ thể lúc Chia xe. Cải tiến
-        // sau: cho Dispatcher chọn kho, hoặc tự động chọn kho gần điểm lấy/giao nhất.
-        var defaultWarehouseId = await _db.Warehouses.Select(w => w.Id).FirstOrDefaultAsync();
-        if (defaultWarehouseId == 0)
-            return new AllocateVehiclesResponse(false, totalQtyToShip, 0, new(), "Chưa có kho trung chuyển nào trong hệ thống — cần tạo ít nhất 1 kho trước khi chia xe.");
+        // Dùng ĐÚNG kho trung chuyển Dispatcher đã CHỌN khi tạo đơn (order.WarehouseId)
+        // — trước đây luôn lấy kho ĐẦU TIÊN trong hệ thống bất kể đơn đi đâu,
+        // gây ra lộ trình vô lý (VD đơn Bình Dương -> Hà Nội nhưng lại đi qua
+        // 1 kho không liên quan gì tới tuyến đường thực tế).
+        var defaultWarehouseId = order.WarehouseId;
 
         var isCompanyPickup = order.PickupMethod == PickupMethod.CompanyPickup;
 
@@ -188,6 +226,14 @@ public class VehicleAllocationService : IVehicleAllocationService
                 };
                 _db.Trips.Add(currentDeliveryTrip);
                 await _db.SaveChangesAsync(); // cần Id thật trước khi tạo TripLine
+
+                // TỰ ĐỘNG tính + LƯU LẠI ước tính khoảng cách/thời gian từ
+                // VietMap ngay lúc Chia xe — để có sẵn dữ liệu SO SÁNH với số
+                // liệu THỰC TẾ sau khi chuyến chạy xong (phục vụ thống kê),
+                // không phải đợi Dispatcher tự bấm "📏 Ước tính" thủ công.
+                if (currentPickupTrip is not null)
+                    await _tripService.CalculateAndSaveRouteEstimateAsync(currentPickupTrip.Id);
+                await _tripService.CalculateAndSaveRouteEstimateAsync(currentDeliveryTrip.Id);
 
                 vehicle.Status = VehicleStatus.OnTrip;
                 results.Add(new AllocationResultItem(currentDeliveryTrip.Id, vehicle.PlateNumber, 0));
@@ -306,6 +352,57 @@ public class VehicleAllocationService : IVehicleAllocationService
             ? $"Chỉ đủ xe chở {totalAssigned}/{totalQtyToShip} — còn thiếu {remaining}, cần thêm xe hoặc chờ xe rảnh."
             : null;
 
-        return new AllocateVehiclesResponse(true, totalQtyToShip, totalAssigned, results, message);
+        return new AllocateVehiclesResponse(true, totalQtyToShip, totalAssigned, results, message, estimatedTripDays);
+    }
+
+    /// <summary>Ước tính chuyến này có thể mất BAO NHIÊU NGÀY để hoàn tất —
+    /// gọi VietMap API THẬT (đã tích hợp sẵn cho tính năng "Xem lộ trình") để
+    /// lấy đúng THỜI GIAN DI CHUYỂN THỰC TẾ (có tính đường sá, giới hạn tốc độ
+    /// thật...) cho từng chặng Điểm lấy hàng → Kho và Kho → Điểm giao hàng,
+    /// thay vì tự ước lượng bằng công thức toán (đường chim bay) kém chính
+    /// xác hơn nhiều. Cộng dồn thời gian cả 2 chặng, chia cho số giờ lái xe
+    /// tối đa/ngày theo quy định (có tính giờ nghỉ bắt buộc).
+    /// Nếu THIẾU tọa độ hoặc VietMap API lỗi (mất mạng, hết quota...) -> KHÔNG
+    /// chặn nghiệp vụ, mặc định 1 ngày (giữ hành vi cũ, an toàn).</summary>
+    private async Task<int> EstimateTripDurationDaysAsync(TransportOrder order)
+    {
+        const int maxDrivingMinutesPerDay = 480; // 8 giờ lái/ngày — đã trừ giờ nghỉ bắt buộc theo quy định
+
+        int totalMinutes = 0;
+        bool gotAnyRealRoute = false;
+
+        double? pickupLat = order.PickupLocation?.Lat, pickupLng = order.PickupLocation?.Lng;
+        double? dropoffLat = order.DropoffLocation?.Lat, dropoffLng = order.DropoffLocation?.Lng;
+        double? warehouseLat = order.Warehouse?.Lat, warehouseLng = order.Warehouse?.Lng;
+
+        if (pickupLat.HasValue && pickupLng.HasValue && warehouseLat.HasValue && warehouseLng.HasValue)
+        {
+            // Chặng Lấy hàng là round-trip THẬT SỰ: xe xuất phát RỖNG từ Kho ra
+            // chỗ đối tác lấy hàng, RỒI QUAY VỀ ĐÚNG KHO ĐÓ để nộp hàng — trước
+            // đây chỉ tính 1 chiều (Đối tác -> Kho), THIẾU hẳn đoạn xe chạy
+            // rỗng ra điểm lấy hàng, khiến ước tính số ngày bị THẤP hơn thực
+            // tế. Đường 2 chiều dài bằng nhau -> nhân đôi thời gian 1 chiều,
+            // đỡ tốn thêm 1 lần gọi API cho chiều ngược lại (cùng 1 con đường).
+            var leg1 = await _routeProvider.GetRouteAsync(new RouteRequest(pickupLat.Value, pickupLng.Value, warehouseLat.Value, warehouseLng.Value));
+            if (leg1.Success) { totalMinutes += leg1.DurationMinutes * 2; gotAnyRealRoute = true; }
+        }
+        if (warehouseLat.HasValue && warehouseLng.HasValue && dropoffLat.HasValue && dropoffLng.HasValue)
+        {
+            // Chặng Giao hàng CHỈ 1 chiều (Kho -> Điểm giao) — xe giao xong coi
+            // như xong việc CHO ĐƠN NÀY, không cần tính đường về (đường về sẽ
+            // tính vào đơn/chuyến TIẾP THEO của xe đó, không thuộc phạm vi đơn
+            // này).
+            var leg2 = await _routeProvider.GetRouteAsync(new RouteRequest(warehouseLat.Value, warehouseLng.Value, dropoffLat.Value, dropoffLng.Value));
+            if (leg2.Success) { totalMinutes += leg2.DurationMinutes; gotAnyRealRoute = true; }
+        }
+
+        // Thiếu tọa độ HOẶC VietMap không trả được lộ trình nào cả (lỗi mạng,
+        // hết quota, thiếu API key...) -> không ước tính được, mặc định 1
+        // ngày như hành vi cũ, không để lỗi API bên ngoài chặn cả nghiệp vụ
+        // Chia xe quan trọng hơn nhiều.
+        if (!gotAnyRealRoute) return 1;
+
+        var estimatedDays = (int)Math.Ceiling((double)totalMinutes / maxDrivingMinutesPerDay);
+        return Math.Max(1, estimatedDays);
     }
 }

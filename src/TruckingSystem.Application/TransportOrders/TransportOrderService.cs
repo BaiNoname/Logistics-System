@@ -29,6 +29,7 @@ public class TransportOrderService : ITransportOrderService
     {
         var order = await _db.TransportOrders
             .Include(o => o.Customer)
+            .Include(o => o.Warehouse)
             .Include(o => o.CargoLines)
             .Include(o => o.PickupLocation)
             .Include(o => o.DropoffLocation)
@@ -47,6 +48,9 @@ public class TransportOrderService : ITransportOrderService
         var customer = await _db.Customers.FindAsync(request.CustomerId)
             ?? throw new InvalidOperationException("Khách hàng không tồn tại.");
 
+        var warehouse = await _db.Warehouses.FindAsync(request.WarehouseId)
+            ?? throw new InvalidOperationException("Kho trung chuyển đã chọn không tồn tại.");
+
         if (request.CargoLines is null || request.CargoLines.Count == 0)
             throw new InvalidOperationException("Đơn hàng phải có ít nhất 1 dòng hàng hóa.");
 
@@ -58,6 +62,7 @@ public class TransportOrderService : ITransportOrderService
             CustomerId = request.CustomerId,
             PickupPoint = request.PickupPoint,
             DropoffPoint = request.DropoffPoint,
+            WarehouseId = request.WarehouseId,
             CommittedDeliveryDate = request.CommittedDeliveryDate,
             Status = TransportOrderStatus.Draft,
             PickupLocationId = request.PickupLocationId,
@@ -76,6 +81,7 @@ public class TransportOrderService : ITransportOrderService
             order.DropoffLocation = await _db.Locations.FindAsync(request.DropoffLocationId.Value);
 
         order.Customer = customer; // gán tay để MapToDetail không phải query lại
+        order.Warehouse = warehouse;
         order.Trips = new List<Trip>(); // đơn mới tạo chưa có chuyến nào
         return MapToDetail(order);
     }
@@ -92,8 +98,13 @@ public class TransportOrderService : ITransportOrderService
         if (request.CargoLines is null || request.CargoLines.Count == 0)
             return new OrderActionResult(false, "Đơn hàng phải có ít nhất 1 dòng hàng hóa.");
 
+        var warehouseExists = await _db.Warehouses.AnyAsync(w => w.Id == request.WarehouseId);
+        if (!warehouseExists)
+            return new OrderActionResult(false, "Kho trung chuyển đã chọn không tồn tại.");
+
         order.PickupPoint = request.PickupPoint;
         order.DropoffPoint = request.DropoffPoint;
+        order.WarehouseId = request.WarehouseId;
         order.CommittedDeliveryDate = request.CommittedDeliveryDate;
         order.PickupLocationId = request.PickupLocationId;
         order.DropoffLocationId = request.DropoffLocationId;
@@ -175,6 +186,6 @@ public class TransportOrderService : ITransportOrderService
             t.TripLines.Sum(tl => tl.QtyPlanned))).ToList(),
         order.PickupLocation?.Lat, order.PickupLocation?.Lng,
         order.DropoffLocation?.Lat, order.DropoffLocation?.Lng,
-        order.PickupMethod.ToString(), order.CustomerId
+        order.PickupMethod.ToString(), order.CustomerId, order.WarehouseId, order.Warehouse.Name
     );
 }
