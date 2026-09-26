@@ -342,5 +342,5 @@ Cảnh báo chủ động các vấn đề cần chú ý; lưu vết các thao t
 
 | Mảng nghiệp vụ | Người phụ trách |
 |---|---|
-| Phân quyền, Khách hàng, OCR danh thiếp, Thanh toán/Hóa đơn, Chatbot | Minh |
+| Phân quyền, Khách hàng, OCR danh thiếp, Thanh toán/Hóa đơn, Chatbot, Nhân viên( trừ tài xế) | Minh |
 | Vận chuyển, Kho trung chuyển, Đội xe, Tài xế, Bản đồ/Định tuyến, Chuyến đi, Nhiên liệu, GPS, Ứng dụng tài xế | Nhân |
