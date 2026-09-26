@@ -55,6 +55,8 @@ public class TransportOrderDetailItem
     public double? DropoffLat { get; set; }
     public double? DropoffLng { get; set; }
     public string PickupMethod { get; set; } = "CompanyPickup";
+    public int WarehouseId { get; set; }
+    public string WarehouseName { get; set; } = "";
 }
 
 /// <summary>Kết quả thao tác Xác nhận/Hủy đơn.</summary>
@@ -78,4 +80,5 @@ public class AllocateVehiclesResult
     public decimal TotalQtyAssigned { get; set; }
     public List<AllocationResultItemDto> Trips { get; set; } = new();
     public string? Message { get; set; }
+    public int EstimatedTripDays { get; set; } = 1;
 }

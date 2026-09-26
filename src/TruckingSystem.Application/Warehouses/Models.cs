@@ -42,10 +42,10 @@ public record CreateBinRequest(string Code, decimal CapacityM3, decimal MaxWeigh
 public record ManualStockRequest(int TransportOrderId, int CargoLineId, decimal Qty, int? ChosenBinId = null);
 
 /// <summary>Dùng cho ComboBox chọn dòng hàng trong màn Nhập/Xuất kho thủ công.</summary>
-/// <summary>QtyRemaining = QtyTotal trừ đi tổng đã nhập kho trước đó — dùng
-/// để TỰ ĐỘNG điền sẵn số lượng khi chọn dòng hàng, tránh phải gõ tay và
-/// tính nhẩm mỗi lần (dễ gõ sai, dễ vượt số đã khai báo).</summary>
-public record CargoLineOptionDto(int Id, string CargoType, decimal QtyTotal, decimal QtyRemaining, string OrderCode);
+/// <summary>QtyRemaining = còn được NHẬP thêm (so với QtyTotal đã khai báo).
+/// QtyOnHand = tồn kho HIỆN TẠI của dòng hàng này trong ĐÚNG kho đang thao
+/// tác — dùng để biết còn được XUẤT tối đa bao nhiêu.</summary>
+public record CargoLineOptionDto(int Id, string CargoType, decimal QtyTotal, decimal QtyRemaining, decimal QtyOnHand, string OrderCode);
 
 /// <summary>1 dòng lịch sử nhập/xuất kho — gộp chung GoodsReceipt/GoodsIssue để hiện trên cùng 1 bảng.</summary>
 public record WarehouseTransactionDto(string Type, DateTime OccurredAt, string OrderCode, string CargoType, decimal Qty, string ByEmployeeName);

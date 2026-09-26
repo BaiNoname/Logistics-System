@@ -61,7 +61,7 @@ public interface IWarehouseSlottingService
 
     /// <summary>Lấy danh sách CargoLine của 1 đơn — dùng cho màn Nhập/Xuất kho
     /// thủ công (chọn đúng dòng hàng cần nhập/xuất).</summary>
-    Task<List<CargoLineOptionDto>> GetCargoLinesForOrderAsync(int transportOrderId);
+    Task<List<CargoLineOptionDto>> GetCargoLinesForOrderAsync(int transportOrderId, int warehouseId);
 
     /// <summary>Lịch sử nhập/xuất kho (gộp cả GoodsReceipt + GoodsIssue), sắp
     /// xếp mới nhất trước — dùng cho màn Nhập/Xuất kho thủ công xem lại.</summary>

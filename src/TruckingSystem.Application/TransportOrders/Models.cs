@@ -6,6 +6,7 @@ public record CreateTransportOrderRequest(
     int CustomerId,
     string PickupPoint,
     string DropoffPoint,
+    int WarehouseId,
     DateTime? CommittedDeliveryDate,
     List<CargoLineDto> CargoLines,
     int? PickupLocationId = null,
@@ -18,6 +19,7 @@ public record CreateTransportOrderRequest(
 public record UpdateTransportOrderRequest(
     string PickupPoint,
     string DropoffPoint,
+    int WarehouseId,
     DateTime? CommittedDeliveryDate,
     List<CargoLineDto> CargoLines,
     int? PickupLocationId = null,
@@ -42,5 +44,5 @@ public record TransportOrderDetailDto(
     string PickupPoint, string DropoffPoint, DateTime? CommittedDeliveryDate,
     string PublicTrackingToken, List<CargoLineDto> CargoLines, List<TripSummaryDto> Trips,
     double? PickupLat, double? PickupLng, double? DropoffLat, double? DropoffLng,
-    string PickupMethod, int CustomerId
+    string PickupMethod, int CustomerId, int WarehouseId, string WarehouseName
 );

@@ -71,6 +71,7 @@ namespace TruckingSystem.Desktop.GUI_Shared
                 ("👥", "Khách hàng", () => new CustomersControl(_api)),
                 ("🧑‍💼", "Nhân viên", () => new EmployeesControl(_api)),
                 ("🧾", "Hóa đơn", () => new InvoicesControl(_api)),
+                ("📜", "Nhật ký hệ thống", () => new TruckingSystem.Desktop.GUI_AuditLogManagement.AuditLogsControl(_api)),
             };
 
             var navPanel = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, WrapContents = false, Padding = new Padding(10, 10, 10, 0) };
@@ -87,7 +88,7 @@ namespace TruckingSystem.Desktop.GUI_Shared
             var logoutBtn = MakeNavButton("🚪", "Đăng xuất");
             logoutBtn.Click += (_, _) =>
             {
-                var confirm = MessageBox.Show(FindForm(), 
+                var confirm = MessageBox.Show(FindForm(),
                     "Bạn có chắc chắn muốn đăng xuất không?",
                     "Xác nhận đăng xuất",
                     MessageBoxButtons.YesNo, MessageBoxIcon.Question);
@@ -130,8 +131,30 @@ namespace TruckingSystem.Desktop.GUI_Shared
         private void BuildTopBar(string username)
         {
             var lblUser = new Label { Text = $"👤  {username}", Dock = DockStyle.Right, Width = 200, TextAlign = ContentAlignment.MiddleRight, Font = Theme.FontNormal, ForeColor = Theme.TextSecondary };
+
+            // Nút chuông thông báo — quét cảnh báo tự động (giấy tờ xe sắp/đã
+            // hết hạn, tài xế chưa đăng ký lịch làm ngày mai...) mỗi lần mở.
+            var btnNotifications = new Button
+            {
+                Text = "🔔",
+                Dock = DockStyle.Right,
+                Width = 60,
+                Font = new Font("Segoe UI", 14F),
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.White,
+                Cursor = Cursors.Hand,
+            };
+            btnNotifications.FlatAppearance.BorderSize = 0;
+            btnNotifications.Click += (_, _) =>
+            {
+                if (_api is null) return;
+                using var f = new TruckingSystem.Desktop.GUI_NotificationManagement.NotificationsForm(_api);
+                f.ShowDialog(this);
+            };
+
             var bottomBorder = new Panel { Dock = DockStyle.Bottom, Height = 1, BackColor = Theme.BorderColor };
             topBar.Controls.Add(lblUser);
+            topBar.Controls.Add(btnNotifications);
             topBar.Controls.Add(bottomBorder);
         }
 

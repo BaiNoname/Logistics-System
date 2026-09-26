@@ -1,5 +1,6 @@
 using TruckingSystem.Desktop.Common;
 using TruckingSystem.Desktop.DTO_TransportOrderManagement;
+using TruckingSystem.Desktop.DTO_TripManagement;
 using TruckingSystem.Desktop.GUI_RouteManagement;
 
 namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
@@ -95,7 +96,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
         private async void BtnConfirm_Click(object? sender, EventArgs e)
         {
             if (_api is null) return;
-            var confirm = MessageBox.Show(FindForm(), 
+            var confirm = MessageBox.Show(FindForm(),
                 "Xác nhận đơn này? Sau khi xác nhận sẽ KHÔNG sửa được nữa (chỉ có thể hủy).",
                 "Xác nhận đơn hàng", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
             if (confirm != DialogResult.Yes) return;
@@ -128,7 +129,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
         private async void BtnCancel_Click(object? sender, EventArgs e)
         {
             if (_api is null) return;
-            var confirm = MessageBox.Show(FindForm(), 
+            var confirm = MessageBox.Show(FindForm(),
                 "Bạn có chắc chắn muốn HỦY đơn hàng này không? Không thể hoàn tác.",
                 "Xác nhận hủy đơn", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
             if (confirm != DialogResult.Yes) return;
@@ -164,17 +165,19 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             if (_currentOrder.PickupLat is null || _currentOrder.PickupLng is null
                 || _currentOrder.DropoffLat is null || _currentOrder.DropoffLng is null)
             {
-                MessageBox.Show(FindForm(), 
+                MessageBox.Show(FindForm(),
                     "Đơn này chưa chọn địa điểm từ danh sách đã lưu (chỉ gõ tay), nên chưa có tọa độ để vẽ lộ trình.\n\n" +
                     "Vào mục 'Địa điểm' để thêm tọa độ, rồi tạo lại đơn bằng cách chọn từ danh sách địa điểm đã lưu.",
                     "Thiếu tọa độ", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
-            using var f = new RouteMapForm(
-                _api, _currentOrder.Code,
-                _currentOrder.PickupLat.Value, _currentOrder.PickupLng.Value,
-                _currentOrder.DropoffLat.Value, _currentOrder.DropoffLng.Value);
+            var stops = new List<RouteStopItem>
+            {
+                new() { Lat = _currentOrder.PickupLat, Lng = _currentOrder.PickupLng, Label = "📍 Điểm lấy hàng" },
+                new() { Lat = _currentOrder.DropoffLat, Lng = _currentOrder.DropoffLng, Label = "🏁 Điểm giao hàng" },
+            };
+            using var f = new RouteMapForm(_api, _currentOrder.Code, stops);
             f.ShowDialog(FindForm());
         }
 
@@ -190,7 +193,8 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
 
                 if (result.Success)
                 {
-                    lblResult.Text = $"✅ Đã gán {result.Trips.Count} xe, chở {result.TotalQtyAssigned}/{result.TotalQtyToShip}." +
+                    var daysText = result.EstimatedTripDays > 1 ? $"\n🕒 Dự kiến chuyến kéo dài ~{result.EstimatedTripDays} ngày (tuyến đường xa)." : "";
+                    lblResult.Text = $"✅ Đã gán {result.Trips.Count} xe, chở {result.TotalQtyAssigned}/{result.TotalQtyToShip}.{daysText}" +
                                       (result.Message != null ? "\n⚠️ " + result.Message : "");
                     lblResult.ForeColor = Theme.Success;
                     await LoadAsync();

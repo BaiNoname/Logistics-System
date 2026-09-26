@@ -23,6 +23,9 @@ partial class TripsControl
         btnDriverInfo = new Button();
         btnFuelEstimate = new Button();
         btnIncidents = new Button();
+        btnSyncCalendar = new Button();
+        btnExpenses = new Button();
+        btnQuickEstimate = new Button();
         lblStatus = new Label();
         grid = new DataGridView();
         ((System.ComponentModel.ISupportInitialize)grid).BeginInit();
@@ -34,7 +37,7 @@ partial class TripsControl
         lblTitle.ForeColor = Color.FromArgb(15, 23, 42);
         lblTitle.Location = new Point(0, 0);
         lblTitle.Name = "lblTitle";
-        lblTitle.Size = new Size(400, 73);
+        lblTitle.Size = new Size(382, 73);
         lblTitle.TabIndex = 0;
         lblTitle.Text = "Quản lý chuyến (Trip)";
         // 
@@ -46,9 +49,9 @@ partial class TripsControl
         btnRefresh.FlatStyle = FlatStyle.Flat;
         btnRefresh.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
         btnRefresh.ForeColor = Color.FromArgb(15, 23, 42);
-        btnRefresh.Location = new Point(394, 0);
+        btnRefresh.Location = new Point(387, 3);
         btnRefresh.Name = "btnRefresh";
-        btnRefresh.Size = new Size(147, 38);
+        btnRefresh.Size = new Size(123, 38);
         btnRefresh.TabIndex = 1;
         btnRefresh.Text = "🔄 Làm mới";
         btnRefresh.UseVisualStyleBackColor = false;
@@ -62,9 +65,9 @@ partial class TripsControl
         btnFuel.FlatStyle = FlatStyle.Flat;
         btnFuel.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
         btnFuel.ForeColor = Color.FromArgb(15, 23, 42);
-        btnFuel.Location = new Point(547, 0);
+        btnFuel.Location = new Point(497, 3);
         btnFuel.Name = "btnFuel";
-        btnFuel.Size = new Size(130, 38);
+        btnFuel.Size = new Size(153, 38);
         btnFuel.TabIndex = 2;
         btnFuel.Text = "⛽ Ghi xăng";
         btnFuel.UseVisualStyleBackColor = false;
@@ -78,9 +81,9 @@ partial class TripsControl
         btnStart.FlatStyle = FlatStyle.Flat;
         btnStart.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
         btnStart.ForeColor = Color.FromArgb(15, 23, 42);
-        btnStart.Location = new Point(683, 0);
+        btnStart.Location = new Point(637, 3);
         btnStart.Name = "btnStart";
-        btnStart.Size = new Size(150, 38);
+        btnStart.Size = new Size(173, 38);
         btnStart.TabIndex = 3;
         btnStart.Text = "▶️ Bắt đầu chuyến";
         btnStart.UseVisualStyleBackColor = false;
@@ -95,9 +98,9 @@ partial class TripsControl
         btnComplete.FlatStyle = FlatStyle.Flat;
         btnComplete.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
         btnComplete.ForeColor = Color.White;
-        btnComplete.Location = new Point(850, 0);
+        btnComplete.Location = new Point(797, 3);
         btnComplete.Name = "btnComplete";
-        btnComplete.Size = new Size(150, 38);
+        btnComplete.Size = new Size(173, 38);
         btnComplete.TabIndex = 4;
         btnComplete.Text = "✅ Hoàn tất chuyến";
         btnComplete.UseVisualStyleBackColor = false;
@@ -111,9 +114,9 @@ partial class TripsControl
         btnViewRoute.FlatStyle = FlatStyle.Flat;
         btnViewRoute.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
         btnViewRoute.ForeColor = Color.FromArgb(15, 23, 42);
-        btnViewRoute.Location = new Point(406, 46);
+        btnViewRoute.Location = new Point(957, 3);
         btnViewRoute.Name = "btnViewRoute";
-        btnViewRoute.Size = new Size(180, 38);
+        btnViewRoute.Size = new Size(203, 38);
         btnViewRoute.TabIndex = 4;
         btnViewRoute.Text = "🗺️ Xem lộ trình";
         btnViewRoute.UseVisualStyleBackColor = false;
@@ -126,9 +129,9 @@ partial class TripsControl
         btnDriverInfo.FlatStyle = FlatStyle.Flat;
         btnDriverInfo.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
         btnDriverInfo.ForeColor = Color.FromArgb(15, 23, 42);
-        btnDriverInfo.Location = new Point(613, 44);
+        btnDriverInfo.Location = new Point(1147, 3);
         btnDriverInfo.Name = "btnDriverInfo";
-        btnDriverInfo.Size = new Size(180, 38);
+        btnDriverInfo.Size = new Size(203, 38);
         btnDriverInfo.TabIndex = 5;
         btnDriverInfo.Text = "📱 Lấy link tài xế";
         btnDriverInfo.UseVisualStyleBackColor = false;
@@ -141,9 +144,9 @@ partial class TripsControl
         btnFuelEstimate.FlatStyle = FlatStyle.Flat;
         btnFuelEstimate.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
         btnFuelEstimate.ForeColor = Color.FromArgb(15, 23, 42);
-        btnFuelEstimate.Location = new Point(1410, 0);
+        btnFuelEstimate.Location = new Point(593, 47);
         btnFuelEstimate.Name = "btnFuelEstimate";
-        btnFuelEstimate.Size = new Size(200, 38);
+        btnFuelEstimate.Size = new Size(242, 38);
         btnFuelEstimate.TabIndex = 6;
         btnFuelEstimate.Text = "⛽ Ước tính nhiên liệu";
         btnFuelEstimate.UseVisualStyleBackColor = false;
@@ -157,13 +160,58 @@ partial class TripsControl
         btnIncidents.FlatStyle = FlatStyle.Flat;
         btnIncidents.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
         btnIncidents.ForeColor = Color.FromArgb(220, 38, 38);
-        btnIncidents.Location = new Point(820, 46);
+        btnIncidents.Location = new Point(1183, 47);
         btnIncidents.Name = "btnIncidents";
         btnIncidents.Size = new Size(180, 38);
         btnIncidents.TabIndex = 7;
         btnIncidents.Text = "⚠️ Sự cố";
         btnIncidents.UseVisualStyleBackColor = false;
         btnIncidents.Click += BtnIncidents_Click;
+        // 
+        // btnSyncCalendar
+        // 
+        btnSyncCalendar.BackColor = Color.White;
+        btnSyncCalendar.Cursor = Cursors.Hand;
+        btnSyncCalendar.FlatStyle = FlatStyle.Flat;
+        btnSyncCalendar.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+        btnSyncCalendar.ForeColor = Color.FromArgb(15, 23, 42);
+        btnSyncCalendar.Location = new Point(387, 47);
+        btnSyncCalendar.Name = "btnSyncCalendar";
+        btnSyncCalendar.Size = new Size(200, 38);
+        btnSyncCalendar.TabIndex = 8;
+        btnSyncCalendar.Text = "🗓️ Đồng bộ Calendar";
+        btnSyncCalendar.UseVisualStyleBackColor = false;
+        btnSyncCalendar.Click += BtnSyncCalendar_Click;
+        // 
+        // btnExpenses
+        // 
+        btnExpenses.BackColor = Color.White;
+        btnExpenses.Cursor = Cursors.Hand;
+        btnExpenses.FlatStyle = FlatStyle.Flat;
+        btnExpenses.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+        btnExpenses.ForeColor = Color.FromArgb(15, 23, 42);
+        btnExpenses.Location = new Point(841, 47);
+        btnExpenses.Name = "btnExpenses";
+        btnExpenses.Size = new Size(180, 38);
+        btnExpenses.TabIndex = 9;
+        btnExpenses.Text = "💰 Chi phí khác";
+        btnExpenses.UseVisualStyleBackColor = false;
+        btnExpenses.Click += BtnExpenses_Click;
+        // 
+        // btnQuickEstimate
+        // 
+        btnQuickEstimate.BackColor = Color.White;
+        btnQuickEstimate.Cursor = Cursors.Hand;
+        btnQuickEstimate.FlatStyle = FlatStyle.Flat;
+        btnQuickEstimate.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+        btnQuickEstimate.ForeColor = Color.FromArgb(15, 23, 42);
+        btnQuickEstimate.Location = new Point(1027, 47);
+        btnQuickEstimate.Name = "btnQuickEstimate";
+        btnQuickEstimate.Size = new Size(150, 38);
+        btnQuickEstimate.TabIndex = 10;
+        btnQuickEstimate.Text = "📏 Ước tính";
+        btnQuickEstimate.UseVisualStyleBackColor = false;
+        btnQuickEstimate.Click += BtnQuickEstimate_Click;
         // 
         // lblStatus
         // 
@@ -198,10 +246,13 @@ partial class TripsControl
         Controls.Add(btnDriverInfo);
         Controls.Add(btnFuelEstimate);
         Controls.Add(btnIncidents);
+        Controls.Add(btnSyncCalendar);
+        Controls.Add(btnExpenses);
+        Controls.Add(btnQuickEstimate);
         Controls.Add(lblStatus);
         Controls.Add(grid);
         Name = "TripsControl";
-        Size = new Size(1630, 610);
+        Size = new Size(1810, 610);
         ((System.ComponentModel.ISupportInitialize)grid).EndInit();
         ResumeLayout(false);
         PerformLayout();
@@ -218,6 +269,9 @@ partial class TripsControl
     private System.Windows.Forms.Button btnDriverInfo;
     private System.Windows.Forms.Button btnFuelEstimate;
     private System.Windows.Forms.Button btnIncidents;
+    private System.Windows.Forms.Button btnSyncCalendar;
+    private System.Windows.Forms.Button btnExpenses;
+    private System.Windows.Forms.Button btnQuickEstimate;
     private System.Windows.Forms.Label lblStatus;
     private System.Windows.Forms.DataGridView grid;
 }

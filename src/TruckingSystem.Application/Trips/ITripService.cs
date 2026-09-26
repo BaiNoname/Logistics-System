@@ -41,4 +41,21 @@ public interface ITripService
     Task<IncidentReportDto> CreateIncidentAsync(int tripId, CreateIncidentReportRequest request);
 
     Task<TripActionResult> DeleteIncidentAsync(int incidentId);
+
+    /// <summary>Đồng bộ lịch chuyến này lên Google Calendar của tài xế và khách
+    /// hàng (nếu đã khai báo GoogleCalendarId) — kèm link theo dõi công khai
+    /// trong mô tả sự kiện. Gọi lại nhiều lần chỉ CẬP NHẬT, không tạo trùng.</summary>
+    Task<CalendarSyncResultDto> SyncCalendarAsync(int tripId, string publicTrackingBaseUrl);
+
+    /// <summary>Danh sách chi phí khác (ngoài xăng) đã ghi cho 1 chuyến.</summary>
+    Task<List<TripExpenseDto>> GetExpensesAsync(int tripId);
+
+    Task<TripExpenseDto> CreateExpenseAsync(int tripId, CreateTripExpenseRequest request);
+
+    Task<TripActionResult> DeleteExpenseAsync(int expenseId);
+
+    /// <summary>Tính khoảng cách/thời gian ước tính từ VietMap cho ĐÚNG chặng
+    /// của chuyến này (Lấy hàng: round-trip Kho→Đối tác→Kho; Giao hàng: 1
+    /// chiều Kho→Điểm giao) — LƯU LẠI vào Trip để dùng cho thống kê sau này.</summary>
+    Task<TripRouteEstimateDto> CalculateAndSaveRouteEstimateAsync(int tripId);
 }

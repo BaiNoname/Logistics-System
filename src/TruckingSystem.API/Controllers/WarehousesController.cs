@@ -131,8 +131,8 @@ public class WarehousesController : ControllerBase
     }
 
     [HttpGet("orders/{transportOrderId:int}/cargo-lines")]
-    public async Task<ActionResult<List<CargoLineOptionDto>>> GetCargoLines(int transportOrderId)
-        => Ok(await _slottingService.GetCargoLinesForOrderAsync(transportOrderId));
+    public async Task<ActionResult<List<CargoLineOptionDto>>> GetCargoLines(int transportOrderId, [FromQuery] int warehouseId)
+        => Ok(await _slottingService.GetCargoLinesForOrderAsync(transportOrderId, warehouseId));
 
     [HttpGet("{warehouseId:int}/transactions")]
     public async Task<ActionResult<List<WarehouseTransactionDto>>> GetTransactions(int warehouseId)

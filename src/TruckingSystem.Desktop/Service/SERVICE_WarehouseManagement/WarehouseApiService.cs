@@ -59,8 +59,8 @@ namespace TruckingSystem.Desktop.SERVICE_WarehouseManagement
             => _conn.PostAsync<WarehouseActionResultItem>($"/api/warehouses/{warehouseId}/issue-manual",
                 new { transportOrderId, cargoLineId, qty })!;
 
-        public Task<List<CargoLineOptionItem>> GetCargoLinesForOrderAsync(int transportOrderId)
-            => _conn.GetAsync<List<CargoLineOptionItem>>($"/api/warehouses/orders/{transportOrderId}/cargo-lines")!;
+        public Task<List<CargoLineOptionItem>> GetCargoLinesForOrderAsync(int transportOrderId, int warehouseId)
+            => _conn.GetAsync<List<CargoLineOptionItem>>($"/api/warehouses/orders/{transportOrderId}/cargo-lines?warehouseId={warehouseId}")!;
 
         public Task<List<WarehouseTransactionItem>> GetTransactionHistoryAsync(int warehouseId)
             => _conn.GetAsync<List<WarehouseTransactionItem>>($"/api/warehouses/{warehouseId}/transactions")!;

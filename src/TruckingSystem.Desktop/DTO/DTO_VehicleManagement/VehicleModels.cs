@@ -11,6 +11,8 @@ namespace TruckingSystem.Desktop.DTO_VehicleManagement
         public string Status { get; set; } = "";
         public decimal? FuelConsumptionPer100Km { get; set; }
         public string? FuelType { get; set; }
+        public int? WarehouseId { get; set; }
+        public string? WarehouseName { get; set; }
     }
 
     public class VehicleActionResultItem

@@ -3,6 +3,7 @@ using TruckingSystem.Desktop.Common;
 using TruckingSystem.Desktop.DTO_CustomerManagement;
 using TruckingSystem.Desktop.DTO_LocationManagement;
 using TruckingSystem.Desktop.DTO_TransportOrderManagement;
+using TruckingSystem.Desktop.DTO_WarehouseManagement;
 
 namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
 {
@@ -64,11 +65,38 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
         {
             await LoadCustomersAsync();
             await LoadLocationsAsync();
+            await LoadWarehousesAsync();
 
             if (_editOrderId.HasValue)
                 await LoadExistingOrderAsync(_editOrderId.Value);
             else
                 AddBlankCargoLine(); // đơn mới -> có sẵn 1 dòng trống để nhập ngay, đỡ phải bấm thêm
+        }
+
+        /// <summary>Đổ dropdown chọn KHO TRUNG CHUYỂN — Dispatcher tự chọn kho
+        /// phù hợp với TUYẾN ĐƯỜNG thực tế của đơn (VD: đơn ra Hà Nội thì chọn
+        /// Kho Hà Nội), thay vì để hệ thống tự động gán kho đầu tiên có sẵn
+        /// (sai thực tế, gây ra lộ trình vô lý không liên quan tới đơn hàng).
+        /// Đánh dấu rõ kho nào CHƯA có tọa độ để tránh chọn nhầm rồi sau này
+        /// không xem được lộ trình.</summary>
+        private async Task LoadWarehousesAsync()
+        {
+            if (_api is null) return;
+            try
+            {
+                var warehouses = await _api.Warehouses.GetWarehousesAsync();
+                cboWarehouse.DataSource = warehouses.Select(w => new
+                {
+                    w.Id,
+                    DisplayText = w.Lat.HasValue ? w.Name : $"{w.Name} (⚠️ chưa có tọa độ)",
+                }).ToList();
+                cboWarehouse.DisplayMember = "DisplayText";
+                cboWarehouse.ValueMember = "Id";
+            }
+            catch (Exception ex)
+            {
+                lblStatus.Text = "Không tải được danh sách kho: " + ex.Message;
+            }
         }
 
         private async Task LoadCustomersAsync()
@@ -128,6 +156,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                 cboCustomer.SelectedValue = order.CustomerId;
                 txtPickup.Text = order.PickupPoint;
                 txtDropoff.Text = order.DropoffPoint;
+                cboWarehouse.SelectedValue = order.WarehouseId;
                 if (order.CommittedDeliveryDate.HasValue)
                 {
                     chkHasCommittedDate.Checked = true;
@@ -174,6 +203,11 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                 lblStatus.Text = "Vui lòng thêm ít nhất 1 dòng hàng hóa.";
                 return;
             }
+            if (cboWarehouse.SelectedValue is not int warehouseId)
+            {
+                lblStatus.Text = "Vui lòng chọn kho trung chuyển.";
+                return;
+            }
             if (_api is null) return;
 
             gridCargoLines.EndEdit(); // đảm bảo ô đang gõ dở được chốt lại trước khi đọc dữ liệu
@@ -189,7 +223,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                 if (_editOrderId.HasValue)
                 {
                     var result = await _api.TransportOrders.UpdateTransportOrderAsync(
-                        _editOrderId.Value, txtPickup.Text.Trim(), txtDropoff.Text.Trim(), committedDate,
+                        _editOrderId.Value, txtPickup.Text.Trim(), txtDropoff.Text.Trim(), warehouseId, committedDate,
                         cargoLinesList, pickupLocId, dropoffLocId, pickupMethod);
 
                     if (!result.Success)
@@ -201,7 +235,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                 else
                 {
                     await _api.TransportOrders.CreateTransportOrderAsync(
-                        (int)cboCustomer.SelectedValue, txtPickup.Text.Trim(), txtDropoff.Text.Trim(), committedDate,
+                        (int)cboCustomer.SelectedValue, txtPickup.Text.Trim(), txtDropoff.Text.Trim(), warehouseId, committedDate,
                         cargoLinesList, pickupLocId, dropoffLocId, pickupMethod);
                 }
 

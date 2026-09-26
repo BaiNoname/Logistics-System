@@ -6,6 +6,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using TruckingSystem.Application.Auth;
+using TruckingSystem.Application.Calendar;
 using TruckingSystem.Application.Common.Interfaces;
 using TruckingSystem.Application.Locations;
 using TruckingSystem.Application.Routing;
@@ -68,6 +69,11 @@ public static class DependencyInjection
         // HttpClient đúng chuẩn (tránh lỗi rò rỉ socket khi tự new HttpClient()).
         services.AddHttpClient<IRouteProvider, VietMapRouteProvider>();
         services.AddHttpClient<IPlaceSearchProvider, VietMapPlaceProvider>();
+
+        // Singleton vì GoogleCalendarService tự đọc + giữ credential 1 lần khi
+        // khởi động, không cần tạo lại mỗi request (khác VietMap dùng HttpClient
+        // theo từng request qua AddHttpClient).
+        services.AddSingleton<IGoogleCalendarService, GoogleCalendarService>();
 
         return services;
     }

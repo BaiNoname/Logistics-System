@@ -6,13 +6,16 @@ using TruckingSystem.Desktop.DTO_TripManagement;
 
 namespace TruckingSystem.Desktop.GUI_RouteManagement
 {
-    /// <summary>Logic — hiển thị lộ trình thật giữa 2 điểm tọa độ trên bản đồ VietMap
-    /// (qua Leaflet nhúng trong WebView2). Giao diện (khung WebView2 + label thông
-    /// tin) nằm ở RouteMapForm.Designer.cs.</summary>
+    /// <summary>Logic — hiển thị lộ trình thật giữa NHIỀU điểm dừng liên tiếp
+    /// trên bản đồ VietMap (qua Leaflet nhúng trong WebView2). Chặng Lấy hàng
+    /// có 3 điểm dừng (Kho→Đối tác→Kho, round-trip thật vì xe phải quay về),
+    /// chặng Giao hàng chỉ 2 điểm (1 chiều) — vẽ TỪNG ĐOẠN nối tiếp nhau, cộng
+    /// dồn khoảng cách/thời gian cả các đoạn. Giao diện (khung WebView2 + label
+    /// thông tin) nằm ở RouteMapForm.Designer.cs.</summary>
     public partial class RouteMapForm : BaseForm
     {
         private ApiServices? _api;
-        private double _fromLat, _fromLng, _toLat, _toLng;
+        private List<RouteStopItem> _stops = new();
         private int? _tripId;
 
         public RouteMapForm()
@@ -20,10 +23,12 @@ namespace TruckingSystem.Desktop.GUI_RouteManagement
             InitializeComponent();
         }
 
-        public RouteMapForm(ApiServices api, string title, double fromLat, double fromLng, double toLat, double toLng, int? tripId = null) : this()
+        /// <summary>Dùng khi ĐÃ CÓ sẵn danh sách điểm dừng (VD gọi từ TripsControl
+        /// sau khi tải qua GetTripRouteAsync).</summary>
+        public RouteMapForm(ApiServices api, string title, List<RouteStopItem> stops, int? tripId = null) : this()
         {
             _api = api;
-            _fromLat = fromLat; _fromLng = fromLng; _toLat = toLat; _toLng = toLng;
+            _stops = stops;
             _tripId = tripId;
             Text = $"Lộ trình — {title}";
             lblInfo.Text = "Đang tính toán lộ trình qua VietMap...";
@@ -36,13 +41,29 @@ namespace TruckingSystem.Desktop.GUI_RouteManagement
             if (_api is null) return;
             try
             {
-                var route = await _api.Routes.CalculateAsync(_fromLat, _fromLng, _toLat, _toLng);
-
-                if (!route.Success)
+                var validStops = _stops.Where(s => s.Lat.HasValue && s.Lng.HasValue).ToList();
+                if (validStops.Count < 2)
                 {
-                    lblInfo.Text = "⚠️ " + (route.Message ?? "Không tính được lộ trình.");
+                    lblInfo.Text = "⚠️ Thiếu tọa độ ở 1 hoặc nhiều điểm dừng — không vẽ được lộ trình.";
                     lblInfo.ForeColor = Theme.Danger;
                     return;
+                }
+
+                // Tính lộ trình thật qua VietMap cho TỪNG ĐOẠN liên tiếp (VD 3
+                // điểm dừng = 2 đoạn) — cộng dồn khoảng cách/thời gian các đoạn
+                // lại để hiện đúng TỔNG thực tế (không chỉ 1 đoạn đơn lẻ).
+                var segments = new List<RouteResultItem>();
+                double totalDistanceKm = 0;
+                int totalDurationMinutes = 0;
+                foreach (var (from, to) in validStops.Zip(validStops.Skip(1), (a, b) => (a, b)))
+                {
+                    var seg = await _api.Routes.CalculateAsync(from.Lat!.Value, from.Lng!.Value, to.Lat!.Value, to.Lng!.Value);
+                    segments.Add(seg);
+                    if (seg.Success)
+                    {
+                        totalDistanceKm += seg.DistanceKm;
+                        totalDurationMinutes += seg.DurationMinutes;
+                    }
                 }
 
                 // Nếu có TripId -> tải kèm điểm GPS thật đã ghi nhận, vẽ chồng
@@ -54,7 +75,7 @@ namespace TruckingSystem.Desktop.GUI_RouteManagement
                     catch { /* không có GPS thật cũng không sao, vẫn hiện lộ trình lý thuyết */ }
                 }
 
-                var infoText = $"📏 {route.DistanceKm} km (lý thuyết)   •   ⏱ {route.DurationMinutes} phút   (nguồn: VietMap)";
+                var infoText = $"📏 {totalDistanceKm:0.0} km (lý thuyết, {validStops.Count - 1} đoạn)   •   ⏱ {totalDurationMinutes} phút   (nguồn: VietMap)";
                 infoText += waypoints.Count > 0
                     ? $"   •   🛰️ {waypoints.Count} điểm GPS thật đã ghi nhận"
                     : "   •   🛰️ Chưa có dữ liệu GPS thật (xe chưa chạy hoặc chưa bật app)";
@@ -62,7 +83,7 @@ namespace TruckingSystem.Desktop.GUI_RouteManagement
                 lblInfo.ForeColor = Theme.TextPrimary;
 
                 await webView.EnsureCoreWebView2Async();
-                webView.NavigateToString(BuildMapHtml(route, waypoints));
+                webView.NavigateToString(BuildMapHtml(segments, validStops, waypoints));
             }
             catch (Exception ex)
             {
@@ -71,22 +92,25 @@ namespace TruckingSystem.Desktop.GUI_RouteManagement
             }
         }
 
-        /// <summary>Sinh HTML nhúng Leaflet + tile VietMap + vẽ 2 polyline —
-        /// NÉT ĐỨT xanh = lộ trình LÝ THUYẾT (VietMap Route API tính sẵn),
-        /// NÉT LIỀN cam = đường đi THỰC TẾ (nối các điểm GPS thật xe đã đi
-        /// qua) — giúp so sánh trực quan xe có đi lệch tuyến hay không. Chạy
-        /// hoàn toàn offline trong WebView2 (không phải trang web public) nên
-        /// nhúng thẳng API Key vào tile URL không sao — chỉ hiển thị nội bộ
-        /// trên máy người dùng, không public ra ngoài.</summary>
-        private static string BuildMapHtml(RouteResultItem route, List<WaypointItem> waypoints)
+        /// <summary>Sinh HTML nhúng Leaflet + tile VietMap + vẽ NHIỀU polyline
+        /// nối tiếp nhau (mỗi đoạn giữa 2 điểm dừng liên tiếp 1 polyline, cùng
+        /// màu để trông liền mạch như 1 lộ trình xuyên suốt) — NÉT ĐỨT xanh =
+        /// lộ trình LÝ THUYẾT, NÉT LIỀN cam = đường đi THỰC TẾ (GPS thật) —
+        /// kèm marker + nhãn (Label) tại TỪNG điểm dừng để biết rõ đây là điểm
+        /// gì (xuất phát/lấy hàng/về kho/giao hàng). Chạy hoàn toàn offline
+        /// trong WebView2 nên nhúng thẳng API Key vào tile URL không sao.</summary>
+        private static string BuildMapHtml(List<RouteResultItem> segments, List<RouteStopItem> stops, List<WaypointItem> waypoints)
         {
-            var pointsJson = JsonSerializer.Serialize(
-                route.Points.Select(p => new[] { p.Lat, p.Lng }).ToList());
+            var segmentsJson = JsonSerializer.Serialize(
+                segments.Where(s => s.Success).Select(s => s.Points.Select(p => new[] { p.Lat, p.Lng }).ToList()).ToList());
+
+            var stopsJson = JsonSerializer.Serialize(
+                stops.Select(s => new { lat = s.Lat, lng = s.Lng, label = s.Label }).ToList());
 
             var actualPointsJson = JsonSerializer.Serialize(
                 waypoints.Select(w => new[] { w.Lat, w.Lng }).ToList());
 
-            var tileUrl = route.TileUrlTemplate ?? "";
+            var tileUrl = segments.FirstOrDefault(s => s.Success)?.TileUrlTemplate ?? "";
 
             var sb = new StringBuilder();
             sb.Append("""
@@ -104,7 +128,8 @@ namespace TruckingSystem.Desktop.GUI_RouteManagement
             """);
 
             sb.Append($"var tileUrl = {JsonSerializer.Serialize(tileUrl)};\n");
-            sb.Append($"var points = {pointsJson};\n");
+            sb.Append($"var segments = {segmentsJson};\n"); // mảng các đoạn, mỗi đoạn là mảng điểm [lat,lng]
+            sb.Append($"var stops = {stopsJson};\n"); // mảng điểm dừng {lat, lng, label}
             sb.Append($"var actualPoints = {actualPointsJson};\n");
 
             sb.Append("""
@@ -113,18 +138,25 @@ namespace TruckingSystem.Desktop.GUI_RouteManagement
 
             var allBoundsPoints = [];
 
-            if (points.length > 0) {
-                // Lộ trình LÝ THUYẾT — nét đứt xanh
-                var polyline = L.polyline(points, { color: '#2563EB', weight: 4, opacity: 0.7, dashArray: '10, 8' }).addTo(map);
-                allBoundsPoints = allBoundsPoints.concat(points);
+            // Vẽ TẤT CẢ các đoạn nối tiếp nhau — mỗi đoạn 1 polyline riêng,
+            // cùng màu để trông liền mạch như 1 lộ trình xuyên suốt.
+            segments.forEach(function (points) {
+                if (points.length > 0) {
+                    L.polyline(points, { color: '#2563EB', weight: 4, opacity: 0.7, dashArray: '10, 8' }).addTo(map);
+                    allBoundsPoints = allBoundsPoints.concat(points);
+                }
+            });
 
-                L.marker(points[0]).addTo(map).bindPopup('📦 Điểm đi (lý thuyết)');
-                L.marker(points[points.length - 1]).addTo(map).bindPopup('🏁 Điểm đến (lý thuyết)');
-            }
+            // Marker + nhãn tại TỪNG điểm dừng — biết rõ đây là điểm gì.
+            stops.forEach(function (s, idx) {
+                var icon = idx === 0 ? '📍' : (idx === stops.length - 1 ? '🏁' : '📦');
+                L.marker([s.lat, s.lng]).addTo(map).bindPopup(icon + ' ' + s.label);
+                allBoundsPoints.push([s.lat, s.lng]);
+            });
 
             if (actualPoints.length > 0) {
                 // Đường đi THỰC TẾ — nét liền cam, nối các điểm GPS thật
-                var actualLine = L.polyline(actualPoints, { color: '#EA580C', weight: 5, opacity: 0.9 }).addTo(map);
+                L.polyline(actualPoints, { color: '#EA580C', weight: 5, opacity: 0.9 }).addTo(map);
                 allBoundsPoints = allBoundsPoints.concat(actualPoints);
 
                 L.circleMarker(actualPoints[0], { radius: 6, color: '#EA580C', fillColor: '#EA580C', fillOpacity: 1 })

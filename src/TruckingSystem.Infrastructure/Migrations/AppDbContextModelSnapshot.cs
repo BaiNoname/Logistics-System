@@ -169,32 +169,6 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.ToTable("AuditLogs");
                 });
 
-            modelBuilder.Entity("TruckingSystem.Domain.Entities.Branch", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Address")
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp without time zone");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp without time zone");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Branches");
-                });
-
             modelBuilder.Entity("TruckingSystem.Domain.Entities.CargoLine", b =>
                 {
                     b.Property<int>("Id")
@@ -449,6 +423,9 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp without time zone");
 
+                    b.Property<int?>("WarehouseId")
+                        .HasColumnType("integer");
+
                     b.Property<int>("YearsOfExperience")
                         .HasColumnType("integer");
 
@@ -456,6 +433,8 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     b.HasIndex("EmployeeId")
                         .IsUnique();
+
+                    b.HasIndex("WarehouseId");
 
                     b.ToTable("DriverProfiles");
                 });
@@ -501,9 +480,6 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.Property<string>("Address")
                         .HasColumnType("text");
 
-                    b.Property<int?>("BranchId")
-                        .HasColumnType("integer");
-
                     b.Property<string>("Code")
                         .IsRequired()
                         .HasColumnType("text");
@@ -540,8 +516,6 @@ namespace TruckingSystem.Infrastructure.Migrations
                         .HasColumnType("text");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("BranchId");
 
                     b.HasIndex("DepartmentId");
 
@@ -1229,33 +1203,6 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.ToTable("StorageBins");
                 });
 
-            modelBuilder.Entity("TruckingSystem.Domain.Entities.SystemSetting", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp without time zone");
-
-                    b.Property<string>("Key")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp without time zone");
-
-                    b.Property<string>("Value")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("SystemSettings");
-                });
-
             modelBuilder.Entity("TruckingSystem.Domain.Entities.TariffRule", b =>
                 {
                     b.Property<int>("Id")
@@ -1304,9 +1251,6 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<int?>("BranchId")
-                        .HasColumnType("integer");
-
                     b.Property<string>("Code")
                         .IsRequired()
                         .HasColumnType("text");
@@ -1353,9 +1297,10 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp without time zone");
 
-                    b.HasKey("Id");
+                    b.Property<int>("WarehouseId")
+                        .HasColumnType("integer");
 
-                    b.HasIndex("BranchId");
+                    b.HasKey("Id");
 
                     b.HasIndex("CustomerId");
 
@@ -1368,6 +1313,8 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     b.HasIndex("SalesOrderId")
                         .IsUnique();
+
+                    b.HasIndex("WarehouseId");
 
                     b.ToTable("TransportOrders");
                 });
@@ -1397,6 +1344,12 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     b.Property<DateTime?>("EndTime")
                         .HasColumnType("timestamp without time zone");
+
+                    b.Property<decimal?>("EstimatedDistanceKm")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<int?>("EstimatedDurationMinutes")
+                        .HasColumnType("integer");
 
                     b.Property<int>("LegType")
                         .HasColumnType("integer");
@@ -1561,9 +1514,6 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<int?>("BranchId")
-                        .HasColumnType("integer");
-
                     b.Property<decimal>("CapacityKg")
                         .HasColumnType("numeric(18,2)");
 
@@ -1596,9 +1546,12 @@ namespace TruckingSystem.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<int?>("WarehouseId")
+                        .HasColumnType("integer");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("BranchId");
+                    b.HasIndex("WarehouseId");
 
                     b.ToTable("Vehicles");
                 });
@@ -1650,9 +1603,6 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.Property<string>("Address")
                         .HasColumnType("text");
 
-                    b.Property<int?>("BranchId")
-                        .HasColumnType("integer");
-
                     b.Property<decimal?>("CapacityM3")
                         .HasColumnType("numeric(18,2)");
 
@@ -1679,8 +1629,6 @@ namespace TruckingSystem.Infrastructure.Migrations
                         .HasColumnType("numeric(18,2)");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("BranchId");
 
                     b.ToTable("Warehouses");
                 });
@@ -2017,7 +1965,13 @@ namespace TruckingSystem.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("TruckingSystem.Domain.Entities.Warehouse", "Warehouse")
+                        .WithMany()
+                        .HasForeignKey("WarehouseId");
+
                     b.Navigation("Employee");
+
+                    b.Navigation("Warehouse");
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.DriverSchedule", b =>
@@ -2033,10 +1987,6 @@ namespace TruckingSystem.Infrastructure.Migrations
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.Employee", b =>
                 {
-                    b.HasOne("TruckingSystem.Domain.Entities.Branch", "Branch")
-                        .WithMany("Employees")
-                        .HasForeignKey("BranchId");
-
                     b.HasOne("TruckingSystem.Domain.Entities.Department", "Department")
                         .WithMany("Employees")
                         .HasForeignKey("DepartmentId");
@@ -2044,8 +1994,6 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.HasOne("TruckingSystem.Domain.Entities.Position", "Position")
                         .WithMany("Employees")
                         .HasForeignKey("PositionId");
-
-                    b.Navigation("Branch");
 
                     b.Navigation("Department");
 
@@ -2305,10 +2253,6 @@ namespace TruckingSystem.Infrastructure.Migrations
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.TransportOrder", b =>
                 {
-                    b.HasOne("TruckingSystem.Domain.Entities.Branch", "Branch")
-                        .WithMany("TransportOrders")
-                        .HasForeignKey("BranchId");
-
                     b.HasOne("TruckingSystem.Domain.Entities.Customer", "Customer")
                         .WithMany("TransportOrders")
                         .HasForeignKey("CustomerId")
@@ -2329,7 +2273,11 @@ namespace TruckingSystem.Infrastructure.Migrations
                         .WithOne("TransportOrder")
                         .HasForeignKey("TruckingSystem.Domain.Entities.TransportOrder", "SalesOrderId");
 
-                    b.Navigation("Branch");
+                    b.HasOne("TruckingSystem.Domain.Entities.Warehouse", "Warehouse")
+                        .WithMany()
+                        .HasForeignKey("WarehouseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("Customer");
 
@@ -2338,6 +2286,8 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.Navigation("PickupLocation");
 
                     b.Navigation("SalesOrder");
+
+                    b.Navigation("Warehouse");
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.Trip", b =>
@@ -2416,11 +2366,11 @@ namespace TruckingSystem.Infrastructure.Migrations
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.Vehicle", b =>
                 {
-                    b.HasOne("TruckingSystem.Domain.Entities.Branch", "Branch")
-                        .WithMany("Vehicles")
-                        .HasForeignKey("BranchId");
+                    b.HasOne("TruckingSystem.Domain.Entities.Warehouse", "Warehouse")
+                        .WithMany()
+                        .HasForeignKey("WarehouseId");
 
-                    b.Navigation("Branch");
+                    b.Navigation("Warehouse");
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.VehicleDocument", b =>
@@ -2432,15 +2382,6 @@ namespace TruckingSystem.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Vehicle");
-                });
-
-            modelBuilder.Entity("TruckingSystem.Domain.Entities.Warehouse", b =>
-                {
-                    b.HasOne("TruckingSystem.Domain.Entities.Branch", "Branch")
-                        .WithMany()
-                        .HasForeignKey("BranchId");
-
-                    b.Navigation("Branch");
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.WarehouseStock", b =>
@@ -2482,15 +2423,6 @@ namespace TruckingSystem.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Trip");
-                });
-
-            modelBuilder.Entity("TruckingSystem.Domain.Entities.Branch", b =>
-                {
-                    b.Navigation("Employees");
-
-                    b.Navigation("TransportOrders");
-
-                    b.Navigation("Vehicles");
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.CargoLine", b =>

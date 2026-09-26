@@ -3,9 +3,10 @@ using TruckingSystem.Desktop.DTO_FuelManagement;
 
 namespace TruckingSystem.Desktop.GUI_FuelManagement
 {
-    /// <summary>Quản lý hãng xăng (FuelProvider) và lịch sử giá xăng (FuelPriceHistory)
-    /// — dùng để tra cứu chi phí xăng dự kiến, đối chiếu với ActualFuelCost ghi
-    /// nhận thực tế ở màn Chuyến (Trip).</summary>
+    /// <summary>Quản lý hãng xăng (FuelProvider) — CHỈ hiện danh sách hãng ở
+    /// đây. Double-click vào 1 hãng để mở form riêng xem/thêm giá xăng dầu
+    /// của ĐÚNG hãng đó (FuelProviderPricesForm) — tách biệt rõ ràng, không
+    /// còn hiện giá kế bên phải gây rối mắt như trước.</summary>
     public partial class FuelManagementControl : BaseUserControl
     {
         private ApiServices? _api;
@@ -15,17 +16,10 @@ namespace TruckingSystem.Desktop.GUI_FuelManagement
         {
             InitializeComponent();
             Theme.StyleGrid(gridProviders);
-            Theme.StyleGrid(gridPrices);
             gridProviders.DataBindingComplete += (_, _) => { if (gridProviders.Columns["Id"] != null) gridProviders.Columns["Id"]!.Visible = false; };
-            gridProviders.SelectionChanged += async (_, _) => await LoadPricesAsync();
-            Resize += (_, _) =>
-            {
-                gridProviders.Width = Width / 2 - 30;
-                gridPrices.Width = Width - gridPrices.Left - 20;
-                gridProviders.Height = Height - gridProviders.Top - 10;
-                gridPrices.Height = Height - gridPrices.Top - 10;
-            };
-            Load += async (_, _) => { await LoadProvidersAsync(); await LoadPricesAsync(); };
+            gridProviders.CellDoubleClick += GridProviders_CellDoubleClick;
+            Resize += (_, _) => { gridProviders.Width = Width; gridProviders.Height = Height - gridProviders.Top; };
+            Load += async (_, _) => await LoadProvidersAsync();
         }
 
         public FuelManagementControl(ApiServices api) : this()
@@ -46,34 +40,27 @@ namespace TruckingSystem.Desktop.GUI_FuelManagement
                     Điện_thoại = p.ContactPhone ?? "—",
                     Địa_chỉ = p.Address ?? "—",
                 }).ToList();
+                lblStatus.Text = $"{_providers.Count} hãng xăng — double-click vào 1 hãng để xem/thêm giá";
+                lblStatus.ForeColor = Theme.TextSecondary;
             }
             catch (Exception ex)
             {
                 lblStatus.Text = "Lỗi tải danh sách hãng xăng: " + ex.Message;
+                lblStatus.ForeColor = Theme.Danger;
             }
         }
 
-        /// <summary>Chưa chọn hãng nào -> hiện TOÀN BỘ lịch sử giá (gồm cả giá thị
-        /// trường chung); chọn 1 hãng -> lọc đúng hãng đó.</summary>
-        private async Task LoadPricesAsync()
+        /// <summary>Double-click vào 1 hãng -> mở form riêng xem/thêm giá của
+        /// ĐÚNG hãng đó, thay vì hiện chung 1 danh sách giá kế bên gây rối.</summary>
+        private void GridProviders_CellDoubleClick(object? sender, DataGridViewCellEventArgs e)
         {
-            if (_api is null) return;
-            try
-            {
-                int? providerId = gridProviders.CurrentRow is null ? null : (int)gridProviders.CurrentRow.Cells["Id"].Value;
-                var prices = await _api.Fuel.GetPriceHistoryAsync(providerId);
-                gridPrices.DataSource = prices.Select(p => new
-                {
-                    Loại_nhiên_liệu = p.FuelType,
-                    Giá_VNĐ = p.Price,
-                    Ngày_hiệu_lực = p.EffectiveDate.ToString("dd/MM/yyyy"),
-                    Hãng = p.FuelProviderName,
-                }).ToList();
-            }
-            catch (Exception ex)
-            {
-                lblStatus.Text = "Lỗi tải lịch sử giá: " + ex.Message;
-            }
+            if (_api is null || e.RowIndex < 0) return;
+            var id = (int)gridProviders.Rows[e.RowIndex].Cells["Id"].Value;
+            var provider = _providers.FirstOrDefault(p => p.Id == id);
+            if (provider is null) return;
+
+            using var f = new FuelProviderPricesForm(_api, provider.Id, provider.Name);
+            f.ShowDialog(FindForm());
         }
 
         private async void BtnAddProvider_Click(object? sender, EventArgs e)
@@ -103,19 +90,11 @@ namespace TruckingSystem.Desktop.GUI_FuelManagement
                     return;
                 }
                 await LoadProvidersAsync();
-                await LoadPricesAsync();
             }
             catch (Exception ex)
             {
                 MessageBox.Show(FindForm(), "Lỗi: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
-        }
-
-        private async void BtnAddPrice_Click(object? sender, EventArgs e)
-        {
-            if (_api is null) return;
-            using var f = new CreateFuelPriceForm(_api, _providers);
-            if (f.ShowDialog(FindForm()) == DialogResult.OK) await LoadPricesAsync();
         }
     }
 }

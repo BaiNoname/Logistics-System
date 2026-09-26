@@ -100,8 +100,10 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                 }
 
                 var lines = result.Trips.Select(a => $"  • Xe {a.VehiclePlate} — chở {a.QtyAssigned} (Chuyến #{a.TripId})");
+                var daysLine = result.EstimatedTripDays > 1 ? $"\n🕒 Dự kiến chuyến kéo dài ~{result.EstimatedTripDays} ngày (tuyến đường xa)." : "";
                 var summary = $"Đơn {orderCode}\n" +
-                              $"Tổng cần chở: {result.TotalQtyToShip}  |  Đã gán: {result.TotalQtyAssigned}\n\n" +
+                              $"Tổng cần chở: {result.TotalQtyToShip}  |  Đã gán: {result.TotalQtyAssigned}\n" +
+                              daysLine + "\n" +
                               $"Thuật toán Greedy đã chia thành {result.Trips.Count} chuyến:\n" +
                               string.Join("\n", lines) +
                               (result.Message != null ? $"\n\n⚠️ {result.Message}" : "");
@@ -119,8 +121,12 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
 
         private static string TranslateStatus(string s) => s switch
         {
-            "Draft" => "Nháp", "Confirmed" => "Đã xác nhận", "InProgress" => "Đang vận chuyển",
-            "Done" => "Hoàn tất", "Cancelled" => "Đã hủy", _ => s,
+            "Draft" => "Nháp",
+            "Confirmed" => "Đã xác nhận",
+            "InProgress" => "Đang vận chuyển",
+            "Done" => "Hoàn tất",
+            "Cancelled" => "Đã hủy",
+            _ => s,
         };
     }
 }

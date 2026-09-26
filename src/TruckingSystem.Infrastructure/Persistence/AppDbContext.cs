@@ -61,11 +61,11 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
     public DbSet<TripCalendarEvent> TripCalendarEvents => Set<TripCalendarEvent>();
 
     // Nhóm F — Vận hành khác
-    public DbSet<Branch> Branches => Set<Branch>();
+
     public DbSet<DriverSchedule> DriverSchedules => Set<DriverSchedule>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<CustomerFeedback> CustomerFeedbacks => Set<CustomerFeedback>();
-    public DbSet<SystemSetting> SystemSettings => Set<SystemSetting>();
+
 
     // Nhóm G — Đồng bộ Video Osmo Pocket
 

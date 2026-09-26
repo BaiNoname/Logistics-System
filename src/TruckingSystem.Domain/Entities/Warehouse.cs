@@ -21,8 +21,7 @@ public class Warehouse : BaseEntity
     public decimal? LengthMeters { get; set; }
     public decimal? WidthMeters { get; set; }
 
-    public int? BranchId { get; set; }
-    public Branch? Branch { get; set; }
+
 
     public ICollection<GoodsReceipt> GoodsReceipts { get; set; } = new List<GoodsReceipt>();
     public ICollection<GoodsIssue> GoodsIssues { get; set; } = new List<GoodsIssue>();

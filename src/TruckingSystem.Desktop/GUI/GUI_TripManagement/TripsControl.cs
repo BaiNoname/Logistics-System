@@ -89,6 +89,37 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
             }
         }
 
+        private async void BtnSyncCalendar_Click(object? sender, EventArgs e)
+        {
+            var tripId = GetSelectedTripId();
+            if (tripId is null) { ShowNoSelection(); return; }
+            if (_api is null) return;
+
+            try
+            {
+                var result = await _api.Trips.SyncCalendarAsync(tripId.Value);
+                var message = $"Tài xế: {(result.DriverSynced ? "✅ Đã đồng bộ" : "⚠️ " + (result.DriverMessage ?? "Không đồng bộ được"))}\n" +
+                              $"Khách hàng: {(result.CustomerSynced ? "✅ Đã đồng bộ" : "⚠️ " + (result.CustomerMessage ?? "Không đồng bộ được"))}";
+                MessageBox.Show(FindForm(), message, "Kết quả đồng bộ Google Calendar", MessageBoxButtons.OK,
+                    result.DriverSynced || result.CustomerSynced ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(FindForm(), "Lỗi: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void BtnExpenses_Click(object? sender, EventArgs e)
+        {
+            var tripId = GetSelectedTripId();
+            if (tripId is null) { ShowNoSelection(); return; }
+            var trip = _trips.FirstOrDefault(t => t.Id == tripId.Value);
+            if (trip is null || _api is null) return;
+
+            using var f = new ManageTripExpensesForm(_api, tripId.Value, $"Đơn {trip.OrderCode}");
+            f.ShowDialog(FindForm());
+        }
+
         private void BtnIncidents_Click(object? sender, EventArgs e)
         {
             var tripId = GetSelectedTripId();
@@ -152,12 +183,50 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
             MessageBox.Show(FindForm(), message + "\n\n(Đã copy vào Clipboard)", "Thông tin kết nối tài xế", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
-        private void BtnViewRoute_Click(object? sender, EventArgs e)
+        private async void BtnQuickEstimate_Click(object? sender, EventArgs e)
         {
             var tripId = GetSelectedTripId();
             if (tripId is null) { ShowNoSelection(); return; }
             var trip = _trips.FirstOrDefault(t => t.Id == tripId.Value);
-            if (trip is null) return;
+            if (trip is null || _api is null) return;
+
+            try
+            {
+                // Gọi endpoint MỚI — vừa tính vừa LƯU LẠI vào Trip (không chỉ
+                // hiện tạm thời rồi bỏ đi), để sau này làm được bảng thống kê
+                // so sánh Ước tính (VietMap) vs Thực tế (StartTime/EndTime,
+                // GPS thật) cho từng chuyến.
+                var result = await _api.Trips.CalculateEstimateAsync(trip.Id);
+                if (result.Message is not null)
+                {
+                    MessageBox.Show(FindForm(), result.Message, "Không ước tính được", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                var hours = result.DurationMinutes / 60;
+                var minutes = result.DurationMinutes % 60;
+                var legText = trip.LegType == "Pickup" ? "Lấy hàng (round-trip qua Kho)" : "Giao hàng";
+
+                MessageBox.Show(FindForm(),
+                    $"Đơn {trip.OrderCode} — Chặng {legText}\n\n" +
+                    $"📏 Khoảng cách ước tính: {result.DistanceKm:0.0} km\n" +
+                    $"⏱ Thời gian ước tính: {(hours > 0 ? $"{hours} giờ " : "")}{minutes} phút\n\n" +
+                    $"✅ Đã lưu lại vào chuyến để đối chiếu với số liệu thực tế sau này.\n" +
+                    $"(Nguồn: VietMap — số liệu THEO ĐƯỜNG THẬT, không phải đường chim bay)",
+                    "Ước tính lộ trình", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(FindForm(), "Lỗi: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private async void BtnViewRoute_Click(object? sender, EventArgs e)
+        {
+            var tripId = GetSelectedTripId();
+            if (tripId is null) { ShowNoSelection(); return; }
+            var trip = _trips.FirstOrDefault(t => t.Id == tripId.Value);
+            if (trip is null || _api is null) return;
 
             if (trip.FromLat is null || trip.FromLng is null || trip.ToLat is null || trip.ToLng is null)
             {
@@ -167,12 +236,24 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
                 return;
             }
 
-            var legName = trip.LegType == "Pickup" ? "Lấy hàng (Khách gửi → Kho)" : "Giao hàng (Kho → Khách nhận)";
-            using var f = new RouteMapForm(
-                _api!, $"Lộ trình chặng {legName} — Đơn {trip.OrderCode}",
-                trip.FromLat.Value, trip.FromLng.Value, trip.ToLat.Value, trip.ToLng.Value,
-                tripId: trip.Id);
-            f.ShowDialog(FindForm());
+            try
+            {
+                // Tải danh sách điểm dừng ĐẦY ĐỦ (chặng Lấy hàng có 3 điểm:
+                // Kho→Đối tác→Kho, round-trip thật) thay vì chỉ 1 cặp From/To
+                // như trước — khớp đúng với cách tính chi phí xăng/số ngày ước
+                // tính đã sửa (đều tính đủ cả 2 chiều cho chặng Lấy hàng).
+                var route = await _api.Trips.GetTripRouteAsync(trip.Id);
+
+                var legName = trip.LegType == "Pickup" ? "Lấy hàng (round-trip qua Kho)" : "Giao hàng (Kho → Khách nhận)";
+                using var f = new RouteMapForm(
+                    _api, $"Lộ trình chặng {legName} — Đơn {trip.OrderCode}",
+                    route.Stops, tripId: trip.Id);
+                f.ShowDialog(FindForm());
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(FindForm(), "Lỗi tải lộ trình: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         private int? GetSelectedTripId()

@@ -1,5 +1,6 @@
 using TruckingSystem.Desktop.Common;
 using TruckingSystem.Desktop.DTO_VehicleManagement;
+using TruckingSystem.Desktop.DTO_WarehouseManagement;
 
 namespace TruckingSystem.Desktop.GUI_VehicleManagement
 {
@@ -10,6 +11,7 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
     {
         private ApiServices? _api;
         private int _vehicleId;
+        private int? _currentWarehouseId;
 
         public EditVehicleForm()
         {
@@ -22,6 +24,7 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
         {
             _api = api;
             _vehicleId = vehicle.Id;
+            _currentWarehouseId = vehicle.WarehouseId;
 
             txtPlateNumber.Text = vehicle.PlateNumber;
             txtVehicleType.Text = vehicle.VehicleType;
@@ -31,6 +34,28 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
             cboStatus.SelectedItem = vehicle.Status;
             numFuelConsumption.Value = vehicle.FuelConsumptionPer100Km ?? 0;
             cboFuelType.SelectedItem = vehicle.FuelType ?? "";
+            Load += async (_, _) => await LoadWarehousesAsync();
+        }
+
+        /// <summary>Đổ dropdown "Kho đóng quân" — để tuỳ chọn (có thể để trống,
+        /// nghĩa là xe CHƯA gán kho cố định, vẫn dùng được cho mọi đơn).</summary>
+        private async Task LoadWarehousesAsync()
+        {
+            if (_api is null) return;
+            try
+            {
+                var warehouses = await _api.Warehouses.GetWarehousesAsync();
+                var items = new List<object> { new { Id = (int?)null, Name = "(Không cố định — dùng được mọi kho)" } };
+                items.AddRange(warehouses.Select(w => new { Id = (int?)w.Id, w.Name }));
+                cboWarehouse.DataSource = items;
+                cboWarehouse.DisplayMember = "Name";
+                cboWarehouse.ValueMember = "Id";
+                cboWarehouse.SelectedValue = _currentWarehouseId;
+            }
+            catch (Exception ex)
+            {
+                lblStatus.Text = "Không tải được danh sách kho: " + ex.Message;
+            }
         }
 
         private async void BtnSave_Click(object? sender, EventArgs e)
@@ -50,7 +75,8 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
                     numCapacityQty.Value, numCapacityKg.Value, numCapacityM3.Value,
                     (string)cboStatus.SelectedItem!,
                     numFuelConsumption.Value == 0 ? null : numFuelConsumption.Value,
-                    string.IsNullOrEmpty((string)(cboFuelType.SelectedItem ?? "")) ? null : (string)cboFuelType.SelectedItem!);
+                    string.IsNullOrEmpty((string)(cboFuelType.SelectedItem ?? "")) ? null : (string)cboFuelType.SelectedItem!,
+                    cboWarehouse.SelectedValue as int?);
 
                 if (!result.Success)
                 {

@@ -30,6 +30,8 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
             this.numFuelConsumption = new System.Windows.Forms.NumericUpDown();
             this.lblFuelType = new System.Windows.Forms.Label();
             this.cboFuelType = new System.Windows.Forms.ComboBox();
+            this.lblWarehouse = new System.Windows.Forms.Label();
+            this.cboWarehouse = new System.Windows.Forms.ComboBox();
             this.btnSave = new System.Windows.Forms.Button();
             this.lblStatus = new System.Windows.Forms.Label();
             ((System.ComponentModel.ISupportInitialize)(this.numCapacityQty)).BeginInit();
@@ -136,9 +138,21 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
             this.cboFuelType.Location = new System.Drawing.Point(150, 265);
             this.cboFuelType.Size = new System.Drawing.Size(150, 23);
             //
+            // lblWarehouse
+            //
+            this.lblWarehouse.Location = new System.Drawing.Point(15, 300);
+            this.lblWarehouse.Size = new System.Drawing.Size(350, 18);
+            this.lblWarehouse.Text = "Kho đóng quân (tuỳ chọn)";
+            //
+            // cboWarehouse
+            //
+            this.cboWarehouse.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cboWarehouse.Location = new System.Drawing.Point(15, 320);
+            this.cboWarehouse.Size = new System.Drawing.Size(350, 23);
+            //
             // btnSave
             //
-            this.btnSave.Location = new System.Drawing.Point(150, 310);
+            this.btnSave.Location = new System.Drawing.Point(150, 375);
             this.btnSave.Size = new System.Drawing.Size(150, 38);
             this.btnSave.Text = "Lưu thay đổi";
             this.btnSave.BackColor = TruckingSystem.Desktop.Common.Theme.Primary;
@@ -152,7 +166,7 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
             //
             // lblStatus
             //
-            this.lblStatus.Location = new System.Drawing.Point(15, 355);
+            this.lblStatus.Location = new System.Drawing.Point(15, 420);
             this.lblStatus.Size = new System.Drawing.Size(360, 40);
             this.lblStatus.ForeColor = System.Drawing.Color.Red;
             //
@@ -161,7 +175,7 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
             this.AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
             this.BackColor = System.Drawing.Color.White;
-            this.ClientSize = new System.Drawing.Size(400, 420);
+            this.ClientSize = new System.Drawing.Size(400, 480);
             this.Controls.Add(this.lblPlateNumber);
             this.Controls.Add(this.lblVehicleType);
             this.Controls.Add(this.lblCapacityQty);
@@ -178,6 +192,8 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
             this.Controls.Add(this.numFuelConsumption);
             this.Controls.Add(this.lblFuelType);
             this.Controls.Add(this.cboFuelType);
+            this.Controls.Add(this.lblWarehouse);
+            this.Controls.Add(this.cboWarehouse);
             this.Controls.Add(this.btnSave);
             this.Controls.Add(this.lblStatus);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
@@ -211,6 +227,8 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
         private System.Windows.Forms.NumericUpDown numFuelConsumption;
         private System.Windows.Forms.Label lblFuelType;
         private System.Windows.Forms.ComboBox cboFuelType;
+        private System.Windows.Forms.Label lblWarehouse;
+        private System.Windows.Forms.ComboBox cboWarehouse;
         private System.Windows.Forms.Button btnSave;
         private System.Windows.Forms.Label lblStatus;
     }

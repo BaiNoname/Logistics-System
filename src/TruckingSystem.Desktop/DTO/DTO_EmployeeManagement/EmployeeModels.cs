@@ -32,6 +32,8 @@
         public DateTime LicenseExpiryDate { get; set; }
         public DateTime? HealthCertExpiryDate { get; set; }
         public int YearsOfExperience { get; set; }
+        public string? GoogleCalendarId { get; set; }
+        public int? WarehouseId { get; set; }
     }
 
     /// <summary>1 ca làm việc đã đăng ký cho tài xế — Greedy dùng để chỉ chọn
