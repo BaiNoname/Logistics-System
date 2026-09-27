@@ -3,6 +3,9 @@ bin/
 obj/
 **/bin/
 **/obj/
+TestResults/
+artifacts/
+publish/
 
 # ==== File riêng của Visual Studio (không liên quan tới code) ====
 .vs/
@@ -10,6 +13,13 @@ obj/
 *.suo
 *.userosscache
 *.sln.docstates
+
+# ==== Configuración local y secretos ====
+.env
+.env.*
+!.env.example
+appsettings.*.local.json
+*.publishsettings
 
 # ==== Log/cache khác ====
 *.log

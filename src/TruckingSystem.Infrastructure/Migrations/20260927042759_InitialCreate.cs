@@ -7,7 +7,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace TruckingSystem.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class AddLocationTable : Migration
+    public partial class InitialCreate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -71,22 +71,6 @@ namespace TruckingSystem.Infrastructure.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_AuditLogs", x => x.Id);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "Branches",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "integer", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    Name = table.Column<string>(type: "text", nullable: false),
-                    Address = table.Column<string>(type: "text", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Branches", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -210,19 +194,24 @@ namespace TruckingSystem.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "SystemSettings",
+                name: "Warehouses",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    Key = table.Column<string>(type: "text", nullable: false),
-                    Value = table.Column<string>(type: "text", nullable: false),
+                    Name = table.Column<string>(type: "text", nullable: false),
+                    Address = table.Column<string>(type: "text", nullable: true),
+                    CapacityM3 = table.Column<decimal>(type: "numeric(18,2)", nullable: true),
+                    Lat = table.Column<double>(type: "double precision", nullable: true),
+                    Lng = table.Column<double>(type: "double precision", nullable: true),
+                    LengthMeters = table.Column<decimal>(type: "numeric(18,2)", nullable: true),
+                    WidthMeters = table.Column<decimal>(type: "numeric(18,2)", nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_SystemSettings", x => x.Id);
+                    table.PrimaryKey("PK_Warehouses", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -329,59 +318,6 @@ namespace TruckingSystem.Infrastructure.Migrations
                         principalTable: "AspNetUsers",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "Vehicles",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "integer", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    PlateNumber = table.Column<string>(type: "text", nullable: false),
-                    VehicleType = table.Column<string>(type: "text", nullable: false),
-                    CapacityQty = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
-                    CapacityKg = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
-                    CapacityM3 = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
-                    Status = table.Column<int>(type: "integer", nullable: false),
-                    BranchId = table.Column<int>(type: "integer", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Vehicles", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_Vehicles_Branches_BranchId",
-                        column: x => x.BranchId,
-                        principalTable: "Branches",
-                        principalColumn: "Id");
-                });
-
-            migrationBuilder.CreateTable(
-                name: "Warehouses",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "integer", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    Name = table.Column<string>(type: "text", nullable: false),
-                    Address = table.Column<string>(type: "text", nullable: true),
-                    CapacityM3 = table.Column<decimal>(type: "numeric(18,2)", nullable: true),
-                    Lat = table.Column<double>(type: "double precision", nullable: true),
-                    Lng = table.Column<double>(type: "double precision", nullable: true),
-                    LengthMeters = table.Column<decimal>(type: "numeric(18,2)", nullable: true),
-                    WidthMeters = table.Column<decimal>(type: "numeric(18,2)", nullable: true),
-                    BranchId = table.Column<int>(type: "integer", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Warehouses", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_Warehouses_Branches_BranchId",
-                        column: x => x.BranchId,
-                        principalTable: "Branches",
-                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
@@ -495,18 +431,12 @@ namespace TruckingSystem.Infrastructure.Migrations
                     DepartmentId = table.Column<int>(type: "integer", nullable: true),
                     PositionId = table.Column<int>(type: "integer", nullable: true),
                     UserId = table.Column<string>(type: "text", nullable: true),
-                    BranchId = table.Column<int>(type: "integer", nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Employees", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_Employees_Branches_BranchId",
-                        column: x => x.BranchId,
-                        principalTable: "Branches",
-                        principalColumn: "Id");
                     table.ForeignKey(
                         name: "FK_Employees_Departments_DepartmentId",
                         column: x => x.DepartmentId,
@@ -577,28 +507,31 @@ namespace TruckingSystem.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "VehicleDocuments",
+                name: "Vehicles",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    VehicleId = table.Column<int>(type: "integer", nullable: false),
-                    DocType = table.Column<int>(type: "integer", nullable: false),
-                    IssueDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
-                    ExpiryDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
-                    FileUrl = table.Column<string>(type: "text", nullable: true),
+                    PlateNumber = table.Column<string>(type: "text", nullable: false),
+                    VehicleType = table.Column<string>(type: "text", nullable: false),
+                    CapacityQty = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
+                    CapacityKg = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
+                    CapacityM3 = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
+                    Status = table.Column<int>(type: "integer", nullable: false),
+                    FuelConsumptionPer100Km = table.Column<decimal>(type: "numeric(18,2)", nullable: true),
+                    FuelType = table.Column<string>(type: "text", nullable: true),
+                    WarehouseId = table.Column<int>(type: "integer", nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_VehicleDocuments", x => x.Id);
+                    table.PrimaryKey("PK_Vehicles", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_VehicleDocuments_Vehicles_VehicleId",
-                        column: x => x.VehicleId,
-                        principalTable: "Vehicles",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        name: "FK_Vehicles_Warehouses_WarehouseId",
+                        column: x => x.WarehouseId,
+                        principalTable: "Warehouses",
+                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
@@ -641,6 +574,7 @@ namespace TruckingSystem.Infrastructure.Migrations
                     HealthCertExpiryDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
                     YearsOfExperience = table.Column<int>(type: "integer", nullable: false),
                     GoogleCalendarId = table.Column<string>(type: "text", nullable: true),
+                    WarehouseId = table.Column<int>(type: "integer", nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
                 },
@@ -653,6 +587,11 @@ namespace TruckingSystem.Infrastructure.Migrations
                         principalTable: "Employees",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_DriverProfiles_Warehouses_WarehouseId",
+                        column: x => x.WarehouseId,
+                        principalTable: "Warehouses",
+                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
@@ -734,6 +673,31 @@ namespace TruckingSystem.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "VehicleDocuments",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    VehicleId = table.Column<int>(type: "integer", nullable: false),
+                    DocType = table.Column<int>(type: "integer", nullable: false),
+                    IssueDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    ExpiryDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    FileUrl = table.Column<string>(type: "text", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_VehicleDocuments", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_VehicleDocuments_Vehicles_VehicleId",
+                        column: x => x.VehicleId,
+                        principalTable: "Vehicles",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "StorageBins",
                 columns: table => new
                 {
@@ -744,8 +708,10 @@ namespace TruckingSystem.Infrastructure.Migrations
                     CapacityM3 = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
                     MaxWeightKg = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
                     CurrentUsedM3 = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
-                    Row = table.Column<int>(type: "integer", nullable: false),
-                    Column = table.Column<int>(type: "integer", nullable: false),
+                    PosX = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
+                    PosY = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
+                    WidthMeters = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
+                    HeightMeters = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
                     DistanceFromDoorMeters = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
@@ -772,13 +738,13 @@ namespace TruckingSystem.Infrastructure.Migrations
                     CustomerId = table.Column<int>(type: "integer", nullable: false),
                     PickupPoint = table.Column<string>(type: "text", nullable: false),
                     DropoffPoint = table.Column<string>(type: "text", nullable: false),
+                    WarehouseId = table.Column<int>(type: "integer", nullable: false),
                     PickupLocationId = table.Column<int>(type: "integer", nullable: true),
                     DropoffLocationId = table.Column<int>(type: "integer", nullable: true),
                     Status = table.Column<int>(type: "integer", nullable: false),
                     PickupMethod = table.Column<int>(type: "integer", nullable: false),
                     CommittedDeliveryDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
                     ProgressPercent = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
-                    BranchId = table.Column<int>(type: "integer", nullable: true),
                     PublicTrackingToken = table.Column<string>(type: "text", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
@@ -786,11 +752,6 @@ namespace TruckingSystem.Infrastructure.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_TransportOrders", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_TransportOrders_Branches_BranchId",
-                        column: x => x.BranchId,
-                        principalTable: "Branches",
-                        principalColumn: "Id");
                     table.ForeignKey(
                         name: "FK_TransportOrders_Customers_CustomerId",
                         column: x => x.CustomerId,
@@ -814,6 +775,12 @@ namespace TruckingSystem.Infrastructure.Migrations
                         column: x => x.SalesOrderId,
                         principalTable: "SalesOrders",
                         principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_TransportOrders_Warehouses_WarehouseId",
+                        column: x => x.WarehouseId,
+                        principalTable: "Warehouses",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -914,6 +881,8 @@ namespace TruckingSystem.Infrastructure.Migrations
                     LegType = table.Column<int>(type: "integer", nullable: false),
                     WarehouseId = table.Column<int>(type: "integer", nullable: true),
                     PlannedFuelCost = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
+                    EstimatedDistanceKm = table.Column<decimal>(type: "numeric(18,2)", nullable: true),
+                    EstimatedDurationMinutes = table.Column<int>(type: "integer", nullable: true),
                     ActualFuelCost = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
                     StartLat = table.Column<double>(type: "double precision", nullable: true),
                     StartLng = table.Column<double>(type: "double precision", nullable: true),
@@ -1396,6 +1365,11 @@ namespace TruckingSystem.Infrastructure.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "IX_DriverProfiles_WarehouseId",
+                table: "DriverProfiles",
+                column: "WarehouseId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_DriverSchedules_DriverEmployeeId",
                 table: "DriverSchedules",
                 column: "DriverEmployeeId");
@@ -1404,11 +1378,6 @@ namespace TruckingSystem.Infrastructure.Migrations
                 name: "IX_EmployeeDocuments_EmployeeId",
                 table: "EmployeeDocuments",
                 column: "EmployeeId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Employees_BranchId",
-                table: "Employees",
-                column: "BranchId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Employees_DepartmentId",
@@ -1551,11 +1520,6 @@ namespace TruckingSystem.Infrastructure.Migrations
                 column: "PriceListId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_TransportOrders_BranchId",
-                table: "TransportOrders",
-                column: "BranchId");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_TransportOrders_CustomerId",
                 table: "TransportOrders",
                 column: "CustomerId");
@@ -1581,6 +1545,11 @@ namespace TruckingSystem.Infrastructure.Migrations
                 table: "TransportOrders",
                 column: "SalesOrderId",
                 unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_TransportOrders_WarehouseId",
+                table: "TransportOrders",
+                column: "WarehouseId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_TripCalendarEvents_TripId",
@@ -1628,14 +1597,9 @@ namespace TruckingSystem.Infrastructure.Migrations
                 column: "VehicleId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Vehicles_BranchId",
+                name: "IX_Vehicles_WarehouseId",
                 table: "Vehicles",
-                column: "BranchId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Warehouses_BranchId",
-                table: "Warehouses",
-                column: "BranchId");
+                column: "WarehouseId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_WarehouseStocks_CargoLineId",
@@ -1723,9 +1687,6 @@ namespace TruckingSystem.Infrastructure.Migrations
                 name: "StorageAssignments");
 
             migrationBuilder.DropTable(
-                name: "SystemSettings");
-
-            migrationBuilder.DropTable(
                 name: "TariffRules");
 
             migrationBuilder.DropTable(
@@ -1786,9 +1747,6 @@ namespace TruckingSystem.Infrastructure.Migrations
                 name: "Vehicles");
 
             migrationBuilder.DropTable(
-                name: "Warehouses");
-
-            migrationBuilder.DropTable(
                 name: "Departments");
 
             migrationBuilder.DropTable(
@@ -1801,7 +1759,7 @@ namespace TruckingSystem.Infrastructure.Migrations
                 name: "SalesOrders");
 
             migrationBuilder.DropTable(
-                name: "Branches");
+                name: "Warehouses");
 
             migrationBuilder.DropTable(
                 name: "Contracts");

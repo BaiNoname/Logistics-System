@@ -12,113 +12,138 @@ namespace TruckingSystem.Desktop.GUI_AuditLogManagement
 
         private void InitializeComponent()
         {
-            this.lblTitle = new System.Windows.Forms.Label();
-            this.lblAction = new System.Windows.Forms.Label();
-            this.cboAction = new System.Windows.Forms.ComboBox();
-            this.chkFilterByDate = new System.Windows.Forms.CheckBox();
-            this.dtFrom = new System.Windows.Forms.DateTimePicker();
-            this.lblTo = new System.Windows.Forms.Label();
-            this.dtTo = new System.Windows.Forms.DateTimePicker();
-            this.btnFilter = new System.Windows.Forms.Button();
-            this.lblStatus = new System.Windows.Forms.Label();
-            this.grid = new System.Windows.Forms.DataGridView();
-            ((System.ComponentModel.ISupportInitialize)(this.grid)).BeginInit();
-            this.SuspendLayout();
-            //
+            lblTitle = new Label();
+            lblAction = new Label();
+            cboAction = new ComboBox();
+            chkFilterByDate = new CheckBox();
+            dtFrom = new DateTimePicker();
+            lblTo = new Label();
+            dtTo = new DateTimePicker();
+            btnFilter = new Button();
+            lblStatus = new Label();
+            grid = new DataGridView();
+            ((System.ComponentModel.ISupportInitialize)grid).BeginInit();
+            SuspendLayout();
+            // 
             // lblTitle
-            //
-            this.lblTitle.Location = new System.Drawing.Point(0, 0);
-            this.lblTitle.AutoSize = true;
-            this.lblTitle.Text = "Nhật ký hệ thống (Audit Log)";
-            this.lblTitle.Font = new System.Drawing.Font("Segoe UI", 16F, System.Drawing.FontStyle.Bold);
-            this.lblTitle.ForeColor = TruckingSystem.Desktop.Common.Theme.TextPrimary;
-            //
+            // 
+            lblTitle.AutoSize = true;
+            lblTitle.Font = new Font("Segoe UI", 16F, FontStyle.Bold);
+            lblTitle.ForeColor = Color.FromArgb(15, 23, 42);
+            lblTitle.Location = new Point(0, 0);
+            lblTitle.Name = "lblTitle";
+            lblTitle.Size = new Size(316, 30);
+            lblTitle.TabIndex = 0;
+            lblTitle.Text = "Nhật ký hệ thống (Audit Log)";
+            // 
             // lblAction
-            //
-            this.lblAction.Location = new System.Drawing.Point(0, 46);
-            this.lblAction.AutoSize = true;
-            this.lblAction.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
-            this.lblAction.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
-            this.lblAction.Text = "Lọc theo hành động:";
-            //
+            // 
+            lblAction.AutoSize = true;
+            lblAction.Font = new Font("Segoe UI", 9F);
+            lblAction.ForeColor = Color.FromArgb(100, 116, 139);
+            lblAction.Location = new Point(0, 46);
+            lblAction.Name = "lblAction";
+            lblAction.Size = new Size(117, 15);
+            lblAction.TabIndex = 1;
+            lblAction.Text = "Lọc theo hành động:";
+            // 
             // cboAction
-            //
-            this.cboAction.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.cboAction.Location = new System.Drawing.Point(0, 66);
-            this.cboAction.Size = new System.Drawing.Size(220, 25);
-            //
+            // 
+            cboAction.DropDownStyle = ComboBoxStyle.DropDownList;
+            cboAction.Location = new Point(0, 66);
+            cboAction.Name = "cboAction";
+            cboAction.Size = new Size(220, 25);
+            cboAction.TabIndex = 2;
+            // 
             // chkFilterByDate
-            //
-            this.chkFilterByDate.Location = new System.Drawing.Point(240, 46);
-            this.chkFilterByDate.Size = new System.Drawing.Size(160, 24);
-            this.chkFilterByDate.Text = "Lọc theo khoảng ngày";
-            //
+            // 
+            chkFilterByDate.Location = new Point(240, 41);
+            chkFilterByDate.Name = "chkFilterByDate";
+            chkFilterByDate.Size = new Size(160, 24);
+            chkFilterByDate.TabIndex = 3;
+            chkFilterByDate.Text = "Lọc theo khoảng ngày";
+            // 
             // dtFrom
-            //
-            this.dtFrom.Location = new System.Drawing.Point(240, 66);
-            this.dtFrom.Size = new System.Drawing.Size(140, 25);
-            this.dtFrom.Format = System.Windows.Forms.DateTimePickerFormat.Short;
-            //
+            // 
+            dtFrom.Format = DateTimePickerFormat.Short;
+            dtFrom.Location = new Point(240, 66);
+            dtFrom.Name = "dtFrom";
+            dtFrom.Size = new Size(140, 25);
+            dtFrom.TabIndex = 4;
+            // 
             // lblTo
-            //
-            this.lblTo.Location = new System.Drawing.Point(388, 70);
-            this.lblTo.AutoSize = true;
-            this.lblTo.Text = "→";
-            //
+            // 
+            lblTo.AutoSize = true;
+            lblTo.Location = new Point(388, 70);
+            lblTo.Name = "lblTo";
+            lblTo.Size = new Size(21, 19);
+            lblTo.TabIndex = 5;
+            lblTo.Text = "→";
+            // 
             // dtTo
-            //
-            this.dtTo.Location = new System.Drawing.Point(410, 66);
-            this.dtTo.Size = new System.Drawing.Size(140, 25);
-            this.dtTo.Format = System.Windows.Forms.DateTimePickerFormat.Short;
-            //
+            // 
+            dtTo.Format = DateTimePickerFormat.Short;
+            dtTo.Location = new Point(410, 66);
+            dtTo.Name = "dtTo";
+            dtTo.Size = new Size(140, 25);
+            dtTo.TabIndex = 6;
+            // 
             // btnFilter
-            //
-            this.btnFilter.Location = new System.Drawing.Point(570, 64);
-            this.btnFilter.Size = new System.Drawing.Size(120, 30);
-            this.btnFilter.Text = "🔍 Lọc";
-            this.btnFilter.BackColor = TruckingSystem.Desktop.Common.Theme.Primary;
-            this.btnFilter.ForeColor = System.Drawing.Color.White;
-            this.btnFilter.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnFilter.Font = TruckingSystem.Desktop.Common.Theme.FontBold;
-            this.btnFilter.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.btnFilter.FlatAppearance.BorderSize = 0;
-            this.btnFilter.FlatAppearance.MouseOverBackColor = TruckingSystem.Desktop.Common.Theme.PrimaryDark;
-            this.btnFilter.Click += new System.EventHandler(this.BtnFilter_Click);
-            //
+            // 
+            btnFilter.BackColor = Color.FromArgb(37, 99, 235);
+            btnFilter.Cursor = Cursors.Hand;
+            btnFilter.FlatAppearance.BorderSize = 0;
+            btnFilter.FlatAppearance.MouseOverBackColor = Color.FromArgb(29, 78, 216);
+            btnFilter.FlatStyle = FlatStyle.Flat;
+            btnFilter.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+            btnFilter.ForeColor = Color.White;
+            btnFilter.Location = new Point(570, 64);
+            btnFilter.Name = "btnFilter";
+            btnFilter.Size = new Size(120, 30);
+            btnFilter.TabIndex = 7;
+            btnFilter.Text = "🔍 Lọc";
+            btnFilter.UseVisualStyleBackColor = false;
+            btnFilter.Click += BtnFilter_Click;
+            // 
             // lblStatus
-            //
-            this.lblStatus.Location = new System.Drawing.Point(0, 100);
-            this.lblStatus.AutoSize = true;
-            this.lblStatus.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
-            this.lblStatus.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
-            //
+            // 
+            lblStatus.AutoSize = true;
+            lblStatus.Font = new Font("Segoe UI", 9F);
+            lblStatus.ForeColor = Color.FromArgb(100, 116, 139);
+            lblStatus.Location = new Point(0, 100);
+            lblStatus.Name = "lblStatus";
+            lblStatus.Size = new Size(0, 15);
+            lblStatus.TabIndex = 8;
+            // 
             // grid
-            //
-            this.grid.Location = new System.Drawing.Point(0, 125);
-            this.grid.Size = new System.Drawing.Size(1200, 440);
-            this.grid.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
-            //
+            // 
+            grid.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
+            grid.Location = new Point(0, 125);
+            grid.Name = "grid";
+            grid.Size = new Size(1200, 440);
+            grid.TabIndex = 9;
+            // 
             // AuditLogsControl
-            //
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
-            this.AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
-            this.BackColor = System.Drawing.Color.White;
-            this.Padding = new System.Windows.Forms.Padding(24);
-            this.Controls.Add(this.lblTitle);
-            this.Controls.Add(this.lblAction);
-            this.Controls.Add(this.cboAction);
-            this.Controls.Add(this.chkFilterByDate);
-            this.Controls.Add(this.dtFrom);
-            this.Controls.Add(this.lblTo);
-            this.Controls.Add(this.dtTo);
-            this.Controls.Add(this.btnFilter);
-            this.Controls.Add(this.lblStatus);
-            this.Controls.Add(this.grid);
-            this.Name = "AuditLogsControl";
-            this.Size = new System.Drawing.Size(1200, 600);
-            ((System.ComponentModel.ISupportInitialize)(this.grid)).EndInit();
-            this.ResumeLayout(false);
-            this.PerformLayout();
+            // 
+            AutoScaleDimensions = new SizeF(96F, 96F);
+            AutoScaleMode = AutoScaleMode.Dpi;
+            BackColor = Color.White;
+            Controls.Add(lblTitle);
+            Controls.Add(lblAction);
+            Controls.Add(cboAction);
+            Controls.Add(chkFilterByDate);
+            Controls.Add(dtFrom);
+            Controls.Add(lblTo);
+            Controls.Add(dtTo);
+            Controls.Add(btnFilter);
+            Controls.Add(lblStatus);
+            Controls.Add(grid);
+            Name = "AuditLogsControl";
+            Padding = new Padding(24);
+            Size = new Size(1200, 600);
+            ((System.ComponentModel.ISupportInitialize)grid).EndInit();
+            ResumeLayout(false);
+            PerformLayout();
         }
 
         private System.Windows.Forms.Label lblTitle;
