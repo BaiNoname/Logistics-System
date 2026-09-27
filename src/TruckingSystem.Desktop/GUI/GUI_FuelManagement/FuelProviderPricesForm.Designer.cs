@@ -22,6 +22,7 @@
             this.lblEffectiveDate = new System.Windows.Forms.Label();
             this.dtEffectiveDate = new System.Windows.Forms.DateTimePicker();
             this.btnAddPrice = new System.Windows.Forms.Button();
+            this.btnDeletePrice = new System.Windows.Forms.Button();
             this.lblStatus = new System.Windows.Forms.Label();
             this.grid = new System.Windows.Forms.DataGridView();
             ((System.ComponentModel.ISupportInitialize)(this.numPrice)).BeginInit();
@@ -93,6 +94,20 @@
             this.btnAddPrice.FlatAppearance.MouseOverBackColor = TruckingSystem.Desktop.Common.Theme.PrimaryDark;
             this.btnAddPrice.Click += new System.EventHandler(this.BtnAddPrice_Click);
             //
+            // btnDeletePrice
+            //
+            this.btnDeletePrice.Location = new System.Drawing.Point(740, 75);
+            this.btnDeletePrice.Size = new System.Drawing.Size(150, 30);
+            this.btnDeletePrice.Text = "🗑️ Xóa giá đã chọn";
+            this.btnDeletePrice.BackColor = System.Drawing.Color.White;
+            this.btnDeletePrice.ForeColor = TruckingSystem.Desktop.Common.Theme.Danger;
+            this.btnDeletePrice.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnDeletePrice.Font = TruckingSystem.Desktop.Common.Theme.FontBold;
+            this.btnDeletePrice.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.btnDeletePrice.FlatAppearance.BorderSize = 1;
+            this.btnDeletePrice.FlatAppearance.BorderColor = TruckingSystem.Desktop.Common.Theme.Danger;
+            this.btnDeletePrice.Click += new System.EventHandler(this.BtnDeletePrice_Click);
+            //
             // lblStatus
             //
             this.lblStatus.Location = new System.Drawing.Point(20, 115);
@@ -103,7 +118,7 @@
             // grid
             //
             this.grid.Location = new System.Drawing.Point(20, 145);
-            this.grid.Size = new System.Drawing.Size(760, 380);
+            this.grid.Size = new System.Drawing.Size(950, 380);
             this.grid.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
             //
             // FuelProviderPricesForm
@@ -111,7 +126,7 @@
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
             this.AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
             this.BackColor = System.Drawing.Color.White;
-            this.ClientSize = new System.Drawing.Size(800, 545);
+            this.ClientSize = new System.Drawing.Size(990, 545);
             this.Controls.Add(this.lblTitle);
             this.Controls.Add(this.lblFuelType);
             this.Controls.Add(this.txtFuelType);
@@ -120,6 +135,7 @@
             this.Controls.Add(this.lblEffectiveDate);
             this.Controls.Add(this.dtEffectiveDate);
             this.Controls.Add(this.btnAddPrice);
+            this.Controls.Add(this.btnDeletePrice);
             this.Controls.Add(this.lblStatus);
             this.Controls.Add(this.grid);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
@@ -143,6 +159,7 @@
         private System.Windows.Forms.Label lblEffectiveDate;
         private System.Windows.Forms.DateTimePicker dtEffectiveDate;
         private System.Windows.Forms.Button btnAddPrice;
+        private System.Windows.Forms.Button btnDeletePrice;
         private System.Windows.Forms.Label lblStatus;
         private System.Windows.Forms.DataGridView grid;
     }

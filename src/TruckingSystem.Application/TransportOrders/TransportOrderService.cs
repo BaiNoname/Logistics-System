@@ -54,6 +54,10 @@ public class TransportOrderService : ITransportOrderService
         if (request.CargoLines is null || request.CargoLines.Count == 0)
             throw new InvalidOperationException("Đơn hàng phải có ít nhất 1 dòng hàng hóa.");
 
+        var cargoLineError = ValidateCargoLines(request.CargoLines);
+        if (cargoLineError is not null)
+            throw new InvalidOperationException(cargoLineError);
+
         var code = $"TO-{DateTime.UtcNow:yyyyMMddHHmmss}";
 
         var order = new TransportOrder
@@ -97,6 +101,10 @@ public class TransportOrderService : ITransportOrderService
             return new OrderActionResult(false, "Chỉ có thể sửa đơn khi còn ở trạng thái Nháp (Draft) — đơn này đã xác nhận/đang chạy.");
         if (request.CargoLines is null || request.CargoLines.Count == 0)
             return new OrderActionResult(false, "Đơn hàng phải có ít nhất 1 dòng hàng hóa.");
+
+        var cargoLineError = ValidateCargoLines(request.CargoLines);
+        if (cargoLineError is not null)
+            return new OrderActionResult(false, cargoLineError);
 
         var warehouseExists = await _db.Warehouses.AnyAsync(w => w.Id == request.WarehouseId);
         if (!warehouseExists)
@@ -164,6 +172,32 @@ public class TransportOrderService : ITransportOrderService
 
     private static PickupMethod ParsePickupMethod(string value)
         => Enum.TryParse<PickupMethod>(value, out var parsed) ? parsed : PickupMethod.CompanyPickup;
+
+    /// <summary>Kiểm tra TẤT CẢ dòng hàng đều có số liệu HỢP LỆ (dương) trước
+    /// khi cho tạo/sửa đơn — trước đây KHÔNG kiểm tra gì cả, có thể tạo 1
+    /// dòng hàng với số lượng/khối lượng/thể tích = 0 hoặc ÂM, gây sai lệch
+    /// khi tính tổng ở bước Chia xe (Greedy) sau này. Trả về null nếu hợp lệ,
+    /// hoặc thông báo lỗi nếu có dòng nào sai.</summary>
+    private static string? ValidateCargoLines(List<CargoLineDto> cargoLines)
+    {
+        for (int i = 0; i < cargoLines.Count; i++)
+        {
+            var c = cargoLines[i];
+            var lineLabel = string.IsNullOrWhiteSpace(c.CargoType) ? $"Dòng hàng #{i + 1}" : $"Dòng hàng \"{c.CargoType}\"";
+
+            if (string.IsNullOrWhiteSpace(c.CargoType))
+                return $"Dòng hàng #{i + 1} chưa nhập loại hàng hóa.";
+            if (c.QtyTotal <= 0)
+                return $"{lineLabel}: số lượng phải lớn hơn 0.";
+            if (c.PackageCount <= 0)
+                return $"{lineLabel}: số kiện phải lớn hơn 0.";
+            if (c.WeightKg <= 0)
+                return $"{lineLabel}: khối lượng phải lớn hơn 0.";
+            if (c.VolumeM3 <= 0)
+                return $"{lineLabel}: thể tích phải lớn hơn 0.";
+        }
+        return null;
+    }
 
     private static CargoLine MapCargoLine(CargoLineDto c) => new()
     {

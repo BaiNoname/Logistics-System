@@ -366,6 +366,9 @@ public class TripService : ITripService
 
     public async Task<IncidentReportDto> CreateIncidentAsync(int tripId, CreateIncidentReportRequest request)
     {
+        if (request.Cost.HasValue && request.Cost.Value < 0)
+            throw new InvalidOperationException("Chi phí phát sinh không thể là số âm.");
+
         var type = Enum.TryParse<IncidentType>(request.Type, out var parsed) ? parsed : IncidentType.Other;
 
         var incident = new IncidentReport
@@ -477,6 +480,9 @@ public class TripService : ITripService
 
     public async Task<TripExpenseDto> CreateExpenseAsync(int tripId, CreateTripExpenseRequest request)
     {
+        if (request.Amount <= 0)
+            throw new InvalidOperationException("Số tiền phải lớn hơn 0.");
+
         var type = Enum.TryParse<TripExpenseType>(request.Type, out var parsed) ? parsed : TripExpenseType.Other;
 
         var expense = new TripExpense
