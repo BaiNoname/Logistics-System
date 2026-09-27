@@ -75,7 +75,16 @@ public class TripsController : ControllerBase
 
     [HttpPost("{id:int}/incidents")]
     public async Task<ActionResult<IncidentReportDto>> CreateIncident(int id, CreateIncidentReportRequest request)
-        => Ok(await _tripService.CreateIncidentAsync(id, request));
+    {
+        try
+        {
+            return Ok(await _tripService.CreateIncidentAsync(id, request));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
 
     [HttpDelete("incidents/{incidentId:int}")]
     public async Task<ActionResult<TripActionResult>> DeleteIncident(int incidentId)
@@ -99,7 +108,16 @@ public class TripsController : ControllerBase
 
     [HttpPost("{id:int}/expenses")]
     public async Task<ActionResult<TripExpenseDto>> CreateExpense(int id, CreateTripExpenseRequest request)
-        => Ok(await _tripService.CreateExpenseAsync(id, request));
+    {
+        try
+        {
+            return Ok(await _tripService.CreateExpenseAsync(id, request));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
 
     [HttpDelete("expenses/{expenseId:int}")]
     public async Task<ActionResult<TripActionResult>> DeleteExpense(int expenseId)

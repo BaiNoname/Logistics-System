@@ -78,6 +78,18 @@ public class VehicleAllocationService : IVehicleAllocationService
         if (totalQtyToShip <= 0)
             return new AllocateVehiclesResponse(false, 0, 0, new(), "Đơn hàng chưa khai báo số lượng hàng hóa.");
 
+        // BỌC TOÀN BỘ phần còn lại trong 1 TRANSACTION DUY NHẤT — Chia xe cho
+        // đơn lớn có thể cần NHIỀU xe, mỗi xe gọi SaveChangesAsync RIÊNG để
+        // tạo Trip. Trước đây KHÔNG có transaction: nếu xe thứ 2 trở đi gặp
+        // lỗi giữa chừng (mất kết nối DB, VietMap timeout ném exception...),
+        // Trip của (các) xe TRƯỚC ĐÓ đã lưu VĨNH VIỄN vào DB dù hàm báo THẤT
+        // BẠI — khiến đơn bị "kẹt" ở trạng thái nửa vời: có 1 phần Trip nhưng
+        // không đủ chở hết hàng, và KHÔNG THỂ chia xe lại (bị chặn bởi luật
+        // "đơn đã có Trip rồi"). Với transaction: bất kỳ lỗi/return thất bại
+        // nào trong phạm vi này đều tự động ROLLBACK SẠCH, không để lại dữ
+        // liệu dở dang — đơn vẫn ở trạng thái "chưa chia xe", chia lại được.
+        await using var transaction = await _db.Database.BeginTransactionAsync();
+
         // Bước 1: sắp xếp giảm dần theo sức chứa — cốt lõi của tính "tham lam"
         // BẮT BUỘC phải có ĐĂNG KIỂM CÒN HẠN mới cho dùng — đúng luật giao
         // thông thực tế (xe không đăng kiểm KHÔNG ĐƯỢC PHÉP lưu thông), khác
@@ -352,6 +364,7 @@ public class VehicleAllocationService : IVehicleAllocationService
             ? $"Chỉ đủ xe chở {totalAssigned}/{totalQtyToShip} — còn thiếu {remaining}, cần thêm xe hoặc chờ xe rảnh."
             : null;
 
+        await transaction.CommitAsync();
         return new AllocateVehiclesResponse(true, totalQtyToShip, totalAssigned, results, message, estimatedTripDays);
     }
 

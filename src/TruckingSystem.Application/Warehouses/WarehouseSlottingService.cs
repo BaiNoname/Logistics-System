@@ -282,6 +282,11 @@ public class WarehouseSlottingService : IWarehouseSlottingService
         if (request.PosX < 0 || request.PosY < 0 || request.PosX + request.WidthMeters > zone.WidthMeters || request.PosY + request.HeightMeters > zone.HeightMeters)
             throw new InvalidOperationException($"Vị trí này vượt ra NGOÀI ranh giới khu vực \"{zone.Name}\" (khu vực rộng {zone.WidthMeters}m x {zone.HeightMeters}m) — chỉnh lại tọa độ/kích thước cho vừa trong khu vực.");
 
+        // Khoảng cách tới cửa kho không thể ÂM — dữ liệu vô lý về mặt vật lý,
+        // ảnh hưởng trực tiếp tới thuật toán ưu tiên gần cửa cho đơn gấp.
+        if (request.DistanceFromDoorMeters < 0)
+            throw new InvalidOperationException("Khoảng cách tới cửa kho không thể là số âm.");
+
         // CHẶN đè lên vị trí KHÁC đã có trong cùng khu vực — trước đây chỉ so
         // Row/Column (chỉ số trừu tượng), giờ so ĐÚNG diện tích thật, phát
         // hiện đè dù chỉ chồng lấn 1 phần nhỏ.
@@ -322,6 +327,9 @@ public class WarehouseSlottingService : IWarehouseSlottingService
         var zone = bin.WarehouseZone;
         if (request.PosX < 0 || request.PosY < 0 || request.PosX + request.WidthMeters > zone.WidthMeters || request.PosY + request.HeightMeters > zone.HeightMeters)
             return new WarehouseActionResult(false, $"Vị trí này vượt ra NGOÀI ranh giới khu vực \"{zone.Name}\" (khu vực rộng {zone.WidthMeters}m x {zone.HeightMeters}m) — chỉnh lại tọa độ/kích thước cho vừa trong khu vực.");
+
+        if (request.DistanceFromDoorMeters < 0)
+            return new WarehouseActionResult(false, "Khoảng cách tới cửa kho không thể là số âm.");
 
         var otherBins = await _db.StorageBins.Where(b => b.Id != binId && b.WarehouseZoneId == bin.WarehouseZoneId).ToListAsync();
         var overlappingBin = otherBins.FirstOrDefault(b => RectanglesOverlap(
@@ -488,6 +496,14 @@ public class WarehouseSlottingService : IWarehouseSlottingService
         // Đến đây CHẮC CHẮN đã có đủ vị trí hợp lệ, đúng khu, đủ chỗ — giờ mới
         // thật sự ghi nhận: tạo 1 GoodsReceipt DUY NHẤT (đại diện cho cả lô
         // hàng), nhưng có thể tạo NHIỀU StorageAssignment (mỗi vị trí 1 dòng).
+        // BỌC TRANSACTION vì có 2 LẦN SaveChangesAsync riêng biệt (lần 1 tạo
+        // GoodsReceipt để lấy Id thật, lần 2 tạo StorageAssignment dùng Id đó)
+        // — nếu lần 2 thất bại giữa chừng (mất kết nối, lỗi DB...), lần 1 ĐÃ
+        // LƯU VĨNH VIỄN sẽ để lại đúng tình huống "hàng ma" (tăng tồn kho tổng
+        // nhưng KHÔNG có StorageAssignment tương ứng) — cùng loại lỗi đã sửa
+        // trước đây, chỉ khác nguyên nhân kỹ thuật gây ra.
+        await using var transaction = await _db.Database.BeginTransactionAsync();
+
         var receipt = new GoodsReceipt
         {
             TransportOrderId = transportOrderId,
@@ -521,6 +537,7 @@ public class WarehouseSlottingService : IWarehouseSlottingService
             });
         }
         await _db.SaveChangesAsync();
+        await transaction.CommitAsync();
 
         var binCodesUsed = targetAllocations.Select(a => a.Bin.Code).ToList();
         var multiNote = binCodesUsed.Count > 1 ? $"⚠️ Đã chia ra {binCodesUsed.Count} vị trí: {string.Join(", ", binCodesUsed)}." : null;

@@ -61,6 +61,11 @@ public class FuelService : IFuelService
 
     public async Task<FuelPriceHistoryDto> CreatePriceAsync(CreateFuelPriceRequest request)
     {
+        if (string.IsNullOrWhiteSpace(request.FuelType))
+            throw new InvalidOperationException("Vui lòng nhập loại nhiên liệu.");
+        if (request.Price <= 0)
+            throw new InvalidOperationException("Giá phải lớn hơn 0.");
+
         var price = new FuelPriceHistory
         {
             FuelType = request.FuelType,
@@ -79,5 +84,15 @@ public class FuelService : IFuelService
         }
 
         return new FuelPriceHistoryDto(price.Id, price.FuelType, price.Price, price.EffectiveDate, price.FuelProviderId, providerName ?? "(Giá thị trường chung)");
+    }
+
+    public async Task<FuelActionResult> DeletePriceAsync(int priceId)
+    {
+        var price = await _db.FuelPriceHistories.FindAsync(priceId);
+        if (price is null) return new FuelActionResult(false, "Không tìm thấy mức giá này.");
+
+        _db.FuelPriceHistories.Remove(price);
+        await _db.SaveChangesAsync();
+        return new FuelActionResult(true, null);
     }
 }

@@ -26,7 +26,7 @@ public class FuelController : ControllerBase
     public async Task<ActionResult<FuelActionResult>> DeleteProvider(int id)
     {
         var result = await _service.DeleteProviderAsync(id);
-        return result.Success ? Ok(result) : BadRequest(result);
+        return Ok(result); // luôn 200 OK — Desktop tự đọc result.Success/Message, tránh PostAsync throw exception khi 400 làm mất thông báo rõ ràng
     }
 
     /// <summary>providerId bỏ trống lấy toàn bộ lịch sử giá.</summary>
@@ -36,5 +36,18 @@ public class FuelController : ControllerBase
 
     [HttpPost("prices")]
     public async Task<ActionResult<FuelPriceHistoryDto>> CreatePrice(CreateFuelPriceRequest request)
-        => Ok(await _service.CreatePriceAsync(request));
+    {
+        try
+        {
+            return Ok(await _service.CreatePriceAsync(request));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
+    [HttpDelete("prices/{priceId:int}")]
+    public async Task<ActionResult<FuelActionResult>> DeletePrice(int priceId)
+        => Ok(await _service.DeletePriceAsync(priceId));
 }
