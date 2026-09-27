@@ -91,6 +91,17 @@ public static class DbSeeder
         db.Customers.Add(customer);
         await db.SaveChangesAsync();
 
+        var warehouse = new Warehouse
+        {
+            Name = "Kho TP.HCM",
+            Address = "Quận 7, TP.HCM",
+            CapacityM3 = 500,
+            LengthMeters = 30,
+            WidthMeters = 20,
+        };
+        db.Warehouses.Add(warehouse);
+        await db.SaveChangesAsync();
+
         var transportOrder = new TransportOrder
         {
             Code = "TO-DEMO-001",
@@ -98,6 +109,7 @@ public static class DbSeeder
             PickupPoint = "Kho A, Quận 7, TP.HCM",
             DropoffPoint = "Kho B, Biên Hòa, Đồng Nai",
             Status = TransportOrderStatus.Confirmed,
+            WarehouseId = warehouse.Id,
         };
         db.TransportOrders.Add(transportOrder);
         await db.SaveChangesAsync();
@@ -146,17 +158,6 @@ public static class DbSeeder
         await db.SaveChangesAsync();
 
         // ---- 5. Dữ liệu mẫu cho Kho trung chuyển + tối ưu vị trí (Best-Fit) ----
-        var warehouse = new Warehouse
-        {
-            Name = "Kho TP.HCM",
-            Address = "Quận 7, TP.HCM",
-            CapacityM3 = 500,
-            LengthMeters = 30, // kho hình chữ nhật 30m x 20m — đủ chỗ đặt 2 khu cạnh nhau
-            WidthMeters = 20,
-        };
-        db.Warehouses.Add(warehouse);
-        await db.SaveChangesAsync();
-
         // 2 khu đặt CẠNH NHAU theo chiều ngang trong sơ đồ 30m x 20m —
         // Khu A chiếm nửa trái (0,0 tới 18,20), Khu B nửa phải (20,0 tới 30,20).
         var zoneNormal = new WarehouseZone
@@ -259,6 +260,7 @@ public static class DbSeeder
             PickupPoint = "Xưởng gốm Bát Tràng, Hà Nội",
             DropoffPoint = "Kho Hà Nội - Test đa khu Dễ vỡ",
             Status = TransportOrderStatus.Confirmed,
+            WarehouseId = warehouse2.Id,
             CommittedDeliveryDate = DateTime.UtcNow.AddDays(10), // KHÔNG gấp — để thấy đúng logic Best-Fit thường, không phải ưu tiên gần cửa
         };
         db.TransportOrders.Add(orderSplitTest);
@@ -286,6 +288,7 @@ public static class DbSeeder
             PickupPoint = "Nhà máy hóa chất, Long An",
             DropoffPoint = "Kho TP.HCM",
             Status = TransportOrderStatus.Confirmed,
+            WarehouseId = warehouse.Id,
         };
         db.TransportOrders.Add(orderHazmatTest);
         await db.SaveChangesAsync();
@@ -395,6 +398,7 @@ public static class DbSeeder
             DropoffPoint = "Kho TP.HCM",
             PickupMethod = PickupMethod.CompanyPickup,
             Status = TransportOrderStatus.Confirmed,
+            WarehouseId = warehouse.Id,
             CommittedDeliveryDate = DateTime.UtcNow.AddDays(2), // GẤP — test ưu tiên gần cửa khi nhập kho
         };
         db.TransportOrders.Add(orderFreshTest);

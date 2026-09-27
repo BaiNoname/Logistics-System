@@ -26,9 +26,10 @@ namespace TruckingSystem.Desktop.GUI_InvoiceManagement
             // 
             lblTitle.Font = new Font("Segoe UI", 18F, FontStyle.Bold);
             lblTitle.ForeColor = Color.FromArgb(15, 23, 42);
-            lblTitle.Location = new Point(3, 17);
+            lblTitle.Location = new Point(2, 11);
+            lblTitle.Margin = new Padding(2, 0, 2, 0);
             lblTitle.Name = "lblTitle";
-            lblTitle.Size = new Size(203, 49);
+            lblTitle.Size = new Size(135, 33);
             lblTitle.TabIndex = 0;
             lblTitle.Text = "Hóa đơn";
             // 
@@ -40,9 +41,10 @@ namespace TruckingSystem.Desktop.GUI_InvoiceManagement
             btnRefresh.FlatStyle = FlatStyle.Flat;
             btnRefresh.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
             btnRefresh.ForeColor = Color.FromArgb(15, 23, 42);
-            btnRefresh.Location = new Point(1018, 17);
+            btnRefresh.Location = new Point(671, 2);
+            btnRefresh.Margin = new Padding(2, 2, 2, 2);
             btnRefresh.Name = "btnRefresh";
-            btnRefresh.Size = new Size(145, 38);
+            btnRefresh.Size = new Size(103, 33);
             btnRefresh.TabIndex = 1;
             btnRefresh.Text = "🔄 Làm mới";
             btnRefresh.UseVisualStyleBackColor = false;
@@ -53,9 +55,10 @@ namespace TruckingSystem.Desktop.GUI_InvoiceManagement
             lblNote.AutoSize = true;
             lblNote.Font = new Font("Segoe UI", 9F);
             lblNote.ForeColor = Color.FromArgb(217, 119, 6);
-            lblNote.Location = new Point(224, 17);
+            lblNote.Location = new Point(149, 11);
+            lblNote.Margin = new Padding(2, 0, 2, 0);
             lblNote.Name = "lblNote";
-            lblNote.Size = new Size(776, 25);
+            lblNote.Size = new Size(518, 15);
             lblNote.TabIndex = 2;
             lblNote.Text = "(Chức năng tạo hóa đơn tự động đang trong quá trình hoàn thiện — hiện chỉ hiển thị danh sách)";
             // 
@@ -64,32 +67,35 @@ namespace TruckingSystem.Desktop.GUI_InvoiceManagement
             lblStatus.AutoSize = true;
             lblStatus.Font = new Font("Segoe UI", 9F);
             lblStatus.ForeColor = Color.FromArgb(100, 116, 139);
-            lblStatus.Location = new Point(0, 44);
+            lblStatus.Location = new Point(0, 29);
+            lblStatus.Margin = new Padding(2, 0, 2, 0);
             lblStatus.Name = "lblStatus";
-            lblStatus.Size = new Size(0, 25);
+            lblStatus.Size = new Size(0, 15);
             lblStatus.TabIndex = 3;
             // 
             // grid
             // 
             grid.ColumnHeadersHeight = 34;
             grid.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
-            grid.Location = new Point(0, 76);
+            grid.Location = new Point(0, 51);
+            grid.Margin = new Padding(2, 2, 2, 2);
             grid.Name = "grid";
             grid.RowHeadersWidth = 62;
-            grid.Size = new Size(1000, 560);
+            grid.Size = new Size(667, 373);
             grid.TabIndex = 4;
             // 
             // InvoicesControl
             // 
-            AutoScaleDimensions = new SizeF(144F, 144F);
+            AutoScaleDimensions = new SizeF(96F, 96F);
             BackColor = Color.FromArgb(241, 245, 249);
             Controls.Add(lblTitle);
             Controls.Add(btnRefresh);
             Controls.Add(lblNote);
             Controls.Add(lblStatus);
             Controls.Add(grid);
+            Margin = new Padding(2, 2, 2, 2);
             Name = "InvoicesControl";
-            Size = new Size(1417, 568);
+            Size = new Size(945, 379);
             ((System.ComponentModel.ISupportInitialize)grid).EndInit();
             ResumeLayout(false);
             PerformLayout();

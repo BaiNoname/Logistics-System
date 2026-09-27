@@ -29,8 +29,9 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
             lblTitle.Font = new Font("Segoe UI", 18F, FontStyle.Bold);
             lblTitle.ForeColor = Color.FromArgb(15, 23, 42);
             lblTitle.Location = new Point(0, 0);
+            lblTitle.Margin = new Padding(2, 0, 2, 0);
             lblTitle.Name = "lblTitle";
-            lblTitle.Size = new Size(400, 73);
+            lblTitle.Size = new Size(245, 49);
             lblTitle.TabIndex = 0;
             lblTitle.Text = "Đội xe";
             // 
@@ -42,9 +43,10 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
             btnRefresh.FlatStyle = FlatStyle.Flat;
             btnRefresh.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
             btnRefresh.ForeColor = Color.FromArgb(15, 23, 42);
-            btnRefresh.Location = new Point(373, 11);
+            btnRefresh.Location = new Point(249, 7);
+            btnRefresh.Margin = new Padding(2, 2, 2, 2);
             btnRefresh.Name = "btnRefresh";
-            btnRefresh.Size = new Size(149, 38);
+            btnRefresh.Size = new Size(99, 35);
             btnRefresh.TabIndex = 1;
             btnRefresh.Text = "🔄 Làm mới";
             btnRefresh.UseVisualStyleBackColor = false;
@@ -59,9 +61,10 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
             btnCreate.FlatStyle = FlatStyle.Flat;
             btnCreate.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
             btnCreate.ForeColor = Color.White;
-            btnCreate.Location = new Point(528, 11);
+            btnCreate.Location = new Point(352, 7);
+            btnCreate.Margin = new Padding(2, 2, 2, 2);
             btnCreate.Name = "btnCreate";
-            btnCreate.Size = new Size(150, 38);
+            btnCreate.Size = new Size(100, 35);
             btnCreate.TabIndex = 2;
             btnCreate.Text = "➕ Thêm xe mới";
             btnCreate.UseVisualStyleBackColor = false;
@@ -74,9 +77,10 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
             btnDocuments.FlatStyle = FlatStyle.Flat;
             btnDocuments.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
             btnDocuments.ForeColor = Color.FromArgb(15, 23, 42);
-            btnDocuments.Location = new Point(840, 11);
+            btnDocuments.Location = new Point(560, 7);
+            btnDocuments.Margin = new Padding(2, 2, 2, 2);
             btnDocuments.Name = "btnDocuments";
-            btnDocuments.Size = new Size(160, 38);
+            btnDocuments.Size = new Size(107, 35);
             btnDocuments.TabIndex = 3;
             btnDocuments.Text = "📄 Giấy tờ xe";
             btnDocuments.UseVisualStyleBackColor = false;
@@ -90,9 +94,10 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
             btnEdit.FlatStyle = FlatStyle.Flat;
             btnEdit.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
             btnEdit.ForeColor = Color.FromArgb(15, 23, 42);
-            btnEdit.Location = new Point(684, 11);
+            btnEdit.Location = new Point(456, 7);
+            btnEdit.Margin = new Padding(2, 2, 2, 2);
             btnEdit.Name = "btnEdit";
-            btnEdit.Size = new Size(150, 38);
+            btnEdit.Size = new Size(100, 35);
             btnEdit.TabIndex = 3;
             btnEdit.Text = "✏️ Sửa xe";
             btnEdit.UseVisualStyleBackColor = false;
@@ -103,24 +108,26 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
             lblStatus.AutoSize = true;
             lblStatus.Font = new Font("Segoe UI", 9F);
             lblStatus.ForeColor = Color.FromArgb(100, 116, 139);
-            lblStatus.Location = new Point(0, 44);
+            lblStatus.Location = new Point(0, 29);
+            lblStatus.Margin = new Padding(2, 0, 2, 0);
             lblStatus.Name = "lblStatus";
-            lblStatus.Size = new Size(0, 25);
+            lblStatus.Size = new Size(0, 15);
             lblStatus.TabIndex = 3;
             // 
             // grid
             // 
             grid.ColumnHeadersHeight = 34;
             grid.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
-            grid.Location = new Point(0, 76);
+            grid.Location = new Point(0, 51);
+            grid.Margin = new Padding(2, 2, 2, 2);
             grid.Name = "grid";
             grid.RowHeadersWidth = 62;
-            grid.Size = new Size(1000, 560);
+            grid.Size = new Size(667, 373);
             grid.TabIndex = 4;
             // 
             // VehiclesControl
             // 
-            AutoScaleDimensions = new SizeF(144F, 144F);
+            AutoScaleDimensions = new SizeF(96F, 96F);
             BackColor = Color.FromArgb(241, 245, 249);
             Controls.Add(lblTitle);
             Controls.Add(btnRefresh);
@@ -129,8 +136,9 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
             Controls.Add(btnEdit);
             Controls.Add(lblStatus);
             Controls.Add(grid);
+            Margin = new Padding(2, 2, 2, 2);
             Name = "VehiclesControl";
-            Size = new Size(1450, 613);
+            Size = new Size(967, 409);
             ((System.ComponentModel.ISupportInitialize)grid).EndInit();
             ResumeLayout(false);
             PerformLayout();

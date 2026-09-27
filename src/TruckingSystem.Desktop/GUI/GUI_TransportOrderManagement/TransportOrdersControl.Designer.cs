@@ -28,8 +28,9 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             lblTitle.Font = new Font("Segoe UI", 18F, FontStyle.Bold);
             lblTitle.ForeColor = Color.FromArgb(15, 23, 42);
             lblTitle.Location = new Point(0, 0);
+            lblTitle.Margin = new Padding(2, 0, 2, 0);
             lblTitle.Name = "lblTitle";
-            lblTitle.Size = new Size(400, 73);
+            lblTitle.Size = new Size(203, 49);
             lblTitle.TabIndex = 0;
             lblTitle.Text = "Đơn vận chuyển";
             // 
@@ -41,9 +42,10 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             btnRefresh.FlatStyle = FlatStyle.Flat;
             btnRefresh.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
             btnRefresh.ForeColor = Color.FromArgb(15, 23, 42);
-            btnRefresh.Location = new Point(594, 0);
+            btnRefresh.Location = new Point(396, 0);
+            btnRefresh.Margin = new Padding(2);
             btnRefresh.Name = "btnRefresh";
-            btnRefresh.Size = new Size(156, 38);
+            btnRefresh.Size = new Size(104, 35);
             btnRefresh.TabIndex = 1;
             btnRefresh.Text = "🔄 Làm mới";
             btnRefresh.UseVisualStyleBackColor = false;
@@ -57,9 +59,10 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             btnAllocate.FlatStyle = FlatStyle.Flat;
             btnAllocate.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
             btnAllocate.ForeColor = Color.FromArgb(15, 23, 42);
-            btnAllocate.Location = new Point(760, 0);
+            btnAllocate.Location = new Point(507, 0);
+            btnAllocate.Margin = new Padding(2);
             btnAllocate.Name = "btnAllocate";
-            btnAllocate.Size = new Size(130, 38);
+            btnAllocate.Size = new Size(87, 35);
             btnAllocate.TabIndex = 2;
             btnAllocate.Text = "🚚 Chia xe";
             btnAllocate.UseVisualStyleBackColor = false;
@@ -74,9 +77,10 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             btnCreate.FlatStyle = FlatStyle.Flat;
             btnCreate.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
             btnCreate.ForeColor = Color.White;
-            btnCreate.Location = new Point(900, 0);
+            btnCreate.Location = new Point(600, 0);
+            btnCreate.Margin = new Padding(2);
             btnCreate.Name = "btnCreate";
-            btnCreate.Size = new Size(150, 38);
+            btnCreate.Size = new Size(100, 35);
             btnCreate.TabIndex = 3;
             btnCreate.Text = "➕ Tạo đơn mới";
             btnCreate.UseVisualStyleBackColor = false;
@@ -87,24 +91,26 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             lblStatus.AutoSize = true;
             lblStatus.Font = new Font("Segoe UI", 9F);
             lblStatus.ForeColor = Color.FromArgb(100, 116, 139);
-            lblStatus.Location = new Point(0, 44);
+            lblStatus.Location = new Point(0, 29);
+            lblStatus.Margin = new Padding(2, 0, 2, 0);
             lblStatus.Name = "lblStatus";
-            lblStatus.Size = new Size(0, 25);
+            lblStatus.Size = new Size(0, 15);
             lblStatus.TabIndex = 4;
             // 
             // grid
             // 
             grid.ColumnHeadersHeight = 34;
             grid.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
-            grid.Location = new Point(0, 76);
+            grid.Location = new Point(0, 51);
+            grid.Margin = new Padding(2);
             grid.Name = "grid";
             grid.RowHeadersWidth = 62;
-            grid.Size = new Size(1000, 560);
+            grid.Size = new Size(667, 373);
             grid.TabIndex = 5;
             // 
             // TransportOrdersControl
             // 
-            AutoScaleDimensions = new SizeF(144F, 144F);
+            AutoScaleDimensions = new SizeF(96F, 96F);
             BackColor = Color.FromArgb(241, 245, 249);
             Controls.Add(lblTitle);
             Controls.Add(btnRefresh);
@@ -112,8 +118,9 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             Controls.Add(btnCreate);
             Controls.Add(lblStatus);
             Controls.Add(grid);
+            Margin = new Padding(2);
             Name = "TransportOrdersControl";
-            Size = new Size(1315, 568);
+            Size = new Size(877, 379);
             ((System.ComponentModel.ISupportInitialize)grid).EndInit();
             ResumeLayout(false);
             PerformLayout();
