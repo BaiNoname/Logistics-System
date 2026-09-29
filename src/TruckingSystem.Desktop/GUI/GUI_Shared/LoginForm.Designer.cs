@@ -19,6 +19,7 @@ namespace TruckingSystem.Desktop.GUI_Shared
             lblTagline = new Label();
             roadLine = new Panel();
             rightPanel = new Panel();
+            btnOpenChatBot = new Button();
             lblTitle = new Label();
             lblSub = new Label();
             lblServerUrl = new Label();
@@ -42,9 +43,8 @@ namespace TruckingSystem.Desktop.GUI_Shared
             bannerPanel.Controls.Add(roadLine);
             bannerPanel.Dock = DockStyle.Left;
             bannerPanel.Location = new Point(0, 0);
-            bannerPanel.Margin = new Padding(4, 4, 4, 4);
             bannerPanel.Name = "bannerPanel";
-            bannerPanel.Size = new Size(690, 960);
+            bannerPanel.Size = new Size(460, 640);
             bannerPanel.TabIndex = 1;
             // 
             // lblAppName
@@ -52,10 +52,9 @@ namespace TruckingSystem.Desktop.GUI_Shared
             lblAppName.AutoSize = true;
             lblAppName.Font = new Font("Segoe UI", 26F, FontStyle.Bold);
             lblAppName.ForeColor = Color.White;
-            lblAppName.Location = new Point(108, 188);
-            lblAppName.Margin = new Padding(4, 0, 4, 0);
+            lblAppName.Location = new Point(72, 125);
             lblAppName.Name = "lblAppName";
-            lblAppName.Size = new Size(429, 70);
+            lblAppName.Size = new Size(291, 47);
             lblAppName.TabIndex = 0;
             lblAppName.Text = "Trucking System";
             // 
@@ -64,25 +63,24 @@ namespace TruckingSystem.Desktop.GUI_Shared
             lblTagline.AutoSize = true;
             lblTagline.Font = new Font("Segoe UI", 11F);
             lblTagline.ForeColor = Color.FromArgb(203, 213, 225);
-            lblTagline.Location = new Point(146, 295);
-            lblTagline.Margin = new Padding(4, 0, 4, 0);
+            lblTagline.Location = new Point(97, 197);
             lblTagline.Name = "lblTagline";
-            lblTagline.Size = new Size(349, 60);
+            lblTagline.Size = new Size(238, 40);
             lblTagline.TabIndex = 1;
             lblTagline.Text = "Hệ thống quản lý vận tải và\nkho trung chuyển hàng hóa nội địa";
             // 
             // roadLine
             // 
             roadLine.BackColor = Color.FromArgb(51, 65, 85);
-            roadLine.Location = new Point(0, 759);
-            roadLine.Margin = new Padding(4, 4, 4, 4);
+            roadLine.Location = new Point(0, 506);
             roadLine.Name = "roadLine";
-            roadLine.Size = new Size(690, 3);
+            roadLine.Size = new Size(460, 2);
             roadLine.TabIndex = 2;
             // 
             // rightPanel
             // 
             rightPanel.BackColor = Color.White;
+            rightPanel.Controls.Add(btnOpenChatBot);
             rightPanel.Controls.Add(lblTitle);
             rightPanel.Controls.Add(lblSub);
             rightPanel.Controls.Add(lblServerUrl);
@@ -95,21 +93,36 @@ namespace TruckingSystem.Desktop.GUI_Shared
             rightPanel.Controls.Add(lblStatus);
             rightPanel.Controls.Add(btnClose);
             rightPanel.Dock = DockStyle.Fill;
-            rightPanel.Location = new Point(690, 0);
-            rightPanel.Margin = new Padding(4, 4, 4, 4);
+            rightPanel.Location = new Point(460, 0);
             rightPanel.Name = "rightPanel";
-            rightPanel.Size = new Size(810, 960);
+            rightPanel.Size = new Size(540, 640);
             rightPanel.TabIndex = 0;
+            // 
+            // btnOpenChatBot
+            // 
+            btnOpenChatBot.BackColor = Color.FromArgb(37, 99, 235);
+            btnOpenChatBot.Cursor = Cursors.Hand;
+            btnOpenChatBot.FlatAppearance.BorderSize = 0;
+            btnOpenChatBot.FlatAppearance.MouseOverBackColor = Color.FromArgb(29, 78, 216);
+            btnOpenChatBot.FlatStyle = FlatStyle.Flat;
+            btnOpenChatBot.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+            btnOpenChatBot.ForeColor = Color.White;
+            btnOpenChatBot.Location = new Point(425, 592);
+            btnOpenChatBot.Name = "btnOpenChatBot";
+            btnOpenChatBot.Size = new Size(103, 36);
+            btnOpenChatBot.TabIndex = 11;
+            btnOpenChatBot.Text = "Mở chat bot";
+            btnOpenChatBot.UseVisualStyleBackColor = false;
+            btnOpenChatBot.Click += btnOpenChatBot_Click;
             // 
             // lblTitle
             // 
             lblTitle.AutoSize = true;
             lblTitle.Font = new Font("Segoe UI", 18F, FontStyle.Bold);
             lblTitle.ForeColor = Color.FromArgb(15, 23, 42);
-            lblTitle.Location = new Point(135, 210);
-            lblTitle.Margin = new Padding(4, 0, 4, 0);
+            lblTitle.Location = new Point(90, 140);
             lblTitle.Name = "lblTitle";
-            lblTitle.Size = new Size(205, 48);
+            lblTitle.Size = new Size(139, 32);
             lblTitle.TabIndex = 0;
             lblTitle.Text = "Đăng nhập";
             // 
@@ -118,10 +131,9 @@ namespace TruckingSystem.Desktop.GUI_Shared
             lblSub.AutoSize = true;
             lblSub.Font = new Font("Segoe UI", 10F);
             lblSub.ForeColor = Color.FromArgb(100, 116, 139);
-            lblSub.Location = new Point(135, 270);
-            lblSub.Margin = new Padding(4, 0, 4, 0);
+            lblSub.Location = new Point(90, 180);
             lblSub.Name = "lblSub";
-            lblSub.Size = new Size(330, 28);
+            lblSub.Size = new Size(233, 19);
             lblSub.TabIndex = 1;
             lblSub.Text = "Nhập thông tin tài khoản để tiếp tục";
             // 
@@ -130,10 +142,9 @@ namespace TruckingSystem.Desktop.GUI_Shared
             lblServerUrl.AutoSize = true;
             lblServerUrl.Font = new Font("Segoe UI", 9F);
             lblServerUrl.ForeColor = Color.FromArgb(100, 116, 139);
-            lblServerUrl.Location = new Point(135, 330);
-            lblServerUrl.Margin = new Padding(4, 0, 4, 0);
+            lblServerUrl.Location = new Point(90, 220);
             lblServerUrl.Name = "lblServerUrl";
-            lblServerUrl.Size = new Size(109, 25);
+            lblServerUrl.Size = new Size(70, 15);
             lblServerUrl.TabIndex = 2;
             lblServerUrl.Text = "SERVER URL";
             // 
@@ -141,10 +152,9 @@ namespace TruckingSystem.Desktop.GUI_Shared
             // 
             txtServerUrl.BorderStyle = BorderStyle.FixedSingle;
             txtServerUrl.Font = new Font("Segoe UI", 10F);
-            txtServerUrl.Location = new Point(135, 360);
-            txtServerUrl.Margin = new Padding(4, 4, 4, 4);
+            txtServerUrl.Location = new Point(90, 240);
             txtServerUrl.Name = "txtServerUrl";
-            txtServerUrl.Size = new Size(479, 34);
+            txtServerUrl.Size = new Size(320, 25);
             txtServerUrl.TabIndex = 3;
             // 
             // lblUsername
@@ -152,10 +162,9 @@ namespace TruckingSystem.Desktop.GUI_Shared
             lblUsername.AutoSize = true;
             lblUsername.Font = new Font("Segoe UI", 9F);
             lblUsername.ForeColor = Color.FromArgb(100, 116, 139);
-            lblUsername.Location = new Point(135, 435);
-            lblUsername.Margin = new Padding(4, 0, 4, 0);
+            lblUsername.Location = new Point(90, 290);
             lblUsername.Name = "lblUsername";
-            lblUsername.Size = new Size(104, 25);
+            lblUsername.Size = new Size(69, 15);
             lblUsername.TabIndex = 4;
             lblUsername.Text = "TÀI KHOẢN";
             // 
@@ -163,10 +172,9 @@ namespace TruckingSystem.Desktop.GUI_Shared
             // 
             txtUsername.BorderStyle = BorderStyle.FixedSingle;
             txtUsername.Font = new Font("Segoe UI", 10F);
-            txtUsername.Location = new Point(135, 465);
-            txtUsername.Margin = new Padding(4, 4, 4, 4);
+            txtUsername.Location = new Point(90, 310);
             txtUsername.Name = "txtUsername";
-            txtUsername.Size = new Size(479, 34);
+            txtUsername.Size = new Size(320, 25);
             txtUsername.TabIndex = 5;
             // 
             // lblPassword
@@ -174,10 +182,9 @@ namespace TruckingSystem.Desktop.GUI_Shared
             lblPassword.AutoSize = true;
             lblPassword.Font = new Font("Segoe UI", 9F);
             lblPassword.ForeColor = Color.FromArgb(100, 116, 139);
-            lblPassword.Location = new Point(135, 540);
-            lblPassword.Margin = new Padding(4, 0, 4, 0);
+            lblPassword.Location = new Point(90, 360);
             lblPassword.Name = "lblPassword";
-            lblPassword.Size = new Size(101, 25);
+            lblPassword.Size = new Size(68, 15);
             lblPassword.TabIndex = 6;
             lblPassword.Text = "MẬT KHẨU";
             // 
@@ -185,11 +192,10 @@ namespace TruckingSystem.Desktop.GUI_Shared
             // 
             txtPassword.BorderStyle = BorderStyle.FixedSingle;
             txtPassword.Font = new Font("Segoe UI", 10F);
-            txtPassword.Location = new Point(135, 570);
-            txtPassword.Margin = new Padding(4, 4, 4, 4);
+            txtPassword.Location = new Point(90, 380);
             txtPassword.Name = "txtPassword";
             txtPassword.PasswordChar = '●';
-            txtPassword.Size = new Size(479, 34);
+            txtPassword.Size = new Size(320, 25);
             txtPassword.TabIndex = 7;
             // 
             // btnLogin
@@ -201,10 +207,9 @@ namespace TruckingSystem.Desktop.GUI_Shared
             btnLogin.FlatStyle = FlatStyle.Flat;
             btnLogin.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
             btnLogin.ForeColor = Color.White;
-            btnLogin.Location = new Point(135, 660);
-            btnLogin.Margin = new Padding(4, 4, 4, 4);
+            btnLogin.Location = new Point(90, 440);
             btnLogin.Name = "btnLogin";
-            btnLogin.Size = new Size(480, 66);
+            btnLogin.Size = new Size(320, 44);
             btnLogin.TabIndex = 8;
             btnLogin.Text = "Đăng nhập";
             btnLogin.UseVisualStyleBackColor = false;
@@ -214,10 +219,9 @@ namespace TruckingSystem.Desktop.GUI_Shared
             // 
             lblStatus.Font = new Font("Segoe UI", 9F);
             lblStatus.ForeColor = Color.FromArgb(220, 38, 38);
-            lblStatus.Location = new Point(135, 742);
-            lblStatus.Margin = new Padding(4, 0, 4, 0);
+            lblStatus.Location = new Point(90, 495);
             lblStatus.Name = "lblStatus";
-            lblStatus.Size = new Size(480, 60);
+            lblStatus.Size = new Size(320, 40);
             lblStatus.TabIndex = 9;
             // 
             // btnClose
@@ -227,10 +231,9 @@ namespace TruckingSystem.Desktop.GUI_Shared
             btnClose.FlatAppearance.BorderSize = 0;
             btnClose.FlatStyle = FlatStyle.Flat;
             btnClose.ForeColor = Color.FromArgb(100, 116, 139);
-            btnClose.Location = new Point(1941, 15);
-            btnClose.Margin = new Padding(4, 4, 4, 4);
+            btnClose.Location = new Point(1294, 10);
             btnClose.Name = "btnClose";
-            btnClose.Size = new Size(54, 54);
+            btnClose.Size = new Size(36, 36);
             btnClose.TabIndex = 10;
             btnClose.Text = "✕";
             btnClose.UseVisualStyleBackColor = false;
@@ -239,14 +242,14 @@ namespace TruckingSystem.Desktop.GUI_Shared
             // LoginForm
             // 
             AcceptButton = btnLogin;
-            AutoScaleDimensions = new SizeF(144F, 144F);
+            AutoScaleDimensions = new SizeF(96F, 96F);
             AutoScaleMode = AutoScaleMode.Dpi;
             BackColor = Color.FromArgb(37, 99, 235);
-            ClientSize = new Size(1500, 960);
+            ClientSize = new Size(1000, 640);
             Controls.Add(rightPanel);
             Controls.Add(bannerPanel);
             FormBorderStyle = FormBorderStyle.None;
-            Margin = new Padding(6, 6, 6, 6);
+            Margin = new Padding(4);
             Name = "LoginForm";
             StartPosition = FormStartPosition.CenterScreen;
             Text = "Trucking System — Đăng nhập";
@@ -275,5 +278,6 @@ namespace TruckingSystem.Desktop.GUI_Shared
         private System.Windows.Forms.Button btnLogin;
         private System.Windows.Forms.Label lblStatus;
         private System.Windows.Forms.Button btnClose;
+        private Button btnOpenChatBot;
     }
 }

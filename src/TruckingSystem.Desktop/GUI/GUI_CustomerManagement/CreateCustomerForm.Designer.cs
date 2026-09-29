@@ -14,179 +14,222 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
 
         private void InitializeComponent()
         {
-            this.lblName = new System.Windows.Forms.Label();
-            this.txtName = new System.Windows.Forms.TextBox();
-            this.lblPhone = new System.Windows.Forms.Label();
-            this.txtPhone = new System.Windows.Forms.TextBox();
-            this.lblTaxCode = new System.Windows.Forms.Label();
-            this.txtTaxCode = new System.Windows.Forms.TextBox();
-            this.lblType = new System.Windows.Forms.Label();
-            this.cboType = new System.Windows.Forms.ComboBox();
-            this.lblAddress = new System.Windows.Forms.Label();
-            this.txtAddress = new System.Windows.Forms.TextBox();
-            this.lblCreditLimit = new System.Windows.Forms.Label();
-            this.numCreditLimit = new System.Windows.Forms.NumericUpDown();
-            this.lblGoogleCalendarId = new System.Windows.Forms.Label();
-            this.txtGoogleCalendarId = new System.Windows.Forms.TextBox();
-            this.btnSave = new System.Windows.Forms.Button();
-            this.lblStatus = new System.Windows.Forms.Label();
-            ((System.ComponentModel.ISupportInitialize)(this.numCreditLimit)).BeginInit();
-            this.SuspendLayout();
-            //
+            lblName = new Label();
+            txtName = new TextBox();
+            lblPhone = new Label();
+            txtPhone = new TextBox();
+            lblTaxCode = new Label();
+            txtTaxCode = new TextBox();
+            lblType = new Label();
+            cboType = new ComboBox();
+            lblAddress = new Label();
+            txtAddress = new TextBox();
+            lblCreditLimit = new Label();
+            numCreditLimit = new NumericUpDown();
+            lblGoogleCalendarId = new Label();
+            txtGoogleCalendarId = new TextBox();
+            btnSave = new Button();
+            lblStatus = new Label();
+            btnReadWithAi = new Button();
+            ((System.ComponentModel.ISupportInitialize)numCreditLimit).BeginInit();
+            SuspendLayout();
+            // 
             // lblName
-            //
-            this.lblName.Location = new System.Drawing.Point(24, 20);
-            this.lblName.Name = "lblName";
-            this.lblName.Size = new System.Drawing.Size(400, 18);
-            this.lblName.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
-            this.lblName.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
-            this.lblName.Text = "Tên khách hàng *";
-            //
+            // 
+            lblName.Font = new Font("Segoe UI", 9F);
+            lblName.ForeColor = Color.FromArgb(100, 116, 139);
+            lblName.Location = new Point(24, 20);
+            lblName.Name = "lblName";
+            lblName.Size = new Size(400, 18);
+            lblName.TabIndex = 0;
+            lblName.Text = "Tên khách hàng *";
+            // 
             // txtName
-            //
-            this.txtName.Location = new System.Drawing.Point(24, 40);
-            this.txtName.Name = "txtName";
-            this.txtName.Size = new System.Drawing.Size(400, 23);
-            //
+            // 
+            txtName.Location = new Point(24, 40);
+            txtName.Name = "txtName";
+            txtName.Size = new Size(400, 25);
+            txtName.TabIndex = 1;
+            // 
             // lblPhone
-            //
-            this.lblPhone.Location = new System.Drawing.Point(24, 90);
-            this.lblPhone.Name = "lblPhone";
-            this.lblPhone.Size = new System.Drawing.Size(400, 18);
-            this.lblPhone.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
-            this.lblPhone.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
-            this.lblPhone.Text = "Số điện thoại";
-            //
+            // 
+            lblPhone.Font = new Font("Segoe UI", 9F);
+            lblPhone.ForeColor = Color.FromArgb(100, 116, 139);
+            lblPhone.Location = new Point(24, 90);
+            lblPhone.Name = "lblPhone";
+            lblPhone.Size = new Size(400, 18);
+            lblPhone.TabIndex = 2;
+            lblPhone.Text = "Số điện thoại";
+            // 
             // txtPhone
-            //
-            this.txtPhone.Location = new System.Drawing.Point(24, 110);
-            this.txtPhone.Name = "txtPhone";
-            this.txtPhone.Size = new System.Drawing.Size(400, 23);
-            //
+            // 
+            txtPhone.Location = new Point(24, 110);
+            txtPhone.Name = "txtPhone";
+            txtPhone.Size = new Size(400, 25);
+            txtPhone.TabIndex = 3;
+            // 
             // lblTaxCode
-            //
-            this.lblTaxCode.Location = new System.Drawing.Point(24, 160);
-            this.lblTaxCode.Name = "lblTaxCode";
-            this.lblTaxCode.Size = new System.Drawing.Size(400, 18);
-            this.lblTaxCode.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
-            this.lblTaxCode.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
-            this.lblTaxCode.Text = "Mã số thuế (nếu có)";
-            //
+            // 
+            lblTaxCode.Font = new Font("Segoe UI", 9F);
+            lblTaxCode.ForeColor = Color.FromArgb(100, 116, 139);
+            lblTaxCode.Location = new Point(24, 160);
+            lblTaxCode.Name = "lblTaxCode";
+            lblTaxCode.Size = new Size(400, 18);
+            lblTaxCode.TabIndex = 4;
+            lblTaxCode.Text = "Mã số thuế (nếu có)";
+            // 
             // txtTaxCode
-            //
-            this.txtTaxCode.Location = new System.Drawing.Point(24, 180);
-            this.txtTaxCode.Name = "txtTaxCode";
-            this.txtTaxCode.Size = new System.Drawing.Size(400, 23);
-            //
+            // 
+            txtTaxCode.Location = new Point(24, 180);
+            txtTaxCode.Name = "txtTaxCode";
+            txtTaxCode.Size = new Size(400, 25);
+            txtTaxCode.TabIndex = 5;
+            // 
             // lblType
-            //
-            this.lblType.Location = new System.Drawing.Point(24, 230);
-            this.lblType.Name = "lblType";
-            this.lblType.Size = new System.Drawing.Size(400, 18);
-            this.lblType.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
-            this.lblType.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
-            this.lblType.Text = "Loại khách hàng";
-            //
+            // 
+            lblType.Font = new Font("Segoe UI", 9F);
+            lblType.ForeColor = Color.FromArgb(100, 116, 139);
+            lblType.Location = new Point(24, 230);
+            lblType.Name = "lblType";
+            lblType.Size = new Size(400, 18);
+            lblType.TabIndex = 6;
+            lblType.Text = "Loại khách hàng";
+            // 
             // cboType
-            //
-            this.cboType.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.cboType.Location = new System.Drawing.Point(24, 250);
-            this.cboType.Name = "cboType";
-            this.cboType.Size = new System.Drawing.Size(400, 23);
-            //
+            // 
+            cboType.DropDownStyle = ComboBoxStyle.DropDownList;
+            cboType.Location = new Point(24, 250);
+            cboType.Name = "cboType";
+            cboType.Size = new Size(400, 25);
+            cboType.TabIndex = 7;
+            // 
             // lblAddress
-            //
-            this.lblAddress.Location = new System.Drawing.Point(24, 290);
-            this.lblAddress.Size = new System.Drawing.Size(400, 18);
-            this.lblAddress.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
-            this.lblAddress.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
-            this.lblAddress.Text = "Địa chỉ";
-            //
+            // 
+            lblAddress.Font = new Font("Segoe UI", 9F);
+            lblAddress.ForeColor = Color.FromArgb(100, 116, 139);
+            lblAddress.Location = new Point(24, 290);
+            lblAddress.Name = "lblAddress";
+            lblAddress.Size = new Size(400, 18);
+            lblAddress.TabIndex = 8;
+            lblAddress.Text = "Địa chỉ";
+            // 
             // txtAddress
-            //
-            this.txtAddress.Location = new System.Drawing.Point(24, 310);
-            this.txtAddress.Size = new System.Drawing.Size(400, 23);
-            //
+            // 
+            txtAddress.Location = new Point(24, 310);
+            txtAddress.Name = "txtAddress";
+            txtAddress.Size = new Size(400, 25);
+            txtAddress.TabIndex = 9;
+            // 
             // lblCreditLimit
-            //
-            this.lblCreditLimit.Location = new System.Drawing.Point(24, 350);
-            this.lblCreditLimit.Size = new System.Drawing.Size(400, 18);
-            this.lblCreditLimit.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
-            this.lblCreditLimit.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
-            this.lblCreditLimit.Text = "Hạn mức công nợ (đ, tuỳ chọn)";
-            //
+            // 
+            lblCreditLimit.Font = new Font("Segoe UI", 9F);
+            lblCreditLimit.ForeColor = Color.FromArgb(100, 116, 139);
+            lblCreditLimit.Location = new Point(24, 350);
+            lblCreditLimit.Name = "lblCreditLimit";
+            lblCreditLimit.Size = new Size(400, 18);
+            lblCreditLimit.TabIndex = 10;
+            lblCreditLimit.Text = "Hạn mức công nợ (đ, tuỳ chọn)";
+            // 
             // numCreditLimit
-            //
-            this.numCreditLimit.Location = new System.Drawing.Point(24, 370);
-            this.numCreditLimit.Size = new System.Drawing.Size(400, 23);
-            this.numCreditLimit.Maximum = new decimal(new int[] { 999999999, 0, 0, 0 });
-            //
+            // 
+            numCreditLimit.Location = new Point(24, 370);
+            numCreditLimit.Maximum = new decimal(new int[] { 999999999, 0, 0, 0 });
+            numCreditLimit.Name = "numCreditLimit";
+            numCreditLimit.Size = new Size(400, 25);
+            numCreditLimit.TabIndex = 11;
+            // 
             // lblGoogleCalendarId
-            //
-            this.lblGoogleCalendarId.Location = new System.Drawing.Point(24, 410);
-            this.lblGoogleCalendarId.Size = new System.Drawing.Size(400, 18);
-            this.lblGoogleCalendarId.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
-            this.lblGoogleCalendarId.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
-            this.lblGoogleCalendarId.Text = "Google Calendar ID (tuỳ chọn — để đồng bộ lịch giao hàng)";
-            //
+            // 
+            lblGoogleCalendarId.Font = new Font("Segoe UI", 9F);
+            lblGoogleCalendarId.ForeColor = Color.FromArgb(100, 116, 139);
+            lblGoogleCalendarId.Location = new Point(24, 410);
+            lblGoogleCalendarId.Name = "lblGoogleCalendarId";
+            lblGoogleCalendarId.Size = new Size(400, 18);
+            lblGoogleCalendarId.TabIndex = 12;
+            lblGoogleCalendarId.Text = "Google Calendar ID (tuỳ chọn — để đồng bộ lịch giao hàng)";
+            // 
             // txtGoogleCalendarId
-            //
-            this.txtGoogleCalendarId.Location = new System.Drawing.Point(24, 430);
-            this.txtGoogleCalendarId.Size = new System.Drawing.Size(400, 23);
-            //
+            // 
+            txtGoogleCalendarId.Location = new Point(24, 430);
+            txtGoogleCalendarId.Name = "txtGoogleCalendarId";
+            txtGoogleCalendarId.Size = new Size(400, 25);
+            txtGoogleCalendarId.TabIndex = 13;
+            // 
             // btnSave
-            //
-            this.btnSave.Location = new System.Drawing.Point(140, 505);
-            this.btnSave.Name = "btnSave";
-            this.btnSave.Size = new System.Drawing.Size(180, 38);
-            this.btnSave.Text = "Lưu khách hàng";
-            this.btnSave.BackColor = TruckingSystem.Desktop.Common.Theme.Primary;
-            this.btnSave.ForeColor = System.Drawing.Color.White;
-            this.btnSave.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnSave.Font = TruckingSystem.Desktop.Common.Theme.FontBold;
-            this.btnSave.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.btnSave.FlatAppearance.BorderSize = 0;
-            this.btnSave.FlatAppearance.MouseOverBackColor = TruckingSystem.Desktop.Common.Theme.PrimaryDark;
-            this.btnSave.Click += new System.EventHandler(this.BtnSave_Click);
-            //
+            // 
+            btnSave.BackColor = Color.FromArgb(37, 99, 235);
+            btnSave.Cursor = Cursors.Hand;
+            btnSave.FlatAppearance.BorderSize = 0;
+            btnSave.FlatAppearance.MouseOverBackColor = Color.FromArgb(29, 78, 216);
+            btnSave.FlatStyle = FlatStyle.Flat;
+            btnSave.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+            btnSave.ForeColor = Color.White;
+            btnSave.Location = new Point(248, 483);
+            btnSave.Name = "btnSave";
+            btnSave.Size = new Size(150, 38);
+            btnSave.TabIndex = 14;
+            btnSave.Text = "Lưu khách hàng";
+            btnSave.UseVisualStyleBackColor = false;
+            btnSave.Click += BtnSave_Click;
+            // 
             // lblStatus
-            //
-            this.lblStatus.Location = new System.Drawing.Point(24, 470);
-            this.lblStatus.Name = "lblStatus";
-            this.lblStatus.AutoSize = true;
-            this.lblStatus.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
-            this.lblStatus.ForeColor = TruckingSystem.Desktop.Common.Theme.Danger;
-            //
+            // 
+            lblStatus.AutoSize = true;
+            lblStatus.Font = new Font("Segoe UI", 9F);
+            lblStatus.ForeColor = Color.FromArgb(220, 38, 38);
+            lblStatus.Location = new Point(24, 470);
+            lblStatus.Name = "lblStatus";
+            lblStatus.Size = new Size(0, 15);
+            lblStatus.TabIndex = 15;
+            // 
+            // btnReadWithAi
+            // 
+            btnReadWithAi.BackColor = Color.FromArgb(37, 99, 235);
+            btnReadWithAi.Cursor = Cursors.Hand;
+            btnReadWithAi.FlatAppearance.BorderSize = 0;
+            btnReadWithAi.FlatAppearance.MouseOverBackColor = Color.FromArgb(29, 78, 216);
+            btnReadWithAi.FlatStyle = FlatStyle.Flat;
+            btnReadWithAi.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+            btnReadWithAi.ForeColor = Color.White;
+            btnReadWithAi.Location = new Point(45, 483);
+            btnReadWithAi.Name = "btnReadWithAi";
+            btnReadWithAi.Size = new Size(150, 38);
+            btnReadWithAi.TabIndex = 16;
+            btnReadWithAi.Text = "Đọc bằng ai";
+            btnReadWithAi.UseVisualStyleBackColor = false;
+            btnReadWithAi.Click += btnReadWithAi_Click;
+            // 
             // CreateCustomerForm
-            //
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
-            this.AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
-            this.BackColor = System.Drawing.Color.White;
-            this.ClientSize = new System.Drawing.Size(460, 560);
-            this.Controls.Add(this.lblName);
-            this.Controls.Add(this.txtName);
-            this.Controls.Add(this.lblPhone);
-            this.Controls.Add(this.txtPhone);
-            this.Controls.Add(this.lblTaxCode);
-            this.Controls.Add(this.txtTaxCode);
-            this.Controls.Add(this.lblType);
-            this.Controls.Add(this.cboType);
-            this.Controls.Add(this.lblAddress);
-            this.Controls.Add(this.txtAddress);
-            this.Controls.Add(this.lblCreditLimit);
-            this.Controls.Add(this.numCreditLimit);
-            this.Controls.Add(this.lblGoogleCalendarId);
-            this.Controls.Add(this.txtGoogleCalendarId);
-            this.Controls.Add(this.btnSave);
-            this.Controls.Add(this.lblStatus);
-            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
-            this.MaximizeBox = false;
-            this.Name = "CreateCustomerForm";
-            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
-            this.Text = "Thêm khách hàng mới";
-            ((System.ComponentModel.ISupportInitialize)(this.numCreditLimit)).EndInit();
-            this.ResumeLayout(false);
-            this.PerformLayout();
+            // 
+            AutoScaleDimensions = new SizeF(96F, 96F);
+            AutoScaleMode = AutoScaleMode.Dpi;
+            BackColor = Color.White;
+            ClientSize = new Size(460, 560);
+            Controls.Add(btnReadWithAi);
+            Controls.Add(lblName);
+            Controls.Add(txtName);
+            Controls.Add(lblPhone);
+            Controls.Add(txtPhone);
+            Controls.Add(lblTaxCode);
+            Controls.Add(txtTaxCode);
+            Controls.Add(lblType);
+            Controls.Add(cboType);
+            Controls.Add(lblAddress);
+            Controls.Add(txtAddress);
+            Controls.Add(lblCreditLimit);
+            Controls.Add(numCreditLimit);
+            Controls.Add(lblGoogleCalendarId);
+            Controls.Add(txtGoogleCalendarId);
+            Controls.Add(btnSave);
+            Controls.Add(lblStatus);
+            FormBorderStyle = FormBorderStyle.FixedDialog;
+            MaximizeBox = false;
+            Name = "CreateCustomerForm";
+            StartPosition = FormStartPosition.CenterParent;
+            Text = "Thêm khách hàng mới";
+            ((System.ComponentModel.ISupportInitialize)numCreditLimit).EndInit();
+            ResumeLayout(false);
+            PerformLayout();
         }
 
         #endregion
@@ -207,5 +250,6 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
         private System.Windows.Forms.TextBox txtGoogleCalendarId;
         private System.Windows.Forms.Button btnSave;
         private System.Windows.Forms.Label lblStatus;
+        private Button btnReadWithAi;
     }
 }

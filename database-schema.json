@@ -1,0 +1,667 @@
+{
+  "source": "EF Core model snapshot (AppDbContextModelSnapshot.cs)",
+  "databaseProvider": "PostgreSQL (Npgsql)",
+  "tables": [
+    {
+      "name": "AuditLogs",
+      "entity": "TruckingSystem.Domain.Entities.AuditLog"
+    },
+    {
+      "name": "CargoLines",
+      "entity": "TruckingSystem.Domain.Entities.CargoLine"
+    },
+    {
+      "name": "Contracts",
+      "entity": "TruckingSystem.Domain.Entities.Contract"
+    },
+    {
+      "name": "Customers",
+      "entity": "TruckingSystem.Domain.Entities.Customer"
+    },
+    {
+      "name": "CustomerContacts",
+      "entity": "TruckingSystem.Domain.Entities.CustomerContact"
+    },
+    {
+      "name": "CustomerFeedbacks",
+      "entity": "TruckingSystem.Domain.Entities.CustomerFeedback"
+    },
+    {
+      "name": "Departments",
+      "entity": "TruckingSystem.Domain.Entities.Department"
+    },
+    {
+      "name": "DriverProfiles",
+      "entity": "TruckingSystem.Domain.Entities.DriverProfile"
+    },
+    {
+      "name": "DriverSchedules",
+      "entity": "TruckingSystem.Domain.Entities.DriverSchedule"
+    },
+    {
+      "name": "Employees",
+      "entity": "TruckingSystem.Domain.Entities.Employee"
+    },
+    {
+      "name": "EmployeeDocuments",
+      "entity": "TruckingSystem.Domain.Entities.EmployeeDocument"
+    },
+    {
+      "name": "FuelLogs",
+      "entity": "TruckingSystem.Domain.Entities.FuelLog"
+    },
+    {
+      "name": "FuelPriceHistories",
+      "entity": "TruckingSystem.Domain.Entities.FuelPriceHistory"
+    },
+    {
+      "name": "FuelProviders",
+      "entity": "TruckingSystem.Domain.Entities.FuelProvider"
+    },
+    {
+      "name": "GoodsIssues",
+      "entity": "TruckingSystem.Domain.Entities.GoodsIssue"
+    },
+    {
+      "name": "GoodsReceipts",
+      "entity": "TruckingSystem.Domain.Entities.GoodsReceipt"
+    },
+    {
+      "name": "IncidentReports",
+      "entity": "TruckingSystem.Domain.Entities.IncidentReport"
+    },
+    {
+      "name": "Invoices",
+      "entity": "TruckingSystem.Domain.Entities.Invoice"
+    },
+    {
+      "name": "InvoiceLines",
+      "entity": "TruckingSystem.Domain.Entities.InvoiceLine"
+    },
+    {
+      "name": "Locations",
+      "entity": "TruckingSystem.Domain.Entities.Location"
+    },
+    {
+      "name": "Notifications",
+      "entity": "TruckingSystem.Domain.Entities.Notification"
+    },
+    {
+      "name": "Payments",
+      "entity": "TruckingSystem.Domain.Entities.Payment"
+    },
+    {
+      "name": "Permissions",
+      "entity": "TruckingSystem.Domain.Entities.Permission"
+    },
+    {
+      "name": "Positions",
+      "entity": "TruckingSystem.Domain.Entities.Position"
+    },
+    {
+      "name": "PriceLists",
+      "entity": "TruckingSystem.Domain.Entities.PriceList"
+    },
+    {
+      "name": "RolePermissions",
+      "entity": "TruckingSystem.Domain.Entities.RolePermission"
+    },
+    {
+      "name": "SalesOrders",
+      "entity": "TruckingSystem.Domain.Entities.SalesOrder"
+    },
+    {
+      "name": "StorageAssignments",
+      "entity": "TruckingSystem.Domain.Entities.StorageAssignment"
+    },
+    {
+      "name": "StorageBins",
+      "entity": "TruckingSystem.Domain.Entities.StorageBin"
+    },
+    {
+      "name": "TariffRules",
+      "entity": "TruckingSystem.Domain.Entities.TariffRule"
+    },
+    {
+      "name": "TransportOrders",
+      "entity": "TruckingSystem.Domain.Entities.TransportOrder"
+    },
+    {
+      "name": "Trips",
+      "entity": "TruckingSystem.Domain.Entities.Trip"
+    },
+    {
+      "name": "TripCalendarEvents",
+      "entity": "TruckingSystem.Domain.Entities.TripCalendarEvent"
+    },
+    {
+      "name": "TripExpenses",
+      "entity": "TruckingSystem.Domain.Entities.TripExpense"
+    },
+    {
+      "name": "TripLines",
+      "entity": "TruckingSystem.Domain.Entities.TripLine"
+    },
+    {
+      "name": "Vehicles",
+      "entity": "TruckingSystem.Domain.Entities.Vehicle"
+    },
+    {
+      "name": "VehicleDocuments",
+      "entity": "TruckingSystem.Domain.Entities.VehicleDocument"
+    },
+    {
+      "name": "Warehouses",
+      "entity": "TruckingSystem.Domain.Entities.Warehouse"
+    },
+    {
+      "name": "WarehouseStocks",
+      "entity": "TruckingSystem.Domain.Entities.WarehouseStock"
+    },
+    {
+      "name": "WarehouseZones",
+      "entity": "TruckingSystem.Domain.Entities.WarehouseZone"
+    },
+    {
+      "name": "Waypoints",
+      "entity": "TruckingSystem.Domain.Entities.Waypoint"
+    }
+  ],
+  "relationships": [
+    {
+      "fromTable": "CargoLines",
+      "toTable": "TransportOrders",
+      "foreignKey": [
+        "TransportOrderId"
+      ],
+      "cardinality": "many-to-one",
+      "required": true
+    },
+    {
+      "fromTable": "Contracts",
+      "toTable": "Customers",
+      "foreignKey": [
+        "CustomerId"
+      ],
+      "cardinality": "many-to-one",
+      "required": true
+    },
+    {
+      "fromTable": "Contracts",
+      "toTable": "PriceLists",
+      "foreignKey": [
+        "PriceListId"
+      ],
+      "cardinality": "many-to-one",
+      "required": false
+    },
+    {
+      "fromTable": "CustomerContacts",
+      "toTable": "Customers",
+      "foreignKey": [
+        "CustomerId"
+      ],
+      "cardinality": "many-to-one",
+      "required": true
+    },
+    {
+      "fromTable": "CustomerFeedbacks",
+      "toTable": "TransportOrders",
+      "foreignKey": [
+        "TransportOrderId"
+      ],
+      "cardinality": "one-to-one",
+      "required": true
+    },
+    {
+      "fromTable": "DriverProfiles",
+      "toTable": "Employees",
+      "foreignKey": [
+        "EmployeeId"
+      ],
+      "cardinality": "one-to-one",
+      "required": true
+    },
+    {
+      "fromTable": "DriverProfiles",
+      "toTable": "Warehouses",
+      "foreignKey": [
+        "WarehouseId"
+      ],
+      "cardinality": "many-to-one",
+      "required": false
+    },
+    {
+      "fromTable": "DriverSchedules",
+      "toTable": "Employees",
+      "foreignKey": [
+        "DriverEmployeeId"
+      ],
+      "cardinality": "many-to-one",
+      "required": true
+    },
+    {
+      "fromTable": "Employees",
+      "toTable": "Departments",
+      "foreignKey": [
+        "DepartmentId"
+      ],
+      "cardinality": "many-to-one",
+      "required": false
+    },
+    {
+      "fromTable": "Employees",
+      "toTable": "Positions",
+      "foreignKey": [
+        "PositionId"
+      ],
+      "cardinality": "many-to-one",
+      "required": false
+    },
+    {
+      "fromTable": "EmployeeDocuments",
+      "toTable": "Employees",
+      "foreignKey": [
+        "EmployeeId"
+      ],
+      "cardinality": "many-to-one",
+      "required": true
+    },
+    {
+      "fromTable": "FuelLogs",
+      "toTable": "Trips",
+      "foreignKey": [
+        "TripId"
+      ],
+      "cardinality": "many-to-one",
+      "required": true
+    },
+    {
+      "fromTable": "FuelPriceHistories",
+      "toTable": "FuelProviders",
+      "foreignKey": [
+        "FuelProviderId"
+      ],
+      "cardinality": "many-to-one",
+      "required": false
+    },
+    {
+      "fromTable": "GoodsIssues",
+      "toTable": "CargoLines",
+      "foreignKey": [
+        "CargoLineId"
+      ],
+      "cardinality": "many-to-one",
+      "required": true
+    },
+    {
+      "fromTable": "GoodsIssues",
+      "toTable": "Employees",
+      "foreignKey": [
+        "IssuedByEmployeeId"
+      ],
+      "cardinality": "many-to-one",
+      "required": true
+    },
+    {
+      "fromTable": "GoodsIssues",
+      "toTable": "TransportOrders",
+      "foreignKey": [
+        "TransportOrderId"
+      ],
+      "cardinality": "many-to-one",
+      "required": true
+    },
+    {
+      "fromTable": "GoodsIssues",
+      "toTable": "Trips",
+      "foreignKey": [
+        "TripId"
+      ],
+      "cardinality": "many-to-one",
+      "required": false
+    },
+    {
+      "fromTable": "GoodsIssues",
+      "toTable": "Warehouses",
+      "foreignKey": [
+        "WarehouseId"
+      ],
+      "cardinality": "many-to-one",
+      "required": true
+    },
+    {
+      "fromTable": "GoodsReceipts",
+      "toTable": "CargoLines",
+      "foreignKey": [
+        "CargoLineId"
+      ],
+      "cardinality": "many-to-one",
+      "required": true
+    },
+    {
+      "fromTable": "GoodsReceipts",
+      "toTable": "Employees",
+      "foreignKey": [
+        "ReceivedByEmployeeId"
+      ],
+      "cardinality": "many-to-one",
+      "required": true
+    },
+    {
+      "fromTable": "GoodsReceipts",
+      "toTable": "TransportOrders",
+      "foreignKey": [
+        "TransportOrderId"
+      ],
+      "cardinality": "many-to-one",
+      "required": true
+    },
+    {
+      "fromTable": "GoodsReceipts",
+      "toTable": "Trips",
+      "foreignKey": [
+        "TripId"
+      ],
+      "cardinality": "many-to-one",
+      "required": false
+    },
+    {
+      "fromTable": "GoodsReceipts",
+      "toTable": "Warehouses",
+      "foreignKey": [
+        "WarehouseId"
+      ],
+      "cardinality": "many-to-one",
+      "required": true
+    },
+    {
+      "fromTable": "IncidentReports",
+      "toTable": "Trips",
+      "foreignKey": [
+        "TripId"
+      ],
+      "cardinality": "many-to-one",
+      "required": true
+    },
+    {
+      "fromTable": "Invoices",
+      "toTable": "Customers",
+      "foreignKey": [
+        "CustomerId"
+      ],
+      "cardinality": "many-to-one",
+      "required": true
+    },
+    {
+      "fromTable": "Invoices",
+      "toTable": "TransportOrders",
+      "foreignKey": [
+        "TransportOrderId"
+      ],
+      "cardinality": "many-to-one",
+      "required": true
+    },
+    {
+      "fromTable": "InvoiceLines",
+      "toTable": "Invoices",
+      "foreignKey": [
+        "InvoiceId"
+      ],
+      "cardinality": "many-to-one",
+      "required": true
+    },
+    {
+      "fromTable": "Locations",
+      "toTable": "Customers",
+      "foreignKey": [
+        "CustomerId"
+      ],
+      "cardinality": "many-to-one",
+      "required": false
+    },
+    {
+      "fromTable": "Payments",
+      "toTable": "Invoices",
+      "foreignKey": [
+        "InvoiceId"
+      ],
+      "cardinality": "many-to-one",
+      "required": true
+    },
+    {
+      "fromTable": "RolePermissions",
+      "toTable": "Permissions",
+      "foreignKey": [
+        "PermissionId"
+      ],
+      "cardinality": "many-to-one",
+      "required": true
+    },
+    {
+      "fromTable": "SalesOrders",
+      "toTable": "Contracts",
+      "foreignKey": [
+        "ContractId"
+      ],
+      "cardinality": "many-to-one",
+      "required": false
+    },
+    {
+      "fromTable": "SalesOrders",
+      "toTable": "Customers",
+      "foreignKey": [
+        "CustomerId"
+      ],
+      "cardinality": "many-to-one",
+      "required": true
+    },
+    {
+      "fromTable": "StorageAssignments",
+      "toTable": "GoodsReceipts",
+      "foreignKey": [
+        "GoodsReceiptId"
+      ],
+      "cardinality": "many-to-one",
+      "required": true
+    },
+    {
+      "fromTable": "StorageAssignments",
+      "toTable": "StorageBins",
+      "foreignKey": [
+        "StorageBinId"
+      ],
+      "cardinality": "many-to-one",
+      "required": true
+    },
+    {
+      "fromTable": "StorageBins",
+      "toTable": "WarehouseZones",
+      "foreignKey": [
+        "WarehouseZoneId"
+      ],
+      "cardinality": "many-to-one",
+      "required": true
+    },
+    {
+      "fromTable": "TariffRules",
+      "toTable": "PriceLists",
+      "foreignKey": [
+        "PriceListId"
+      ],
+      "cardinality": "many-to-one",
+      "required": true
+    },
+    {
+      "fromTable": "TransportOrders",
+      "toTable": "Customers",
+      "foreignKey": [
+        "CustomerId"
+      ],
+      "cardinality": "many-to-one",
+      "required": true
+    },
+    {
+      "fromTable": "TransportOrders",
+      "toTable": "Locations",
+      "foreignKey": [
+        "DropoffLocationId"
+      ],
+      "cardinality": "many-to-one",
+      "required": false
+    },
+    {
+      "fromTable": "TransportOrders",
+      "toTable": "Locations",
+      "foreignKey": [
+        "PickupLocationId"
+      ],
+      "cardinality": "many-to-one",
+      "required": false
+    },
+    {
+      "fromTable": "TransportOrders",
+      "toTable": "SalesOrders",
+      "foreignKey": [
+        "SalesOrderId"
+      ],
+      "cardinality": "one-to-one",
+      "required": false
+    },
+    {
+      "fromTable": "TransportOrders",
+      "toTable": "Warehouses",
+      "foreignKey": [
+        "WarehouseId"
+      ],
+      "cardinality": "many-to-one",
+      "required": true
+    },
+    {
+      "fromTable": "Trips",
+      "toTable": "Employees",
+      "foreignKey": [
+        "DriverEmployeeId"
+      ],
+      "cardinality": "many-to-one",
+      "required": true
+    },
+    {
+      "fromTable": "Trips",
+      "toTable": "TransportOrders",
+      "foreignKey": [
+        "TransportOrderId"
+      ],
+      "cardinality": "many-to-one",
+      "required": true
+    },
+    {
+      "fromTable": "Trips",
+      "toTable": "Vehicles",
+      "foreignKey": [
+        "VehicleId"
+      ],
+      "cardinality": "many-to-one",
+      "required": true
+    },
+    {
+      "fromTable": "Trips",
+      "toTable": "Warehouses",
+      "foreignKey": [
+        "WarehouseId"
+      ],
+      "cardinality": "many-to-one",
+      "required": false
+    },
+    {
+      "fromTable": "TripCalendarEvents",
+      "toTable": "Trips",
+      "foreignKey": [
+        "TripId"
+      ],
+      "cardinality": "many-to-one",
+      "required": true
+    },
+    {
+      "fromTable": "TripExpenses",
+      "toTable": "Trips",
+      "foreignKey": [
+        "TripId"
+      ],
+      "cardinality": "many-to-one",
+      "required": true
+    },
+    {
+      "fromTable": "TripLines",
+      "toTable": "CargoLines",
+      "foreignKey": [
+        "CargoLineId"
+      ],
+      "cardinality": "many-to-one",
+      "required": true
+    },
+    {
+      "fromTable": "TripLines",
+      "toTable": "Trips",
+      "foreignKey": [
+        "TripId"
+      ],
+      "cardinality": "many-to-one",
+      "required": true
+    },
+    {
+      "fromTable": "Vehicles",
+      "toTable": "Warehouses",
+      "foreignKey": [
+        "WarehouseId"
+      ],
+      "cardinality": "many-to-one",
+      "required": false
+    },
+    {
+      "fromTable": "VehicleDocuments",
+      "toTable": "Vehicles",
+      "foreignKey": [
+        "VehicleId"
+      ],
+      "cardinality": "many-to-one",
+      "required": true
+    },
+    {
+      "fromTable": "WarehouseStocks",
+      "toTable": "CargoLines",
+      "foreignKey": [
+        "CargoLineId"
+      ],
+      "cardinality": "many-to-one",
+      "required": true
+    },
+    {
+      "fromTable": "WarehouseStocks",
+      "toTable": "Warehouses",
+      "foreignKey": [
+        "WarehouseId"
+      ],
+      "cardinality": "many-to-one",
+      "required": true
+    },
+    {
+      "fromTable": "WarehouseZones",
+      "toTable": "Warehouses",
+      "foreignKey": [
+        "WarehouseId"
+      ],
+      "cardinality": "many-to-one",
+      "required": true
+    },
+    {
+      "fromTable": "Waypoints",
+      "toTable": "Trips",
+      "foreignKey": [
+        "TripId"
+      ],
+      "cardinality": "many-to-one",
+      "required": true
+    }
+  ]
+}

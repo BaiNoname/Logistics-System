@@ -1,7 +1,5 @@
-using System.Drawing;
-using System.Windows.Forms;
 using TruckingSystem.Desktop.Common;
-
+using TruckingSystem.Desktop.GUI.GUI_ChatBot;
 namespace TruckingSystem.Desktop.GUI_Shared
 {
     /// <summary>Logic — đăng nhập + animation xe tải chạy trên banner. Khung tĩnh
@@ -146,6 +144,23 @@ namespace TruckingSystem.Desktop.GUI_Shared
             {
                 btnLogin.Enabled = true;
                 btnLogin.Text = "Đăng nhập";
+            }
+        }
+
+        private void btnOpenChatBot_Click(object sender, EventArgs e)
+        {
+            DialogResult result = MessageBox.Show("Bạn có muốn mở ChatBot hỗ trợ không?", "Xác nhận", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+            if (result == DialogResult.Yes)
+            {
+                try
+                {
+                    var chatBot=new ChatBotForm();
+                    chatBot.ShowDialog();
+                }
+                catch (Exception ex)
+                {
+
+                }
             }
         }
     }
