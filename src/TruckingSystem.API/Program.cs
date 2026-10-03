@@ -12,6 +12,8 @@ using TruckingSystem.Infrastructure;
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
 
 // ---- 2 dòng này thay thế cho hàng chục dòng cấu hình DbContext/Identity/JWT/Service
 //      từng nằm rải rác trực tiếp trong Program.cs trước đây — giờ mỗi layer tự

@@ -12,8 +12,8 @@ using TruckingSystem.Infrastructure.Persistence;
 namespace TruckingSystem.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260926200727_RemoveBranchAndSystemSetting")]
-    partial class RemoveBranchAndSystemSetting
+    [Migration("20260927042759_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

@@ -49,9 +49,10 @@ partial class TripsControl
         btnRefresh.FlatStyle = FlatStyle.Flat;
         btnRefresh.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
         btnRefresh.ForeColor = Color.FromArgb(15, 23, 42);
-        btnRefresh.Location = new Point(387, 3);
+        btnRefresh.Location = new Point(258, 3);
+        btnRefresh.Margin = new Padding(2, 2, 2, 2);
         btnRefresh.Name = "btnRefresh";
-        btnRefresh.Size = new Size(123, 38);
+        btnRefresh.Size = new Size(120, 35);
         btnRefresh.TabIndex = 1;
         btnRefresh.Text = "🔄 Làm mới";
         btnRefresh.UseVisualStyleBackColor = false;
@@ -65,9 +66,10 @@ partial class TripsControl
         btnFuel.FlatStyle = FlatStyle.Flat;
         btnFuel.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
         btnFuel.ForeColor = Color.FromArgb(15, 23, 42);
-        btnFuel.Location = new Point(497, 3);
+        btnFuel.Location = new Point(382, 3);
+        btnFuel.Margin = new Padding(2, 2, 2, 2);
         btnFuel.Name = "btnFuel";
-        btnFuel.Size = new Size(153, 38);
+        btnFuel.Size = new Size(120, 35);
         btnFuel.TabIndex = 2;
         btnFuel.Text = "⛽ Ghi xăng";
         btnFuel.UseVisualStyleBackColor = false;
@@ -81,9 +83,10 @@ partial class TripsControl
         btnStart.FlatStyle = FlatStyle.Flat;
         btnStart.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
         btnStart.ForeColor = Color.FromArgb(15, 23, 42);
-        btnStart.Location = new Point(637, 3);
+        btnStart.Location = new Point(506, 3);
+        btnStart.Margin = new Padding(2, 2, 2, 2);
         btnStart.Name = "btnStart";
-        btnStart.Size = new Size(173, 38);
+        btnStart.Size = new Size(120, 35);
         btnStart.TabIndex = 3;
         btnStart.Text = "▶️ Bắt đầu chuyến";
         btnStart.UseVisualStyleBackColor = false;
@@ -98,9 +101,10 @@ partial class TripsControl
         btnComplete.FlatStyle = FlatStyle.Flat;
         btnComplete.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
         btnComplete.ForeColor = Color.White;
-        btnComplete.Location = new Point(797, 3);
+        btnComplete.Location = new Point(630, 3);
+        btnComplete.Margin = new Padding(2, 2, 2, 2);
         btnComplete.Name = "btnComplete";
-        btnComplete.Size = new Size(173, 38);
+        btnComplete.Size = new Size(120, 35);
         btnComplete.TabIndex = 4;
         btnComplete.Text = "✅ Hoàn tất chuyến";
         btnComplete.UseVisualStyleBackColor = false;
@@ -114,9 +118,10 @@ partial class TripsControl
         btnViewRoute.FlatStyle = FlatStyle.Flat;
         btnViewRoute.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
         btnViewRoute.ForeColor = Color.FromArgb(15, 23, 42);
-        btnViewRoute.Location = new Point(957, 3);
+        btnViewRoute.Location = new Point(754, 3);
+        btnViewRoute.Margin = new Padding(2, 2, 2, 2);
         btnViewRoute.Name = "btnViewRoute";
-        btnViewRoute.Size = new Size(203, 38);
+        btnViewRoute.Size = new Size(120, 35);
         btnViewRoute.TabIndex = 4;
         btnViewRoute.Text = "🗺️ Xem lộ trình";
         btnViewRoute.UseVisualStyleBackColor = false;
@@ -129,9 +134,10 @@ partial class TripsControl
         btnDriverInfo.FlatStyle = FlatStyle.Flat;
         btnDriverInfo.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
         btnDriverInfo.ForeColor = Color.FromArgb(15, 23, 42);
-        btnDriverInfo.Location = new Point(1147, 3);
+        btnDriverInfo.Location = new Point(878, 2);
+        btnDriverInfo.Margin = new Padding(2, 2, 2, 2);
         btnDriverInfo.Name = "btnDriverInfo";
-        btnDriverInfo.Size = new Size(203, 38);
+        btnDriverInfo.Size = new Size(120, 35);
         btnDriverInfo.TabIndex = 5;
         btnDriverInfo.Text = "📱 Lấy link tài xế";
         btnDriverInfo.UseVisualStyleBackColor = false;
@@ -144,9 +150,10 @@ partial class TripsControl
         btnFuelEstimate.FlatStyle = FlatStyle.Flat;
         btnFuelEstimate.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
         btnFuelEstimate.ForeColor = Color.FromArgb(15, 23, 42);
-        btnFuelEstimate.Location = new Point(593, 47);
+        btnFuelEstimate.Location = new Point(382, 42);
+        btnFuelEstimate.Margin = new Padding(2, 2, 2, 2);
         btnFuelEstimate.Name = "btnFuelEstimate";
-        btnFuelEstimate.Size = new Size(242, 38);
+        btnFuelEstimate.Size = new Size(120, 35);
         btnFuelEstimate.TabIndex = 6;
         btnFuelEstimate.Text = "⛽ Ước tính nhiên liệu";
         btnFuelEstimate.UseVisualStyleBackColor = false;
@@ -160,9 +167,10 @@ partial class TripsControl
         btnIncidents.FlatStyle = FlatStyle.Flat;
         btnIncidents.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
         btnIncidents.ForeColor = Color.FromArgb(220, 38, 38);
-        btnIncidents.Location = new Point(1183, 47);
+        btnIncidents.Location = new Point(754, 42);
+        btnIncidents.Margin = new Padding(2, 2, 2, 2);
         btnIncidents.Name = "btnIncidents";
-        btnIncidents.Size = new Size(180, 38);
+        btnIncidents.Size = new Size(120, 35);
         btnIncidents.TabIndex = 7;
         btnIncidents.Text = "⚠️ Sự cố";
         btnIncidents.UseVisualStyleBackColor = false;
@@ -175,9 +183,10 @@ partial class TripsControl
         btnSyncCalendar.FlatStyle = FlatStyle.Flat;
         btnSyncCalendar.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
         btnSyncCalendar.ForeColor = Color.FromArgb(15, 23, 42);
-        btnSyncCalendar.Location = new Point(387, 47);
+        btnSyncCalendar.Location = new Point(258, 42);
+        btnSyncCalendar.Margin = new Padding(2, 2, 2, 2);
         btnSyncCalendar.Name = "btnSyncCalendar";
-        btnSyncCalendar.Size = new Size(200, 38);
+        btnSyncCalendar.Size = new Size(120, 35);
         btnSyncCalendar.TabIndex = 8;
         btnSyncCalendar.Text = "🗓️ Đồng bộ Calendar";
         btnSyncCalendar.UseVisualStyleBackColor = false;
@@ -190,9 +199,10 @@ partial class TripsControl
         btnExpenses.FlatStyle = FlatStyle.Flat;
         btnExpenses.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
         btnExpenses.ForeColor = Color.FromArgb(15, 23, 42);
-        btnExpenses.Location = new Point(841, 47);
+        btnExpenses.Location = new Point(506, 42);
+        btnExpenses.Margin = new Padding(2, 2, 2, 2);
         btnExpenses.Name = "btnExpenses";
-        btnExpenses.Size = new Size(180, 38);
+        btnExpenses.Size = new Size(120, 35);
         btnExpenses.TabIndex = 9;
         btnExpenses.Text = "💰 Chi phí khác";
         btnExpenses.UseVisualStyleBackColor = false;
@@ -205,9 +215,10 @@ partial class TripsControl
         btnQuickEstimate.FlatStyle = FlatStyle.Flat;
         btnQuickEstimate.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
         btnQuickEstimate.ForeColor = Color.FromArgb(15, 23, 42);
-        btnQuickEstimate.Location = new Point(1027, 47);
+        btnQuickEstimate.Location = new Point(630, 42);
+        btnQuickEstimate.Margin = new Padding(2, 2, 2, 2);
         btnQuickEstimate.Name = "btnQuickEstimate";
-        btnQuickEstimate.Size = new Size(150, 38);
+        btnQuickEstimate.Size = new Size(120, 35);
         btnQuickEstimate.TabIndex = 10;
         btnQuickEstimate.Text = "📏 Ước tính";
         btnQuickEstimate.UseVisualStyleBackColor = false;
@@ -218,24 +229,26 @@ partial class TripsControl
         lblStatus.AutoSize = true;
         lblStatus.Font = new Font("Segoe UI", 9F);
         lblStatus.ForeColor = Color.FromArgb(100, 116, 139);
-        lblStatus.Location = new Point(0, 44);
+        lblStatus.Location = new Point(0, 29);
+        lblStatus.Margin = new Padding(2, 0, 2, 0);
         lblStatus.Name = "lblStatus";
-        lblStatus.Size = new Size(0, 25);
+        lblStatus.Size = new Size(0, 15);
         lblStatus.TabIndex = 5;
         // 
         // grid
         // 
         grid.ColumnHeadersHeight = 34;
         grid.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
-        grid.Location = new Point(0, 90);
+        grid.Location = new Point(0, 81);
+        grid.Margin = new Padding(2, 2, 2, 2);
         grid.Name = "grid";
         grid.RowHeadersWidth = 62;
-        grid.Size = new Size(1000, 560);
+        grid.Size = new Size(667, 373);
         grid.TabIndex = 6;
         // 
         // TripsControl
         // 
-        AutoScaleDimensions = new SizeF(144F, 144F);
+        AutoScaleDimensions = new SizeF(96F, 96F);
         BackColor = Color.FromArgb(241, 245, 249);
         Controls.Add(lblTitle);
         Controls.Add(btnRefresh);
@@ -251,8 +264,9 @@ partial class TripsControl
         Controls.Add(btnQuickEstimate);
         Controls.Add(lblStatus);
         Controls.Add(grid);
+        Margin = new Padding(2, 2, 2, 2);
         Name = "TripsControl";
-        Size = new Size(1810, 610);
+        Size = new Size(1207, 569);
         ((System.ComponentModel.ISupportInitialize)grid).EndInit();
         ResumeLayout(false);
         PerformLayout();
