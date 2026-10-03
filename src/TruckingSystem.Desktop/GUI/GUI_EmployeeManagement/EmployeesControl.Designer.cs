@@ -30,7 +30,7 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             lblTitle.ForeColor = Color.FromArgb(15, 23, 42);
             lblTitle.Location = new Point(0, 11);
             lblTitle.Name = "lblTitle";
-            lblTitle.Size = new Size(400, 60);
+            lblTitle.Size = new Size(200, 60);
             lblTitle.TabIndex = 0;
             lblTitle.Text = "Nhân viên";
             // 

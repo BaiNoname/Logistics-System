@@ -77,7 +77,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                 // Chỉ cho Sửa/Xác nhận khi đơn còn Draft; chỉ cho Hủy khi Draft hoặc Confirmed
                 btnEdit.Enabled = order.Status == "Draft";
                 btnConfirm.Enabled = order.Status == "Draft" && order.CargoLines.Count > 0;
-                btnCancel.Enabled = order.Status is "Draft" or "Confirmed";
+                btnCancel.Enabled = order.Status is not ("Done" or "Cancelled");
             }
             catch (Exception ex)
             {

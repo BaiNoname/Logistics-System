@@ -27,9 +27,9 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             // 
             lblTitle.Font = new Font("Segoe UI", 18F, FontStyle.Bold);
             lblTitle.ForeColor = Color.FromArgb(15, 23, 42);
-            lblTitle.Location = new Point(0, 0);
+            lblTitle.Location = new Point(0, 9);
             lblTitle.Name = "lblTitle";
-            lblTitle.Size = new Size(400, 73);
+            lblTitle.Size = new Size(297, 49);
             lblTitle.TabIndex = 0;
             lblTitle.Text = "Đơn vận chuyển";
             // 

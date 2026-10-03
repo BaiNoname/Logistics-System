@@ -22,6 +22,10 @@ namespace TruckingSystem.Application.Trips;
 ///     chạy Best-Fit chọn vị trí + cộng WarehouseStock)
 ///   - Chặng Delivery bắt đầu chạy -> tự động IssueGoodsAsync (tạo GoodsIssue
 ///     + trừ dần StorageAssignment theo FIFO + trừ WarehouseStock)
+///   - Chặng Return (MỚI — chuyến trả hàng về đối tác khi đơn bị hủy sau khi
+///     đã nhập kho) hoàn tất -> tự động IssueGoodsAsync (xuất kho thật, trả
+///     hàng), trả xe rảnh lại — xem TransportOrderService.CancelAsync là nơi
+///     TẠO Trip loại này.
 ///   - Đơn SelfDelivery (không có chặng Pickup) -> nhập kho NGAY lúc Chia xe,
 ///     xem VehicleAllocationService.
 /// </summary>
@@ -59,6 +63,8 @@ public class TripService : ITripService
         // giữa thay vì vẽ thẳng Khách gửi → Khách nhận (sai với đơn đi qua kho):
         //   Chặng Pickup:   Khách gửi (PickupLocation) → Kho
         //   Chặng Delivery: Kho → Khách nhận (DropoffLocation)
+        //   Chặng Return:   Kho → Khách gửi (PickupLocation) — trả hàng ngược
+        //                   lại đúng đối tác đã lấy hàng ban đầu
         return trips.Select(t =>
         {
             double? fromLat = null, fromLng = null, toLat = null, toLng = null;
@@ -68,6 +74,13 @@ public class TripService : ITripService
                 fromLng = t.TransportOrder.PickupLocation?.Lng;
                 toLat = t.Warehouse?.Lat;
                 toLng = t.Warehouse?.Lng;
+            }
+            else if (t.LegType == TripLegType.Return)
+            {
+                fromLat = t.Warehouse?.Lat;
+                fromLng = t.Warehouse?.Lng;
+                toLat = t.TransportOrder.PickupLocation?.Lat;
+                toLng = t.TransportOrder.PickupLocation?.Lng;
             }
             else // Delivery
             {
@@ -225,7 +238,10 @@ public class TripService : ITripService
     /// "Xem lộ trình" (GetTripRouteAsync) lẫn tính+lưu ước tính
     /// (CalculateAndSaveRouteEstimateAsync), tránh viết trùng lặp logic.
     /// Chặng Lấy hàng có 3 điểm (round-trip Kho→Đối tác→Kho, xe phải quay về
-    /// đúng kho); chặng Giao hàng chỉ 2 điểm (1 chiều, xong việc cho đơn này).</summary>
+    /// đúng kho); chặng Giao hàng chỉ 2 điểm (1 chiều, xong việc cho đơn này);
+    /// chặng Trả hàng (Return) cũng 2 điểm nhưng ĐẢO HƯỚNG — từ Kho trả NGƯỢC
+    /// lại đúng đối tác đã lấy hàng ban đầu (PickupLocation, không phải
+    /// DropoffLocation).</summary>
     private static List<RouteStopDto> BuildRouteStops(Trip trip)
     {
         var warehouseLat = trip.Warehouse?.Lat;
@@ -238,6 +254,14 @@ public class TripService : ITripService
                 new(warehouseLat, warehouseLng, "🏭 Xuất phát từ Kho (xe chạy rỗng)"),
                 new(trip.TransportOrder.PickupLocation?.Lat, trip.TransportOrder.PickupLocation?.Lng, "📦 Lấy hàng tại đối tác"),
                 new(warehouseLat, warehouseLng, "🏭 Về Kho nộp hàng"),
+            };
+        }
+        if (trip.LegType == TripLegType.Return)
+        {
+            return new List<RouteStopDto>
+            {
+                new(warehouseLat, warehouseLng, "🏭 Xuất phát từ Kho (trả hàng)"),
+                new(trip.TransportOrder.PickupLocation?.Lat, trip.TransportOrder.PickupLocation?.Lng, "🔙 Trả hàng về đối tác (đơn đã hủy)"),
             };
         }
         return new List<RouteStopDto>
@@ -406,8 +430,18 @@ public class TripService : ITripService
             return new CalendarSyncResultDto(false, "Không tìm thấy chuyến.", false, "Không tìm thấy chuyến.");
 
         var order = trip.TransportOrder;
-        var legText = trip.LegType == TripLegType.Pickup ? "Lấy hàng" : "Giao hàng";
-        var location = trip.LegType == TripLegType.Pickup ? order.PickupPoint : order.DropoffPoint;
+        var legText = trip.LegType switch
+        {
+            TripLegType.Pickup => "Lấy hàng",
+            TripLegType.Return => "Trả hàng về đối tác",
+            _ => "Giao hàng",
+        };
+        var location = trip.LegType switch
+        {
+            TripLegType.Pickup => order.PickupPoint,
+            TripLegType.Return => order.PickupPoint, // trả về đúng điểm đã lấy hàng ban đầu
+            _ => order.DropoffPoint,
+        };
 
         // Ưu tiên giờ THẬT nếu chuyến đã/đang chạy; chưa chạy thì dùng hẹn giao
         // của đơn làm mốc tạm; cuối cùng mới rơi về "1 giờ nữa" cho có giá trị
@@ -538,7 +572,11 @@ public class TripService : ITripService
     ///     tính vào tiến độ giao hàng, KHÔNG cho xe rảnh lại (thường tiếp tục
     ///     chặng Delivery ngay). Tự động ReceiveGoodsAsync (Best-Fit + nhập kho).
     ///   - LegType.Delivery: hàng đã tới tay khách thật sự — tính vào tiến độ,
-    ///     xe được rảnh lại, có thể tự động chuyển đơn sang Done.</summary>
+    ///     xe được rảnh lại, có thể tự động chuyển đơn sang Done.
+    ///   - LegType.Return: chuyến TRẢ HÀNG về đối tác khi đơn bị hủy sau khi
+    ///     đã nhập kho (xem TransportOrderService.CancelAsync) — hoàn tất =
+    ///     hàng THẬT SỰ rời kho trả lại đối tác, xuất kho tại đây, xe rảnh
+    ///     lại NGAY (đây luôn là chặng CUỐI CÙNG, không còn gì tiếp theo).</summary>
     private async Task HandleArrivalAsync(Trip trip)
     {
         trip.Status = TripStatus.Completed;
@@ -567,6 +605,20 @@ public class TripService : ITripService
                     line.QtyPlanned, trip.DriverEmployeeId, trip.Id);
             }
             // Xe vẫn Status = OnTrip (đang tiếp tục chặng Delivery), không đổi
+        }
+        else if (trip.LegType == TripLegType.Return && trip.WarehouseId.HasValue)
+        {
+            // Chuyến Trả hàng hoàn tất = hàng THẬT SỰ rời kho, trả lại đối
+            // tác. Xuất kho tại đây (giống Delivery), rồi trả xe về rảnh (đây
+            // là chặng CUỐI CÙNG, không còn gì tiếp theo nữa).
+            await _db.SaveChangesAsync();
+            foreach (var line in trip.TripLines)
+            {
+                await _warehouseService.IssueGoodsAsync(
+                    trip.WarehouseId.Value, trip.TransportOrderId, line.CargoLineId,
+                    line.QtyPlanned, trip.DriverEmployeeId, trip.Id);
+            }
+            trip.Vehicle.Status = VehicleStatus.Available;
         }
     }
 

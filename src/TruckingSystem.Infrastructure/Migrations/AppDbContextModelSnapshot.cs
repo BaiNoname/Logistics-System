@@ -1330,6 +1330,9 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.Property<decimal>("ActualFuelCost")
                         .HasColumnType("numeric(18,2)");
 
+                    b.Property<string>("CancelReason")
+                        .HasColumnType("text");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp without time zone");
 

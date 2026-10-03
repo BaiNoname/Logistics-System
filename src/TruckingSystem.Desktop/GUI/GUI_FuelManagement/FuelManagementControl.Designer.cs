@@ -14,77 +14,93 @@ namespace TruckingSystem.Desktop.GUI_FuelManagement
 
         private void InitializeComponent()
         {
-            this.lblTitle = new System.Windows.Forms.Label();
-            this.btnAddProvider = new System.Windows.Forms.Button();
-            this.btnDeleteProvider = new System.Windows.Forms.Button();
-            this.gridProviders = new System.Windows.Forms.DataGridView();
-            this.lblStatus = new System.Windows.Forms.Label();
-            ((System.ComponentModel.ISupportInitialize)(this.gridProviders)).BeginInit();
-            this.SuspendLayout();
-            //
+            lblTitle = new Label();
+            btnAddProvider = new Button();
+            btnDeleteProvider = new Button();
+            gridProviders = new DataGridView();
+            lblStatus = new Label();
+            ((System.ComponentModel.ISupportInitialize)gridProviders).BeginInit();
+            SuspendLayout();
+            // 
             // lblTitle
-            //
-            this.lblTitle.Location = new System.Drawing.Point(0, 0);
-            this.lblTitle.AutoSize = true;
-            this.lblTitle.Text = "⛽ Quản lý Nhiên liệu";
-            this.lblTitle.Font = TruckingSystem.Desktop.Common.Theme.FontSectionTitle;
-            this.lblTitle.ForeColor = TruckingSystem.Desktop.Common.Theme.TextPrimary;
-            //
+            // 
+            lblTitle.AutoSize = true;
+            lblTitle.Font = new Font("Segoe UI", 13F, FontStyle.Bold);
+            lblTitle.ForeColor = Color.FromArgb(15, 23, 42);
+            lblTitle.Location = new Point(0, 0);
+            lblTitle.Name = "lblTitle";
+            lblTitle.Size = new Size(285, 36);
+            lblTitle.TabIndex = 0;
+            lblTitle.Text = "⛽ Quản lý Nhiên liệu";
+            // 
             // btnAddProvider
-            //
-            this.btnAddProvider.Location = new System.Drawing.Point(0, 46);
-            this.btnAddProvider.Size = new System.Drawing.Size(160, 34);
-            this.btnAddProvider.Text = "➕ Thêm hãng xăng";
-            this.btnAddProvider.BackColor = TruckingSystem.Desktop.Common.Theme.Primary;
-            this.btnAddProvider.ForeColor = System.Drawing.Color.White;
-            this.btnAddProvider.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnAddProvider.Font = TruckingSystem.Desktop.Common.Theme.FontBold;
-            this.btnAddProvider.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.btnAddProvider.FlatAppearance.BorderSize = 0;
-            this.btnAddProvider.FlatAppearance.MouseOverBackColor = TruckingSystem.Desktop.Common.Theme.PrimaryDark;
-            this.btnAddProvider.Click += new System.EventHandler(this.BtnAddProvider_Click);
-            //
+            // 
+            btnAddProvider.BackColor = Color.FromArgb(37, 99, 235);
+            btnAddProvider.Cursor = Cursors.Hand;
+            btnAddProvider.FlatAppearance.BorderSize = 0;
+            btnAddProvider.FlatAppearance.MouseOverBackColor = Color.FromArgb(29, 78, 216);
+            btnAddProvider.FlatStyle = FlatStyle.Flat;
+            btnAddProvider.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+            btnAddProvider.ForeColor = Color.White;
+            btnAddProvider.Location = new Point(0, 46);
+            btnAddProvider.Name = "btnAddProvider";
+            btnAddProvider.Size = new Size(160, 34);
+            btnAddProvider.TabIndex = 1;
+            btnAddProvider.Text = "➕ Thêm hãng xăng";
+            btnAddProvider.UseVisualStyleBackColor = false;
+            btnAddProvider.Click += BtnAddProvider_Click;
+            // 
             // btnDeleteProvider
-            //
-            this.btnDeleteProvider.Location = new System.Drawing.Point(170, 46);
-            this.btnDeleteProvider.Size = new System.Drawing.Size(140, 34);
-            this.btnDeleteProvider.Text = "🗑️ Xóa hãng";
-            this.btnDeleteProvider.BackColor = System.Drawing.Color.White;
-            this.btnDeleteProvider.ForeColor = TruckingSystem.Desktop.Common.Theme.Danger;
-            this.btnDeleteProvider.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnDeleteProvider.Font = TruckingSystem.Desktop.Common.Theme.FontBold;
-            this.btnDeleteProvider.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.btnDeleteProvider.FlatAppearance.BorderSize = 1;
-            this.btnDeleteProvider.FlatAppearance.BorderColor = TruckingSystem.Desktop.Common.Theme.Danger;
-            this.btnDeleteProvider.Click += new System.EventHandler(this.BtnDeleteProvider_Click);
-            //
+            // 
+            btnDeleteProvider.BackColor = Color.White;
+            btnDeleteProvider.Cursor = Cursors.Hand;
+            btnDeleteProvider.FlatAppearance.BorderColor = Color.FromArgb(220, 38, 38);
+            btnDeleteProvider.FlatStyle = FlatStyle.Flat;
+            btnDeleteProvider.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+            btnDeleteProvider.ForeColor = Color.FromArgb(220, 38, 38);
+            btnDeleteProvider.Location = new Point(170, 46);
+            btnDeleteProvider.Name = "btnDeleteProvider";
+            btnDeleteProvider.Size = new Size(140, 34);
+            btnDeleteProvider.TabIndex = 2;
+            btnDeleteProvider.Text = "🗑️ Xóa hãng";
+            btnDeleteProvider.UseVisualStyleBackColor = false;
+            btnDeleteProvider.Click += BtnDeleteProvider_Click;
+            // 
             // gridProviders
-            //
-            this.gridProviders.Location = new System.Drawing.Point(0, 90);
-            this.gridProviders.Size = new System.Drawing.Size(1200, 440);
-            this.gridProviders.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
-            //
+            // 
+            gridProviders.ColumnHeadersHeight = 34;
+            gridProviders.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
+            gridProviders.Location = new Point(0, 90);
+            gridProviders.Name = "gridProviders";
+            gridProviders.RowHeadersWidth = 62;
+            gridProviders.Size = new Size(1200, 440);
+            gridProviders.TabIndex = 3;
+            // 
             // lblStatus
-            //
-            this.lblStatus.Location = new System.Drawing.Point(0, 540);
-            this.lblStatus.AutoSize = true;
-            this.lblStatus.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
-            this.lblStatus.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
-            //
+            // 
+            lblStatus.AutoSize = true;
+            lblStatus.Font = new Font("Segoe UI", 9F);
+            lblStatus.ForeColor = Color.FromArgb(100, 116, 139);
+            lblStatus.Location = new Point(0, 540);
+            lblStatus.Name = "lblStatus";
+            lblStatus.Size = new Size(0, 25);
+            lblStatus.TabIndex = 4;
+            // 
             // FuelManagementControl
-            //
-            this.BackColor = TruckingSystem.Desktop.Common.Theme.ContentBg;
-            this.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.Padding = new System.Windows.Forms.Padding(24);
-            this.Controls.Add(this.lblTitle);
-            this.Controls.Add(this.btnAddProvider);
-            this.Controls.Add(this.btnDeleteProvider);
-            this.Controls.Add(this.gridProviders);
-            this.Controls.Add(this.lblStatus);
-            this.Name = "FuelManagementControl";
-            ((System.ComponentModel.ISupportInitialize)(this.gridProviders)).EndInit();
-            this.ResumeLayout(false);
-            this.PerformLayout();
+            // 
+            AutoScaleDimensions = new SizeF(144F, 144F);
+            BackColor = Color.FromArgb(241, 245, 249);
+            Controls.Add(lblTitle);
+            Controls.Add(btnAddProvider);
+            Controls.Add(btnDeleteProvider);
+            Controls.Add(gridProviders);
+            Controls.Add(lblStatus);
+            Name = "FuelManagementControl";
+            Padding = new Padding(24);
+            Size = new Size(1417, 568);
+            ((System.ComponentModel.ISupportInitialize)gridProviders).EndInit();
+            ResumeLayout(false);
+            PerformLayout();
         }
 
         #endregion

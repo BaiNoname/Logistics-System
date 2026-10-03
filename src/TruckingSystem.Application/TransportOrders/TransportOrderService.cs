@@ -145,29 +145,101 @@ public class TransportOrderService : ITransportOrderService
         return new OrderActionResult(true, null);
     }
 
+    /// <summary>Hủy đơn — xử lý theo 3 mức tùy tình trạng hàng hóa thật tại
+    /// thời điểm hủy (KHÔNG hủy lẻ từng Trip, chỉ hủy qua Đơn):
+    ///   Mức 1 — Chưa chạm kho (Planned/InProgress, chưa Pickup xong): hủy
+    ///     thẳng mọi Trip còn hoạt động, trả xe/tài xế rảnh ngay.
+    ///   Mức 2 — Hàng đã nằm trong kho (Pickup đã Completed, hoặc
+    ///     SelfDelivery vừa nhập ngay lúc chia xe) nhưng Giao hàng còn
+    ///     Planned (chưa xuất): hủy Delivery cũ, TẠO THÊM 1 Trip "Trả hàng"
+    ///     (LegType.Return) dùng lại xe/tài xế đã có sẵn gần kho. Xuất kho
+    ///     thật + trả xe rảnh chỉ xảy ra SAU, khi tài xế chạy xong và bấm
+    ///     Hoàn tất (tái dùng cơ chế Complete có sẵn, xem HandleArrivalAsync).
+    ///   Mức 3 — Giao hàng đã InProgress (hàng đã xuất kho thật): CHẶN,
+    ///     không cho hủy nữa.</summary>
     public async Task<OrderActionResult> CancelAsync(int id)
     {
-        var order = await _db.TransportOrders.FindAsync(id);
+        var order = await _db.TransportOrders
+            .Include(o => o.Trips).ThenInclude(t => t.Vehicle)
+            .Include(o => o.Trips).ThenInclude(t => t.TripLines)
+            .Include(o => o.CargoLines)
+            .FirstOrDefaultAsync(o => o.Id == id);
         if (order is null) return new OrderActionResult(false, "Không tìm thấy đơn hàng.");
 
-        if (order.Status is TransportOrderStatus.InProgress or TransportOrderStatus.Done)
-            return new OrderActionResult(false, "Không thể hủy đơn đã có xe đang chạy hoặc đã hoàn tất.");
+        if (order.Status == TransportOrderStatus.Done)
+            return new OrderActionResult(false, "Đơn đã hoàn tất — không thể hủy.");
         if (order.Status == TransportOrderStatus.Cancelled)
             return new OrderActionResult(false, "Đơn này đã bị hủy từ trước.");
 
-        // CHẶN hủy nếu đơn ĐÃ được chia xe (có Trip) — kể cả khi Status vẫn
-        // đang là "Confirmed" (chưa chuyển InProgress, việc này chỉ xảy ra
-        // khi 1 Trip THẬT SỰ bắt đầu chạy). Lỗ hổng thật: đơn SelfDelivery
-        // nhập kho NGAY khi Chia xe (trước khi Trip nào bắt đầu chạy) — nếu
-        // chỉ dựa vào Status, Dispatcher vẫn hủy được đơn NGAY SAU KHI hàng
-        // đã vào kho, để lại tồn kho "mồ côi" cho 1 đơn đã hủy.
-        var hasTrips = await _db.Trips.AnyAsync(t => t.TransportOrderId == id);
-        if (hasTrips)
-            return new OrderActionResult(false, "Đơn này đã được chia xe (có thể hàng đã vào kho) — không thể hủy. Cần xử lý thủ công (xuất trả hàng...) trước khi hủy.");
+        var deliveryTrip = order.Trips.FirstOrDefault(t => t.LegType == TripLegType.Delivery);
+        var pickupTrip = order.Trips.FirstOrDefault(t => t.LegType == TripLegType.Pickup);
 
-        order.Status = TransportOrderStatus.Cancelled;
-        await _db.SaveChangesAsync();
-        return new OrderActionResult(true, null);
+        // Mức 3 — CHẶN nếu Giao hàng đã xuất kho (InProgress trở lên)
+        if (deliveryTrip != null && deliveryTrip.Status is TripStatus.InProgress or TripStatus.Completed)
+            return new OrderActionResult(false, "Hàng đã xuất kho và đang/đã giao đi — không thể hủy đơn nữa.");
+
+        // Đơn này ĐÃ CÓ tồn kho thật chưa? (CompanyPickup: Pickup Completed;
+        // SelfDelivery: hàng nhập ngay lúc chia xe, Delivery Planned là đủ)
+        var cargoLineIds = order.CargoLines.Select(c => c.Id).ToList();
+        var hasRealStock = await _db.WarehouseStocks
+            .AnyAsync(s => cargoLineIds.Contains(s.CargoLineId) && s.QtyOnHand > 0);
+
+        using var transaction = await _db.Database.BeginTransactionAsync();
+        try
+        {
+            if (hasRealStock && deliveryTrip != null)
+            {
+                // Mức 2 — Xác định xe/tài xế dùng cho chuyến Trả hàng: ưu
+                // tiên Pickup Trip (nếu có, CompanyPickup); nếu không thì
+                // dùng chính Delivery Trip hiện tại (SelfDelivery — xe/tài
+                // xế duy nhất từng gán, đã sẵn ở kho).
+                var sourceTrip = pickupTrip ?? deliveryTrip;
+
+                var returnTrip = new Trip
+                {
+                    TransportOrderId = order.Id,
+                    VehicleId = sourceTrip.VehicleId,
+                    DriverEmployeeId = sourceTrip.DriverEmployeeId,
+                    WarehouseId = sourceTrip.WarehouseId,
+                    LegType = TripLegType.Return,
+                    Status = TripStatus.Planned,
+                    TripLines = deliveryTrip.TripLines.Select(l => new TripLine
+                    {
+                        CargoLineId = l.CargoLineId,
+                        QtyPlanned = l.QtyPlanned,
+                    }).ToList(),
+                };
+                _db.Trips.Add(returnTrip);
+
+                deliveryTrip.Status = TripStatus.Cancelled;
+                deliveryTrip.CancelReason = "Hủy theo đơn hàng #" + order.Id;
+                // Xe CHƯA rảnh ngay — còn phải chạy xong chuyến Trả hàng đã
+                // tạo ở trên (giữ nguyên Vehicle.Status = OnTrip).
+            }
+            else
+            {
+                // Mức 1 — Chưa có tồn kho thật nào -> hủy thẳng mọi Trip còn
+                // hoạt động, trả xe rảnh ngay.
+                foreach (var trip in order.Trips.Where(t =>
+                    t.Status == TripStatus.Planned || t.Status == TripStatus.InProgress))
+                {
+                    trip.Status = TripStatus.Cancelled;
+                    trip.CancelReason = "Hủy theo đơn hàng #" + order.Id;
+                    if (trip.Vehicle != null)
+                        trip.Vehicle.Status = VehicleStatus.Available;
+                }
+            }
+
+            order.Status = TransportOrderStatus.Cancelled;
+            await _db.SaveChangesAsync();
+            await transaction.CommitAsync();
+            return new OrderActionResult(true, null);
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
     }
 
     private static PickupMethod ParsePickupMethod(string value)

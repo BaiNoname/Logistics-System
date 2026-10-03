@@ -6,21 +6,71 @@
     <title>Điều hướng chuyến đi</title>
     <!-- Leaflet CSS/JS load qua CDN — không cần cài npm/build gì cả, trang HTML thuần.
          Trang này thay thế endpoint /gps_tracker/navigate (không tồn tại trong hệ
-         thống) — được app tài xế (React Native) mở qua WebView khi bấm "Open Navigation". -->
+         thống) — được app tài xế (React Native) mở qua WebView khi bấm "Open Navigation".
+
+         CẬP NHẬT: thêm cơ chế TỰ ĐỘNG TÍNH LẠI TUYẾN ĐƯỜNG khi tài xế đi lệch
+         khỏi đường đã vẽ (giống Google Maps thật) — không phải tính lại theo
+         giờ cố định, mà tính KHOẢNG CÁCH THẬT từ vị trí GPS hiện tại tới đường
+         đang vẽ trên bản đồ; chỉ gọi lại VietMap khi khoảng cách đó vượt
+         ngưỡng cho phép. -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
-        body { font-family: Arial, sans-serif; margin: 0; background: #f5f5f5; }
-        .header { background: #1565C0; color: white; padding: 14px 16px; }
-        .header h1 { margin: 0; font-size: 16px; }
-        .header .sub { font-size: 12px; opacity: 0.85; margin-top: 2px; }
-        .info-bar {
-            display: flex; justify-content: space-around; background: white;
-            padding: 10px; font-size: 13px; border-bottom: 1px solid #e0e0e0;
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            background: #f5f5f5;
         }
-        .info-bar b { color: #1565C0; }
-        #map { height: calc(100vh - 90px); }
-        .error { color: #C62828; text-align: center; padding: 40px 16px; }
+
+        .header {
+            background: #1565C0;
+            color: white;
+            padding: 14px 16px;
+        }
+
+            .header h1 {
+                margin: 0;
+                font-size: 16px;
+            }
+
+            .header .sub {
+                font-size: 12px;
+                opacity: 0.85;
+                margin-top: 2px;
+            }
+
+        .info-bar {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            background: white;
+            padding: 10px;
+            font-size: 13px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+            .info-bar b {
+                color: #1565C0;
+            }
+
+        .reroute-badge {
+            display: none;
+            background: #FFF3CD;
+            color: #856404;
+            font-size: 11px;
+            padding: 4px 10px;
+            text-align: center;
+        }
+
+        #map {
+            height: calc(100vh - 90px);
+        }
+
+        .error {
+            color: #C62828;
+            text-align: center;
+            padding: 40px 16px;
+        }
     </style>
 </head>
 <body>
@@ -32,6 +82,7 @@
         <div>📏 <b id="distanceText">—</b></div>
         <div>⏱ <b id="durationText">—</b></div>
     </div>
+    <div class="reroute-badge" id="rerouteBadge">🔄 Đang tính lại đường đi...</div>
     <div id="map"></div>
 
     <script>
@@ -39,7 +90,18 @@
         const tripId = params.get('tripId');
         const apiBase = window.location.origin; // cùng domain với API
 
+        // ---- Ngưỡng cấu hình cơ chế reroute (chỉnh tại đây nếu cần) ----
+        const OFF_ROUTE_THRESHOLD_M = 100;   // lệch quá 100m so với đường đã vẽ -> coi là đi lệch tuyến
+        const ARRIVAL_THRESHOLD_M = 60;      // gần hơn 60m so với điểm dừng -> coi là đã tới, chuyển điểm kế tiếp
+        const MIN_RECALC_INTERVAL_MS = 8000; // tối thiểu 8 giây giữa 2 lần tính lại, tránh gọi API dồn dập
+
         let map, myPositionMarker;
+        let allStops = [];              // toàn bộ điểm dừng lý thuyết của chặng
+        let currentStopIndex = 0;       // đang hướng tới điểm dừng thứ mấy
+        let activePolylines = [];       // các polyline ĐANG hiển thị (route hiện hành)
+        let currentRoutePoints = [];    // toàn bộ điểm (lat,lng) của route hiện hành, dùng để đo độ lệch
+        let lastRecalcTs = 0;
+        let recalculating = false;
 
         async function loadNavigation() {
             if (!tripId) {
@@ -67,23 +129,102 @@
                     document.getElementById('map').outerHTML = '<div class="error">Chuyến này thiếu tọa độ (điểm chưa chọn từ gợi ý VietMap, hoặc kho chưa có tọa độ) — không vẽ được lộ trình.</div>';
                     return;
                 }
+                allStops = validStops;
 
-                // Bước 2: tính lộ trình thật qua VietMap cho TỪNG ĐOẠN liên tiếp
-                // (VD 3 điểm dừng = 2 đoạn: đoạn 1 + đoạn 2), cộng dồn khoảng
-                // cách/thời gian cả các đoạn lại để hiện tổng đúng thực tế.
-                const segments = [];
-                let totalDistanceKm = 0, totalDurationMin = 0, tileUrlTemplate = null;
+                map = L.map('map');
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; VietMap', maxZoom: 19 }).addTo(map);
 
-                for (let i = 0; i < validStops.length - 1; i++) {
-                    const from = validStops[i], to = validStops[i + 1];
-                    const resp = await fetch(`${apiBase}/api/routes/calculate?fromLat=${from.lat}&fromLng=${from.lng}&toLat=${to.lat}&toLng=${to.lng}`);
+                allStops.forEach((s, idx) => {
+                    const icon = idx === 0 ? '📍' : (idx === allStops.length - 1 ? '🏁' : '📦');
+                    L.marker([s.lat, s.lng]).addTo(map).bindPopup(`${icon} ${s.label}`);
+                });
+
+                // Vẽ lộ trình lý thuyết BAN ĐẦU (từ điểm xuất phát -> hết các
+                // điểm dừng) — dùng để hiển thị TRƯỚC khi có tín hiệu GPS thật,
+                // và cũng làm cơ sở để fit khung bản đồ ban đầu.
+                await recalcRouteFrom(allStops[0].lat, allStops[0].lng, true);
+
+                startWatchingMyLocation();
+            } catch (e) {
+                document.getElementById('map').outerHTML = '<div class="error">Lỗi kết nối tới máy chủ.</div>';
+            }
+        }
+
+        // ================= TOÁN HỌC: khoảng cách thật (mét) =================
+
+        // Khoảng cách Haversine giữa 2 điểm (mét) — dùng để phát hiện đã tới
+        // gần điểm dừng chưa.
+        function haversineMeters(lat1, lng1, lat2, lng2) {
+            const R = 6371000;
+            const toRad = x => x * Math.PI / 180;
+            const dLat = toRad(lat2 - lat1), dLng = toRad(lng2 - lng1);
+            const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        }
+
+        // Quy đổi độ kinh/vĩ sang mét cục bộ quanh 1 điểm gốc — đủ chính xác
+        // cho khoảng cách ngắn (vài trăm mét tới vài km, đúng tầm road-segment).
+        function metersPerDegree(lat) {
+            const latRad = lat * Math.PI / 180;
+            return { lat: 111320, lng: 111320 * Math.cos(latRad) };
+        }
+
+        // Khoảng cách từ 1 điểm P tới ĐOẠN THẲNG A-B (không phải tới 2 đầu
+        // mút) — đây chính là cách đo "đi lệch khỏi ĐƯỜNG đã vẽ" đúng nghĩa,
+        // khác với đo lệch tới 1 điểm mốc đơn lẻ.
+        function distancePointToSegmentMeters(p, a, b) {
+            const m = metersPerDegree(p[0]);
+            const toXY = (pt) => [(pt[1] - a[1]) * m.lng, (pt[0] - a[0]) * m.lat];
+            const P = toXY(p), A = [0, 0], B = toXY(b);
+            const dx = B[0] - A[0], dy = B[1] - A[1];
+            const lenSq = dx * dx + dy * dy;
+            let t = lenSq === 0 ? 0 : ((P[0] - A[0]) * dx + (P[1] - A[1]) * dy) / lenSq;
+            t = Math.max(0, Math.min(1, t));
+            const projX = A[0] + t * dx, projY = A[1] + t * dy;
+            return Math.hypot(P[0] - projX, P[1] - projY);
+        }
+
+        // Khoảng cách từ điểm P tới TOÀN BỘ polyline (lấy đoạn gần nhất).
+        function distanceToPolylineMeters(p, points) {
+            let min = Infinity;
+            for (let i = 0; i < points.length - 1; i++) {
+                const d = distancePointToSegmentMeters(p, points[i], points[i + 1]);
+                if (d < min) min = d;
+            }
+            return min === Infinity ? 0 : min;
+        }
+
+        // ================= VẼ / TÍNH LẠI TUYẾN ĐƯỜNG =================
+
+        // Tính tuyến đường THẬT (qua VietMap) từ (fromLat, fromLng) đi qua hết
+        // các điểm dừng CÒN LẠI (từ currentStopIndex trở đi), rồi vẽ đè lên
+        // bản đồ, thay thế tuyến cũ. initial=true khi gọi lần đầu lúc mở trang.
+        async function recalcRouteFrom(fromLat, fromLng, initial = false) {
+            if (recalculating) return; // tránh gọi chồng nếu đang tính dở
+            recalculating = true;
+            if (!initial) document.getElementById('rerouteBadge').style.display = 'block';
+
+            try {
+                activePolylines.forEach(p => map.removeLayer(p));
+                activePolylines = [];
+                currentRoutePoints = [];
+
+                let totalDistanceKm = 0, totalDurationMin = 0;
+                let curLat = fromLat, curLng = fromLng;
+
+                for (let i = currentStopIndex; i < allStops.length; i++) {
+                    const to = allStops[i];
+                    const resp = await fetch(`${apiBase}/api/routes/calculate?fromLat=${curLat}&fromLng=${curLng}&toLat=${to.lat}&toLng=${to.lng}`);
                     const seg = await resp.json();
-                    segments.push(seg);
-                    if (seg.success) {
+                    if (seg.success && seg.points && seg.points.length > 0) {
+                        const points = seg.points.map(p => [p.lat, p.lng]);
+                        const line = L.polyline(points, { color: '#1565C0', weight: 5, opacity: 0.85 }).addTo(map);
+                        activePolylines.push(line);
+                        currentRoutePoints = currentRoutePoints.concat(points);
                         totalDistanceKm += seg.distanceKm;
                         totalDurationMin += seg.durationMinutes;
-                        tileUrlTemplate = tileUrlTemplate || seg.tileUrlTemplate;
                     }
+                    curLat = to.lat; curLng = to.lng;
                 }
 
                 if (totalDistanceKm > 0) {
@@ -92,58 +233,60 @@
                     document.getElementById('durationText').textContent = `${totalDurationMin} phút`;
                 }
 
-                renderMap(segments, validStops, tileUrlTemplate);
-                startWatchingMyLocation();
-            } catch (e) {
-                document.getElementById('map').outerHTML = '<div class="error">Lỗi kết nối tới máy chủ.</div>';
-            }
-        }
-
-        /// Vẽ TẤT CẢ các đoạn nối tiếp nhau (không chỉ 1 đoạn) — mỗi đoạn 1
-        /// polyline riêng, cùng màu nối liền mạch trông như 1 lộ trình xuyên
-        /// suốt; đặt marker kèm nhãn (Label) tại TỪNG điểm dừng để tài xế biết
-        /// rõ đây là điểm gì (xuất phát/lấy hàng/về kho/giao hàng).
-        function renderMap(segments, stops, tileUrlTemplate) {
-            map = L.map('map');
-            const tileUrl = tileUrlTemplate || 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
-            L.tileLayer(tileUrl, { attribution: '&copy; VietMap', maxZoom: 19 }).addTo(map);
-
-            let allBoundsPoints = [];
-            segments.forEach(seg => {
-                if (seg.success && seg.points && seg.points.length > 0) {
-                    const points = seg.points.map(p => [p.lat, p.lng]);
-                    L.polyline(points, { color: '#1565C0', weight: 5, opacity: 0.85 }).addTo(map);
-                    allBoundsPoints = allBoundsPoints.concat(points);
+                if (initial && currentRoutePoints.length > 0) {
+                    const bounds = currentRoutePoints.concat(allStops.map(s => [s.lat, s.lng]));
+                    map.fitBounds(L.latLngBounds(bounds), { padding: [30, 30] });
                 }
-            });
 
-            stops.forEach((s, idx) => {
-                const icon = idx === 0 ? '📍' : (idx === stops.length - 1 ? '🏁' : '📦');
-                L.marker([s.lat, s.lng]).addTo(map).bindPopup(`${icon} ${s.label}`);
-                allBoundsPoints.push([s.lat, s.lng]);
-            });
-
-            if (allBoundsPoints.length > 0) {
-                map.fitBounds(L.latLngBounds(allBoundsPoints), { padding: [30, 30] });
+                lastRecalcTs = Date.now();
+            } catch (e) {
+                // Lỗi mạng tạm thời -> giữ nguyên tuyến cũ, thử lại ở lần GPS
+                // cập nhật kế tiếp, không chặn trải nghiệm tài xế.
+            } finally {
+                recalculating = false;
+                document.getElementById('rerouteBadge').style.display = 'none';
             }
         }
 
-        // Chấm xanh vị trí HIỆN TẠI của tài xế trên bản đồ (dùng GPS ngay trong
-        // WebView, khác với việc gửi GPS lên server — đó là do App.js làm ngầm
-        // ở background, đây chỉ để tài xế TỰ NHÌN thấy mình đang ở đâu trên bản đồ).
+        // Mỗi khi có vị trí GPS mới: (1) cập nhật chấm xanh, (2) kiểm tra đã
+        // tới gần điểm dừng hiện tại chưa -> chuyển điểm kế tiếp nếu có, (3)
+        // đo khoảng cách THẬT từ vị trí hiện tại tới đường đang vẽ -> nếu lệch
+        // quá ngưỡng VÀ đã đủ thời gian tối thiểu từ lần tính trước, mới gọi
+        // lại VietMap tính tuyến mới (đúng cơ chế reroute thật, không phải
+        // tính lại vô tội vạ theo mỗi lần GPS nhảy số).
+        function handlePositionUpdate(lat, lng) {
+            const latlng = [lat, lng];
+            if (!myPositionMarker) {
+                myPositionMarker = L.circleMarker(latlng, { radius: 8, color: '#2563EB', fillColor: '#2563EB', fillOpacity: 1 })
+                    .addTo(map).bindPopup('📍 Vị trí của bạn');
+            } else {
+                myPositionMarker.setLatLng(latlng);
+            }
+
+            if (currentStopIndex < allStops.length) {
+                const target = allStops[currentStopIndex];
+                const distToTarget = haversineMeters(lat, lng, target.lat, target.lng);
+                if (distToTarget < ARRIVAL_THRESHOLD_M && currentStopIndex < allStops.length - 1) {
+                    currentStopIndex++;
+                    recalcRouteFrom(lat, lng); // đổi điểm đến -> chắc chắn phải tính lại ngay
+                    return;
+                }
+            }
+
+            if (currentRoutePoints.length >= 2) {
+                const deviationM = distanceToPolylineMeters(latlng, currentRoutePoints);
+                const sinceLastRecalc = Date.now() - lastRecalcTs;
+                if (deviationM > OFF_ROUTE_THRESHOLD_M && sinceLastRecalc > MIN_RECALC_INTERVAL_MS) {
+                    recalcRouteFrom(lat, lng);
+                }
+            }
+        }
+
         function startWatchingMyLocation() {
             if (!navigator.geolocation) return;
             navigator.geolocation.watchPosition(
-                (pos) => {
-                    const latlng = [pos.coords.latitude, pos.coords.longitude];
-                    if (!myPositionMarker) {
-                        myPositionMarker = L.circleMarker(latlng, { radius: 8, color: '#2563EB', fillColor: '#2563EB', fillOpacity: 1 })
-                            .addTo(map).bindPopup('📍 Vị trí của bạn');
-                    } else {
-                        myPositionMarker.setLatLng(latlng);
-                    }
-                },
-                () => { /* không có quyền GPS trong WebView cũng không sao, chỉ mất chấm xanh */ },
+                (pos) => handlePositionUpdate(pos.coords.latitude, pos.coords.longitude),
+                () => { /* không có quyền GPS trong WebView cũng không sao, chỉ mất chấm xanh + reroute */ },
                 { enableHighAccuracy: true, maximumAge: 5000 }
             );
         }

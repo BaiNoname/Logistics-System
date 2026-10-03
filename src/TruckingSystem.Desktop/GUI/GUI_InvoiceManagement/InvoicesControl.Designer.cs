@@ -28,7 +28,7 @@ namespace TruckingSystem.Desktop.GUI_InvoiceManagement
             lblTitle.ForeColor = Color.FromArgb(15, 23, 42);
             lblTitle.Location = new Point(3, 17);
             lblTitle.Name = "lblTitle";
-            lblTitle.Size = new Size(203, 49);
+            lblTitle.Size = new Size(167, 49);
             lblTitle.TabIndex = 0;
             lblTitle.Text = "Hóa đơn";
             // 

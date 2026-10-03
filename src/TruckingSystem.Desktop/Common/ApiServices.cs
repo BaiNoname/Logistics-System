@@ -1,6 +1,7 @@
 using TruckingSystem.Desktop.SERVICE_Auth;
 using TruckingSystem.Desktop.SERVICE_AuditLogManagement;
 using TruckingSystem.Desktop.SERVICE_CustomerManagement;
+using TruckingSystem.Desktop.SERVICE_DriverManagement;
 using TruckingSystem.Desktop.SERVICE_EmployeeManagement;
 using TruckingSystem.Desktop.SERVICE_InvoiceManagement;
 using TruckingSystem.Desktop.SERVICE_LocationManagement;
@@ -32,6 +33,7 @@ namespace TruckingSystem.Desktop.Common
         public WarehouseApiService Warehouses { get; }
         public CustomerApiService Customers { get; }
         public EmployeeApiService Employees { get; }
+        public DriverApiService Drivers { get; }
         public InvoiceApiService Invoices { get; }
         public LocationApiService Locations { get; }
         public RouteApiService Routes { get; }
@@ -50,6 +52,7 @@ namespace TruckingSystem.Desktop.Common
             Warehouses = new WarehouseApiService(Connection);
             Customers = new CustomerApiService(Connection);
             Employees = new EmployeeApiService(Connection);
+            Drivers = new DriverApiService(Connection);
             Invoices = new InvoiceApiService(Connection);
             Locations = new LocationApiService(Connection);
             Routes = new RouteApiService(Connection);
