@@ -30,7 +30,12 @@ public enum ShiftType { Morning, Afternoon, Night, FullDay }
 public enum PickupMethod { CompanyPickup, SelfDelivery }
 
 /// <summary>Phân biệt 1 Trip là chặng lấy hàng về kho hay chặng giao hàng đi.</summary>
-public enum TripLegType { Pickup, Delivery }
+public enum TripLegType
+{
+    Pickup,
+    Delivery,
+    Return   // MỚI — chuyến trả hàng về đối tác khi đơn bị hủy sau khi đã nhập kho
+}
 
 public enum WarehouseTxnType { Receipt, Issue }
 

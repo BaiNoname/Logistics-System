@@ -31,7 +31,7 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             lblTitle.Location = new Point(0, 7);
             lblTitle.Margin = new Padding(2, 0, 2, 0);
             lblTitle.Name = "lblTitle";
-            lblTitle.Size = new Size(267, 40);
+            lblTitle.Size = new Size(200, 60);
             lblTitle.TabIndex = 0;
             lblTitle.Text = "Nhân viên";
             // 

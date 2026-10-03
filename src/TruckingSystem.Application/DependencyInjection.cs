@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using TruckingSystem.Application.Customers;
+using TruckingSystem.Application.Drivers;
 using TruckingSystem.Application.Employees;
 using TruckingSystem.Application.Invoices;
 using TruckingSystem.Application.Locations;
@@ -35,6 +36,7 @@ public static class DependencyInjection
         services.AddScoped<IInvoiceService, InvoiceService>();
         services.AddScoped<IVehicleAllocationService, VehicleAllocationService>();
         services.AddScoped<ILocationService, LocationService>();
+        services.AddScoped<IDriverService, DriverService>();
         return services;
     }
 }

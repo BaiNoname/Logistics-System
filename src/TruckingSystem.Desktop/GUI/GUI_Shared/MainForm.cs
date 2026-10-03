@@ -10,6 +10,7 @@ using TruckingSystem.Desktop.GUI_FuelManagement;
 using TruckingSystem.Desktop.GUI_TripManagement;
 using TruckingSystem.Desktop.GUI_VehicleManagement;
 using TruckingSystem.Desktop.GUI_WarehouseManagement;
+using TruckingSystem.Desktop.GUI_DriverManagement;
 
 namespace TruckingSystem.Desktop.GUI_Shared
 {
@@ -70,6 +71,7 @@ namespace TruckingSystem.Desktop.GUI_Shared
                 ("🏬", "Kho trung chuyển", () => new WarehousesControl(_api)),
                 ("👥", "Khách hàng", () => new CustomersControl(_api)),
                 ("🧑‍💼", "Nhân viên", () => new EmployeesControl(_api)),
+                ("🚕", "Tài xế", () => new DriversControl(_api)),
                 ("🧾", "Hóa đơn", () => new InvoicesControl(_api)),
                 ("📜", "Nhật ký hệ thống", () => new TruckingSystem.Desktop.GUI_AuditLogManagement.AuditLogsControl(_api)),
             };

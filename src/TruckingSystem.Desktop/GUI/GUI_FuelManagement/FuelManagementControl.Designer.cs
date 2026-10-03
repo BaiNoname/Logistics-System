@@ -29,7 +29,7 @@ namespace TruckingSystem.Desktop.GUI_FuelManagement
             lblTitle.ForeColor = Color.FromArgb(15, 23, 42);
             lblTitle.Location = new Point(0, 0);
             lblTitle.Name = "lblTitle";
-            lblTitle.Size = new Size(201, 25);
+            lblTitle.Size = new Size(285, 36);
             lblTitle.TabIndex = 0;
             lblTitle.Text = "⛽ Quản lý Nhiên liệu";
             // 
@@ -68,9 +68,11 @@ namespace TruckingSystem.Desktop.GUI_FuelManagement
             // 
             // gridProviders
             // 
+            gridProviders.ColumnHeadersHeight = 34;
             gridProviders.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
             gridProviders.Location = new Point(0, 90);
             gridProviders.Name = "gridProviders";
+            gridProviders.RowHeadersWidth = 62;
             gridProviders.Size = new Size(1200, 440);
             gridProviders.TabIndex = 3;
             // 
@@ -81,12 +83,12 @@ namespace TruckingSystem.Desktop.GUI_FuelManagement
             lblStatus.ForeColor = Color.FromArgb(100, 116, 139);
             lblStatus.Location = new Point(0, 540);
             lblStatus.Name = "lblStatus";
-            lblStatus.Size = new Size(0, 15);
+            lblStatus.Size = new Size(0, 25);
             lblStatus.TabIndex = 4;
             // 
             // FuelManagementControl
             // 
-            AutoScaleDimensions = new SizeF(96F, 96F);
+            AutoScaleDimensions = new SizeF(144F, 144F);
             BackColor = Color.FromArgb(241, 245, 249);
             Controls.Add(lblTitle);
             Controls.Add(btnAddProvider);
@@ -95,7 +97,7 @@ namespace TruckingSystem.Desktop.GUI_FuelManagement
             Controls.Add(lblStatus);
             Name = "FuelManagementControl";
             Padding = new Padding(24);
-            Size = new Size(1566, 589);
+            Size = new Size(1417, 568);
             ((System.ComponentModel.ISupportInitialize)gridProviders).EndInit();
             ResumeLayout(false);
             PerformLayout();

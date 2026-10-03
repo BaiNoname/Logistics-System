@@ -69,7 +69,8 @@ public class VehicleAllocationService : IVehicleAllocationService
         // bấm 2 lần (double-click, hoặc mở lại form bấm lại) sẽ tạo THÊM 1 bộ
         // Trip mới đè lên bộ cũ, giao hàng trùng lặp thật sự (không chỉ là lỗi
         // hiển thị). Chỉ cho chia xe khi đơn CHƯA có Trip nào.
-        var hasExistingTrips = await _db.Trips.AnyAsync(t => t.TransportOrderId == transportOrderId);
+        var hasExistingTrips = await _db.Trips.AnyAsync(t =>
+            t.TransportOrderId == transportOrderId && t.Status != TripStatus.Cancelled);
         if (hasExistingTrips)
             return new AllocateVehiclesResponse(false, 0, 0, new(), "Đơn này đã được chia xe rồi — không thể chia lại lần nữa.");
 

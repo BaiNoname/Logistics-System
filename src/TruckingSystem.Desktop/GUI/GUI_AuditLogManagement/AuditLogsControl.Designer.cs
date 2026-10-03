@@ -31,8 +31,9 @@ namespace TruckingSystem.Desktop.GUI_AuditLogManagement
             lblTitle.Font = new Font("Segoe UI", 16F, FontStyle.Bold);
             lblTitle.ForeColor = Color.FromArgb(15, 23, 42);
             lblTitle.Location = new Point(0, 0);
+            lblTitle.Margin = new Padding(4, 0, 4, 0);
             lblTitle.Name = "lblTitle";
-            lblTitle.Size = new Size(316, 30);
+            lblTitle.Size = new Size(462, 45);
             lblTitle.TabIndex = 0;
             lblTitle.Text = "Nhật ký hệ thống (Audit Log)";
             // 
@@ -41,51 +42,57 @@ namespace TruckingSystem.Desktop.GUI_AuditLogManagement
             lblAction.AutoSize = true;
             lblAction.Font = new Font("Segoe UI", 9F);
             lblAction.ForeColor = Color.FromArgb(100, 116, 139);
-            lblAction.Location = new Point(0, 46);
+            lblAction.Location = new Point(0, 58);
+            lblAction.Margin = new Padding(4, 0, 4, 0);
             lblAction.Name = "lblAction";
-            lblAction.Size = new Size(117, 15);
+            lblAction.Size = new Size(176, 25);
             lblAction.TabIndex = 1;
             lblAction.Text = "Lọc theo hành động:";
             // 
             // cboAction
             // 
             cboAction.DropDownStyle = ComboBoxStyle.DropDownList;
-            cboAction.Location = new Point(0, 66);
+            cboAction.Location = new Point(0, 99);
+            cboAction.Margin = new Padding(4, 4, 4, 4);
             cboAction.Name = "cboAction";
-            cboAction.Size = new Size(220, 25);
+            cboAction.Size = new Size(328, 36);
             cboAction.TabIndex = 2;
             // 
             // chkFilterByDate
             // 
-            chkFilterByDate.Location = new Point(240, 41);
+            chkFilterByDate.Location = new Point(360, 52);
+            chkFilterByDate.Margin = new Padding(4, 4, 4, 4);
             chkFilterByDate.Name = "chkFilterByDate";
-            chkFilterByDate.Size = new Size(160, 24);
+            chkFilterByDate.Size = new Size(240, 36);
             chkFilterByDate.TabIndex = 3;
             chkFilterByDate.Text = "Lọc theo khoảng ngày";
             // 
             // dtFrom
             // 
             dtFrom.Format = DateTimePickerFormat.Short;
-            dtFrom.Location = new Point(240, 66);
+            dtFrom.Location = new Point(360, 99);
+            dtFrom.Margin = new Padding(4, 4, 4, 4);
             dtFrom.Name = "dtFrom";
-            dtFrom.Size = new Size(140, 25);
+            dtFrom.Size = new Size(208, 34);
             dtFrom.TabIndex = 4;
             // 
             // lblTo
             // 
             lblTo.AutoSize = true;
-            lblTo.Location = new Point(388, 70);
+            lblTo.Location = new Point(582, 105);
+            lblTo.Margin = new Padding(4, 0, 4, 0);
             lblTo.Name = "lblTo";
-            lblTo.Size = new Size(21, 19);
+            lblTo.Size = new Size(29, 28);
             lblTo.TabIndex = 5;
             lblTo.Text = "→";
             // 
             // dtTo
             // 
             dtTo.Format = DateTimePickerFormat.Short;
-            dtTo.Location = new Point(410, 66);
+            dtTo.Location = new Point(615, 99);
+            dtTo.Margin = new Padding(4, 4, 4, 4);
             dtTo.Name = "dtTo";
-            dtTo.Size = new Size(140, 25);
+            dtTo.Size = new Size(208, 34);
             dtTo.TabIndex = 6;
             // 
             // btnFilter
@@ -97,9 +104,10 @@ namespace TruckingSystem.Desktop.GUI_AuditLogManagement
             btnFilter.FlatStyle = FlatStyle.Flat;
             btnFilter.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
             btnFilter.ForeColor = Color.White;
-            btnFilter.Location = new Point(570, 64);
+            btnFilter.Location = new Point(855, 96);
+            btnFilter.Margin = new Padding(4, 4, 4, 4);
             btnFilter.Name = "btnFilter";
-            btnFilter.Size = new Size(120, 30);
+            btnFilter.Size = new Size(180, 45);
             btnFilter.TabIndex = 7;
             btnFilter.Text = "🔍 Lọc";
             btnFilter.UseVisualStyleBackColor = false;
@@ -110,22 +118,26 @@ namespace TruckingSystem.Desktop.GUI_AuditLogManagement
             lblStatus.AutoSize = true;
             lblStatus.Font = new Font("Segoe UI", 9F);
             lblStatus.ForeColor = Color.FromArgb(100, 116, 139);
-            lblStatus.Location = new Point(0, 100);
+            lblStatus.Location = new Point(0, 150);
+            lblStatus.Margin = new Padding(4, 0, 4, 0);
             lblStatus.Name = "lblStatus";
-            lblStatus.Size = new Size(0, 15);
+            lblStatus.Size = new Size(0, 25);
             lblStatus.TabIndex = 8;
             // 
             // grid
             // 
+            grid.ColumnHeadersHeight = 34;
             grid.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
-            grid.Location = new Point(0, 125);
+            grid.Location = new Point(0, 188);
+            grid.Margin = new Padding(4, 4, 4, 4);
             grid.Name = "grid";
-            grid.Size = new Size(1200, 440);
+            grid.RowHeadersWidth = 62;
+            grid.Size = new Size(1800, 660);
             grid.TabIndex = 9;
             // 
             // AuditLogsControl
             // 
-            AutoScaleDimensions = new SizeF(96F, 96F);
+            AutoScaleDimensions = new SizeF(144F, 144F);
             AutoScaleMode = AutoScaleMode.Dpi;
             BackColor = Color.White;
             Controls.Add(lblTitle);
@@ -138,9 +150,10 @@ namespace TruckingSystem.Desktop.GUI_AuditLogManagement
             Controls.Add(btnFilter);
             Controls.Add(lblStatus);
             Controls.Add(grid);
+            Margin = new Padding(6, 6, 6, 6);
             Name = "AuditLogsControl";
-            Padding = new Padding(24);
-            Size = new Size(1200, 600);
+            Padding = new Padding(36, 36, 36, 36);
+            Size = new Size(1800, 900);
             ((System.ComponentModel.ISupportInitialize)grid).EndInit();
             ResumeLayout(false);
             PerformLayout();

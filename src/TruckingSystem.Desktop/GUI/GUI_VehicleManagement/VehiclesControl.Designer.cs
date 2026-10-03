@@ -28,10 +28,9 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
             // 
             lblTitle.Font = new Font("Segoe UI", 18F, FontStyle.Bold);
             lblTitle.ForeColor = Color.FromArgb(15, 23, 42);
-            lblTitle.Location = new Point(0, 0);
-            lblTitle.Margin = new Padding(2, 0, 2, 0);
+            lblTitle.Location = new Point(3, 11);
             lblTitle.Name = "lblTitle";
-            lblTitle.Size = new Size(245, 49);
+            lblTitle.Size = new Size(139, 49);
             lblTitle.TabIndex = 0;
             lblTitle.Text = "Đội xe";
             // 
