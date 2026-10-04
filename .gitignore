@@ -20,7 +20,6 @@ publish/
 !.env.example
 appsettings.json
 *.publishsettings
-
 # ==== Log/cache khác ====
 *.log
 *.tmp
