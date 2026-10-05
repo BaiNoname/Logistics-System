@@ -1611,6 +1611,12 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp without time zone");
 
+                    b.Property<decimal?>("DoorOffsetMeters")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<int?>("DoorSide")
+                        .HasColumnType("integer");
+
                     b.Property<double?>("Lat")
                         .HasColumnType("double precision");
 

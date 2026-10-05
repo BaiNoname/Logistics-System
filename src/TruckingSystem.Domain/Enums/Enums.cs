@@ -41,3 +41,9 @@ public enum WarehouseTxnType { Receipt, Issue }
 
 /// <summary>Loại khu vực trong kho — quyết định hàng dễ vỡ/nguy hiểm phải xếp đúng khu riêng.</summary>
 public enum ZoneType { Normal, Fragile, Hazmat }
+
+/// <summary>Bức tường có cửa kho — cửa LUÔN nằm trên tường (không thể ở giữa kho).
+/// Quy ước tọa độ sơ đồ: X chạy theo chiều DÀI kho, Y chạy theo chiều RỘNG kho,
+/// gốc (0,0) ở góc trên-trái. Top: Y = 0 · Bottom: Y = chiều rộng ·
+/// Left: X = 0 · Right: X = chiều dài.</summary>
+public enum WallSide { Top, Bottom, Left, Right }

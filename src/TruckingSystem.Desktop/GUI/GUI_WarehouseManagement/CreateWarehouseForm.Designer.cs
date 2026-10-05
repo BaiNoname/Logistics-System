@@ -27,11 +27,17 @@ partial class CreateWarehouseForm
         this.lblWidth = new System.Windows.Forms.Label();
         this.numWidth = new System.Windows.Forms.NumericUpDown();
         this.lblAreaNote = new System.Windows.Forms.Label();
+        this.lblDoorSide = new System.Windows.Forms.Label();
+        this.cboDoorSide = new System.Windows.Forms.ComboBox();
+        this.lblDoorOffset = new System.Windows.Forms.Label();
+        this.numDoorOffset = new System.Windows.Forms.NumericUpDown();
+        this.lblDoorNote = new System.Windows.Forms.Label();
         this.btnSave = new System.Windows.Forms.Button();
         this.lblStatus = new System.Windows.Forms.Label();
         ((System.ComponentModel.ISupportInitialize)(this.numCapacity)).BeginInit();
         ((System.ComponentModel.ISupportInitialize)(this.numLength)).BeginInit();
         ((System.ComponentModel.ISupportInitialize)(this.numWidth)).BeginInit();
+        ((System.ComponentModel.ISupportInitialize)(this.numDoorOffset)).BeginInit();
         this.SuspendLayout();
         //
         // lblName
@@ -130,9 +136,47 @@ partial class CreateWarehouseForm
         this.lblAreaNote.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
         this.lblAreaNote.Text = "💡 Diện tích sàn = Dài × Rộng — dùng để vẽ sơ đồ tổng quan kho đúng tỉ lệ thật ở màn Kho trung chuyển.";
         //
+        // lblDoorSide
+        //
+        this.lblDoorSide.Location = new System.Drawing.Point(24, 318);
+        this.lblDoorSide.Size = new System.Drawing.Size(190, 18);
+        this.lblDoorSide.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
+        this.lblDoorSide.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
+        this.lblDoorSide.Text = "🚪 Cửa kho nằm ở";
+        //
+        // cboDoorSide
+        //
+        this.cboDoorSide.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+        this.cboDoorSide.Location = new System.Drawing.Point(24, 338);
+        this.cboDoorSide.Size = new System.Drawing.Size(190, 23);
+        //
+        // lblDoorOffset
+        //
+        this.lblDoorOffset.Location = new System.Drawing.Point(234, 318);
+        this.lblDoorOffset.Size = new System.Drawing.Size(190, 18);
+        this.lblDoorOffset.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
+        this.lblDoorOffset.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
+        this.lblDoorOffset.Text = "Cách góc (mét)";
+        //
+        // numDoorOffset
+        //
+        this.numDoorOffset.Location = new System.Drawing.Point(234, 338);
+        this.numDoorOffset.Size = new System.Drawing.Size(190, 23);
+        this.numDoorOffset.DecimalPlaces = 1;
+        this.numDoorOffset.Maximum = new decimal(new int[] { 1000, 0, 0, 0 });
+        this.numDoorOffset.Enabled = false;
+        //
+        // lblDoorNote
+        //
+        this.lblDoorNote.Location = new System.Drawing.Point(24, 366);
+        this.lblDoorNote.Size = new System.Drawing.Size(400, 36);
+        this.lblDoorNote.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
+        this.lblDoorNote.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
+        this.lblDoorNote.Text = "Tường trên/dưới: đo từ góc TRÁI · Tường trái/phải: đo từ góc TRÊN. Hệ thống tự tính khoảng cách tới cửa của từng ô.";
+        //
         // btnSave
         //
-        this.btnSave.Location = new System.Drawing.Point(120, 360);
+        this.btnSave.Location = new System.Drawing.Point(120, 440);
         this.btnSave.Size = new System.Drawing.Size(200, 40);
         this.btnSave.Text = "Lưu kho mới";
         this.btnSave.BackColor = TruckingSystem.Desktop.Common.Theme.Primary;
@@ -146,7 +190,7 @@ partial class CreateWarehouseForm
         //
         // lblStatus
         //
-        this.lblStatus.Location = new System.Drawing.Point(24, 330);
+        this.lblStatus.Location = new System.Drawing.Point(24, 408);
         this.lblStatus.Size = new System.Drawing.Size(400, 25);
         this.lblStatus.ForeColor = TruckingSystem.Desktop.Common.Theme.Danger;
         this.lblStatus.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
@@ -156,7 +200,7 @@ partial class CreateWarehouseForm
         this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
         this.AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
         this.BackColor = System.Drawing.Color.White;
-        this.ClientSize = new System.Drawing.Size(460, 420);
+        this.ClientSize = new System.Drawing.Size(460, 500);
         this.Controls.Add(this.lblName);
         this.Controls.Add(this.txtName);
         this.Controls.Add(this.lblAddress);
@@ -170,6 +214,11 @@ partial class CreateWarehouseForm
         this.Controls.Add(this.lblWidth);
         this.Controls.Add(this.numWidth);
         this.Controls.Add(this.lblAreaNote);
+        this.Controls.Add(this.lblDoorSide);
+        this.Controls.Add(this.cboDoorSide);
+        this.Controls.Add(this.lblDoorOffset);
+        this.Controls.Add(this.numDoorOffset);
+        this.Controls.Add(this.lblDoorNote);
         this.Controls.Add(this.lblStatus);
         this.Controls.Add(this.btnSave);
         this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
@@ -180,6 +229,7 @@ partial class CreateWarehouseForm
         ((System.ComponentModel.ISupportInitialize)(this.numCapacity)).EndInit();
         ((System.ComponentModel.ISupportInitialize)(this.numLength)).EndInit();
         ((System.ComponentModel.ISupportInitialize)(this.numWidth)).EndInit();
+        ((System.ComponentModel.ISupportInitialize)(this.numDoorOffset)).EndInit();
         this.ResumeLayout(false);
         this.PerformLayout();
     }
@@ -198,6 +248,11 @@ partial class CreateWarehouseForm
     private System.Windows.Forms.NumericUpDown numLength;
     private System.Windows.Forms.Label lblWidth;
     private System.Windows.Forms.NumericUpDown numWidth;
+    private System.Windows.Forms.Label lblDoorSide;
+    private System.Windows.Forms.ComboBox cboDoorSide;
+    private System.Windows.Forms.Label lblDoorOffset;
+    private System.Windows.Forms.NumericUpDown numDoorOffset;
+    private System.Windows.Forms.Label lblDoorNote;
     private System.Windows.Forms.Label lblAreaNote;
     private System.Windows.Forms.Button btnSave;
     private System.Windows.Forms.Label lblStatus;
