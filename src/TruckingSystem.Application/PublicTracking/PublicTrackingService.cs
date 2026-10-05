@@ -24,7 +24,7 @@ public class PublicTrackingService : IPublicTrackingService
         // nào đang diễn ra) — tránh trộn lẫn 2 chặng gây hiểu nhầm cho khách
         // hàng (VD: khách tưởng xe đang tới chỗ mình, nhưng thật ra là xe đang
         // đi lấy hàng từ người gửi khác).
-        var activeTrip = order.Trips.FirstOrDefault(t => t.Status == TripStatus.InProgress);
+        var activeTrip = order.Trips.FirstOrDefault(t => t.Status == TripStatus.InProgress || t.Status == TripStatus.PendingConfirmation);
 
         double? lastLat = null, lastLng = null;
         DateTime? lastUpdatedAt = null;
@@ -62,11 +62,13 @@ public class PublicTrackingService : IPublicTrackingService
         var deliveryTrip = trips.FirstOrDefault(t => t.LegType == TripLegType.Delivery);
 
         if (deliveryTrip?.Status == TripStatus.InProgress) return "🚚 Đang trên đường giao tới bạn";
+        if (deliveryTrip?.Status == TripStatus.PendingConfirmation) return "📍 Tài xế báo đã tới nơi, đang chờ xác nhận giao hàng";
         if (deliveryTrip?.Status == TripStatus.Completed) return "✅ Đã giao hàng thành công";
 
         if (pickupTrip != null)
         {
             if (pickupTrip.Status == TripStatus.InProgress) return "🔽 Đang lấy hàng từ người gửi";
+            if (pickupTrip.Status == TripStatus.PendingConfirmation) return "📦 Tài xế báo đã lấy hàng xong, đang chờ xác nhận";
             if (pickupTrip.Status == TripStatus.Completed) return "📦 Hàng đã về kho, đang chuẩn bị giao";
         }
 

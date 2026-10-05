@@ -502,7 +502,13 @@ public class WarehouseSlottingService : IWarehouseSlottingService
         // LƯU VĨNH VIỄN sẽ để lại đúng tình huống "hàng ma" (tăng tồn kho tổng
         // nhưng KHÔNG có StorageAssignment tương ứng) — cùng loại lỗi đã sửa
         // trước đây, chỉ khác nguyên nhân kỹ thuật gây ra.
-        await using var transaction = await _db.Database.BeginTransactionAsync();
+        // CHỈ tự mở transaction nếu CHƯA có transaction nào đang mở. Hàm này được
+        // gọi LỒNG bên trong transaction khác (Chia xe đơn khách tự mang tới; Duyệt/
+        // Hoàn tất chuyến Lấy hàng) — EF Core không cho mở 2 transaction lồng nhau,
+        // trước đây gây lỗi 500. Khi bị gọi lồng: dùng chung transaction bên ngoài,
+        // bên ngoài tự Commit/Rollback cho toàn bộ.
+        var ownsTransaction = _db.Database.CurrentTransaction is null;
+        await using var transaction = ownsTransaction ? await _db.Database.BeginTransactionAsync() : null;
 
         var receipt = new GoodsReceipt
         {
@@ -537,7 +543,7 @@ public class WarehouseSlottingService : IWarehouseSlottingService
             });
         }
         await _db.SaveChangesAsync();
-        await transaction.CommitAsync();
+        if (ownsTransaction) await transaction!.CommitAsync();
 
         var binCodesUsed = targetAllocations.Select(a => a.Bin.Code).ToList();
         var multiNote = binCodesUsed.Count > 1 ? $"⚠️ Đã chia ra {binCodesUsed.Count} vị trí: {string.Join(", ", binCodesUsed)}." : null;

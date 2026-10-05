@@ -16,6 +16,9 @@
         {
             lblTitle = new Label();
             btnRefresh = new Button();
+            btnAddDriver = new Button();
+            btnEditProfile = new Button();
+            btnSchedule = new Button();
             lblStatus = new Label();
             grid = new DataGridView();
             ((System.ComponentModel.ISupportInitialize)grid).BeginInit();
@@ -27,7 +30,7 @@
             lblTitle.ForeColor = Color.FromArgb(15, 23, 42);
             lblTitle.Location = new Point(0, 11);
             lblTitle.Name = "lblTitle";
-            lblTitle.Size = new Size(300, 60);
+            lblTitle.Size = new Size(200, 60);
             lblTitle.TabIndex = 0;
             lblTitle.Text = "Tài xế";
             // 
@@ -47,6 +50,55 @@
             btnRefresh.UseVisualStyleBackColor = false;
             btnRefresh.Click += BtnRefresh_Click;
             // 
+            // btnAddDriver
+            // 
+            btnAddDriver.BackColor = Color.FromArgb(37, 99, 235);
+            btnAddDriver.Cursor = Cursors.Hand;
+            btnAddDriver.FlatAppearance.BorderSize = 0;
+            btnAddDriver.FlatAppearance.MouseOverBackColor = Color.FromArgb(29, 78, 216);
+            btnAddDriver.FlatStyle = FlatStyle.Flat;
+            btnAddDriver.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+            btnAddDriver.ForeColor = Color.White;
+            btnAddDriver.Location = new Point(587, 11);
+            btnAddDriver.Name = "btnAddDriver";
+            btnAddDriver.Size = new Size(180, 46);
+            btnAddDriver.TabIndex = 2;
+            btnAddDriver.Text = "➕ Thêm tài xế";
+            btnAddDriver.UseVisualStyleBackColor = false;
+            btnAddDriver.Click += BtnAddDriver_Click;
+            // 
+            // btnEditProfile
+            // 
+            btnEditProfile.BackColor = Color.White;
+            btnEditProfile.Cursor = Cursors.Hand;
+            btnEditProfile.FlatAppearance.MouseOverBackColor = Color.FromArgb(248, 250, 252);
+            btnEditProfile.FlatStyle = FlatStyle.Flat;
+            btnEditProfile.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+            btnEditProfile.ForeColor = Color.FromArgb(15, 23, 42);
+            btnEditProfile.Location = new Point(773, 11);
+            btnEditProfile.Name = "btnEditProfile";
+            btnEditProfile.Size = new Size(170, 46);
+            btnEditProfile.TabIndex = 3;
+            btnEditProfile.Text = "✏️ Sửa hồ sơ";
+            btnEditProfile.UseVisualStyleBackColor = false;
+            btnEditProfile.Click += BtnEditProfile_Click;
+            // 
+            // btnSchedule
+            // 
+            btnSchedule.BackColor = Color.White;
+            btnSchedule.Cursor = Cursors.Hand;
+            btnSchedule.FlatAppearance.MouseOverBackColor = Color.FromArgb(248, 250, 252);
+            btnSchedule.FlatStyle = FlatStyle.Flat;
+            btnSchedule.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+            btnSchedule.ForeColor = Color.FromArgb(15, 23, 42);
+            btnSchedule.Location = new Point(951, 11);
+            btnSchedule.Name = "btnSchedule";
+            btnSchedule.Size = new Size(101, 46);
+            btnSchedule.TabIndex = 4;
+            btnSchedule.Text = "📅 Lịch";
+            btnSchedule.UseVisualStyleBackColor = false;
+            btnSchedule.Click += BtnSchedule_Click;
+            // 
             // lblStatus
             // 
             lblStatus.AutoSize = true;
@@ -55,7 +107,7 @@
             lblStatus.Location = new Point(0, 44);
             lblStatus.Name = "lblStatus";
             lblStatus.Size = new Size(0, 25);
-            lblStatus.TabIndex = 2;
+            lblStatus.TabIndex = 5;
             // 
             // grid
             // 
@@ -65,7 +117,7 @@
             grid.Name = "grid";
             grid.RowHeadersWidth = 62;
             grid.Size = new Size(1217, 560);
-            grid.TabIndex = 3;
+            grid.TabIndex = 6;
             // 
             // DriversControl
             // 
@@ -73,6 +125,9 @@
             BackColor = Color.FromArgb(241, 245, 249);
             Controls.Add(lblTitle);
             Controls.Add(btnRefresh);
+            Controls.Add(btnAddDriver);
+            Controls.Add(btnEditProfile);
+            Controls.Add(btnSchedule);
             Controls.Add(lblStatus);
             Controls.Add(grid);
             Name = "DriversControl";
@@ -86,6 +141,9 @@
 
         private System.Windows.Forms.Label lblTitle;
         private System.Windows.Forms.Button btnRefresh;
+        private System.Windows.Forms.Button btnAddDriver;
+        private System.Windows.Forms.Button btnEditProfile;
+        private System.Windows.Forms.Button btnSchedule;
         private System.Windows.Forms.Label lblStatus;
         private System.Windows.Forms.DataGridView grid;
     }

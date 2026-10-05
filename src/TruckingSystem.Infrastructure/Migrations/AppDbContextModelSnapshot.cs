@@ -935,7 +935,6 @@ namespace TruckingSystem.Infrastructure.Migrations
                         .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("UserId")
-                        .IsRequired()
                         .HasColumnType("text");
 
                     b.HasKey("Id");

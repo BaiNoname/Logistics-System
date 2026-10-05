@@ -19,12 +19,26 @@ public class NotificationService : INotificationService
         await GenerateVehicleDocumentAlertsAsync(userId);
         await GenerateDriverScheduleAlertsAsync(userId);
 
+        // Lấy CẢ thông báo riêng của user này LẪN thông báo CHUNG (UserId =
+        // null, xem CreateBroadcastAsync) — ví dụ tài xế báo xong chuyến, cần
+        // Vận hành (bất kỳ ai đang trực) thấy và duyệt.
         return await _db.Notifications
-            .Where(n => n.UserId == userId)
+            .Where(n => n.UserId == userId || n.UserId == null)
             .OrderByDescending(n => n.CreatedAt)
             .Take(50) // giới hạn 50 thông báo gần nhất, tránh danh sách phình to vô hạn
             .Select(n => new NotificationDto(n.Id, n.Title, n.Message, n.IsRead, n.CreatedAt))
             .ToListAsync();
+    }
+
+    /// <summary>Tạo thông báo CHUNG (UserId = null) — không kiểm tra trùng lặp
+    /// theo tiêu đề như 2 hàm Generate* bên dưới, vì mỗi lần gọi hàm này đều
+    /// ứng với 1 SỰ KIỆN THẬT riêng biệt đã xảy ra (VD tài xế báo xong chuyến
+    /// #15 rồi lại báo xong chuyến #16 — đây là 2 thông báo khác nhau, không
+    /// phải lặp lại cùng 1 cảnh báo).</summary>
+    public async Task CreateBroadcastAsync(string title, string message)
+    {
+        _db.Notifications.Add(new Notification { UserId = null, Title = title, Message = message, IsRead = false });
+        await _db.SaveChangesAsync();
     }
 
     /// <summary>Quét TOÀN BỘ giấy tờ xe (Đăng kiểm/Bảo hiểm/Giấy phép vận tải)
@@ -109,7 +123,11 @@ public class NotificationService : INotificationService
 
     public async Task MarkAllAsReadAsync(string userId)
     {
-        var unread = await _db.Notifications.Where(n => n.UserId == userId && !n.IsRead).ToListAsync();
+        // Gồm cả thông báo CHUNG (UserId = null) — nếu không, bấm "Đánh dấu tất cả đã
+        // đọc" sẽ bỏ sót đúng loại thông báo "tài xế báo xong chuyến, chờ duyệt".
+        // Lưu ý: thông báo chung dùng CHUNG 1 cờ IsRead cho mọi người — 1 người đã
+        // đọc thì người khác cũng thấy là đã đọc (chấp nhận được với quy mô đồ án).
+        var unread = await _db.Notifications.Where(n => (n.UserId == userId || n.UserId == null) && !n.IsRead).ToListAsync();
         foreach (var n in unread) n.IsRead = true;
         await _db.SaveChangesAsync();
     }

@@ -4,7 +4,7 @@ public enum EmployeeStatus { Active, OnLeave, Terminated }
 
 public enum TransportOrderStatus { Draft, Confirmed, InProgress, Done, Cancelled }
 
-public enum TripStatus { Planned, InProgress, Completed, Cancelled }
+public enum TripStatus { Planned, InProgress, Completed, Cancelled, PendingConfirmation }
 
 public enum TripLineStatus { Planned, Picked, Delivered }
 

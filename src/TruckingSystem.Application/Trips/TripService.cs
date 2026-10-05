@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using TruckingSystem.Application.Calendar;
 using TruckingSystem.Application.Common.Interfaces;
 using TruckingSystem.Application.Routing;
+using TruckingSystem.Application.Notifications;
 using TruckingSystem.Application.Warehouses;
 using TruckingSystem.Domain.Entities;
 using TruckingSystem.Domain.Enums;
@@ -33,14 +34,16 @@ public class TripService : ITripService
 {
     private readonly IApplicationDbContext _db;
     private readonly IWarehouseSlottingService _warehouseService;
+    private readonly INotificationService _notificationService;
 
     private readonly IGoogleCalendarService _calendarService;
     private readonly IRouteProvider _routeProvider;
 
-    public TripService(IApplicationDbContext db, IWarehouseSlottingService warehouseService, IGoogleCalendarService calendarService, IRouteProvider routeProvider)
+    public TripService(IApplicationDbContext db, IWarehouseSlottingService warehouseService, INotificationService notificationService, IGoogleCalendarService calendarService, IRouteProvider routeProvider)
     {
         _db = db;
         _warehouseService = warehouseService;
+        _notificationService = notificationService;
         _calendarService = calendarService;
         _routeProvider = routeProvider;
     }
@@ -107,6 +110,11 @@ public class TripService : ITripService
         if (trip.Status != TripStatus.Planned)
             return new TripActionResult(false, "Chỉ có thể bắt đầu chuyến đang ở trạng thái Đã lên kế hoạch (Planned).");
 
+        // Bọc transaction: chuyến có NHIỀU dòng hàng, nếu dòng 1 xuất kho xong mà
+        // dòng 2 lỗi (thiếu tồn) thì trước đây dòng 1 ĐÃ BỊ TRỪ KHO vĩnh viễn dù
+        // chuyến vẫn chưa bắt đầu. Giờ return khi chưa Commit -> tự Rollback hết.
+        await using var transaction = await _db.Database.BeginTransactionAsync();
+
         // Chặng Delivery bắt đầu chạy = hàng THẬT SỰ rời khỏi kho — xuất kho
         // ngay tại đây (không đợi tới lúc giao xong, vì giao xong đã sang xe khác chở đi rồi).
         if (trip.LegType == TripLegType.Delivery && trip.WarehouseId.HasValue)
@@ -129,9 +137,14 @@ public class TripService : ITripService
             trip.TransportOrder.Status = TransportOrderStatus.InProgress;
 
         await _db.SaveChangesAsync();
+        await transaction.CommitAsync();
         return new TripActionResult(true, null);
     }
 
+    /// <summary>Dispatcher tự bấm Hoàn tất trên Desktop = tự họ đã xác nhận/
+    /// duyệt luôn (họ đang trực tiếp thao tác), nên hoàn tất NGAY — KHÔNG qua
+    /// bước "Chờ xác nhận" (bước đó chỉ áp dụng khi TÀI XẾ tự báo qua app, xem
+    /// ConfirmArrivalAsync + ApproveCompletionAsync).</summary>
     public async Task<TripActionResult> CompleteAsync(int id)
     {
         var trip = await LoadTripForArrivalAsync(id);
@@ -139,7 +152,52 @@ public class TripService : ITripService
         if (trip.Status != TripStatus.InProgress)
             return new TripActionResult(false, "Chỉ có thể hoàn tất chuyến đang ở trạng thái Đang chạy (InProgress).");
 
-        await HandleArrivalAsync(trip);
+        return await FinalizeTripAsync(trip);
+    }
+
+    /// <summary>Vận hành (Dispatcher) DUYỆT xác nhận "đã xong" của tài xế —
+    /// PendingConfirmation -> Completed THẬT SỰ (lúc này mới nhập/xuất kho,
+    /// trả xe rảnh, tính tiến độ đơn — xem HandleArrivalAsync).</summary>
+    public async Task<TripActionResult> ApproveCompletionAsync(int id)
+    {
+        var trip = await LoadTripForArrivalAsync(id);
+        if (trip is null) return new TripActionResult(false, "Không tìm thấy chuyến.");
+        if (trip.Status != TripStatus.PendingConfirmation)
+            return new TripActionResult(false, "Chuyến này không ở trạng thái Chờ xác nhận.");
+
+        return await FinalizeTripAsync(trip);
+    }
+
+    /// <summary>Hoàn tất THẬT SỰ 1 chuyến (dùng chung cho Dispatcher tự Hoàn tất
+    /// và Duyệt xác nhận của tài xế) — bọc trọn trong 1 transaction cùng các thao
+    /// tác kho. Nếu nhập/xuất kho thất bại (VD kho hết chỗ, thiếu khu vực phù
+    /// hợp), Rollback toàn bộ: chuyến GIỮ NGUYÊN trạng thái cũ, báo lỗi rõ ràng
+    /// cho Dispatcher xử lý (thêm vị trí kho...) rồi bấm lại — thay vì như trước:
+    /// chuyến thành "Hoàn tất" nhưng hàng không hề vào kho.</summary>
+    private async Task<TripActionResult> FinalizeTripAsync(Trip trip)
+    {
+        await using var transaction = await _db.Database.BeginTransactionAsync();
+
+        var error = await HandleArrivalAsync(trip);
+        if (error is not null)
+            return new TripActionResult(false, error); // chưa Commit -> tự Rollback khi dispose
+
+        await _db.SaveChangesAsync();
+        await transaction.CommitAsync();
+        return new TripActionResult(true, null);
+    }
+
+    /// <summary>Vận hành TỪ CHỐI xác nhận của tài xế (VD bấm nhầm) — đẩy
+    /// chuyến quay lại Đang chạy (InProgress) để tài xế tiếp tục/báo lại cho
+    /// đúng. KHÔNG đụng gì tới kho/xe (chưa có gì xảy ra ở bước này cả).</summary>
+    public async Task<TripActionResult> RejectCompletionAsync(int id)
+    {
+        var trip = await _db.Trips.FirstOrDefaultAsync(t => t.Id == id);
+        if (trip is null) return new TripActionResult(false, "Không tìm thấy chuyến.");
+        if (trip.Status != TripStatus.PendingConfirmation)
+            return new TripActionResult(false, "Chuyến này không ở trạng thái Chờ xác nhận.");
+
+        trip.Status = TripStatus.InProgress;
         await _db.SaveChangesAsync();
         return new TripActionResult(true, null);
     }
@@ -178,6 +236,13 @@ public class TripService : ITripService
         var trip = await _db.Trips.FirstOrDefaultAsync(t => t.Id == tripId);
         if (trip is null) return new ServiceResult(false, "Không tìm thấy chuyến.");
 
+        // Chỉ ghi GPS khi chuyến THẬT SỰ đang chạy — chuyến đã báo Hoàn tất
+        // (Chờ xác nhận), đã Hoàn tất hẳn, hay đã Hủy đều KHÔNG ghi tiếp, tránh
+        // phình database vô ích (app tài xế vẫn có thể lỡ gửi thêm vài điểm
+        // cuối trước khi nhận ra, không coi là lỗi nghiêm trọng).
+        if (trip.Status != TripStatus.Planned && trip.Status != TripStatus.InProgress)
+            return new ServiceResult(false, "Chuyến này không còn ghi nhận GPS nữa.");
+
         _db.Waypoints.Add(new Waypoint
         {
             TripId = tripId,
@@ -199,15 +264,30 @@ public class TripService : ITripService
         return new ServiceResult(true, null);
     }
 
+    /// <summary>Tài xế báo "đã xong" qua app — KHÔNG hoàn tất ngay, chỉ
+    /// chuyển sang PendingConfirmation (Chờ xác nhận) và tạo thông báo CHUNG
+    /// cho Vận hành biết để vào duyệt (ApproveCompletionAsync/RejectCompletionAsync
+    /// trên Desktop) — lúc đó mới THẬT SỰ tính là xong (nhập/xuất kho, trả xe
+    /// rảnh...). GPS cũng ngừng ghi ngay từ đây (xem PingAsync).</summary>
     public async Task<ServiceResult> ConfirmArrivalAsync(int tripId, ConfirmArrivalRequest request)
     {
-        var trip = await LoadTripForArrivalAsync(tripId);
+        var trip = await _db.Trips
+            .Include(t => t.TransportOrder)
+            .Include(t => t.DriverEmployee)
+            .FirstOrDefaultAsync(t => t.Id == tripId);
         if (trip is null) return new ServiceResult(false, "Không tìm thấy chuyến.");
         if (trip.Status != TripStatus.InProgress)
             return new ServiceResult(false, "Chuyến này không ở trạng thái đang chạy.");
 
-        await HandleArrivalAsync(trip);
+        trip.Status = TripStatus.PendingConfirmation;
         await _db.SaveChangesAsync();
+
+        var legText = trip.LegType == TripLegType.Pickup ? "lấy hàng" : trip.LegType == TripLegType.Return ? "trả hàng" : "giao hàng";
+        await _notificationService.CreateBroadcastAsync(
+            $"🟢 Tài xế báo xong chuyến #{trip.Id} — chờ duyệt",
+            $"Tài xế {trip.DriverEmployee.FullName} báo đã {legText} xong cho đơn {trip.TransportOrder.Code} (chuyến #{trip.Id}). " +
+            $"Vào màn Quản lý Chuyến để kiểm tra và Duyệt.");
+
         return new ServiceResult(true, null);
     }
 
@@ -577,7 +657,7 @@ public class TripService : ITripService
     ///     đã nhập kho (xem TransportOrderService.CancelAsync) — hoàn tất =
     ///     hàng THẬT SỰ rời kho trả lại đối tác, xuất kho tại đây, xe rảnh
     ///     lại NGAY (đây luôn là chặng CUỐI CÙNG, không còn gì tiếp theo).</summary>
-    private async Task HandleArrivalAsync(Trip trip)
+    private async Task<string?> HandleArrivalAsync(Trip trip)
     {
         trip.Status = TripStatus.Completed;
         trip.EndTime = DateTime.UtcNow;
@@ -600,9 +680,11 @@ public class TripService : ITripService
             await _db.SaveChangesAsync(); // lưu trạng thái Completed trước, tránh xung đột khi ReceiveGoodsAsync tự SaveChanges
             foreach (var line in trip.TripLines)
             {
-                await _warehouseService.ReceiveGoodsAsync(
+                var receiveResult = await _warehouseService.ReceiveGoodsAsync(
                     trip.WarehouseId.Value, trip.TransportOrderId, line.CargoLineId,
                     line.QtyPlanned, trip.DriverEmployeeId, trip.Id);
+                if (!receiveResult.Success)
+                    return "Không thể nhập kho: " + receiveResult.Message;
             }
             // Xe vẫn Status = OnTrip (đang tiếp tục chặng Delivery), không đổi
         }
@@ -614,12 +696,16 @@ public class TripService : ITripService
             await _db.SaveChangesAsync();
             foreach (var line in trip.TripLines)
             {
-                await _warehouseService.IssueGoodsAsync(
+                var issueResult = await _warehouseService.IssueGoodsAsync(
                     trip.WarehouseId.Value, trip.TransportOrderId, line.CargoLineId,
                     line.QtyPlanned, trip.DriverEmployeeId, trip.Id);
+                if (!issueResult.Success)
+                    return "Không thể xuất kho trả hàng: " + issueResult.Message;
             }
             trip.Vehicle.Status = VehicleStatus.Available;
         }
+
+        return null; // null = thành công
     }
 
     private static void RecalculateOrderProgress(TransportOrder order)

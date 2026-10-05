@@ -171,75 +171,79 @@ public class TransportOrderService : ITransportOrderService
         if (order.Status == TransportOrderStatus.Cancelled)
             return new OrderActionResult(false, "Đơn này đã bị hủy từ trước.");
 
-        var deliveryTrip = order.Trips.FirstOrDefault(t => t.LegType == TripLegType.Delivery);
-        var pickupTrip = order.Trips.FirstOrDefault(t => t.LegType == TripLegType.Pickup);
+        // Mức 3 — CHẶN nếu BẤT KỲ chuyến Giao hàng nào (của bất kỳ xe nào) đã
+        // xuất kho: đang chạy, đang chờ xác nhận, hoặc đã giao xong.
+        if (order.Trips.Any(t => t.LegType == TripLegType.Delivery
+                && t.Status is TripStatus.InProgress or TripStatus.PendingConfirmation or TripStatus.Completed))
+            return new OrderActionResult(false, "Đã có xe xuất kho và đang/đã giao hàng — không thể hủy đơn nữa.");
 
-        // Mức 3 — CHẶN nếu Giao hàng đã xuất kho (InProgress trở lên)
-        if (deliveryTrip != null && deliveryTrip.Status is TripStatus.InProgress or TripStatus.Completed)
-            return new OrderActionResult(false, "Hàng đã xuất kho và đang/đã giao đi — không thể hủy đơn nữa.");
-
-        // Đơn này ĐÃ CÓ tồn kho thật chưa? (CompanyPickup: Pickup Completed;
-        // SelfDelivery: hàng nhập ngay lúc chia xe, Delivery Planned là đủ)
+        // SelfDelivery: hàng nhập kho NGAY lúc Chia xe -> có tồn kho thật là đủ.
+        var isSelfDelivery = order.PickupMethod == PickupMethod.SelfDelivery;
         var cargoLineIds = order.CargoLines.Select(c => c.Id).ToList();
-        var hasRealStock = await _db.WarehouseStocks
+        var orderHasStock = isSelfDelivery && await _db.WarehouseStocks
             .AnyAsync(s => cargoLineIds.Contains(s.CargoLineId) && s.QtyOnHand > 0);
 
-        using var transaction = await _db.Database.BeginTransactionAsync();
-        try
-        {
-            if (hasRealStock && deliveryTrip != null)
-            {
-                // Mức 2 — Xác định xe/tài xế dùng cho chuyến Trả hàng: ưu
-                // tiên Pickup Trip (nếu có, CompanyPickup); nếu không thì
-                // dùng chính Delivery Trip hiện tại (SelfDelivery — xe/tài
-                // xế duy nhất từng gán, đã sẵn ở kho).
-                var sourceTrip = pickupTrip ?? deliveryTrip;
+        await using var transaction = await _db.Database.BeginTransactionAsync();
+        var reason = "Hủy theo đơn hàng #" + order.Id;
 
-                var returnTrip = new Trip
+        // Chia xe có thể tách 1 đơn ra NHIỀU XE — mỗi xe 1 cặp chuyến (Lấy hàng +
+        // Giao hàng, cùng xe + tài xế). Xử lý RIÊNG TỪNG XE, vì mỗi xe có thể đang
+        // ở giai đoạn khác nhau (xe A đã lấy hàng về kho, xe B còn đang đi lấy).
+        var tripsByVehicle = order.Trips
+            .Where(t => t.LegType != TripLegType.Return && t.Status != TripStatus.Cancelled)
+            .GroupBy(t => t.VehicleId);
+
+        foreach (var group in tripsByVehicle)
+        {
+            var pickup = group.FirstOrDefault(t => t.LegType == TripLegType.Pickup);
+            var delivery = group.FirstOrDefault(t => t.LegType == TripLegType.Delivery);
+
+            // Hàng của RIÊNG xe này đã thật sự nằm trong kho chưa?
+            var goodsInWarehouse = isSelfDelivery ? orderHasStock : pickup?.Status == TripStatus.Completed;
+
+            if (goodsInWarehouse && delivery != null)
+            {
+                // Mức 2 — tạo chuyến Trả hàng cho ĐÚNG phần hàng của xe này, dùng
+                // lại xe/tài xế đang ở sẵn gần kho. Xe CHƯA rảnh, còn phải chạy
+                // chuyến trả hàng (xe rảnh lại khi chuyến đó được Duyệt/Hoàn tất).
+                _db.Trips.Add(new Trip
                 {
                     TransportOrderId = order.Id,
-                    VehicleId = sourceTrip.VehicleId,
-                    DriverEmployeeId = sourceTrip.DriverEmployeeId,
-                    WarehouseId = sourceTrip.WarehouseId,
+                    VehicleId = delivery.VehicleId,
+                    DriverEmployeeId = delivery.DriverEmployeeId,
+                    WarehouseId = delivery.WarehouseId,
                     LegType = TripLegType.Return,
                     Status = TripStatus.Planned,
-                    TripLines = deliveryTrip.TripLines.Select(l => new TripLine
+                    TripLines = delivery.TripLines.Select(l => new TripLine
                     {
                         CargoLineId = l.CargoLineId,
                         QtyPlanned = l.QtyPlanned,
                     }).ToList(),
-                };
-                _db.Trips.Add(returnTrip);
+                });
 
-                deliveryTrip.Status = TripStatus.Cancelled;
-                deliveryTrip.CancelReason = "Hủy theo đơn hàng #" + order.Id;
-                // Xe CHƯA rảnh ngay — còn phải chạy xong chuyến Trả hàng đã
-                // tạo ở trên (giữ nguyên Vehicle.Status = OnTrip).
+                delivery.Status = TripStatus.Cancelled;
+                delivery.CancelReason = reason;
             }
             else
             {
-                // Mức 1 — Chưa có tồn kho thật nào -> hủy thẳng mọi Trip còn
-                // hoạt động, trả xe rảnh ngay.
-                foreach (var trip in order.Trips.Where(t =>
-                    t.Status == TripStatus.Planned || t.Status == TripStatus.InProgress))
+                // Mức 1 — hàng của xe này chưa vào kho -> hủy thẳng mọi chuyến còn
+                // hoạt động của xe này (gồm cả Lấy hàng đã báo xong nhưng CHƯA
+                // duyệt: hàng chưa nhập kho, nhập kho chỉ xảy ra lúc duyệt), trả xe.
+                foreach (var trip in group.Where(t =>
+                    t.Status is TripStatus.Planned or TripStatus.InProgress or TripStatus.PendingConfirmation))
                 {
                     trip.Status = TripStatus.Cancelled;
-                    trip.CancelReason = "Hủy theo đơn hàng #" + order.Id;
-                    if (trip.Vehicle != null)
-                        trip.Vehicle.Status = VehicleStatus.Available;
+                    trip.CancelReason = reason;
                 }
+                var vehicle = group.First().Vehicle;
+                if (vehicle != null) vehicle.Status = VehicleStatus.Available;
             }
+        }
 
-            order.Status = TransportOrderStatus.Cancelled;
-            await _db.SaveChangesAsync();
-            await transaction.CommitAsync();
-            return new OrderActionResult(true, null);
-        }
-        catch
-        {
-            await transaction.RollbackAsync();
-            throw;
-        }
+        order.Status = TransportOrderStatus.Cancelled;
+        await _db.SaveChangesAsync();
+        await transaction.CommitAsync();
+        return new OrderActionResult(true, null);
     }
 
     private static PickupMethod ParsePickupMethod(string value)

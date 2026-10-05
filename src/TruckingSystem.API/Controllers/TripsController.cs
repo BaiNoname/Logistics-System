@@ -35,6 +35,22 @@ public class TripsController : ControllerBase
         return Ok(result); // luôn 200 OK — Desktop tự đọc result.Success/Message, tránh PostAsync throw exception khi 400 làm mất thông báo rõ ràng
     }
 
+    /// <summary>Vận hành DUYỆT xác nhận "đã xong" của tài xế — PendingConfirmation -> Completed thật sự.</summary>
+    [HttpPost("{id:int}/approve-completion")]
+    public async Task<ActionResult<TripActionResult>> ApproveCompletion(int id)
+    {
+        var result = await _tripService.ApproveCompletionAsync(id);
+        return Ok(result);
+    }
+
+    /// <summary>Vận hành TỪ CHỐI xác nhận của tài xế — đẩy chuyến quay lại Đang chạy.</summary>
+    [HttpPost("{id:int}/reject-completion")]
+    public async Task<ActionResult<TripActionResult>> RejectCompletion(int id)
+    {
+        var result = await _tripService.RejectCompletionAsync(id);
+        return Ok(result);
+    }
+
     [HttpPost("{id:int}/fuel")]
     public async Task<ActionResult<TripActionResult>> RecordFuel(int id, RecordFuelRequest request)
     {
