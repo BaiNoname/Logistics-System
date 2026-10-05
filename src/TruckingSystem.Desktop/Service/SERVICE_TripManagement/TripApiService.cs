@@ -23,6 +23,14 @@ namespace TruckingSystem.Desktop.SERVICE_TripManagement
         public Task<TripActionResultItem> CompleteTripAsync(int id)
             => _conn.PostAsync<TripActionResultItem>($"/api/trips/{id}/complete", new { })!;
 
+        /// <summary>Duyệt xác nhận "đã xong" của tài xế — PendingConfirmation -> Completed thật sự.</summary>
+        public Task<TripActionResultItem> ApproveCompletionAsync(int id)
+            => _conn.PostAsync<TripActionResultItem>($"/api/trips/{id}/approve-completion", new { })!;
+
+        /// <summary>Từ chối xác nhận của tài xế — đẩy chuyến quay lại Đang chạy.</summary>
+        public Task<TripActionResultItem> RejectCompletionAsync(int id)
+            => _conn.PostAsync<TripActionResultItem>($"/api/trips/{id}/reject-completion", new { })!;
+
         /// <summary>Ghi nhận 1 lần đổ xăng thực tế.</summary>
         public Task<TripActionResultItem> RecordFuelAsync(int id, decimal liters, decimal cost, string? stationName)
             => _conn.PostAsync<TripActionResultItem>($"/api/trips/{id}/fuel", new { liters, cost, stationName })!;

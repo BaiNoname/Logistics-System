@@ -9,15 +9,29 @@ public interface ITripService
     /// (chưa tích hợp GPS thật để tự động chuyển).</summary>
     Task<TripActionResult> StartAsync(int id);
 
-    /// <summary>InProgress -> Completed. Thao tác thủ công tương tự — ÁP DỤNG
-    /// ĐÚNG logic phân biệt theo LegType (xem TripService.HandleArrivalAsync).</summary>
+    /// <summary>InProgress -> Completed TRỰC TIẾP (Dispatcher tự bấm trên
+    /// Desktop = tự họ đã duyệt luôn, KHÔNG qua bước Chờ xác nhận — bước đó
+    /// chỉ áp dụng khi TÀI XẾ tự báo qua app, xem ConfirmArrivalAsync).</summary>
     Task<TripActionResult> CompleteAsync(int id);
+
+    /// <summary>Vận hành (Dispatcher) DUYỆT xác nhận "đã xong" của tài xế —
+    /// PendingConfirmation -> Completed THẬT SỰ (lúc này mới nhập/xuất kho,
+    /// trả xe rảnh, tính tiến độ đơn).</summary>
+    Task<TripActionResult> ApproveCompletionAsync(int id);
+
+    /// <summary>Vận hành TỪ CHỐI xác nhận của tài xế (VD bấm nhầm) — đẩy
+    /// chuyến quay lại Đang chạy (InProgress) để tài xế tiếp tục/báo lại.</summary>
+    Task<TripActionResult> RejectCompletionAsync(int id);
 
     /// <summary>Ghi nhận 1 lần đổ xăng thực tế — tạo FuelLog, cộng dồn vào Trip.ActualFuelCost.</summary>
     Task<TripActionResult> RecordFuelAsync(int id, RecordFuelRequest request);
 
     // ---- App tài xế (đã có từ trước, giữ nguyên chữ ký) ----
     Task<ServiceResult> PingAsync(int tripId, GpsPingRequest request);
+
+    /// <summary>Tài xế báo "đã xong" — KHÔNG hoàn tất ngay, chuyển sang
+    /// PendingConfirmation (Chờ xác nhận) và tạo thông báo cho Vận hành; Vận
+    /// hành phải DUYỆT (ApproveCompletionAsync) mới thật sự tính là xong.</summary>
     Task<ServiceResult> ConfirmArrivalAsync(int tripId, ConfirmArrivalRequest request);
 
     /// <summary>Toàn bộ điểm GPS thật đã ghi nhận của 1 chuyến — dùng để vẽ

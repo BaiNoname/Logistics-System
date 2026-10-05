@@ -18,7 +18,7 @@ public class DriverService : IDriverService
         // Tài xế "Đang làm" — ĐÚNG Y HỆT điều kiện VehicleAllocationService
         // dùng để loại trừ tài xế bận khi chạy thuật toán Greedy.
         var busyDriverIds = await _db.Trips
-            .Where(t => t.Status == TripStatus.Planned || t.Status == TripStatus.InProgress)
+            .Where(t => t.Status == TripStatus.Planned || t.Status == TripStatus.InProgress || t.Status == TripStatus.PendingConfirmation)
             .Select(t => t.DriverEmployeeId)
             .Distinct()
             .ToListAsync();

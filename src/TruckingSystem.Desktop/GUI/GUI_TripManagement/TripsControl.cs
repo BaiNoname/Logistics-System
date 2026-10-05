@@ -20,7 +20,20 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
             Theme.StyleGrid(grid);
             Resize += (_, _) => { grid.Width = Width; grid.Height = Height - grid.Top; };
             grid.DataBindingComplete += (_, _) => { if (grid.Columns["Id"] != null) grid.Columns["Id"]!.Visible = false; };
+            grid.CellFormatting += Grid_CellFormatting;
             Load += async (_, _) => await LoadAsync();
+        }
+
+        /// <summary>Tô nổi bật dòng đang "Chờ xác nhận" (vàng đậm) — Dispatcher
+        /// dễ nhận ra ngay có chuyến cần Duyệt mà không phải đọc kỹ từng dòng.</summary>
+        private void Grid_CellFormatting(object? sender, DataGridViewCellFormattingEventArgs e)
+        {
+            if (grid.Columns[e.ColumnIndex].Name != "Trạng_thái" || e.Value is null) return;
+            if (e.Value.ToString() == "🟡 Chờ xác nhận")
+            {
+                e.CellStyle!.ForeColor = Theme.Warning;
+                e.CellStyle.Font = new Font(grid.Font, FontStyle.Bold);
+            }
         }
 
         public TripsControl(ApiServices api) : this()
@@ -67,6 +80,58 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
                 if (!result.Success)
                 {
                     MessageBox.Show(FindForm(), result.Message ?? "Không thể hoàn tất chuyến.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+                await LoadAsync();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(FindForm(), "Lỗi: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private async void BtnApprove_Click(object? sender, EventArgs e)
+        {
+            var tripId = GetSelectedTripId();
+            if (tripId is null) { ShowNoSelection(); return; }
+
+            var confirm = MessageBox.Show(FindForm(),
+                "Duyệt xác nhận của tài xế cho chuyến này? Sau khi duyệt, hệ thống sẽ tự nhập/xuất kho và trả xe về trạng thái rảnh.",
+                "Duyệt xác nhận", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+            if (confirm != DialogResult.Yes) return;
+
+            try
+            {
+                var result = await _api!.Trips.ApproveCompletionAsync(tripId.Value);
+                if (!result.Success)
+                {
+                    MessageBox.Show(FindForm(), result.Message ?? "Không thể duyệt.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+                await LoadAsync();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(FindForm(), "Lỗi: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private async void BtnReject_Click(object? sender, EventArgs e)
+        {
+            var tripId = GetSelectedTripId();
+            if (tripId is null) { ShowNoSelection(); return; }
+
+            var confirm = MessageBox.Show(FindForm(),
+                "Từ chối xác nhận của tài xế? Chuyến sẽ quay lại trạng thái Đang chạy để tài xế báo lại.",
+                "Từ chối xác nhận", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+            if (confirm != DialogResult.Yes) return;
+
+            try
+            {
+                var result = await _api!.Trips.RejectCompletionAsync(tripId.Value);
+                if (!result.Success)
+                {
+                    MessageBox.Show(FindForm(), result.Message ?? "Không thể từ chối.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;
                 }
                 await LoadAsync();
@@ -247,7 +312,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
                 var legName = trip.LegType == "Pickup" ? "Lấy hàng (round-trip qua Kho)" : "Giao hàng (Kho → Khách nhận)";
                 using var f = new RouteMapForm(
                     _api, $"Lộ trình chặng {legName} — Đơn {trip.OrderCode}",
-                    route.Stops, tripId: trip.Id);
+                    route.Stops, tripId: trip.Id, tripStatus: trip.Status);
                 f.ShowDialog(FindForm());
             }
             catch (Exception ex)
@@ -302,6 +367,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
         {
             "Planned" => "Đã lên kế hoạch",
             "InProgress" => "Đang chạy",
+            "PendingConfirmation" => "🟡 Chờ xác nhận",
             "Completed" => "Hoàn tất",
             "Cancelled" => "Đã hủy",
             _ => s,

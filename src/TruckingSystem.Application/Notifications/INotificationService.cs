@@ -5,9 +5,15 @@ public interface INotificationService
     /// <summary>Quét các điều kiện cần cảnh báo (giấy tờ xe sắp/đã hết hạn,
     /// tài xế thiếu lịch làm việc sắp tới) và TỰ ĐỘNG tạo thông báo mới cho
     /// người dùng này nếu CHƯA có thông báo CÙNG NỘI DUNG đang ở trạng thái
-    /// chưa đọc — tránh tạo trùng lặp mỗi lần gọi. Sau đó trả về TOÀN BỘ
-    /// thông báo (đã đọc + chưa đọc) mới nhất của người dùng.</summary>
+    /// chưa đọc — tránh tạo trùng lặp mỗi lần gọi. Trả về cả thông báo RIÊNG
+    /// của người dùng này LẪN thông báo CHUNG (broadcast, xem CreateBroadcastAsync).</summary>
     Task<List<NotificationDto>> CheckAndGetNotificationsAsync(string userId);
+
+    /// <summary>Tạo 1 thông báo CHUNG — KHÔNG gắn riêng 1 user cụ thể nào,
+    /// AI đăng nhập mở màn Thông báo cũng thấy được (đơn giản, không cần biết
+    /// chính xác ai đang giữ vai trò Dispatcher). Dùng cho các sự kiện cần cả
+    /// nhóm vận hành biết, ví dụ: tài xế báo xong chuyến, cần duyệt.</summary>
+    Task CreateBroadcastAsync(string title, string message);
 
     Task MarkAsReadAsync(int notificationId);
     Task MarkAllAsReadAsync(string userId);

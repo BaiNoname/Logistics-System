@@ -98,7 +98,9 @@
         let map, myPositionMarker;
         let allStops = [];              // toàn bộ điểm dừng lý thuyết của chặng
         let currentStopIndex = 0;       // đang hướng tới điểm dừng thứ mấy
+        let hasFirstFix = false;        // đã nhận tín hiệu GPS thật đầu tiên chưa
         let activePolylines = [];       // các polyline ĐANG hiển thị (route hiện hành)
+        let tileLayer = null;           // layer ảnh nền bản đồ — gắn ĐÚNG tile VietMap ngay khi có kết quả API đầu tiên
         let currentRoutePoints = [];    // toàn bộ điểm (lat,lng) của route hiện hành, dùng để đo độ lệch
         let lastRecalcTs = 0;
         let recalculating = false;
@@ -132,7 +134,11 @@
                 allStops = validStops;
 
                 map = L.map('map');
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; VietMap', maxZoom: 19 }).addTo(map);
+                // KHÔNG gắn tile cứng OpenStreetMap ở đây nữa — ảnh nền bản
+                // đồ sẽ dùng ĐÚNG tileUrlTemplate do VietMap trả về ngay
+                // trong lần tính tuyến đầu tiên (xem recalcRouteFrom bên
+                // dưới), tránh phụ thuộc OpenStreetMap (có thể bị chặn mạng
+                // ở một số nơi, gây lỗi ERR_CONNECTION_REFUSED).
 
                 allStops.forEach((s, idx) => {
                     const icon = idx === 0 ? '📍' : (idx === allStops.length - 1 ? '🏁' : '📦');
@@ -217,6 +223,13 @@
                     const resp = await fetch(`${apiBase}/api/routes/calculate?fromLat=${curLat}&fromLng=${curLng}&toLat=${to.lat}&toLng=${to.lng}`);
                     const seg = await resp.json();
                     if (seg.success && seg.points && seg.points.length > 0) {
+                        // Gắn ảnh nền bản đồ bằng ĐÚNG tile VietMap ngay khi
+                        // có kết quả API đầu tiên — chỉ làm 1 lần (tileLayer
+                        // còn null), các lần tính lại tuyến sau không cần
+                        // gắn lại nữa.
+                        if (!tileLayer && seg.tileUrlTemplate) {
+                            tileLayer = L.tileLayer(seg.tileUrlTemplate, { attribution: '&copy; VietMap', maxZoom: 19 }).addTo(map);
+                        }
                         const points = seg.points.map(p => [p.lat, p.lng]);
                         const line = L.polyline(points, { color: '#1565C0', weight: 5, opacity: 0.85 }).addTo(map);
                         activePolylines.push(line);
@@ -261,6 +274,18 @@
                     .addTo(map).bindPopup('📍 Vị trí của bạn');
             } else {
                 myPositionMarker.setLatLng(latlng);
+            }
+
+            // Lần GPS thật ĐẦU TIÊN: xe đã ở ngoài đường, chắc chắn đã rời điểm
+            // xuất phát (stop 0 = Kho) rồi — KHÔNG tính đường quay lại Kho nữa.
+            // Trước đây currentStopIndex vẫn = 0 nên mỗi lần tính lại đều vẽ
+            // "Vị trí hiện tại → Kho → Điểm giao", trông như bắt buộc phải ghé
+            // Kho trước (sai với chặng Giao hàng chỉ có 2 điểm Kho→Điểm giao).
+            if (!hasFirstFix) {
+                hasFirstFix = true;
+                currentStopIndex = allStops.length > 1 ? 1 : 0;
+                recalcRouteFrom(lat, lng);
+                return;
             }
 
             if (currentStopIndex < allStops.length) {

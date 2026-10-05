@@ -125,10 +125,10 @@ public class VehicleAllocationService : IVehicleAllocationService
         // Danh sách tài xế hợp lệ (có DriverProfile thật + đang Active + bằng
         // lái CÒN HẠN) — xoay vòng nếu cần nhiều xe hơn số tài xế rảnh (đơn
         // giản hoá: không kiểm tra trùng lịch, cải tiến sau nếu cần).
-        // Loại trừ tài xế ĐANG BẬN chuyến khác (Planned/InProgress) — tránh
+        // Loại trừ tài xế ĐANG BẬN chuyến khác (Planned/InProgress/PendingConfirmation — chuyến đã báo xong nhưng CHƯA được Vận hành duyệt thì tài xế/xe vẫn chưa thật sự rảnh) — tránh
         // gán trùng 1 tài xế cho 2 chuyến cùng lúc.
         var busyDriverIds = await _db.Trips
-            .Where(t => t.Status == TripStatus.Planned || t.Status == TripStatus.InProgress)
+            .Where(t => t.Status == TripStatus.Planned || t.Status == TripStatus.InProgress || t.Status == TripStatus.PendingConfirmation)
             .Select(t => t.DriverEmployeeId)
             .Distinct()
             .ToListAsync();
@@ -298,8 +298,15 @@ public class VehicleAllocationService : IVehicleAllocationService
                 // chặng Pickup nào để "hoàn tất" và kích hoạt nhập kho sau này
                 // như CompanyPickup, nên phải nhập kho NGAY tại đây.
                 await _db.SaveChangesAsync(); // cần lưu trước để có CargoLine/Trip Id ổn định cho ReceiveGoodsAsync
-                await _warehouseService.ReceiveGoodsAsync(
+                var receiveResult = await _warehouseService.ReceiveGoodsAsync(
                     defaultWarehouseId, order.Id, cargoLine.Id, qtyThisStep, currentDriverEmployeeId, tripId: null);
+                // Trước đây BỎ QUA kết quả — kho hết chỗ/thiếu khu vực phù hợp vẫn
+                // báo chia xe thành công, nhưng hàng KHÔNG hề vào kho, tới lúc giao
+                // mới lỗi "không đủ tồn kho". Giờ dừng ngay; return khi chưa Commit
+                // -> transaction tự Rollback, không để lại chuyến/nhập kho dở dang.
+                if (!receiveResult.Success)
+                    return new AllocateVehiclesResponse(false, totalQtyToShip, 0, new(),
+                        "Không thể nhập kho cho đơn khách tự mang tới: " + receiveResult.Message);
             }
             _db.TripLines.Add(new TripLine { TripId = currentDeliveryTrip.Id, CargoLineId = cargoLine.Id, QtyPlanned = qtyThisStep });
 
