@@ -162,14 +162,15 @@ partial class CreateBinForm
         this.lblDistanceFromDoor.Size = new System.Drawing.Size(400, 18);
         this.lblDistanceFromDoor.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
         this.lblDistanceFromDoor.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
-        this.lblDistanceFromDoor.Text = "Khoảng cách tới cửa kho (mét) — dùng để ưu tiên xếp hàng gấp";
+        this.lblDistanceFromDoor.Text = "🚪 Khoảng cách tới cửa (mét) — hệ thống TỰ TÍNH từ vị trí cửa kho";
         //
         // numDistanceFromDoor
         //
         this.numDistanceFromDoor.Location = new System.Drawing.Point(24, 332);
         this.numDistanceFromDoor.Size = new System.Drawing.Size(400, 23);
         this.numDistanceFromDoor.DecimalPlaces = 1;
-        this.numDistanceFromDoor.Maximum = new decimal(new int[] { 1000, 0, 0, 0 });
+        this.numDistanceFromDoor.Maximum = new decimal(new int[] { 100000, 0, 0, 0 });
+        this.numDistanceFromDoor.Enabled = false; // chỉ hiển thị — không cho nhập tay nữa
         //
         // lblNote
         //

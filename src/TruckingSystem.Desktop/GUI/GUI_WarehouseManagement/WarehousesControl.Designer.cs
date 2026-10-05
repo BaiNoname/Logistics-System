@@ -245,7 +245,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             lblQty.Name = "lblQty";
             lblQty.Size = new Size(126, 15);
             lblQty.TabIndex = 3;
-            lblQty.Text = "Số lượng cần xếp (m³):";
+            lblQty.Text = "Số lượng cần xếp:";
             // 
             // numQty
             // 

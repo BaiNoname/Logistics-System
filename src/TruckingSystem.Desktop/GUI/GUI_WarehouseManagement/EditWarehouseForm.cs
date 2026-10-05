@@ -32,6 +32,10 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             };
             _debounceTimer.Tick += async (_, _) => { _debounceTimer.Stop(); await RunSearchAsync(); };
             lstSuggestions.SelectedIndexChanged += (_, _) => SelectSuggestion();
+
+            // Vị trí cửa: chọn tường trước, rồi mới nhập được khoảng cách dọc tường.
+            WarehouseDoorHelper.FillSideCombo(cboDoorSide);
+            cboDoorSide.SelectedIndexChanged += (_, _) => numDoorOffset.Enabled = cboDoorSide.SelectedIndex > 0;
         }
 
         public EditWarehouseForm(ApiServices api, WarehouseListItem warehouse) : this()
@@ -46,6 +50,10 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             numCapacity.Value = warehouse.CapacityM3 ?? 0;
             numLength.Value = warehouse.LengthMeters ?? 0;
             numWidth.Value = warehouse.WidthMeters ?? 0;
+
+            // Nạp lại vị trí cửa đã khai báo (nếu có)
+            cboDoorSide.SelectedIndex = WarehouseDoorHelper.ToIndex(warehouse.DoorSide);
+            numDoorOffset.Value = Math.Min(numDoorOffset.Maximum, warehouse.DoorOffsetMeters ?? 0);
 
             _suppressNextSearch = true;
             txtSearch.Text = warehouse.Address ?? "";
@@ -100,6 +108,15 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             }
             if (_api is null) return;
 
+            var doorError = WarehouseDoorHelper.Validate(cboDoorSide.SelectedIndex, numDoorOffset.Value, numLength.Value, numWidth.Value);
+            if (doorError is not null)
+            {
+                lblStatus.Text = doorError;
+                return;
+            }
+            var doorSide = WarehouseDoorHelper.ToApiValue(cboDoorSide.SelectedIndex);
+            decimal? doorOffset = doorSide is null ? null : numDoorOffset.Value;
+
             // Nếu đã chọn địa chỉ mới -> dùng địa chỉ/tọa độ mới; nếu không đụng
             // gì -> giữ nguyên địa chỉ/tọa độ cũ (kể cả khi cũ chưa có tọa độ).
             var address = _newSelectedAddress?.Address ?? _oldAddress;
@@ -114,7 +131,8 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                     numCapacity.Value == 0 ? null : numCapacity.Value,
                     numLength.Value == 0 ? null : numLength.Value,
                     numWidth.Value == 0 ? null : numWidth.Value,
-                    lat, lng);
+                    lat, lng,
+                    doorSide, doorOffset);
 
                 if (!result.Success)
                 {

@@ -8,6 +8,9 @@ namespace TruckingSystem.Desktop.DTO_WarehouseManagement
         public decimal? CapacityM3 { get; set; }
         public decimal? LengthMeters { get; set; }
         public decimal? WidthMeters { get; set; }
+        /// <summary>"Top" / "Bottom" / "Left" / "Right" — null = kho chưa khai báo cửa.</summary>
+        public string? DoorSide { get; set; }
+        public decimal? DoorOffsetMeters { get; set; }
         public double? Lat { get; set; }
         public double? Lng { get; set; }
 

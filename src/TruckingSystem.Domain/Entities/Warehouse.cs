@@ -1,3 +1,4 @@
+using TruckingSystem.Domain.Enums;
 using TruckingSystem.Domain.Common;
 
 namespace TruckingSystem.Domain.Entities;
@@ -20,6 +21,18 @@ public class Warehouse : BaseEntity
     // Best-Fit (vẫn dùng CapacityM3/StorageBin như trước).
     public decimal? LengthMeters { get; set; }
     public decimal? WidthMeters { get; set; }
+
+    // Vị trí CỬA kho — khai báo bằng "tường nào" + "cách góc bao nhiêu mét" để
+    // cửa LUÔN nằm đúng trên tường, không thể nhập nhầm vào giữa kho. Từ đây hệ
+    // thống TỰ TÍNH khoảng cách tới cửa của từng ô (đi theo lối đi vuông góc),
+    // thay cho việc nhập tay từng ô như trước (dễ nhập khống/sai, VD để 0 m hết).
+    // Null = kho chưa khai báo cửa -> thuật toán xếp hàng bỏ qua ưu tiên gần/xa cửa.
+    public WallSide? DoorSide { get; set; }
+
+    /// <summary>Khoảng cách (mét) từ góc tới cửa, đo dọc theo bức tường: tường
+    /// Trên/Dưới đo từ góc TRÁI (theo chiều dài), tường Trái/Phải đo từ góc TRÊN
+    /// (theo chiều rộng).</summary>
+    public decimal? DoorOffsetMeters { get; set; }
 
 
 
