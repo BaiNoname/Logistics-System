@@ -6,6 +6,7 @@ using TruckingSystem.Desktop.SERVICE_EmployeeManagement;
 using TruckingSystem.Desktop.SERVICE_InvoiceManagement;
 using TruckingSystem.Desktop.SERVICE_LocationManagement;
 using TruckingSystem.Desktop.SERVICE_NotificationManagement;
+using TruckingSystem.Desktop.SERVICE_ReportManagement;
 using TruckingSystem.Desktop.SERVICE_RouteManagement;
 using TruckingSystem.Desktop.SERVICE_TransportOrderManagement;
 using TruckingSystem.Desktop.SERVICE_FuelManagement;
@@ -41,6 +42,8 @@ namespace TruckingSystem.Desktop.Common
         public FuelApiService Fuel { get; }
         public NotificationApiService Notifications { get; }
         public AuditLogApiService AuditLogs { get; }
+        public ReportApiService Reports { get; }
+        public TripVideoApiService TripVideos { get; }
 
         public ApiServices(string baseUrl)
         {
@@ -60,6 +63,8 @@ namespace TruckingSystem.Desktop.Common
             Fuel = new FuelApiService(Connection);
             Notifications = new NotificationApiService(Connection);
             AuditLogs = new AuditLogApiService(Connection);
+            Reports = new ReportApiService(Connection);
+            TripVideos = new TripVideoApiService(Connection);
         }
     }
 }
