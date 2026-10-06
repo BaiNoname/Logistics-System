@@ -4,15 +4,12 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Điều hướng chuyến đi</title>
-    <!-- Leaflet CSS/JS load qua CDN — không cần cài npm/build gì cả, trang HTML thuần.
-         Trang này thay thế endpoint /gps_tracker/navigate (không tồn tại trong hệ
-         thống) — được app tài xế (React Native) mở qua WebView khi bấm "Open Navigation".
-
-         CẬP NHẬT: thêm cơ chế TỰ ĐỘNG TÍNH LẠI TUYẾN ĐƯỜNG khi tài xế đi lệch
-         khỏi đường đã vẽ (giống Google Maps thật) — không phải tính lại theo
-         giờ cố định, mà tính KHOẢNG CÁCH THẬT từ vị trí GPS hiện tại tới đường
-         đang vẽ trên bản đồ; chỉ gọi lại VietMap khi khoảng cách đó vượt
-         ngưỡng cho phép. -->
+    <!-- Trang điều hướng cho app tài xế (mở qua WebView khi bấm "Open Navigation").
+         - Icon: điểm khởi hành xanh lá, kho vàng, điểm đến đỏ, vị trí xe = mũi tên xám
+           xoay theo hướng chạy.
+         - Giống Google Maps: mỗi lần GPS cập nhật, phần đường ĐÃ ĐI QUA bị cắt bỏ ngay
+           (tính ở trình duyệt, không gọi API). Chỉ gọi lại VietMap khi xe lệch tuyến
+           quá 100m hoặc chưa có tuyến. -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
@@ -62,6 +59,10 @@
             text-align: center;
         }
 
+        .map-box {
+            position: relative;
+        }
+
         #map {
             height: calc(100vh - 90px);
         }
@@ -71,6 +72,108 @@
             text-align: center;
             padding: 40px 16px;
         }
+
+        .recenter {
+            display: none;
+            position: absolute;
+            right: 12px;
+            bottom: 28px;
+            z-index: 1000;
+            background: #fff;
+            color: #1565C0;
+            border: none;
+            border-radius: 20px;
+            padding: 9px 14px;
+            font-size: 13px;
+            font-weight: bold;
+            box-shadow: 0 2px 6px rgba(0,0,0,.35);
+        }
+
+        .pin-icon {
+            background: none !important;
+            border: none !important;
+        }
+
+        .stop-pin {
+            width: 32px;
+            height: 32px;
+            box-sizing: border-box;
+            border-radius: 50% 50% 50% 0;
+            transform: rotate(-45deg);
+            border: 3px solid #fff;
+            box-shadow: 0 2px 6px rgba(0,0,0,.45);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+            .stop-pin span {
+                transform: rotate(45deg);
+                font-size: 14px;
+                line-height: 1;
+            }
+
+        .gps-wrap {
+            position: relative;
+            width: 44px;
+            height: 44px;
+        }
+
+        .gps-halo {
+            position: absolute;
+            left: 4px;
+            top: 4px;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: rgba(107,114,128,.25);
+            animation: gpsPulse 2s ease-out infinite;
+        }
+
+        .gps-arrow {
+            position: absolute;
+            left: 6px;
+            top: 6px;
+            transition: transform .4s ease;
+            filter: drop-shadow(0 1px 2px rgba(0,0,0,.5));
+        }
+
+        @keyframes gpsPulse {
+            0% {
+                transform: scale(.6);
+                opacity: 1;
+            }
+
+            100% {
+                transform: scale(1.4);
+                opacity: 0;
+            }
+        }
+
+        .map-legend {
+            background: rgba(255,255,255,.95);
+            padding: 6px 10px;
+            border-radius: 6px;
+            box-shadow: 0 1px 4px rgba(0,0,0,.3);
+            font: 12px Arial, sans-serif;
+            line-height: 20px;
+        }
+
+            .map-legend i {
+                display: inline-block;
+                width: 12px;
+                height: 12px;
+                border-radius: 50%;
+                border: 2px solid #fff;
+                box-shadow: 0 0 0 1px #999;
+                margin-right: 6px;
+                vertical-align: -2px;
+            }
+
+            .map-legend svg {
+                margin-right: 6px;
+                vertical-align: -3px;
+            }
     </style>
 </head>
 <body>
@@ -83,27 +186,202 @@
         <div>⏱ <b id="durationText">—</b></div>
     </div>
     <div class="reroute-badge" id="rerouteBadge">🔄 Đang tính lại đường đi...</div>
-    <div id="map"></div>
+    <div class="map-box">
+        <div id="map"></div>
+        <button class="recenter" id="recenterBtn">🎯 Về vị trí xe</button>
+    </div>
 
     <script>
+        // ================= DÙNG CHUNG: icon, chú thích, toán học, cắt tuyến =================
+        const MAP_COLORS = { start: '#16A34A', warehouse: '#EAB308', dest: '#DC2626', gps: '#6B7280' };
+        const KIND_TEXT = { start: 'Điểm khởi hành', warehouse: 'Kho', dest: 'Điểm đến' };
+        const ROUTE_CASING = '#1A4FBF', ROUTE_INNER = '#4C8DF6';
+        const OFF_ROUTE_THRESHOLD_M = 100;  // lệch quá 100m so với đường còn lại -> coi là đi lệch tuyến, tính lại
+        const ARRIVAL_THRESHOLD_M = 60;     // đoạn còn lại tới điểm dừng < 60m -> coi như đã tới, chuyển điểm kế tiếp
+        const SEARCH_AHEAD_M = 1500;        // chỉ dò vị trí xe trên 1,5km đường phía trước (tránh "bắt nhầm" chiều về của tuyến khứ hồi)
+
+        function escapeHtml(s) {
+            return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        }
+
+        // Điểm 0 luôn là điểm khởi hành (xanh lá); điểm có chữ "Kho" là kho (vàng);
+        // còn lại là điểm đến / điểm lấy-trả hàng của đối tác (đỏ).
+        function stopKind(label, idx) {
+            if (idx === 0) return 'start';
+            if (/kho/i.test(label || '')) return 'warehouse';
+            return 'dest';
+        }
+        function stopGlyph(kind, idx, total) {
+            if (kind === 'start') return '🚚';
+            if (kind === 'warehouse') return '🏭';
+            return idx === total - 1 ? '🏁' : '📦';
+        }
+
+        // Vẽ marker cho các điểm dừng. Các điểm trùng tọa độ (VD chặng Lấy hàng:
+        // xuất phát từ Kho và quay về đúng Kho đó) gộp thành 1 ghim 2 màu.
+        function addStopMarkers(map, stops) {
+            const groups = [];
+            stops.forEach((s, idx) => {
+                const kind = stopKind(s.label, idx);
+                const item = { s, idx, kind, glyph: stopGlyph(kind, idx, stops.length) };
+                const g = groups.find(g => haversineMeters(g.lat, g.lng, s.lat, s.lng) < 30);
+                if (g) g.items.push(item); else groups.push({ lat: s.lat, lng: s.lng, items: [item] });
+            });
+            groups.forEach(g => {
+                const first = g.items[0], last = g.items[g.items.length - 1];
+                const bg = g.items.length === 1
+                    ? MAP_COLORS[first.kind]
+                    : `linear-gradient(135deg, ${MAP_COLORS[first.kind]} 50%, ${MAP_COLORS[last.kind]} 50%)`;
+                const icon = L.divIcon({
+                    className: 'pin-icon',
+                    html: `<div class="stop-pin" style="background:${bg}"><span>${first.glyph}</span></div>`,
+                    iconSize: [32, 32], iconAnchor: [16, 39], popupAnchor: [0, -36]
+                });
+                const popup = g.items.map(i =>
+                    `<b style="color:${MAP_COLORS[i.kind]}">${i.glyph} ${KIND_TEXT[i.kind]}</b><br>${escapeHtml(i.s.label)}`).join('<hr style="margin:4px 0">');
+                L.marker([g.lat, g.lng], { icon, zIndexOffset: 500 }).addTo(map).bindPopup(popup);
+            });
+        }
+
+        function arrowSvg(size) {
+            return `<svg class="gps-arrow" viewBox="0 0 32 32" width="${size}" height="${size}">` +
+                `<path d="M16 2 L28 29 L16 22 L4 29 Z" fill="${MAP_COLORS.gps}" stroke="#fff" stroke-width="2.5" stroke-linejoin="round"/></svg>`;
+        }
+
+        function addLegend(map, extraHtml) {
+            const c = L.control({ position: 'bottomleft' });
+            c.onAdd = () => {
+                const d = L.DomUtil.create('div', 'map-legend');
+                d.innerHTML =
+                    `<div><i style="background:${MAP_COLORS.start}"></i>Điểm khởi hành</div>` +
+                    `<div><i style="background:${MAP_COLORS.warehouse}"></i>Kho</div>` +
+                    `<div><i style="background:${MAP_COLORS.dest}"></i>Điểm đến</div>` +
+                    (extraHtml ?? `<div>${arrowSvg(14).replace('class="gps-arrow"', '')}Vị trí xe (GPS)</div>`);
+                return d;
+            };
+            c.addTo(map);
+        }
+
+        // ---- Toán học: khoảng cách thật (mét) ----
+        function haversineMeters(lat1, lng1, lat2, lng2) {
+            const R = 6371000, toRad = x => x * Math.PI / 180;
+            const dLat = toRad(lat2 - lat1), dLng = toRad(lng2 - lng1);
+            const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        }
+        function bearingDeg(lat1, lng1, lat2, lng2) {
+            const toRad = x => x * Math.PI / 180;
+            const y = Math.sin(toRad(lng2 - lng1)) * Math.cos(toRad(lat2));
+            const x = Math.cos(toRad(lat1)) * Math.sin(toRad(lat2)) - Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(toRad(lng2 - lng1));
+            return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+        }
+        function lengthM(pts) {
+            let m = 0;
+            for (let i = 0; i < pts.length - 1; i++) m += haversineMeters(pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1]);
+            return m;
+        }
+        // Chiếu điểm P lên ĐOẠN THẳNG A-B (hệ mét cục bộ quanh A) -> khoảng cách + tọa độ điểm chiếu.
+        function projectOnSegment(p, a, b) {
+            const mLat = 111320, mLng = 111320 * Math.cos(a[0] * Math.PI / 180);
+            const px = (p[1] - a[1]) * mLng, py = (p[0] - a[0]) * mLat;
+            const bx = (b[1] - a[1]) * mLng, by = (b[0] - a[0]) * mLat;
+            const lenSq = bx * bx + by * by;
+            let t = lenSq === 0 ? 0 : (px * bx + py * by) / lenSq;
+            t = Math.max(0, Math.min(1, t));
+            const qx = t * bx, qy = t * by;
+            return { dist: Math.hypot(px - qx, py - qy), point: [a[0] + qy / mLat, a[1] + qx / mLng] };
+        }
+
+        // ---- Vị trí xe: mũi tên xám xoay theo hướng di chuyển ----
+        let gpsMarker = null, gpsLastPos = null, gpsHeading = null;
+        function updateGpsMarker(map, lat, lng, heading) {
+            // Ưu tiên hướng do thiết bị GPS báo; không có thì tự tính từ 2 vị trí liên tiếp
+            // (chỉ khi xe đã nhích >= 5m, tránh mũi tên quay loạn khi xe đứng yên).
+            if (heading != null && !isNaN(heading)) gpsHeading = heading;
+            else if (gpsLastPos && haversineMeters(gpsLastPos[0], gpsLastPos[1], lat, lng) >= 5)
+                gpsHeading = bearingDeg(gpsLastPos[0], gpsLastPos[1], lat, lng);
+            if (!gpsLastPos || haversineMeters(gpsLastPos[0], gpsLastPos[1], lat, lng) >= 5) gpsLastPos = [lat, lng];
+
+            if (!gpsMarker) {
+                const icon = L.divIcon({ className: 'pin-icon', html: `<div class="gps-wrap"><div class="gps-halo"></div>${arrowSvg(32)}</div>`, iconSize: [44, 44], iconAnchor: [22, 22] });
+                gpsMarker = L.marker([lat, lng], { icon, zIndexOffset: 1000 }).addTo(map).bindPopup('🛰️ Vị trí xe hiện tại');
+            } else {
+                gpsMarker.setLatLng([lat, lng]);
+            }
+            const el = gpsMarker.getElement();
+            const svg = el && el.querySelector('.gps-arrow');
+            if (svg && gpsHeading != null) svg.style.transform = `rotate(${gpsHeading}deg)`;
+        }
+
+        // ---- Tuyến đường còn lại: mỗi "leg" = đoạn tới 1 điểm dừng ----
+        // leg = { points, lines: [viền, lõi], distKm, durMin, origLenM }
+        let legs = [];
+        function clearLegs(map) {
+            legs.forEach(l => l.lines.forEach(x => map.removeLayer(x)));
+            legs = [];
+        }
+        function setLegs(map, newLegs) {
+            clearLegs(map);
+            newLegs.filter(l => l.points && l.points.length > 1).forEach(l => {
+                const lines = [
+                    L.polyline(l.points, { color: ROUTE_CASING, weight: 9, opacity: 0.9 }).addTo(map),
+                    L.polyline(l.points, { color: ROUTE_INNER, weight: 5, opacity: 1 }).addTo(map)
+                ];
+                legs.push({ points: l.points.slice(), lines, distKm: l.distKm || 0, durMin: l.durMin || 0, origLenM: lengthM(l.points) });
+            });
+        }
+        // Giống Google Maps: mỗi lần có GPS mới, chiếu vị trí xe lên đường còn lại
+        // và CẮT BỎ phần đã đi qua — đường luôn bắt đầu ngay tại mũi tên của xe.
+        // Trả về: 'ok' | 'arrived' (vừa tới 1 điểm dừng trung gian) | 'offroute' | 'noroute'.
+        function trimToPosition(lat, lng) {
+            if (legs.length === 0) return 'noroute';
+            const leg = legs[0], pts = leg.points;
+            if (pts.length < 2) return 'ok';
+
+            let best = { dist: Infinity, i: -1, point: null }, ahead = 0;
+            for (let i = 0; i < pts.length - 1; i++) {
+                const pr = projectOnSegment([lat, lng], pts[i], pts[i + 1]);
+                if (pr.dist < best.dist) best = { dist: pr.dist, i, point: pr.point };
+                ahead += haversineMeters(pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1]);
+                if (ahead > SEARCH_AHEAD_M) break;
+            }
+            if (best.dist > OFF_ROUTE_THRESHOLD_M) return 'offroute';
+
+            leg.points = [best.point].concat(pts.slice(best.i + 1));
+            leg.lines.forEach(l => l.setLatLngs(leg.points));
+
+            if (lengthM(leg.points) < ARRIVAL_THRESHOLD_M && legs.length > 1) {
+                leg.lines.forEach(l => l.remove());
+                legs.shift();
+                return 'arrived';
+            }
+            return 'ok';
+        }
+        function remainingStats() {
+            let m = 0, min = 0;
+            legs.forEach(l => {
+                const len = lengthM(l.points);
+                m += len;
+                min += l.origLenM > 0 ? l.durMin * len / l.origLenM : l.durMin;
+            });
+            return { km: Math.round(m / 100) / 10, min: Math.round(min), hasRoute: legs.length > 0 };
+        }
+
+        // ================= RIÊNG CHO APP TÀI XẾ =================
         const params = new URLSearchParams(window.location.search);
         const tripId = params.get('tripId');
         const apiBase = window.location.origin; // cùng domain với API
+        const MIN_RECALC_INTERVAL_MS = 8000;    // tối thiểu 8 giây giữa 2 lần gọi VietMap khi lệch tuyến
 
-        // ---- Ngưỡng cấu hình cơ chế reroute (chỉnh tại đây nếu cần) ----
-        const OFF_ROUTE_THRESHOLD_M = 100;   // lệch quá 100m so với đường đã vẽ -> coi là đi lệch tuyến
-        const ARRIVAL_THRESHOLD_M = 60;      // gần hơn 60m so với điểm dừng -> coi là đã tới, chuyển điểm kế tiếp
-        const MIN_RECALC_INTERVAL_MS = 8000; // tối thiểu 8 giây giữa 2 lần tính lại, tránh gọi API dồn dập
-
-        let map, myPositionMarker;
-        let allStops = [];              // toàn bộ điểm dừng lý thuyết của chặng
-        let currentStopIndex = 0;       // đang hướng tới điểm dừng thứ mấy
-        let hasFirstFix = false;        // đã nhận tín hiệu GPS thật đầu tiên chưa
-        let activePolylines = [];       // các polyline ĐANG hiển thị (route hiện hành)
-        let tileLayer = null;           // layer ảnh nền bản đồ — gắn ĐÚNG tile VietMap ngay khi có kết quả API đầu tiên
-        let currentRoutePoints = [];    // toàn bộ điểm (lat,lng) của route hiện hành, dùng để đo độ lệch
+        let map;
+        let allStops = [];          // toàn bộ điểm dừng của chặng
+        let currentStopIndex = 0;   // đang hướng tới điểm dừng thứ mấy
+        let hasFirstFix = false;    // đã nhận GPS thật đầu tiên chưa
+        let tileLayer = null;
         let lastRecalcTs = 0;
         let recalculating = false;
+        let pendingRecalc = null;   // yêu cầu tính lại đến lúc đang bận -> chạy ngay sau khi xong
+        let following = true;       // bản đồ tự bám theo xe; tắt khi tài xế tự kéo bản đồ
 
         async function loadNavigation() {
             if (!tripId) {
@@ -111,10 +389,6 @@
                 return;
             }
             try {
-                // Bước 1: lấy DANH SÁCH ĐIỂM DỪNG đúng theo chặng — chặng Lấy
-                // hàng có 3 điểm (Kho xuất phát -> Đối tác lấy hàng -> Kho nộp
-                // hàng, round-trip THẬT vì xe phải quay về), chặng Giao hàng
-                // chỉ 2 điểm (Kho -> Điểm giao, 1 chiều).
                 const routeInfoResp = await fetch(`${apiBase}/api/trips/${tripId}/route`);
                 if (!routeInfoResp.ok) {
                     document.getElementById('map').outerHTML = '<div class="error">Không tìm thấy chuyến, vui lòng kiểm tra lại Trip ID.</div>';
@@ -122,7 +396,9 @@
                 }
                 const routeInfo = await routeInfoResp.json();
 
-                const legText = routeInfo.legType === 'Pickup' ? '🔽 Lấy hàng (round-trip qua Kho)' : '🔼 Giao hàng (Kho → Khách nhận)';
+                const legText = routeInfo.legType === 'Pickup' ? '🔽 Lấy hàng (round-trip qua Kho)'
+                    : routeInfo.legType === 'Return' ? '🔙 Trả hàng về đối tác'
+                        : '🔼 Giao hàng (Kho → Khách nhận)';
                 document.getElementById('headerTitle').textContent = `Đơn ${routeInfo.orderCode}`;
                 document.getElementById('headerSub').textContent = legText;
 
@@ -134,185 +410,124 @@
                 allStops = validStops;
 
                 map = L.map('map');
-                // KHÔNG gắn tile cứng OpenStreetMap ở đây nữa — ảnh nền bản
-                // đồ sẽ dùng ĐÚNG tileUrlTemplate do VietMap trả về ngay
-                // trong lần tính tuyến đầu tiên (xem recalcRouteFrom bên
-                // dưới), tránh phụ thuộc OpenStreetMap (có thể bị chặn mạng
-                // ở một số nơi, gây lỗi ERR_CONNECTION_REFUSED).
+                addStopMarkers(map, allStops);
+                addLegend(map);
 
-                allStops.forEach((s, idx) => {
-                    const icon = idx === 0 ? '📍' : (idx === allStops.length - 1 ? '🏁' : '📦');
-                    L.marker([s.lat, s.lng]).addTo(map).bindPopup(`${icon} ${s.label}`);
+                map.on('dragstart', () => {
+                    following = false;
+                    document.getElementById('recenterBtn').style.display = 'block';
                 });
+                document.getElementById('recenterBtn').onclick = () => {
+                    following = true;
+                    document.getElementById('recenterBtn').style.display = 'none';
+                    if (gpsLastPos) map.setView(gpsLastPos, Math.max(map.getZoom() || 0, 16));
+                };
 
-                // Vẽ lộ trình lý thuyết BAN ĐẦU (từ điểm xuất phát -> hết các
-                // điểm dừng) — dùng để hiển thị TRƯỚC khi có tín hiệu GPS thật,
-                // và cũng làm cơ sở để fit khung bản đồ ban đầu.
+                // Lộ trình ban đầu từ điểm xuất phát — hiển thị trước khi có GPS.
                 await recalcRouteFrom(allStops[0].lat, allStops[0].lng, true);
-
                 startWatchingMyLocation();
             } catch (e) {
                 document.getElementById('map').outerHTML = '<div class="error">Lỗi kết nối tới máy chủ.</div>';
             }
         }
 
-        // ================= TOÁN HỌC: khoảng cách thật (mét) =================
-
-        // Khoảng cách Haversine giữa 2 điểm (mét) — dùng để phát hiện đã tới
-        // gần điểm dừng chưa.
-        function haversineMeters(lat1, lng1, lat2, lng2) {
-            const R = 6371000;
-            const toRad = x => x * Math.PI / 180;
-            const dLat = toRad(lat2 - lat1), dLng = toRad(lng2 - lng1);
-            const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
-            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        function updateInfoBar() {
+            const st = remainingStats();
+            if (!st.hasRoute) return;
+            document.getElementById('infoBar').style.display = 'flex';
+            document.getElementById('distanceText').textContent = `${st.km.toFixed(1)} km`;
+            document.getElementById('durationText').textContent = `${st.min} phút`;
         }
 
-        // Quy đổi độ kinh/vĩ sang mét cục bộ quanh 1 điểm gốc — đủ chính xác
-        // cho khoảng cách ngắn (vài trăm mét tới vài km, đúng tầm road-segment).
-        function metersPerDegree(lat) {
-            const latRad = lat * Math.PI / 180;
-            return { lat: 111320, lng: 111320 * Math.cos(latRad) };
-        }
-
-        // Khoảng cách từ 1 điểm P tới ĐOẠN THẲNG A-B (không phải tới 2 đầu
-        // mút) — đây chính là cách đo "đi lệch khỏi ĐƯỜNG đã vẽ" đúng nghĩa,
-        // khác với đo lệch tới 1 điểm mốc đơn lẻ.
-        function distancePointToSegmentMeters(p, a, b) {
-            const m = metersPerDegree(p[0]);
-            const toXY = (pt) => [(pt[1] - a[1]) * m.lng, (pt[0] - a[0]) * m.lat];
-            const P = toXY(p), A = [0, 0], B = toXY(b);
-            const dx = B[0] - A[0], dy = B[1] - A[1];
-            const lenSq = dx * dx + dy * dy;
-            let t = lenSq === 0 ? 0 : ((P[0] - A[0]) * dx + (P[1] - A[1]) * dy) / lenSq;
-            t = Math.max(0, Math.min(1, t));
-            const projX = A[0] + t * dx, projY = A[1] + t * dy;
-            return Math.hypot(P[0] - projX, P[1] - projY);
-        }
-
-        // Khoảng cách từ điểm P tới TOÀN BỘ polyline (lấy đoạn gần nhất).
-        function distanceToPolylineMeters(p, points) {
-            let min = Infinity;
-            for (let i = 0; i < points.length - 1; i++) {
-                const d = distancePointToSegmentMeters(p, points[i], points[i + 1]);
-                if (d < min) min = d;
-            }
-            return min === Infinity ? 0 : min;
-        }
-
-        // ================= VẼ / TÍNH LẠI TUYẾN ĐƯỜNG =================
-
-        // Tính tuyến đường THẬT (qua VietMap) từ (fromLat, fromLng) đi qua hết
-        // các điểm dừng CÒN LẠI (từ currentStopIndex trở đi), rồi vẽ đè lên
-        // bản đồ, thay thế tuyến cũ. initial=true khi gọi lần đầu lúc mở trang.
+        // Gọi VietMap tính tuyến từ (fromLat, fromLng) qua hết các điểm dừng CÒN
+        // LẠI (từ currentStopIndex), rồi thay toàn bộ tuyến đang vẽ.
         async function recalcRouteFrom(fromLat, fromLng, initial = false) {
-            if (recalculating) return; // tránh gọi chồng nếu đang tính dở
+            if (recalculating) { pendingRecalc = [fromLat, fromLng]; return; }
             recalculating = true;
             if (!initial) document.getElementById('rerouteBadge').style.display = 'block';
 
             try {
-                activePolylines.forEach(p => map.removeLayer(p));
-                activePolylines = [];
-                currentRoutePoints = [];
-
-                let totalDistanceKm = 0, totalDurationMin = 0;
+                const newLegs = [];
                 let curLat = fromLat, curLng = fromLng;
-
                 for (let i = currentStopIndex; i < allStops.length; i++) {
                     const to = allStops[i];
                     const resp = await fetch(`${apiBase}/api/routes/calculate?fromLat=${curLat}&fromLng=${curLng}&toLat=${to.lat}&toLng=${to.lng}`);
                     const seg = await resp.json();
                     if (seg.success && seg.points && seg.points.length > 0) {
-                        // Gắn ảnh nền bản đồ bằng ĐÚNG tile VietMap ngay khi
-                        // có kết quả API đầu tiên — chỉ làm 1 lần (tileLayer
-                        // còn null), các lần tính lại tuyến sau không cần
-                        // gắn lại nữa.
                         if (!tileLayer && seg.tileUrlTemplate) {
                             tileLayer = L.tileLayer(seg.tileUrlTemplate, { attribution: '&copy; VietMap', maxZoom: 19 }).addTo(map);
                         }
-                        const points = seg.points.map(p => [p.lat, p.lng]);
-                        const line = L.polyline(points, { color: '#1565C0', weight: 5, opacity: 0.85 }).addTo(map);
-                        activePolylines.push(line);
-                        currentRoutePoints = currentRoutePoints.concat(points);
-                        totalDistanceKm += seg.distanceKm;
-                        totalDurationMin += seg.durationMinutes;
+                        newLegs.push({ points: seg.points.map(p => [p.lat, p.lng]), distKm: seg.distanceKm, durMin: seg.durationMinutes });
                     }
                     curLat = to.lat; curLng = to.lng;
                 }
+                if (newLegs.length > 0) setLegs(map, newLegs);
 
-                if (totalDistanceKm > 0) {
-                    document.getElementById('infoBar').style.display = 'flex';
-                    document.getElementById('distanceText').textContent = `${totalDistanceKm.toFixed(1)} km`;
-                    document.getElementById('durationText').textContent = `${totalDurationMin} phút`;
-                }
+                // Nếu GPS đã có vị trí mới hơn điểm bắt đầu tính, cắt ngay phần đã đi.
+                if (gpsLastPos && !initial) trimToPosition(gpsLastPos[0], gpsLastPos[1]);
+                updateInfoBar();
 
-                if (initial && currentRoutePoints.length > 0) {
-                    const bounds = currentRoutePoints.concat(allStops.map(s => [s.lat, s.lng]));
+                if (initial) {
+                    const bounds = allStops.map(s => [s.lat, s.lng]);
+                    legs.forEach(l => bounds.push(...l.points));
                     map.fitBounds(L.latLngBounds(bounds), { padding: [30, 30] });
                 }
-
                 lastRecalcTs = Date.now();
             } catch (e) {
-                // Lỗi mạng tạm thời -> giữ nguyên tuyến cũ, thử lại ở lần GPS
-                // cập nhật kế tiếp, không chặn trải nghiệm tài xế.
+                // Lỗi mạng tạm thời -> giữ nguyên tuyến cũ, thử lại ở lần GPS sau.
             } finally {
                 recalculating = false;
                 document.getElementById('rerouteBadge').style.display = 'none';
+                if (pendingRecalc) {
+                    const [la, ln] = pendingRecalc;
+                    pendingRecalc = null;
+                    recalcRouteFrom(la, ln);
+                }
             }
         }
 
-        // Mỗi khi có vị trí GPS mới: (1) cập nhật chấm xanh, (2) kiểm tra đã
-        // tới gần điểm dừng hiện tại chưa -> chuyển điểm kế tiếp nếu có, (3)
-        // đo khoảng cách THẬT từ vị trí hiện tại tới đường đang vẽ -> nếu lệch
-        // quá ngưỡng VÀ đã đủ thời gian tối thiểu từ lần tính trước, mới gọi
-        // lại VietMap tính tuyến mới (đúng cơ chế reroute thật, không phải
-        // tính lại vô tội vạ theo mỗi lần GPS nhảy số).
-        function handlePositionUpdate(lat, lng) {
-            const latlng = [lat, lng];
-            if (!myPositionMarker) {
-                myPositionMarker = L.circleMarker(latlng, { radius: 8, color: '#2563EB', fillColor: '#2563EB', fillOpacity: 1 })
-                    .addTo(map).bindPopup('📍 Vị trí của bạn');
-            } else {
-                myPositionMarker.setLatLng(latlng);
+        // Mỗi lần có GPS mới:
+        //  1) di chuyển + xoay mũi tên xám;
+        //  2) CẮT phần đường đã đi qua (luôn làm, kể cả khi đi đúng tuyến);
+        //  3) tới điểm dừng trung gian -> chuyển sang đoạn kế tiếp (không gọi API);
+        //  4) chỉ khi lệch tuyến > 100m mới gọi lại VietMap.
+        function handlePositionUpdate(lat, lng, heading) {
+            updateGpsMarker(map, lat, lng, heading);
+            if (following) {
+                if (!hasFirstFix) map.setView([lat, lng], Math.max(map.getZoom() || 0, 16));
+                else map.panTo([lat, lng], { animate: true });
             }
 
-            // Lần GPS thật ĐẦU TIÊN: xe đã ở ngoài đường, chắc chắn đã rời điểm
-            // xuất phát (stop 0 = Kho) rồi — KHÔNG tính đường quay lại Kho nữa.
-            // Trước đây currentStopIndex vẫn = 0 nên mỗi lần tính lại đều vẽ
-            // "Vị trí hiện tại → Kho → Điểm giao", trông như bắt buộc phải ghé
-            // Kho trước (sai với chặng Giao hàng chỉ có 2 điểm Kho→Điểm giao).
+            // GPS thật đầu tiên: xe đã rời điểm xuất phát (stop 0) -> tính tuyến
+            // từ vị trí thật tới điểm dừng kế tiếp, không vẽ đường quay lại Kho.
             if (!hasFirstFix) {
                 hasFirstFix = true;
                 currentStopIndex = allStops.length > 1 ? 1 : 0;
                 recalcRouteFrom(lat, lng);
                 return;
             }
+            if (recalculating) return; // tuyến mới sắp thay, chờ xong rồi cắt
 
-            if (currentStopIndex < allStops.length) {
-                const target = allStops[currentStopIndex];
-                const distToTarget = haversineMeters(lat, lng, target.lat, target.lng);
-                if (distToTarget < ARRIVAL_THRESHOLD_M && currentStopIndex < allStops.length - 1) {
-                    currentStopIndex++;
-                    recalcRouteFrom(lat, lng); // đổi điểm đến -> chắc chắn phải tính lại ngay
-                    return;
-                }
+            const r = trimToPosition(lat, lng);
+            if (r === 'arrived') currentStopIndex++;
+            if ((r === 'offroute' || r === 'noroute') && Date.now() - lastRecalcTs > MIN_RECALC_INTERVAL_MS) {
+                recalcRouteFrom(lat, lng);
+                return;
             }
-
-            if (currentRoutePoints.length >= 2) {
-                const deviationM = distanceToPolylineMeters(latlng, currentRoutePoints);
-                const sinceLastRecalc = Date.now() - lastRecalcTs;
-                if (deviationM > OFF_ROUTE_THRESHOLD_M && sinceLastRecalc > MIN_RECALC_INTERVAL_MS) {
-                    recalcRouteFrom(lat, lng);
-                }
-            }
+            updateInfoBar();
         }
 
         function startWatchingMyLocation() {
             if (!navigator.geolocation) return;
             navigator.geolocation.watchPosition(
-                (pos) => handlePositionUpdate(pos.coords.latitude, pos.coords.longitude),
-                () => { /* không có quyền GPS trong WebView cũng không sao, chỉ mất chấm xanh + reroute */ },
-                { enableHighAccuracy: true, maximumAge: 5000 }
+                (pos) => {
+                    const c = pos.coords;
+                    // heading của thiết bị chỉ tin được khi xe đang chạy (> ~3,6 km/h)
+                    const heading = (c.heading != null && !isNaN(c.heading) && (c.speed ?? 0) > 1) ? c.heading : null;
+                    handlePositionUpdate(c.latitude, c.longitude, heading);
+                },
+                () => { /* không có quyền GPS trong WebView: chỉ mất mũi tên + reroute */ },
+                { enableHighAccuracy: true, maximumAge: 3000 }
             );
         }
 

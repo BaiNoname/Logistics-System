@@ -11,6 +11,8 @@ using TruckingSystem.Application.Trips;
 using TruckingSystem.Application.Vehicles;
 using TruckingSystem.Application.VehicleAllocation;
 using TruckingSystem.Application.Warehouses;
+using TruckingSystem.Application.Reports;
+using TruckingSystem.Application.TripVideos;
 
 namespace TruckingSystem.Application;
 
@@ -37,6 +39,8 @@ public static class DependencyInjection
         services.AddScoped<IVehicleAllocationService, VehicleAllocationService>();
         services.AddScoped<ILocationService, LocationService>();
         services.AddScoped<IDriverService, DriverService>();
+        services.AddScoped<IReportService, ReportService>();
+        services.AddScoped<ITripVideoService, TripVideoService>();
         return services;
     }
 }

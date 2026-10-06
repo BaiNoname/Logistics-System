@@ -10,10 +10,12 @@ using TruckingSystem.Application.Calendar;
 using TruckingSystem.Application.Common.Interfaces;
 using TruckingSystem.Application.Locations;
 using TruckingSystem.Application.Routing;
+using TruckingSystem.Application.TripVideos;
 using TruckingSystem.Domain.Identity;
 using TruckingSystem.Infrastructure.Auth;
 using TruckingSystem.Infrastructure.ExternalServices;
 using TruckingSystem.Infrastructure.Persistence;
+using TruckingSystem.Infrastructure.Storage;
 
 namespace TruckingSystem.Infrastructure;
 
@@ -74,6 +76,8 @@ public static class DependencyInjection
         // khởi động, không cần tạo lại mỗi request (khác VietMap dùng HttpClient
         // theo từng request qua AddHttpClient).
         services.AddSingleton<IGoogleCalendarService, GoogleCalendarService>();
+        services.AddSingleton<IVideoStorage>(
+        new LocalVideoStorage(configuration["VideoStorage:RootPath"]));
 
         return services;
     }

@@ -1508,6 +1508,54 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.ToTable("TripLines");
                 });
 
+            modelBuilder.Entity("TruckingSystem.Domain.Entities.TripVideoSegment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime>("EndedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("Sha256")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<long>("SizeBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("StartedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("StoragePath")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<int>("TripId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TripId", "StartedAt");
+
+                    b.ToTable("TripVideoSegments");
+                });
+
             modelBuilder.Entity("TruckingSystem.Domain.Entities.Vehicle", b =>
                 {
                     b.Property<int>("Id")
@@ -2368,6 +2416,17 @@ namespace TruckingSystem.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("CargoLine");
+
+                    b.Navigation("Trip");
+                });
+
+            modelBuilder.Entity("TruckingSystem.Domain.Entities.TripVideoSegment", b =>
+                {
+                    b.HasOne("TruckingSystem.Domain.Entities.Trip", "Trip")
+                        .WithMany()
+                        .HasForeignKey("TripId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("Trip");
                 });
