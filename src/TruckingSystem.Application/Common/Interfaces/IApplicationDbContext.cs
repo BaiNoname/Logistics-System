@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Storage;
 using TruckingSystem.Domain.Entities;
 
 namespace TruckingSystem.Application.Common.Interfaces;
@@ -42,6 +44,7 @@ public interface IApplicationDbContext
     DbSet<FuelLog> FuelLogs { get; }
     DbSet<Trip> Trips { get; }
     DbSet<Waypoint> Waypoints { get; }
+    DbSet<TripVideoSegment> TripVideoSegments { get; }
     DbSet<IncidentReport> IncidentReports { get; }
     DbSet<TripExpense> TripExpenses { get; }
     DbSet<Notification> Notifications { get; }
@@ -62,4 +65,10 @@ public interface IApplicationDbContext
     DbSet<StorageAssignment> StorageAssignments { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>Truy cập trực tiếp API Transaction của EF Core — dùng khi 1
+    /// nghiệp vụ cần NHIỀU lần SaveChangesAsync nhưng phải "tất cả hoặc không
+    /// gì cả" (VD: Chia xe cho nhiều xe cùng lúc — nếu xe thứ 2 lỗi giữa
+    /// chừng, KHÔNG được để lại Trip của xe thứ 1 đã lưu dở dang trong DB).</summary>
+    DatabaseFacade Database { get; }
 }

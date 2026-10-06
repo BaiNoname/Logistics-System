@@ -54,6 +54,10 @@ public class TransportOrderService : ITransportOrderService
         if (request.CargoLines is null || request.CargoLines.Count == 0)
             throw new InvalidOperationException("Đơn hàng phải có ít nhất 1 dòng hàng hóa.");
 
+        var cargoLineError = ValidateCargoLines(request.CargoLines);
+        if (cargoLineError is not null)
+            throw new InvalidOperationException(cargoLineError);
+
         var code = $"TO-{DateTime.UtcNow:yyyyMMddHHmmss}";
 
         var order = new TransportOrder
@@ -98,6 +102,10 @@ public class TransportOrderService : ITransportOrderService
         if (request.CargoLines is null || request.CargoLines.Count == 0)
             return new OrderActionResult(false, "Đơn hàng phải có ít nhất 1 dòng hàng hóa.");
 
+        var cargoLineError = ValidateCargoLines(request.CargoLines);
+        if (cargoLineError is not null)
+            return new OrderActionResult(false, cargoLineError);
+
         var warehouseExists = await _db.Warehouses.AnyAsync(w => w.Id == request.WarehouseId);
         if (!warehouseExists)
             return new OrderActionResult(false, "Kho trung chuyển đã chọn không tồn tại.");
@@ -137,33 +145,135 @@ public class TransportOrderService : ITransportOrderService
         return new OrderActionResult(true, null);
     }
 
+    /// <summary>Hủy đơn — xử lý theo 3 mức tùy tình trạng hàng hóa thật tại
+    /// thời điểm hủy (KHÔNG hủy lẻ từng Trip, chỉ hủy qua Đơn):
+    ///   Mức 1 — Chưa chạm kho (Planned/InProgress, chưa Pickup xong): hủy
+    ///     thẳng mọi Trip còn hoạt động, trả xe/tài xế rảnh ngay.
+    ///   Mức 2 — Hàng đã nằm trong kho (Pickup đã Completed, hoặc
+    ///     SelfDelivery vừa nhập ngay lúc chia xe) nhưng Giao hàng còn
+    ///     Planned (chưa xuất): hủy Delivery cũ, TẠO THÊM 1 Trip "Trả hàng"
+    ///     (LegType.Return) dùng lại xe/tài xế đã có sẵn gần kho. Xuất kho
+    ///     thật + trả xe rảnh chỉ xảy ra SAU, khi tài xế chạy xong và bấm
+    ///     Hoàn tất (tái dùng cơ chế Complete có sẵn, xem HandleArrivalAsync).
+    ///   Mức 3 — Giao hàng đã InProgress (hàng đã xuất kho thật): CHẶN,
+    ///     không cho hủy nữa.</summary>
     public async Task<OrderActionResult> CancelAsync(int id)
     {
-        var order = await _db.TransportOrders.FindAsync(id);
+        var order = await _db.TransportOrders
+            .Include(o => o.Trips).ThenInclude(t => t.Vehicle)
+            .Include(o => o.Trips).ThenInclude(t => t.TripLines)
+            .Include(o => o.CargoLines)
+            .FirstOrDefaultAsync(o => o.Id == id);
         if (order is null) return new OrderActionResult(false, "Không tìm thấy đơn hàng.");
 
-        if (order.Status is TransportOrderStatus.InProgress or TransportOrderStatus.Done)
-            return new OrderActionResult(false, "Không thể hủy đơn đã có xe đang chạy hoặc đã hoàn tất.");
+        if (order.Status == TransportOrderStatus.Done)
+            return new OrderActionResult(false, "Đơn đã hoàn tất — không thể hủy.");
         if (order.Status == TransportOrderStatus.Cancelled)
             return new OrderActionResult(false, "Đơn này đã bị hủy từ trước.");
 
-        // CHẶN hủy nếu đơn ĐÃ được chia xe (có Trip) — kể cả khi Status vẫn
-        // đang là "Confirmed" (chưa chuyển InProgress, việc này chỉ xảy ra
-        // khi 1 Trip THẬT SỰ bắt đầu chạy). Lỗ hổng thật: đơn SelfDelivery
-        // nhập kho NGAY khi Chia xe (trước khi Trip nào bắt đầu chạy) — nếu
-        // chỉ dựa vào Status, Dispatcher vẫn hủy được đơn NGAY SAU KHI hàng
-        // đã vào kho, để lại tồn kho "mồ côi" cho 1 đơn đã hủy.
-        var hasTrips = await _db.Trips.AnyAsync(t => t.TransportOrderId == id);
-        if (hasTrips)
-            return new OrderActionResult(false, "Đơn này đã được chia xe (có thể hàng đã vào kho) — không thể hủy. Cần xử lý thủ công (xuất trả hàng...) trước khi hủy.");
+        // Mức 3 — CHẶN nếu BẤT KỲ chuyến Giao hàng nào (của bất kỳ xe nào) đã
+        // xuất kho: đang chạy, đang chờ xác nhận, hoặc đã giao xong.
+        if (order.Trips.Any(t => t.LegType == TripLegType.Delivery
+                && t.Status is TripStatus.InProgress or TripStatus.PendingConfirmation or TripStatus.Completed))
+            return new OrderActionResult(false, "Đã có xe xuất kho và đang/đã giao hàng — không thể hủy đơn nữa.");
+
+        // SelfDelivery: hàng nhập kho NGAY lúc Chia xe -> có tồn kho thật là đủ.
+        var isSelfDelivery = order.PickupMethod == PickupMethod.SelfDelivery;
+        var cargoLineIds = order.CargoLines.Select(c => c.Id).ToList();
+        var orderHasStock = isSelfDelivery && await _db.WarehouseStocks
+            .AnyAsync(s => cargoLineIds.Contains(s.CargoLineId) && s.QtyOnHand > 0);
+
+        await using var transaction = await _db.Database.BeginTransactionAsync();
+        var reason = "Hủy theo đơn hàng #" + order.Id;
+
+        // Chia xe có thể tách 1 đơn ra NHIỀU XE — mỗi xe 1 cặp chuyến (Lấy hàng +
+        // Giao hàng, cùng xe + tài xế). Xử lý RIÊNG TỪNG XE, vì mỗi xe có thể đang
+        // ở giai đoạn khác nhau (xe A đã lấy hàng về kho, xe B còn đang đi lấy).
+        var tripsByVehicle = order.Trips
+            .Where(t => t.LegType != TripLegType.Return && t.Status != TripStatus.Cancelled)
+            .GroupBy(t => t.VehicleId);
+
+        foreach (var group in tripsByVehicle)
+        {
+            var pickup = group.FirstOrDefault(t => t.LegType == TripLegType.Pickup);
+            var delivery = group.FirstOrDefault(t => t.LegType == TripLegType.Delivery);
+
+            // Hàng của RIÊNG xe này đã thật sự nằm trong kho chưa?
+            var goodsInWarehouse = isSelfDelivery ? orderHasStock : pickup?.Status == TripStatus.Completed;
+
+            if (goodsInWarehouse && delivery != null)
+            {
+                // Mức 2 — tạo chuyến Trả hàng cho ĐÚNG phần hàng của xe này, dùng
+                // lại xe/tài xế đang ở sẵn gần kho. Xe CHƯA rảnh, còn phải chạy
+                // chuyến trả hàng (xe rảnh lại khi chuyến đó được Duyệt/Hoàn tất).
+                _db.Trips.Add(new Trip
+                {
+                    TransportOrderId = order.Id,
+                    VehicleId = delivery.VehicleId,
+                    DriverEmployeeId = delivery.DriverEmployeeId,
+                    WarehouseId = delivery.WarehouseId,
+                    LegType = TripLegType.Return,
+                    Status = TripStatus.Planned,
+                    TripLines = delivery.TripLines.Select(l => new TripLine
+                    {
+                        CargoLineId = l.CargoLineId,
+                        QtyPlanned = l.QtyPlanned,
+                    }).ToList(),
+                });
+
+                delivery.Status = TripStatus.Cancelled;
+                delivery.CancelReason = reason;
+            }
+            else
+            {
+                // Mức 1 — hàng của xe này chưa vào kho -> hủy thẳng mọi chuyến còn
+                // hoạt động của xe này (gồm cả Lấy hàng đã báo xong nhưng CHƯA
+                // duyệt: hàng chưa nhập kho, nhập kho chỉ xảy ra lúc duyệt), trả xe.
+                foreach (var trip in group.Where(t =>
+                    t.Status is TripStatus.Planned or TripStatus.InProgress or TripStatus.PendingConfirmation))
+                {
+                    trip.Status = TripStatus.Cancelled;
+                    trip.CancelReason = reason;
+                }
+                var vehicle = group.First().Vehicle;
+                if (vehicle != null) vehicle.Status = VehicleStatus.Available;
+            }
+        }
 
         order.Status = TransportOrderStatus.Cancelled;
         await _db.SaveChangesAsync();
+        await transaction.CommitAsync();
         return new OrderActionResult(true, null);
     }
 
     private static PickupMethod ParsePickupMethod(string value)
         => Enum.TryParse<PickupMethod>(value, out var parsed) ? parsed : PickupMethod.CompanyPickup;
+
+    /// <summary>Kiểm tra TẤT CẢ dòng hàng đều có số liệu HỢP LỆ (dương) trước
+    /// khi cho tạo/sửa đơn — trước đây KHÔNG kiểm tra gì cả, có thể tạo 1
+    /// dòng hàng với số lượng/khối lượng/thể tích = 0 hoặc ÂM, gây sai lệch
+    /// khi tính tổng ở bước Chia xe (Greedy) sau này. Trả về null nếu hợp lệ,
+    /// hoặc thông báo lỗi nếu có dòng nào sai.</summary>
+    private static string? ValidateCargoLines(List<CargoLineDto> cargoLines)
+    {
+        for (int i = 0; i < cargoLines.Count; i++)
+        {
+            var c = cargoLines[i];
+            var lineLabel = string.IsNullOrWhiteSpace(c.CargoType) ? $"Dòng hàng #{i + 1}" : $"Dòng hàng \"{c.CargoType}\"";
+
+            if (string.IsNullOrWhiteSpace(c.CargoType))
+                return $"Dòng hàng #{i + 1} chưa nhập loại hàng hóa.";
+            if (c.QtyTotal <= 0)
+                return $"{lineLabel}: số lượng phải lớn hơn 0.";
+            if (c.PackageCount <= 0)
+                return $"{lineLabel}: số kiện phải lớn hơn 0.";
+            if (c.WeightKg <= 0)
+                return $"{lineLabel}: khối lượng phải lớn hơn 0.";
+            if (c.VolumeM3 <= 0)
+                return $"{lineLabel}: thể tích phải lớn hơn 0.";
+        }
+        return null;
+    }
 
     private static CargoLine MapCargoLine(CargoLineDto c) => new()
     {

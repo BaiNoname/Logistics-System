@@ -29,7 +29,7 @@ namespace TruckingSystem.Desktop.GUI_InvoiceManagement
             lblTitle.Location = new Point(2, 11);
             lblTitle.Margin = new Padding(2, 0, 2, 0);
             lblTitle.Name = "lblTitle";
-            lblTitle.Size = new Size(135, 33);
+            lblTitle.Size = new Size(167, 49);
             lblTitle.TabIndex = 0;
             lblTitle.Text = "Hóa đơn";
             // 

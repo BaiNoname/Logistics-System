@@ -31,7 +31,7 @@ namespace TruckingSystem.Desktop.GUI_Shared
         {
             InitializeComponent();
             SetupTruckAnimation();
-            txtServerUrl.Text = "https://localhost:8080";
+            txtServerUrl.Text = "https://trucking.logisticssystem.dpdns.org";
             txtUsername.Text = "admin";
         }
 

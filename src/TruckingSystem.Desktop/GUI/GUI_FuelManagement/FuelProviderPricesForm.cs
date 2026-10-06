@@ -1,4 +1,5 @@
-﻿using TruckingSystem.Desktop.Common;
+﻿using System.Windows.Forms;
+using TruckingSystem.Desktop.Common;
 using TruckingSystem.Desktop.DTO_FuelManagement;
 
 namespace TruckingSystem.Desktop.GUI_FuelManagement
@@ -10,11 +11,13 @@ namespace TruckingSystem.Desktop.GUI_FuelManagement
     {
         private ApiServices? _api;
         private int _providerId;
+        private List<FuelPriceHistoryItem> _prices = new();
 
         public FuelProviderPricesForm()
         {
             InitializeComponent();
             dtEffectiveDate.Value = DateTime.Today;
+            grid.DataBindingComplete += (_, _) => { if (grid.Columns["Id"] != null) grid.Columns["Id"]!.Visible = false; };
         }
 
         public FuelProviderPricesForm(ApiServices api, int providerId, string providerName) : this()
@@ -31,14 +34,15 @@ namespace TruckingSystem.Desktop.GUI_FuelManagement
             lblStatus.Text = "Đang tải...";
             try
             {
-                var prices = await _api.Fuel.GetPriceHistoryAsync(_providerId);
-                grid.DataSource = prices.Select(p => new
+                _prices = await _api.Fuel.GetPriceHistoryAsync(_providerId);
+                grid.DataSource = _prices.Select(p => new
                 {
+                    p.Id,
                     Loại_nhiên_liệu = p.FuelType,
                     Giá_VNĐ = p.Price.ToString("N0"),
                     Ngày_hiệu_lực = p.EffectiveDate.ToString("dd/MM/yyyy"),
                 }).ToList();
-                lblStatus.Text = $"{prices.Count} mức giá đã ghi nhận";
+                lblStatus.Text = $"{_prices.Count} mức giá đã ghi nhận";
                 lblStatus.ForeColor = Theme.TextSecondary;
             }
             catch (Exception ex)
@@ -75,6 +79,36 @@ namespace TruckingSystem.Desktop.GUI_FuelManagement
             {
                 lblStatus.Text = "Lỗi: " + ex.Message;
                 lblStatus.ForeColor = Theme.Danger;
+            }
+        }
+
+        /// <summary>Xóa 1 mức giá — cần thiết để "dọn đường" nếu sau này muốn
+        /// xóa hẳn hãng xăng này (Backend chặn xóa hãng nếu còn lịch sử giá).</summary>
+        private async void BtnDeletePrice_Click(object? sender, EventArgs e)
+        {
+            if (_api is null || grid.CurrentRow is null)
+            {
+                MessageBox.Show(FindForm(), "Vui lòng chọn 1 mức giá trước.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+            var id = (int)grid.CurrentRow.Cells["Id"].Value;
+
+            var confirm = MessageBox.Show(FindForm(), "Xóa hẳn mức giá này? Không thể hoàn tác.", "Xác nhận xóa", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+            if (confirm != DialogResult.Yes) return;
+
+            try
+            {
+                var result = await _api.Fuel.DeletePriceAsync(id);
+                if (!result.Success)
+                {
+                    MessageBox.Show(FindForm(), result.Message ?? "Không thể xóa.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+                await LoadAsync();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(FindForm(), "Lỗi: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
     }

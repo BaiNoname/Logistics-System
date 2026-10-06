@@ -4,7 +4,7 @@ public enum EmployeeStatus { Active, OnLeave, Terminated }
 
 public enum TransportOrderStatus { Draft, Confirmed, InProgress, Done, Cancelled }
 
-public enum TripStatus { Planned, InProgress, Completed, Cancelled }
+public enum TripStatus { Planned, InProgress, Completed, Cancelled, PendingConfirmation }
 
 public enum TripLineStatus { Planned, Picked, Delivered }
 
@@ -30,9 +30,20 @@ public enum ShiftType { Morning, Afternoon, Night, FullDay }
 public enum PickupMethod { CompanyPickup, SelfDelivery }
 
 /// <summary>Phân biệt 1 Trip là chặng lấy hàng về kho hay chặng giao hàng đi.</summary>
-public enum TripLegType { Pickup, Delivery }
+public enum TripLegType
+{
+    Pickup,
+    Delivery,
+    Return   // MỚI — chuyến trả hàng về đối tác khi đơn bị hủy sau khi đã nhập kho
+}
 
 public enum WarehouseTxnType { Receipt, Issue }
 
 /// <summary>Loại khu vực trong kho — quyết định hàng dễ vỡ/nguy hiểm phải xếp đúng khu riêng.</summary>
 public enum ZoneType { Normal, Fragile, Hazmat }
+
+/// <summary>Bức tường có cửa kho — cửa LUÔN nằm trên tường (không thể ở giữa kho).
+/// Quy ước tọa độ sơ đồ: X chạy theo chiều DÀI kho, Y chạy theo chiều RỘNG kho,
+/// gốc (0,0) ở góc trên-trái. Top: Y = 0 · Bottom: Y = chiều rộng ·
+/// Left: X = 0 · Right: X = chiều dài.</summary>
+public enum WallSide { Top, Bottom, Left, Right }

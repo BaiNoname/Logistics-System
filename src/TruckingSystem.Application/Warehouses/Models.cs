@@ -18,16 +18,16 @@ public record WarehouseZoneDto(int Id, string Name, string ZoneType, int BinCoun
 public record BinContentItemDto(string OrderCode, string CustomerName, string CargoType, decimal QtyStored, DateTime ReceivedAt);
 
 public record StorageBinDto(int Id, string Code, decimal CapacityM3, decimal CurrentUsedM3, decimal MaxWeightKg, decimal PosX, decimal PosY, decimal WidthMeters, decimal HeightMeters, decimal DistanceFromDoorMeters, List<BinContentItemDto> Contents);
-public record WarehouseListItemDto(int Id, string Name, string? Address, decimal? CapacityM3, decimal? LengthMeters, decimal? WidthMeters, double? Lat, double? Lng);
+public record WarehouseListItemDto(int Id, string Name, string? Address, decimal? CapacityM3, decimal? LengthMeters, decimal? WidthMeters, double? Lat, double? Lng, string? DoorSide = null, decimal? DoorOffsetMeters = null);
 
 /// <summary>Tạo kho mới — cho phép công ty có NHIỀU kho ở nhiều địa điểm khác
 /// nhau (VD: TP.HCM, Hà Nội, Đà Nẵng), mỗi kho kích thước thật riêng để vẽ
 /// đúng sơ đồ tổng quan. Lat/Lng BẮT BUỘC có (lấy từ VietMap Autocomplete) để
 /// tính lộ trình đúng qua kho — không phải chỉ để hiển thị.</summary>
-public record CreateWarehouseRequest(string Name, string? Address, decimal? CapacityM3, decimal? LengthMeters, decimal? WidthMeters, double? Lat, double? Lng);
+public record CreateWarehouseRequest(string Name, string? Address, decimal? CapacityM3, decimal? LengthMeters, decimal? WidthMeters, double? Lat, double? Lng, string? DoorSide = null, decimal? DoorOffsetMeters = null);
 
 /// <summary>Sửa thông tin kho — cùng cấu trúc CreateWarehouseRequest.</summary>
-public record UpdateWarehouseRequest(string Name, string? Address, decimal? CapacityM3, decimal? LengthMeters, decimal? WidthMeters, double? Lat, double? Lng);
+public record UpdateWarehouseRequest(string Name, string? Address, decimal? CapacityM3, decimal? LengthMeters, decimal? WidthMeters, double? Lat, double? Lng, string? DoorSide = null, decimal? DoorOffsetMeters = null);
 
 /// <summary>Tạo khu vực (Zone) mới trong 1 kho — có tọa độ/kích thước thật để
 /// vẽ đúng vị trí trong sơ đồ tổng quan.</summary>

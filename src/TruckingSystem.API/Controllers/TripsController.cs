@@ -35,6 +35,22 @@ public class TripsController : ControllerBase
         return Ok(result); // luôn 200 OK — Desktop tự đọc result.Success/Message, tránh PostAsync throw exception khi 400 làm mất thông báo rõ ràng
     }
 
+    /// <summary>Vận hành DUYỆT xác nhận "đã xong" của tài xế — PendingConfirmation -> Completed thật sự.</summary>
+    [HttpPost("{id:int}/approve-completion")]
+    public async Task<ActionResult<TripActionResult>> ApproveCompletion(int id)
+    {
+        var result = await _tripService.ApproveCompletionAsync(id);
+        return Ok(result);
+    }
+
+    /// <summary>Vận hành TỪ CHỐI xác nhận của tài xế — đẩy chuyến quay lại Đang chạy.</summary>
+    [HttpPost("{id:int}/reject-completion")]
+    public async Task<ActionResult<TripActionResult>> RejectCompletion(int id)
+    {
+        var result = await _tripService.RejectCompletionAsync(id);
+        return Ok(result);
+    }
+
     [HttpPost("{id:int}/fuel")]
     public async Task<ActionResult<TripActionResult>> RecordFuel(int id, RecordFuelRequest request)
     {
@@ -75,7 +91,16 @@ public class TripsController : ControllerBase
 
     [HttpPost("{id:int}/incidents")]
     public async Task<ActionResult<IncidentReportDto>> CreateIncident(int id, CreateIncidentReportRequest request)
-        => Ok(await _tripService.CreateIncidentAsync(id, request));
+    {
+        try
+        {
+            return Ok(await _tripService.CreateIncidentAsync(id, request));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
 
     [HttpDelete("incidents/{incidentId:int}")]
     public async Task<ActionResult<TripActionResult>> DeleteIncident(int incidentId)
@@ -99,7 +124,16 @@ public class TripsController : ControllerBase
 
     [HttpPost("{id:int}/expenses")]
     public async Task<ActionResult<TripExpenseDto>> CreateExpense(int id, CreateTripExpenseRequest request)
-        => Ok(await _tripService.CreateExpenseAsync(id, request));
+    {
+        try
+        {
+            return Ok(await _tripService.CreateExpenseAsync(id, request));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
 
     [HttpDelete("expenses/{expenseId:int}")]
     public async Task<ActionResult<TripActionResult>> DeleteExpense(int expenseId)

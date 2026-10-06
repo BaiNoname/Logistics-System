@@ -17,6 +17,7 @@ public class RoutesController : ControllerBase
     }
 
     /// <summary>Tính khoảng cách, thời gian, và tuyến đường thật (qua VietMap) giữa 2 tọa độ.</summary>
+    [AllowAnonymous]
     [HttpGet("calculate")]
     public async Task<ActionResult<RouteResult>> Calculate(double fromLat, double fromLng, double toLat, double toLng)
     {

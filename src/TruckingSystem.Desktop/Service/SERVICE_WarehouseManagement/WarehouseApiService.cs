@@ -16,12 +16,12 @@ namespace TruckingSystem.Desktop.SERVICE_WarehouseManagement
             => _conn.GetAsync<List<WarehouseListItem>>("/api/warehouses")!;
 
         /// <summary>Tạo kho mới — cho phép có nhiều kho ở nhiều địa điểm (TP.HCM, Hà Nội, Đà Nẵng...).</summary>
-        public Task<WarehouseListItem> CreateWarehouseAsync(string name, string? address, decimal? capacityM3, decimal? lengthMeters, decimal? widthMeters, double? lat, double? lng)
-            => _conn.PostAsync<WarehouseListItem>("/api/warehouses", new { name, address, capacityM3, lengthMeters, widthMeters, lat, lng })!;
+        public Task<WarehouseListItem> CreateWarehouseAsync(string name, string? address, decimal? capacityM3, decimal? lengthMeters, decimal? widthMeters, double? lat, double? lng, string? doorSide = null, decimal? doorOffsetMeters = null)
+            => _conn.PostAsync<WarehouseListItem>("/api/warehouses", new { name, address, capacityM3, lengthMeters, widthMeters, lat, lng, doorSide, doorOffsetMeters })!;
 
         /// <summary>Sửa thông tin kho đã có.</summary>
-        public Task<WarehouseActionResultItem> UpdateWarehouseAsync(int warehouseId, string name, string? address, decimal? capacityM3, decimal? lengthMeters, decimal? widthMeters, double? lat, double? lng)
-            => _conn.PutAsync<WarehouseActionResultItem>($"/api/warehouses/{warehouseId}", new { name, address, capacityM3, lengthMeters, widthMeters, lat, lng })!;
+        public Task<WarehouseActionResultItem> UpdateWarehouseAsync(int warehouseId, string name, string? address, decimal? capacityM3, decimal? lengthMeters, decimal? widthMeters, double? lat, double? lng, string? doorSide = null, decimal? doorOffsetMeters = null)
+            => _conn.PutAsync<WarehouseActionResultItem>($"/api/warehouses/{warehouseId}", new { name, address, capacityM3, lengthMeters, widthMeters, lat, lng, doorSide, doorOffsetMeters })!;
 
         /// <summary>Tạo khu vực mới trong 1 kho.</summary>
         public Task<WarehouseZoneItem> CreateZoneAsync(int warehouseId, string name, string zoneType, decimal posX, decimal posY, decimal widthMeters, decimal heightMeters)

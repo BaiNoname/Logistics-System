@@ -28,6 +28,10 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             };
             _debounceTimer.Tick += async (_, _) => { _debounceTimer.Stop(); await RunSearchAsync(); };
             lstSuggestions.SelectedIndexChanged += (_, _) => SelectSuggestion();
+
+            // Vị trí cửa: chọn tường trước, rồi mới nhập được khoảng cách dọc tường.
+            WarehouseDoorHelper.FillSideCombo(cboDoorSide);
+            cboDoorSide.SelectedIndexChanged += (_, _) => numDoorOffset.Enabled = cboDoorSide.SelectedIndex > 0;
         }
 
         public CreateWarehouseForm(ApiServices api) : this()
@@ -77,6 +81,15 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             }
             if (_api is null) return;
 
+            var doorError = WarehouseDoorHelper.Validate(cboDoorSide.SelectedIndex, numDoorOffset.Value, numLength.Value, numWidth.Value);
+            if (doorError is not null)
+            {
+                lblStatus.Text = doorError;
+                return;
+            }
+            var doorSide = WarehouseDoorHelper.ToApiValue(cboDoorSide.SelectedIndex);
+            decimal? doorOffset = doorSide is null ? null : numDoorOffset.Value;
+
             btnSave.Enabled = false;
             try
             {
@@ -86,7 +99,8 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                     numCapacity.Value == 0 ? null : numCapacity.Value,
                     numLength.Value == 0 ? null : numLength.Value,
                     numWidth.Value == 0 ? null : numWidth.Value,
-                    _selectedAddress?.Lat, _selectedAddress?.Lng);
+                    _selectedAddress?.Lat, _selectedAddress?.Lng,
+                    doorSide, doorOffset);
 
                 DialogResult = DialogResult.OK;
                 Close();

@@ -27,5 +27,9 @@ namespace TruckingSystem.Desktop.SERVICE_FuelManagement
 
         public Task<FuelPriceHistoryItem> CreatePriceAsync(string fuelType, decimal price, DateTime effectiveDate, int? fuelProviderId)
             => _conn.PostAsync<FuelPriceHistoryItem>("/api/fuel/prices", new { fuelType, price, effectiveDate, fuelProviderId })!;
+
+        /// <summary>Xóa 1 mức giá đã ghi — cần để dọn đường trước khi có thể xóa hẳn 1 hãng xăng.</summary>
+        public Task<FuelActionResultItem> DeletePriceAsync(int priceId)
+            => _conn.DeleteAsync<FuelActionResultItem>($"/api/fuel/prices/{priceId}")!;
     }
 }

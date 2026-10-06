@@ -50,6 +50,8 @@ public class Trip : BaseEntity
     public double? EndLng { get; set; }
     public decimal? PlannedDistanceKm { get; set; }
 
+    public string? CancelReason { get; set; }
+
     public ICollection<TripLine> TripLines { get; set; } = new List<TripLine>();
     public ICollection<Waypoint> Waypoints { get; set; } = new List<Waypoint>();
     public ICollection<IncidentReport> IncidentReports { get; set; } = new List<IncidentReport>();
