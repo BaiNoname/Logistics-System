@@ -6,7 +6,7 @@ namespace TruckingSystem.API.Controllers;
 
 [ApiController]
 [Route("api/trips")]
-[Authorize]
+[Authorize(Roles = "Admin,Dispatcher")]
 public class TripsController : ControllerBase
 {
     private readonly ITripService _tripService;

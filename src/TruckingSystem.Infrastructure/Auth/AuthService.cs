@@ -26,6 +26,9 @@ public class AuthService : IAuthService
 
     public async Task<LoginResult> LoginAsync(LoginRequest request)
     {
+        if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
+            return new LoginResult(false, null, "Vui lòng nhập tài khoản và mật khẩu.");
+
         var user = await _userManager.FindByNameAsync(request.Username);
         if (user is null || !user.IsActive)
             return new LoginResult(false, null, "Sai tài khoản hoặc tài khoản đã bị khóa.");
@@ -35,8 +38,9 @@ public class AuthService : IAuthService
             return new LoginResult(false, null, "Sai tài khoản hoặc mật khẩu.");
 
         var roles = await _userManager.GetRolesAsync(user);
-        var token = _tokenGenerator.GenerateToken(user.Id, user.UserName ?? string.Empty, roles);
+        var token = _tokenGenerator.GenerateToken(user.Id, user.UserName ?? string.Empty, roles,
+            await _userManager.GetSecurityStampAsync(user));
 
-        return new LoginResult(true, token, null);
+        return new LoginResult(true, token, null, roles.ToArray());
     }
 }

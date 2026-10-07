@@ -11,6 +11,8 @@ using TruckingSystem.Desktop.GUI_TripManagement;
 using TruckingSystem.Desktop.GUI_VehicleManagement;
 using TruckingSystem.Desktop.GUI_WarehouseManagement;
 using TruckingSystem.Desktop.GUI_DriverManagement;
+using TruckingSystem.Desktop.GUI_AccountManagement;
+using TruckingSystem.Desktop.GUI_SystemManagement;
 
 namespace TruckingSystem.Desktop.GUI_Shared
 {
@@ -60,26 +62,30 @@ namespace TruckingSystem.Desktop.GUI_Shared
             };
             logoPanel.Controls.Add(logo);
 
-            var navItems = new (string Icon, string Text, Func<Control> Build)[]
+            var navItems = new (string Icon, string Text, string[] Roles, Func<Control> Build)[]
             {
-                ("📊", "Tổng quan", () => new DashboardControl(_api)),
-                ("📦", "Đơn vận chuyển", () => new TransportOrdersControl(_api)),
-                ("🛣️", "Chuyến (Trip)", () => new TripsControl(_api)),
-                ("⛽", "Nhiên liệu", () => new FuelManagementControl(_api)),
-                ("📍", "Địa điểm", () => new LocationsControl(_api)),
-                ("🚚", "Đội xe", () => new VehiclesControl(_api)),
-                ("🏬", "Kho trung chuyển", () => new WarehousesControl(_api)),
-                ("👥", "Khách hàng", () => new CustomersControl(_api)),
-                ("🧑‍💼", "Nhân viên", () => new EmployeesControl(_api)),
-                ("🚕", "Tài xế", () => new DriversControl(_api)),
-                ("🧾", "Hóa đơn", () => new InvoicesControl(_api)),
-                ("📜", "Nhật ký hệ thống", () => new TruckingSystem.Desktop.GUI_AuditLogManagement.AuditLogsControl(_api)),
+                ("📊", "Tổng quan", new[] { "Admin", "Dispatcher", "Accountant", "WarehouseStaff" }, () => new DashboardControl(_api)),
+                ("📦", "Đơn vận chuyển", new[] { "Admin", "Dispatcher" }, () => new TransportOrdersControl(_api)),
+                ("🛣️", "Chuyến (Trip)", new[] { "Admin", "Dispatcher" }, () => new TripsControl(_api)),
+                ("⛽", "Nhiên liệu", new[] { "Admin", "Accountant" }, () => new FuelManagementControl(_api)),
+                ("📍", "Địa điểm", new[] { "Admin", "Dispatcher" }, () => new LocationsControl(_api)),
+                ("🚚", "Đội xe", new[] { "Admin", "Dispatcher" }, () => new VehiclesControl(_api)),
+                ("🏬", "Kho trung chuyển", new[] { "Admin", "Dispatcher", "WarehouseStaff" }, () => new WarehousesControl(_api)),
+                ("👥", "Khách hàng", new[] { "Admin", "Dispatcher", "Accountant" }, () => new CustomersControl(_api)),
+                ("🧑‍💼", "Nhân viên", new[] { "Admin", "Dispatcher" }, () => new EmployeesControl(_api)),
+                ("🚕", "Tài xế", new[] { "Admin", "Dispatcher" }, () => new DriversControl(_api)),
+                ("🧾", "Hóa đơn", new[] { "Admin", "Accountant" }, () => new InvoicesControl(_api)),
+                ("📜", "Nhật ký hệ thống", new[] { "Admin", "Dispatcher" }, () => new TruckingSystem.Desktop.GUI_AuditLogManagement.AuditLogsControl(_api)),
+                ("🔐", "Quản lý tài khoản", new[] { "Admin" }, () => new AccountsControl(_api)),
+                ("⚙️", "Hệ Thống", new[] { "Admin" }, () => new SystemControl(_api)),
             };
 
-            var navPanel = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, WrapContents = false, Padding = new Padding(10, 10, 10, 0) };
+            var navPanel = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoScroll = true, Padding = new Padding(10, 10, 10, 0) };
 
             foreach (var item in navItems)
             {
+                if (!_api.Connection.IsInRole(item.Roles)) continue;
+
                 var btn = MakeNavButton(item.Icon, item.Text);
                 btn.Click += (_, _) => NavigateTo(btn, item.Build);
                 navPanel.Controls.Add(btn);

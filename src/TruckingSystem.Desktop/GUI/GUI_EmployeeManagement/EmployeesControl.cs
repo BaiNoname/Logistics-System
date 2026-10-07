@@ -20,6 +20,7 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
         public EmployeesControl(ApiServices api) : this()
         {
             _api = api;
+            btnCreate.Visible = btnEdit.Visible = api.Connection.IsInRole("Admin");
         }
 
         private void BtnRefresh_Click(object? sender, EventArgs e) => _ = LoadAsync();
@@ -28,6 +29,20 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
         {
             if (_api is null) return;
             using var f = new CreateEmployeeForm(_api);
+            if (f.ShowDialog(FindForm()) == DialogResult.OK) await LoadAsync();
+        }
+
+        private async void BtnEdit_Click(object? sender, EventArgs e)
+        {
+            if (_api is null || grid.CurrentRow is null)
+            {
+                MessageBox.Show(FindForm(), "Vui lòng chọn 1 nhân viên trước.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            var employeeId = (int)grid.CurrentRow.Cells["Id"].Value;
+            var employee = _employees.First(e => e.Id == employeeId);
+            using var f = new CreateEmployeeForm(_api, employee);
             if (f.ShowDialog(FindForm()) == DialogResult.OK) await LoadAsync();
         }
 
@@ -77,7 +92,7 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
                     Phòng_ban = e.DepartmentName ?? "—",
                     Chức_danh = e.PositionName ?? "—",
                     Trạng_thái = e.Status == "Active" ? "Đang làm" : e.Status,
-                    Là_tài_xế = e.IsDriver ? "✅ Có" : "—",
+                    //Là_tài_xế = e.IsDriver ? "✅ Có" : "—",
                 }).ToList();
                 lblStatus.Text = $"Tổng {_employees.Count} nhân viên — chọn 1 dòng rồi bấm \"Tạo hồ sơ tài xế\" nếu cần";
             }

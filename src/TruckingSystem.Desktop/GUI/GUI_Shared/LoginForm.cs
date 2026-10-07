@@ -1,7 +1,5 @@
-using System.Drawing;
-using System.Windows.Forms;
 using TruckingSystem.Desktop.Common;
-
+using TruckingSystem.Desktop.GUI.GUI_ChatBot;
 namespace TruckingSystem.Desktop.GUI_Shared
 {
     /// <summary>Logic — đăng nhập + animation xe tải chạy trên banner. Khung tĩnh
@@ -118,6 +116,14 @@ namespace TruckingSystem.Desktop.GUI_Shared
         private async void BtnLogin_Click(object? sender, EventArgs e)
         {
             lblStatus.Text = "";
+            if (string.IsNullOrWhiteSpace(txtServerUrl.Text) ||
+                string.IsNullOrWhiteSpace(txtUsername.Text) ||
+                string.IsNullOrWhiteSpace(txtPassword.Text))
+            {
+                lblStatus.Text = "❌ Vui lòng nhập đầy đủ máy chủ, tài khoản và mật khẩu.";
+                return;
+            }
+
             btnLogin.Enabled = false;
             btnLogin.Text = "Đang đăng nhập...";
             try
@@ -128,6 +134,13 @@ namespace TruckingSystem.Desktop.GUI_Shared
                 if (!result.Success)
                 {
                     lblStatus.Text = "❌ " + (result.Message ?? "Đăng nhập thất bại.");
+                    return;
+                }
+
+                if (!api.Connection.IsInRole("Admin", "Dispatcher", "Accountant", "WarehouseStaff"))
+                {
+                    api.Connection.ClearToken();
+                    lblStatus.Text = "❌ Tài khoản này không có quyền sử dụng ứng dụng Desktop.";
                     return;
                 }
 
@@ -146,6 +159,27 @@ namespace TruckingSystem.Desktop.GUI_Shared
             {
                 btnLogin.Enabled = true;
                 btnLogin.Text = "Đăng nhập";
+            }
+        }
+
+        private void btnOpenChatBot_Click(object sender, EventArgs e)
+        {
+            DialogResult result = MessageBox.Show("Bạn có muốn mở ChatBot hỗ trợ không?", "Xác nhận", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+            if (result == DialogResult.Yes)
+            {
+                try
+                {
+                    var chatBot = new ChatBotForm();
+                    chatBot.ShowDialog();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(this,
+                        "Không thể mở ChatBot vì thiếu thông tin hoặc có lỗi xảy ra:\n" + ex.Message,
+                        "Lỗi ChatBot",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error);
+                }
             }
         }
     }

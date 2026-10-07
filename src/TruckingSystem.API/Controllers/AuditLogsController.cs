@@ -6,7 +6,7 @@ namespace TruckingSystem.API.Controllers;
 
 [ApiController]
 [Route("api/audit-logs")]
-[Authorize]
+[Authorize(Roles = "Admin,Dispatcher")]
 public class AuditLogsController : ControllerBase
 {
     private readonly IAuditLogService _service;

@@ -1,6 +1,7 @@
 using TruckingSystem.Desktop.SERVICE_Auth;
 using TruckingSystem.Desktop.SERVICE_AuditLogManagement;
 using TruckingSystem.Desktop.SERVICE_CustomerManagement;
+using TruckingSystem.Desktop.SERVICE_ContractManagement;
 using TruckingSystem.Desktop.SERVICE_DriverManagement;
 using TruckingSystem.Desktop.SERVICE_EmployeeManagement;
 using TruckingSystem.Desktop.SERVICE_InvoiceManagement;
@@ -13,6 +14,7 @@ using TruckingSystem.Desktop.SERVICE_FuelManagement;
 using TruckingSystem.Desktop.SERVICE_TripManagement;
 using TruckingSystem.Desktop.SERVICE_VehicleManagement;
 using TruckingSystem.Desktop.SERVICE_WarehouseManagement;
+using TruckingSystem.Desktop.SERVICE_SystemManagement;
 
 namespace TruckingSystem.Desktop.Common
 {
@@ -29,10 +31,13 @@ namespace TruckingSystem.Desktop.Common
         public ApiConnection Connection { get; }
 
         public AuthApiService Auth { get; }
+        public AccountApiService Accounts { get; }
+        public SystemApiService System { get; }
         public TransportOrderApiService TransportOrders { get; }
         public VehicleApiService Vehicles { get; }
         public WarehouseApiService Warehouses { get; }
         public CustomerApiService Customers { get; }
+        public ContractApiService Contracts { get; }
         public EmployeeApiService Employees { get; }
         public DriverApiService Drivers { get; }
         public InvoiceApiService Invoices { get; }
@@ -50,10 +55,13 @@ namespace TruckingSystem.Desktop.Common
             Connection = new ApiConnection(baseUrl);
 
             Auth = new AuthApiService(Connection);
+            Accounts = new AccountApiService(Connection);
+            System = new SystemApiService(Connection);
             TransportOrders = new TransportOrderApiService(Connection);
             Vehicles = new VehicleApiService(Connection);
             Warehouses = new WarehouseApiService(Connection);
             Customers = new CustomerApiService(Connection);
+            Contracts = new ContractApiService(Connection);
             Employees = new EmployeeApiService(Connection);
             Drivers = new DriverApiService(Connection);
             Invoices = new InvoiceApiService(Connection);

@@ -1,10 +1,12 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using TruckingSystem.Application.Fuel;
+using Microsoft.AspNetCore.Authorization;
 
 namespace TruckingSystem.API.Controllers;
 
 [ApiController]
 [Route("api/fuel")]
+[Authorize(Roles = "Admin,Accountant")]
 public class FuelController : ControllerBase
 {
     private readonly IFuelService _service;

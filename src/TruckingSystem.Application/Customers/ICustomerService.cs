@@ -3,7 +3,7 @@
 public interface ICustomerService
 {
     Task<List<CustomerListItemDto>> GetAllAsync();
-    Task<CustomerListItemDto> CreateAsync(CreateCustomerRequest request);
+    Task<CustomerActionResult> CreateAsync(CreateCustomerRequest request);
 
     /// <summary>Sửa thông tin khách hàng đã có.</summary>
     Task<CustomerActionResult> UpdateAsync(int id, UpdateCustomerRequest request);

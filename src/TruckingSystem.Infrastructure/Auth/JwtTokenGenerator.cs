@@ -17,13 +17,14 @@ public class JwtTokenGenerator : ITokenGenerator
         _config = config;
     }
 
-    public string GenerateToken(string userId, string username, IList<string> roles)
+    public string GenerateToken(string userId, string username, IList<string> roles, string securityStamp)
     {
         var claims = new List<Claim>
         {
             new(JwtRegisteredClaimNames.Sub, userId),
             new(ClaimTypes.NameIdentifier, userId),
             new(ClaimTypes.Name, username),
+            new("security_stamp", securityStamp),
         };
         claims.AddRange(roles.Select(r => new Claim(ClaimTypes.Role, r)));
 

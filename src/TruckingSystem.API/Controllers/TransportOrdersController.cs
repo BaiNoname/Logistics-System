@@ -7,7 +7,7 @@ namespace TruckingSystem.API.Controllers;
 
 [ApiController]
 [Route("api/transport-orders")]
-[Authorize]
+[Authorize(Roles = "Admin,Dispatcher")]
 public class TransportOrdersController : ControllerBase
 {
     private readonly ITransportOrderService _service;

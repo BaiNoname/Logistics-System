@@ -6,7 +6,7 @@ namespace TruckingSystem.API.Controllers;
 
 [ApiController]
 [Route("api/invoices")]
-[Authorize]
+[Authorize(Roles = "Admin,Accountant")]
 public class InvoicesController : ControllerBase
 {
     private readonly IInvoiceService _service;

@@ -24,6 +24,8 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             this.cboDept = new System.Windows.Forms.ComboBox();
             this.lblPos = new System.Windows.Forms.Label();
             this.cboPos = new System.Windows.Forms.ComboBox();
+            this.lblEmployeeStatus = new System.Windows.Forms.Label();
+            this.cboEmployeeStatus = new System.Windows.Forms.ComboBox();
             this.btnSave = new System.Windows.Forms.Button();
             this.lblStatus = new System.Windows.Forms.Label();
             this.SuspendLayout();
@@ -95,9 +97,23 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             this.cboPos.Location = new System.Drawing.Point(24, 320);
             this.cboPos.Size = new System.Drawing.Size(400, 23);
             //
+            // lblEmployeeStatus
+            //
+            this.lblEmployeeStatus.Location = new System.Drawing.Point(24, 370);
+            this.lblEmployeeStatus.Size = new System.Drawing.Size(400, 18);
+            this.lblEmployeeStatus.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
+            this.lblEmployeeStatus.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
+            this.lblEmployeeStatus.Text = "Trạng thái";
+            //
+            // cboEmployeeStatus
+            //
+            this.cboEmployeeStatus.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cboEmployeeStatus.Location = new System.Drawing.Point(24, 390);
+            this.cboEmployeeStatus.Size = new System.Drawing.Size(400, 23);
+            //
             // btnSave
             //
-            this.btnSave.Location = new System.Drawing.Point(244, 380);
+            this.btnSave.Location = new System.Drawing.Point(244, 450);
             this.btnSave.Size = new System.Drawing.Size(180, 38);
             this.btnSave.Text = "Lưu nhân viên";
             this.btnSave.BackColor = TruckingSystem.Desktop.Common.Theme.Primary;
@@ -111,7 +127,7 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             //
             // lblStatus
             //
-            this.lblStatus.Location = new System.Drawing.Point(24, 370);
+            this.lblStatus.Location = new System.Drawing.Point(24, 440);
             this.lblStatus.AutoSize = true;
             this.lblStatus.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
             this.lblStatus.ForeColor = TruckingSystem.Desktop.Common.Theme.Danger;
@@ -121,7 +137,7 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
             this.AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
             this.BackColor = System.Drawing.Color.White;
-            this.ClientSize = new System.Drawing.Size(460, 470);
+            this.ClientSize = new System.Drawing.Size(460, 530);
             this.Controls.Add(this.lblCode);
             this.Controls.Add(this.txtCode);
             this.Controls.Add(this.lblFullName);
@@ -132,6 +148,8 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             this.Controls.Add(this.cboDept);
             this.Controls.Add(this.lblPos);
             this.Controls.Add(this.cboPos);
+            this.Controls.Add(this.lblEmployeeStatus);
+            this.Controls.Add(this.cboEmployeeStatus);
             this.Controls.Add(this.btnSave);
             this.Controls.Add(this.lblStatus);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
@@ -155,6 +173,8 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
         private System.Windows.Forms.ComboBox cboDept;
         private System.Windows.Forms.Label lblPos;
         private System.Windows.Forms.ComboBox cboPos;
+        private System.Windows.Forms.Label lblEmployeeStatus;
+        private System.Windows.Forms.ComboBox cboEmployeeStatus;
         private System.Windows.Forms.Button btnSave;
         private System.Windows.Forms.Label lblStatus;
     }

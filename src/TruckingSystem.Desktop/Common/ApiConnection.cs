@@ -15,6 +15,9 @@ namespace TruckingSystem.Desktop.Common
         public HttpClient Http { get; }
         public string BaseUrl { get; }
         public string? Token { get; private set; }
+        public IReadOnlySet<string> Roles => _roles;
+
+        private readonly HashSet<string> _roles = new(StringComparer.OrdinalIgnoreCase);
 
         public ApiConnection(string baseUrl)
         {
@@ -22,16 +25,22 @@ namespace TruckingSystem.Desktop.Common
             Http = new HttpClient { BaseAddress = new Uri(BaseUrl) };
         }
 
-        public void SetToken(string token)
+        public void SetToken(string token, IEnumerable<string>? roles = null)
         {
             Token = token;
             Http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            _roles.Clear();
+            if (roles is not null)
+                foreach (var role in roles) _roles.Add(role);
         }
+
+        public bool IsInRole(params string[] roles) => roles.Any(_roles.Contains);
 
         public void ClearToken()
         {
             Token = null;
             Http.DefaultRequestHeaders.Authorization = null;
+            _roles.Clear();
         }
 
         public async Task<T?> GetAsync<T>(string path)

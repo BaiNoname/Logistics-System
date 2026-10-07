@@ -6,7 +6,7 @@ namespace TruckingSystem.API.Controllers;
 
 [ApiController]
 [Route("api/drivers")]
-[Authorize]
+[Authorize(Roles = "Admin,Dispatcher")]
 public class DriversController : ControllerBase
 {
     private readonly IDriverService _driverService;

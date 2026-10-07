@@ -18,9 +18,9 @@ publish/
 .env
 .env.*
 !.env.example
-appsettings.*.local.json
+appsettings.json
 *.publishsettings
-
+AGENTS.md
 # ==== Log/cache khác ====
 *.log
 *.tmp

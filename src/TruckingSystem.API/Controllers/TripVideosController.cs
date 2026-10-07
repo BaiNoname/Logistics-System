@@ -19,7 +19,7 @@ namespace TruckingSystem.API.Controllers;
 /// (khóa bí mật = Jwt:Key) — ai không có link hợp lệ thì không xem được.</summary>
 [ApiController]
 [Route("api/trips")]
-[Authorize]
+[Authorize(Roles = "Admin,Dispatcher")]
 public class TripVideosController : ControllerBase
 {
     private const long MaxUploadBytes = 200L * 1024 * 1024; // 200 MB/đoạn — đoạn 1 phút 480p chỉ ~8-12 MB

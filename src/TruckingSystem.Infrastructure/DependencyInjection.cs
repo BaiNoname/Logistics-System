@@ -1,4 +1,5 @@
 using System.Text;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -62,10 +63,36 @@ public static class DependencyInjection
                     IssuerSigningKey = new SymmetricSecurityKey(
                         Encoding.UTF8.GetBytes(configuration["Jwt:Key"]!)),
                 };
+                options.Events = new JwtBearerEvents
+                {
+                    OnTokenValidated = async context =>
+                    {
+                        var users = context.HttpContext.RequestServices.GetRequiredService<UserManager<ApplicationUser>>();
+                        var id = context.Principal?.FindFirstValue(ClaimTypes.NameIdentifier);
+                        var user = id is null ? null : await users.FindByIdAsync(id);
+                        if (user is null || !user.IsActive)
+                        {
+                            context.Fail("Tài khoản không còn hoạt động.");
+                            return;
+                        }
+
+                        if (context.Principal!.FindFirstValue("security_stamp") != await users.GetSecurityStampAsync(user))
+                        {
+                            context.Fail("Phiên đăng nhập đã hết hiệu lực. Vui lòng đăng nhập lại.");
+                            return;
+                        }
+
+                        var actualRoles = await users.GetRolesAsync(user);
+                        var tokenRoles = context.Principal!.FindAll(ClaimTypes.Role).Select(c => c.Value);
+                        if (!actualRoles.ToHashSet(StringComparer.OrdinalIgnoreCase).SetEquals(tokenRoles))
+                            context.Fail("Quyền tài khoản đã thay đổi. Vui lòng đăng nhập lại.");
+                    },
+                };
             });
 
         services.AddScoped<ITokenGenerator, JwtTokenGenerator>();
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<IAccountManagementService, AccountManagementService>();
 
         // AddHttpClient<TInterface, TImplementation> tự quản lý vòng đời
         // HttpClient đúng chuẩn (tránh lỗi rò rỉ socket khi tự new HttpClient()).
