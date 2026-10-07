@@ -21,6 +21,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
             Resize += (_, _) => { grid.Width = Width; grid.Height = Height - grid.Top; };
             grid.DataBindingComplete += (_, _) => { if (grid.Columns["Id"] != null) grid.Columns["Id"]!.Visible = false; };
             grid.CellFormatting += Grid_CellFormatting;
+            grid.SelectionChanged += (_, _) => UpdateStartButton();
             Load += async (_, _) => await LoadAsync();
         }
 
@@ -33,6 +34,11 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
             {
                 e.CellStyle!.ForeColor = Theme.Warning;
                 e.CellStyle.Font = new Font(grid.Font, FontStyle.Bold);
+            }
+            else if (e.Value.ToString() == WaitingPickupText)
+            {
+                e.CellStyle!.ForeColor = Theme.TextSecondary;
+                e.CellStyle.Font = new Font(grid.Font, FontStyle.Italic);
             }
         }
 
@@ -344,10 +350,11 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
                     Biển_số_xe = t.VehiclePlate,
                     Tài_xế = t.DriverName,
                     Chặng = TranslateLegType(t.LegType),
-                    Trạng_thái = TranslateStatus(t.Status),
+                    Trạng_thái = IsWaitingForPickup(t) ? WaitingPickupText : TranslateStatus(t.Status),
                     Số_lượng = t.TotalQtyPlanned,
                 }).ToList();
                 lblStatus.Text = $"Tổng {_trips.Count} chuyến — chọn 1 dòng rồi bấm Bắt đầu/Hoàn tất để đổi trạng thái";
+                UpdateStartButton();
             }
             catch (Exception ex)
             {
@@ -356,10 +363,31 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
             }
         }
 
+        private const string WaitingPickupText = "⏳ Chờ lấy hàng xong";
+
+        /// <summary>Chặng GIAO còn "Đã lên kế hoạch" nhưng đơn vẫn còn chặng LẤY
+        /// HÀNG chưa Hoàn tất (chưa chạy / đang chạy / chờ duyệt) — hàng chưa về
+        /// kho nên chưa được bắt đầu giao. Backend cũng chặn y hệt (StartAsync),
+        /// ở đây chỉ để Vận hành nhìn danh sách là biết ngay.</summary>
+        private bool IsWaitingForPickup(TripListItem t)
+            => t.LegType == "Delivery" && t.Status == "Planned"
+               && _trips.Any(p => p.OrderCode == t.OrderCode && p.LegType == "Pickup"
+                                  && p.Status is not ("Completed" or "Cancelled"));
+
+        /// <summary>Nút "Bắt đầu" chỉ bấm được với chuyến "Đã lên kế hoạch" và
+        /// (nếu là chặng Giao) chặng Lấy hàng của đơn đã xong hết.</summary>
+        private void UpdateStartButton()
+        {
+            var id = grid.CurrentRow?.Cells["Id"]?.Value as int?;
+            var trip = id is null ? null : _trips.FirstOrDefault(t => t.Id == id.Value);
+            btnStart.Enabled = trip is not null && trip.Status == "Planned" && !IsWaitingForPickup(trip);
+        }
+
         private static string TranslateLegType(string s) => s switch
         {
             "Pickup" => "🔽 Lấy hàng",
             "Delivery" => "🔼 Giao hàng",
+            "Return" => "🔙 Trả hàng",
             _ => s,
         };
 

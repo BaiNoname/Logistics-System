@@ -42,9 +42,9 @@ namespace TruckingSystem.Desktop.GUI_FuelManagement
             btnAddProvider.FlatStyle = FlatStyle.Flat;
             btnAddProvider.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
             btnAddProvider.ForeColor = Color.White;
-            btnAddProvider.Location = new Point(0, 46);
+            btnAddProvider.Location = new Point(18, 46);
             btnAddProvider.Name = "btnAddProvider";
-            btnAddProvider.Size = new Size(160, 34);
+            btnAddProvider.Size = new Size(160, 45);
             btnAddProvider.TabIndex = 1;
             btnAddProvider.Text = "➕ Thêm hãng xăng";
             btnAddProvider.UseVisualStyleBackColor = false;
@@ -58,9 +58,9 @@ namespace TruckingSystem.Desktop.GUI_FuelManagement
             btnDeleteProvider.FlatStyle = FlatStyle.Flat;
             btnDeleteProvider.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
             btnDeleteProvider.ForeColor = Color.FromArgb(220, 38, 38);
-            btnDeleteProvider.Location = new Point(170, 46);
+            btnDeleteProvider.Location = new Point(184, 46);
             btnDeleteProvider.Name = "btnDeleteProvider";
-            btnDeleteProvider.Size = new Size(140, 34);
+            btnDeleteProvider.Size = new Size(140, 45);
             btnDeleteProvider.TabIndex = 2;
             btnDeleteProvider.Text = "🗑️ Xóa hãng";
             btnDeleteProvider.UseVisualStyleBackColor = false;
@@ -70,10 +70,10 @@ namespace TruckingSystem.Desktop.GUI_FuelManagement
             // 
             gridProviders.ColumnHeadersHeight = 34;
             gridProviders.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
-            gridProviders.Location = new Point(0, 90);
+            gridProviders.Location = new Point(0, 109);
             gridProviders.Name = "gridProviders";
             gridProviders.RowHeadersWidth = 62;
-            gridProviders.Size = new Size(1200, 440);
+            gridProviders.Size = new Size(1329, 421);
             gridProviders.TabIndex = 3;
             // 
             // lblStatus

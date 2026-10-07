@@ -14,139 +14,181 @@
 
         private void InitializeComponent()
         {
-            this.lblTitle = new System.Windows.Forms.Label();
-            this.lblFuelType = new System.Windows.Forms.Label();
-            this.txtFuelType = new System.Windows.Forms.TextBox();
-            this.lblPrice = new System.Windows.Forms.Label();
-            this.numPrice = new System.Windows.Forms.NumericUpDown();
-            this.lblEffectiveDate = new System.Windows.Forms.Label();
-            this.dtEffectiveDate = new System.Windows.Forms.DateTimePicker();
-            this.btnAddPrice = new System.Windows.Forms.Button();
-            this.btnDeletePrice = new System.Windows.Forms.Button();
-            this.lblStatus = new System.Windows.Forms.Label();
-            this.grid = new System.Windows.Forms.DataGridView();
-            ((System.ComponentModel.ISupportInitialize)(this.numPrice)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.grid)).BeginInit();
-            this.SuspendLayout();
-            //
+            lblTitle = new Label();
+            lblFuelType = new Label();
+            txtFuelType = new TextBox();
+            lblPrice = new Label();
+            numPrice = new NumericUpDown();
+            lblEffectiveDate = new Label();
+            dtEffectiveDate = new DateTimePicker();
+            btnAddPrice = new Button();
+            btnDeletePrice = new Button();
+            lblStatus = new Label();
+            grid = new DataGridView();
+            ((System.ComponentModel.ISupportInitialize)numPrice).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)grid).BeginInit();
+            SuspendLayout();
+            // 
             // lblTitle
-            //
-            this.lblTitle.Location = new System.Drawing.Point(20, 16);
-            this.lblTitle.AutoSize = true;
-            this.lblTitle.Text = "⛽ Lịch sử giá xăng dầu";
-            this.lblTitle.Font = TruckingSystem.Desktop.Common.Theme.FontSectionTitle;
-            this.lblTitle.ForeColor = TruckingSystem.Desktop.Common.Theme.TextPrimary;
-            //
+            // 
+            lblTitle.AutoSize = true;
+            lblTitle.Font = new Font("Segoe UI", 13F, FontStyle.Bold);
+            lblTitle.ForeColor = Color.FromArgb(15, 23, 42);
+            lblTitle.Location = new Point(30, 24);
+            lblTitle.Margin = new Padding(4, 0, 4, 0);
+            lblTitle.Name = "lblTitle";
+            lblTitle.Size = new Size(306, 36);
+            lblTitle.TabIndex = 0;
+            lblTitle.Text = "⛽ Lịch sử giá xăng dầu";
+            // 
             // lblFuelType
-            //
-            this.lblFuelType.Location = new System.Drawing.Point(20, 56);
-            this.lblFuelType.AutoSize = true;
-            this.lblFuelType.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
-            this.lblFuelType.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
-            this.lblFuelType.Text = "Loại nhiên liệu";
-            //
+            // 
+            lblFuelType.AutoSize = true;
+            lblFuelType.Font = new Font("Segoe UI", 9F);
+            lblFuelType.ForeColor = Color.FromArgb(100, 116, 139);
+            lblFuelType.Location = new Point(30, 84);
+            lblFuelType.Margin = new Padding(4, 0, 4, 0);
+            lblFuelType.Name = "lblFuelType";
+            lblFuelType.Size = new Size(124, 25);
+            lblFuelType.TabIndex = 1;
+            lblFuelType.Text = "Loại nhiên liệu";
+            // 
             // txtFuelType
-            //
-            this.txtFuelType.Location = new System.Drawing.Point(20, 76);
-            this.txtFuelType.Size = new System.Drawing.Size(200, 23);
-            this.txtFuelType.PlaceholderText = "VD: Dầu DO, Xăng RON95";
-            //
+            // 
+            txtFuelType.Location = new Point(30, 114);
+            txtFuelType.Margin = new Padding(4, 4, 4, 4);
+            txtFuelType.Name = "txtFuelType";
+            txtFuelType.PlaceholderText = "VD: Dầu DO, Xăng RON95";
+            txtFuelType.Size = new Size(298, 34);
+            txtFuelType.TabIndex = 2;
+            // 
             // lblPrice
-            //
-            this.lblPrice.Location = new System.Drawing.Point(240, 56);
-            this.lblPrice.AutoSize = true;
-            this.lblPrice.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
-            this.lblPrice.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
-            this.lblPrice.Text = "Giá (đ)";
-            //
+            // 
+            lblPrice.AutoSize = true;
+            lblPrice.Font = new Font("Segoe UI", 9F);
+            lblPrice.ForeColor = Color.FromArgb(100, 116, 139);
+            lblPrice.Location = new Point(360, 84);
+            lblPrice.Margin = new Padding(4, 0, 4, 0);
+            lblPrice.Name = "lblPrice";
+            lblPrice.Size = new Size(63, 25);
+            lblPrice.TabIndex = 3;
+            lblPrice.Text = "Giá (đ)";
+            // 
             // numPrice
-            //
-            this.numPrice.Location = new System.Drawing.Point(240, 76);
-            this.numPrice.Size = new System.Drawing.Size(150, 23);
-            this.numPrice.Maximum = new decimal(new int[] { 999999999, 0, 0, 0 });
-            this.numPrice.ThousandsSeparator = true;
-            //
+            // 
+            numPrice.Location = new Point(360, 114);
+            numPrice.Margin = new Padding(4, 4, 4, 4);
+            numPrice.Maximum = new decimal(new int[] { 999999999, 0, 0, 0 });
+            numPrice.Name = "numPrice";
+            numPrice.Size = new Size(225, 34);
+            numPrice.TabIndex = 4;
+            numPrice.ThousandsSeparator = true;
+            // 
             // lblEffectiveDate
-            //
-            this.lblEffectiveDate.Location = new System.Drawing.Point(410, 56);
-            this.lblEffectiveDate.AutoSize = true;
-            this.lblEffectiveDate.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
-            this.lblEffectiveDate.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
-            this.lblEffectiveDate.Text = "Ngày hiệu lực";
-            //
+            // 
+            lblEffectiveDate.AutoSize = true;
+            lblEffectiveDate.Font = new Font("Segoe UI", 9F);
+            lblEffectiveDate.ForeColor = Color.FromArgb(100, 116, 139);
+            lblEffectiveDate.Location = new Point(615, 84);
+            lblEffectiveDate.Margin = new Padding(4, 0, 4, 0);
+            lblEffectiveDate.Name = "lblEffectiveDate";
+            lblEffectiveDate.Size = new Size(120, 25);
+            lblEffectiveDate.TabIndex = 5;
+            lblEffectiveDate.Text = "Ngày hiệu lực";
+            // 
             // dtEffectiveDate
-            //
-            this.dtEffectiveDate.Location = new System.Drawing.Point(410, 76);
-            this.dtEffectiveDate.Size = new System.Drawing.Size(150, 23);
-            this.dtEffectiveDate.Format = System.Windows.Forms.DateTimePickerFormat.Short;
-            //
+            // 
+            dtEffectiveDate.Format = DateTimePickerFormat.Short;
+            dtEffectiveDate.Location = new Point(615, 114);
+            dtEffectiveDate.Margin = new Padding(4, 4, 4, 4);
+            dtEffectiveDate.Name = "dtEffectiveDate";
+            dtEffectiveDate.Size = new Size(223, 34);
+            dtEffectiveDate.TabIndex = 6;
+            // 
             // btnAddPrice
-            //
-            this.btnAddPrice.Location = new System.Drawing.Point(590, 75);
-            this.btnAddPrice.Size = new System.Drawing.Size(140, 30);
-            this.btnAddPrice.Text = "➕ Thêm giá";
-            this.btnAddPrice.BackColor = TruckingSystem.Desktop.Common.Theme.Primary;
-            this.btnAddPrice.ForeColor = System.Drawing.Color.White;
-            this.btnAddPrice.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnAddPrice.Font = TruckingSystem.Desktop.Common.Theme.FontBold;
-            this.btnAddPrice.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.btnAddPrice.FlatAppearance.BorderSize = 0;
-            this.btnAddPrice.FlatAppearance.MouseOverBackColor = TruckingSystem.Desktop.Common.Theme.PrimaryDark;
-            this.btnAddPrice.Click += new System.EventHandler(this.BtnAddPrice_Click);
-            //
+            // 
+            btnAddPrice.BackColor = Color.FromArgb(37, 99, 235);
+            btnAddPrice.Cursor = Cursors.Hand;
+            btnAddPrice.FlatAppearance.BorderSize = 0;
+            btnAddPrice.FlatAppearance.MouseOverBackColor = Color.FromArgb(29, 78, 216);
+            btnAddPrice.FlatStyle = FlatStyle.Flat;
+            btnAddPrice.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+            btnAddPrice.ForeColor = Color.White;
+            btnAddPrice.Location = new Point(885, 112);
+            btnAddPrice.Margin = new Padding(4, 4, 4, 4);
+            btnAddPrice.Name = "btnAddPrice";
+            btnAddPrice.Size = new Size(210, 45);
+            btnAddPrice.TabIndex = 7;
+            btnAddPrice.Text = "➕ Thêm giá";
+            btnAddPrice.UseVisualStyleBackColor = false;
+            btnAddPrice.Click += BtnAddPrice_Click;
+            // 
             // btnDeletePrice
-            //
-            this.btnDeletePrice.Location = new System.Drawing.Point(740, 75);
-            this.btnDeletePrice.Size = new System.Drawing.Size(150, 30);
-            this.btnDeletePrice.Text = "🗑️ Xóa giá đã chọn";
-            this.btnDeletePrice.BackColor = System.Drawing.Color.White;
-            this.btnDeletePrice.ForeColor = TruckingSystem.Desktop.Common.Theme.Danger;
-            this.btnDeletePrice.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnDeletePrice.Font = TruckingSystem.Desktop.Common.Theme.FontBold;
-            this.btnDeletePrice.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.btnDeletePrice.FlatAppearance.BorderSize = 1;
-            this.btnDeletePrice.FlatAppearance.BorderColor = TruckingSystem.Desktop.Common.Theme.Danger;
-            this.btnDeletePrice.Click += new System.EventHandler(this.BtnDeletePrice_Click);
-            //
+            // 
+            btnDeletePrice.BackColor = Color.White;
+            btnDeletePrice.Cursor = Cursors.Hand;
+            btnDeletePrice.FlatAppearance.BorderColor = Color.FromArgb(220, 38, 38);
+            btnDeletePrice.FlatStyle = FlatStyle.Flat;
+            btnDeletePrice.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+            btnDeletePrice.ForeColor = Color.FromArgb(220, 38, 38);
+            btnDeletePrice.Location = new Point(1110, 112);
+            btnDeletePrice.Margin = new Padding(4, 4, 4, 4);
+            btnDeletePrice.Name = "btnDeletePrice";
+            btnDeletePrice.Size = new Size(225, 45);
+            btnDeletePrice.TabIndex = 8;
+            btnDeletePrice.Text = "🗑️ Xóa giá đã chọn";
+            btnDeletePrice.UseVisualStyleBackColor = false;
+            btnDeletePrice.Click += BtnDeletePrice_Click;
+            // 
             // lblStatus
-            //
-            this.lblStatus.Location = new System.Drawing.Point(20, 115);
-            this.lblStatus.AutoSize = true;
-            this.lblStatus.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
-            this.lblStatus.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
-            //
+            // 
+            lblStatus.AutoSize = true;
+            lblStatus.Font = new Font("Segoe UI", 9F);
+            lblStatus.ForeColor = Color.FromArgb(100, 116, 139);
+            lblStatus.Location = new Point(30, 172);
+            lblStatus.Margin = new Padding(4, 0, 4, 0);
+            lblStatus.Name = "lblStatus";
+            lblStatus.Size = new Size(0, 25);
+            lblStatus.TabIndex = 9;
+            // 
             // grid
-            //
-            this.grid.Location = new System.Drawing.Point(20, 145);
-            this.grid.Size = new System.Drawing.Size(950, 380);
-            this.grid.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
-            //
+            // 
+            grid.ColumnHeadersHeight = 34;
+            grid.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
+            grid.Location = new Point(13, 218);
+            grid.Margin = new Padding(4, 4, 4, 4);
+            grid.Name = "grid";
+            grid.RowHeadersWidth = 62;
+            grid.Size = new Size(1442, 570);
+            grid.TabIndex = 10;
+            // 
             // FuelProviderPricesForm
-            //
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
-            this.AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
-            this.BackColor = System.Drawing.Color.White;
-            this.ClientSize = new System.Drawing.Size(990, 545);
-            this.Controls.Add(this.lblTitle);
-            this.Controls.Add(this.lblFuelType);
-            this.Controls.Add(this.txtFuelType);
-            this.Controls.Add(this.lblPrice);
-            this.Controls.Add(this.numPrice);
-            this.Controls.Add(this.lblEffectiveDate);
-            this.Controls.Add(this.dtEffectiveDate);
-            this.Controls.Add(this.btnAddPrice);
-            this.Controls.Add(this.btnDeletePrice);
-            this.Controls.Add(this.lblStatus);
-            this.Controls.Add(this.grid);
-            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
-            this.MaximizeBox = false;
-            this.Name = "FuelProviderPricesForm";
-            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
-            this.Text = "Giá xăng dầu";
-            ((System.ComponentModel.ISupportInitialize)(this.numPrice)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.grid)).EndInit();
-            this.ResumeLayout(false);
-            this.PerformLayout();
+            // 
+            AutoScaleDimensions = new SizeF(144F, 144F);
+            AutoScaleMode = AutoScaleMode.Dpi;
+            BackColor = Color.White;
+            ClientSize = new Size(1485, 818);
+            Controls.Add(lblTitle);
+            Controls.Add(lblFuelType);
+            Controls.Add(txtFuelType);
+            Controls.Add(lblPrice);
+            Controls.Add(numPrice);
+            Controls.Add(lblEffectiveDate);
+            Controls.Add(dtEffectiveDate);
+            Controls.Add(btnAddPrice);
+            Controls.Add(btnDeletePrice);
+            Controls.Add(lblStatus);
+            Controls.Add(grid);
+            FormBorderStyle = FormBorderStyle.FixedDialog;
+            Margin = new Padding(6, 6, 6, 6);
+            MaximizeBox = false;
+            Name = "FuelProviderPricesForm";
+            StartPosition = FormStartPosition.CenterParent;
+            Text = "Giá xăng dầu";
+            ((System.ComponentModel.ISupportInitialize)numPrice).EndInit();
+            ((System.ComponentModel.ISupportInitialize)grid).EndInit();
+            ResumeLayout(false);
+            PerformLayout();
         }
 
         #endregion

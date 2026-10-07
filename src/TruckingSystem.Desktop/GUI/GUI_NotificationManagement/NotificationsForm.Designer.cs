@@ -14,66 +14,83 @@ namespace TruckingSystem.Desktop.GUI_NotificationManagement
 
         private void InitializeComponent()
         {
-            this.lblTitle = new System.Windows.Forms.Label();
-            this.btnMarkAllRead = new System.Windows.Forms.Button();
-            this.lblStatus = new System.Windows.Forms.Label();
-            this.grid = new System.Windows.Forms.DataGridView();
-            ((System.ComponentModel.ISupportInitialize)(this.grid)).BeginInit();
-            this.SuspendLayout();
-            //
+            lblTitle = new Label();
+            btnMarkAllRead = new Button();
+            lblStatus = new Label();
+            grid = new DataGridView();
+            ((System.ComponentModel.ISupportInitialize)grid).BeginInit();
+            SuspendLayout();
+            // 
             // lblTitle
-            //
-            this.lblTitle.Location = new System.Drawing.Point(20, 16);
-            this.lblTitle.AutoSize = true;
-            this.lblTitle.Text = "🔔 Thông báo";
-            this.lblTitle.Font = TruckingSystem.Desktop.Common.Theme.FontSectionTitle;
-            this.lblTitle.ForeColor = TruckingSystem.Desktop.Common.Theme.TextPrimary;
-            //
+            // 
+            lblTitle.AutoSize = true;
+            lblTitle.Font = new Font("Segoe UI", 13F, FontStyle.Bold);
+            lblTitle.ForeColor = Color.FromArgb(15, 23, 42);
+            lblTitle.Location = new Point(30, 24);
+            lblTitle.Margin = new Padding(4, 0, 4, 0);
+            lblTitle.Name = "lblTitle";
+            lblTitle.Size = new Size(191, 36);
+            lblTitle.TabIndex = 0;
+            lblTitle.Text = "🔔 Thông báo";
+            // 
             // btnMarkAllRead
-            //
-            this.btnMarkAllRead.Location = new System.Drawing.Point(640, 16);
-            this.btnMarkAllRead.Size = new System.Drawing.Size(180, 34);
-            this.btnMarkAllRead.Text = "✅ Đánh dấu tất cả đã đọc";
-            this.btnMarkAllRead.BackColor = System.Drawing.Color.White;
-            this.btnMarkAllRead.ForeColor = TruckingSystem.Desktop.Common.Theme.TextPrimary;
-            this.btnMarkAllRead.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnMarkAllRead.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
-            this.btnMarkAllRead.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.btnMarkAllRead.FlatAppearance.BorderSize = 1;
-            this.btnMarkAllRead.Click += new System.EventHandler(this.BtnMarkAllRead_Click);
-            //
+            // 
+            btnMarkAllRead.BackColor = Color.White;
+            btnMarkAllRead.Cursor = Cursors.Hand;
+            btnMarkAllRead.FlatStyle = FlatStyle.Flat;
+            btnMarkAllRead.Font = new Font("Segoe UI", 9F);
+            btnMarkAllRead.ForeColor = Color.FromArgb(15, 23, 42);
+            btnMarkAllRead.Location = new Point(960, 24);
+            btnMarkAllRead.Margin = new Padding(4, 4, 4, 4);
+            btnMarkAllRead.Name = "btnMarkAllRead";
+            btnMarkAllRead.Size = new Size(270, 51);
+            btnMarkAllRead.TabIndex = 1;
+            btnMarkAllRead.Text = "✅ Đánh dấu tất cả đã đọc";
+            btnMarkAllRead.UseVisualStyleBackColor = false;
+            btnMarkAllRead.Click += BtnMarkAllRead_Click;
+            // 
             // lblStatus
-            //
-            this.lblStatus.Location = new System.Drawing.Point(20, 56);
-            this.lblStatus.AutoSize = true;
-            this.lblStatus.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
-            this.lblStatus.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
-            //
+            // 
+            lblStatus.AutoSize = true;
+            lblStatus.Font = new Font("Segoe UI", 9F);
+            lblStatus.ForeColor = Color.FromArgb(100, 116, 139);
+            lblStatus.Location = new Point(30, 84);
+            lblStatus.Margin = new Padding(4, 0, 4, 0);
+            lblStatus.Name = "lblStatus";
+            lblStatus.Size = new Size(0, 25);
+            lblStatus.TabIndex = 2;
+            // 
             // grid
-            //
-            this.grid.Location = new System.Drawing.Point(20, 80);
-            this.grid.Size = new System.Drawing.Size(800, 420);
-            this.grid.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
-            this.grid.CellClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.Grid_CellClick);
-            //
+            // 
+            grid.ColumnHeadersHeight = 34;
+            grid.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
+            grid.Location = new Point(-2, 120);
+            grid.Margin = new Padding(4, 4, 4, 4);
+            grid.Name = "grid";
+            grid.RowHeadersWidth = 62;
+            grid.Size = new Size(1262, 630);
+            grid.TabIndex = 3;
+            grid.CellClick += Grid_CellClick;
+            // 
             // NotificationsForm
-            //
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
-            this.AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
-            this.BackColor = System.Drawing.Color.White;
-            this.ClientSize = new System.Drawing.Size(840, 520);
-            this.Controls.Add(this.lblTitle);
-            this.Controls.Add(this.btnMarkAllRead);
-            this.Controls.Add(this.lblStatus);
-            this.Controls.Add(this.grid);
-            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
-            this.MaximizeBox = false;
-            this.Name = "NotificationsForm";
-            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
-            this.Text = "Thông báo";
-            ((System.ComponentModel.ISupportInitialize)(this.grid)).EndInit();
-            this.ResumeLayout(false);
-            this.PerformLayout();
+            // 
+            AutoScaleDimensions = new SizeF(144F, 144F);
+            AutoScaleMode = AutoScaleMode.Dpi;
+            BackColor = Color.White;
+            ClientSize = new Size(1260, 780);
+            Controls.Add(lblTitle);
+            Controls.Add(btnMarkAllRead);
+            Controls.Add(lblStatus);
+            Controls.Add(grid);
+            FormBorderStyle = FormBorderStyle.FixedDialog;
+            Margin = new Padding(6, 6, 6, 6);
+            MaximizeBox = false;
+            Name = "NotificationsForm";
+            StartPosition = FormStartPosition.CenterParent;
+            Text = "Thông báo";
+            ((System.ComponentModel.ISupportInitialize)grid).EndInit();
+            ResumeLayout(false);
+            PerformLayout();
         }
 
         #endregion

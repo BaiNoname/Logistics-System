@@ -14,171 +14,221 @@ partial class CreateDriverProfileForm
 
     private void InitializeComponent()
     {
-        this.lblLicenseNumber = new System.Windows.Forms.Label();
-        this.txtLicenseNumber = new System.Windows.Forms.TextBox();
-        this.lblLicenseClass = new System.Windows.Forms.Label();
-        this.cboLicenseClass = new System.Windows.Forms.ComboBox();
-        this.lblLicenseExpiry = new System.Windows.Forms.Label();
-        this.dtLicenseExpiry = new System.Windows.Forms.DateTimePicker();
-        this.chkHasHealthCert = new System.Windows.Forms.CheckBox();
-        this.dtHealthCertExpiry = new System.Windows.Forms.DateTimePicker();
-        this.lblYearsExp = new System.Windows.Forms.Label();
-        this.numYearsExp = new System.Windows.Forms.NumericUpDown();
-        this.lblGoogleCalendarId = new System.Windows.Forms.Label();
-        this.txtGoogleCalendarId = new System.Windows.Forms.TextBox();
-        this.lblWarehouse = new System.Windows.Forms.Label();
-        this.cboWarehouse = new System.Windows.Forms.ComboBox();
-        this.btnSave = new System.Windows.Forms.Button();
-        this.lblStatus = new System.Windows.Forms.Label();
-        ((System.ComponentModel.ISupportInitialize)(this.numYearsExp)).BeginInit();
-        this.SuspendLayout();
-        //
+        lblLicenseNumber = new Label();
+        txtLicenseNumber = new TextBox();
+        lblLicenseClass = new Label();
+        cboLicenseClass = new ComboBox();
+        lblLicenseExpiry = new Label();
+        dtLicenseExpiry = new DateTimePicker();
+        chkHasHealthCert = new CheckBox();
+        dtHealthCertExpiry = new DateTimePicker();
+        lblYearsExp = new Label();
+        numYearsExp = new NumericUpDown();
+        lblGoogleCalendarId = new Label();
+        txtGoogleCalendarId = new TextBox();
+        lblWarehouse = new Label();
+        cboWarehouse = new ComboBox();
+        btnSave = new Button();
+        lblStatus = new Label();
+        ((System.ComponentModel.ISupportInitialize)numYearsExp).BeginInit();
+        SuspendLayout();
+        // 
         // lblLicenseNumber
-        //
-        this.lblLicenseNumber.Location = new System.Drawing.Point(24, 20);
-        this.lblLicenseNumber.Size = new System.Drawing.Size(400, 18);
-        this.lblLicenseNumber.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
-        this.lblLicenseNumber.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
-        this.lblLicenseNumber.Text = "Số bằng lái *";
-        //
+        // 
+        lblLicenseNumber.Font = new Font("Segoe UI", 9F);
+        lblLicenseNumber.ForeColor = Color.FromArgb(100, 116, 139);
+        lblLicenseNumber.Location = new Point(36, 30);
+        lblLicenseNumber.Margin = new Padding(4, 0, 4, 0);
+        lblLicenseNumber.Name = "lblLicenseNumber";
+        lblLicenseNumber.Size = new Size(600, 27);
+        lblLicenseNumber.TabIndex = 0;
+        lblLicenseNumber.Text = "Số bằng lái *";
+        // 
         // txtLicenseNumber
-        //
-        this.txtLicenseNumber.Location = new System.Drawing.Point(24, 40);
-        this.txtLicenseNumber.Size = new System.Drawing.Size(400, 23);
-        //
+        // 
+        txtLicenseNumber.Location = new Point(36, 60);
+        txtLicenseNumber.Margin = new Padding(4, 4, 4, 4);
+        txtLicenseNumber.Name = "txtLicenseNumber";
+        txtLicenseNumber.Size = new Size(598, 34);
+        txtLicenseNumber.TabIndex = 1;
+        // 
         // lblLicenseClass
-        //
-        this.lblLicenseClass.Location = new System.Drawing.Point(24, 90);
-        this.lblLicenseClass.Size = new System.Drawing.Size(190, 18);
-        this.lblLicenseClass.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
-        this.lblLicenseClass.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
-        this.lblLicenseClass.Text = "Hạng bằng";
-        //
+        // 
+        lblLicenseClass.Font = new Font("Segoe UI", 9F);
+        lblLicenseClass.ForeColor = Color.FromArgb(100, 116, 139);
+        lblLicenseClass.Location = new Point(36, 135);
+        lblLicenseClass.Margin = new Padding(4, 0, 4, 0);
+        lblLicenseClass.Name = "lblLicenseClass";
+        lblLicenseClass.Size = new Size(285, 27);
+        lblLicenseClass.TabIndex = 2;
+        lblLicenseClass.Text = "Hạng bằng";
+        // 
         // cboLicenseClass
-        //
-        this.cboLicenseClass.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-        this.cboLicenseClass.Location = new System.Drawing.Point(24, 110);
-        this.cboLicenseClass.Size = new System.Drawing.Size(190, 23);
-        //
+        // 
+        cboLicenseClass.DropDownStyle = ComboBoxStyle.DropDownList;
+        cboLicenseClass.Location = new Point(36, 165);
+        cboLicenseClass.Margin = new Padding(4, 4, 4, 4);
+        cboLicenseClass.Name = "cboLicenseClass";
+        cboLicenseClass.Size = new Size(283, 36);
+        cboLicenseClass.TabIndex = 3;
+        // 
         // lblLicenseExpiry
-        //
-        this.lblLicenseExpiry.Location = new System.Drawing.Point(234, 90);
-        this.lblLicenseExpiry.Size = new System.Drawing.Size(190, 18);
-        this.lblLicenseExpiry.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
-        this.lblLicenseExpiry.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
-        this.lblLicenseExpiry.Text = "Ngày hết hạn bằng lái *";
-        //
+        // 
+        lblLicenseExpiry.Font = new Font("Segoe UI", 9F);
+        lblLicenseExpiry.ForeColor = Color.FromArgb(100, 116, 139);
+        lblLicenseExpiry.Location = new Point(351, 135);
+        lblLicenseExpiry.Margin = new Padding(4, 0, 4, 0);
+        lblLicenseExpiry.Name = "lblLicenseExpiry";
+        lblLicenseExpiry.Size = new Size(285, 27);
+        lblLicenseExpiry.TabIndex = 4;
+        lblLicenseExpiry.Text = "Ngày hết hạn bằng lái *";
+        // 
         // dtLicenseExpiry
-        //
-        this.dtLicenseExpiry.Location = new System.Drawing.Point(234, 110);
-        this.dtLicenseExpiry.Size = new System.Drawing.Size(190, 23);
-        this.dtLicenseExpiry.Format = System.Windows.Forms.DateTimePickerFormat.Short;
-        //
+        // 
+        dtLicenseExpiry.Format = DateTimePickerFormat.Short;
+        dtLicenseExpiry.Location = new Point(351, 165);
+        dtLicenseExpiry.Margin = new Padding(4, 4, 4, 4);
+        dtLicenseExpiry.Name = "dtLicenseExpiry";
+        dtLicenseExpiry.Size = new Size(283, 34);
+        dtLicenseExpiry.TabIndex = 5;
+        // 
         // chkHasHealthCert
-        //
-        this.chkHasHealthCert.Location = new System.Drawing.Point(24, 160);
-        this.chkHasHealthCert.Size = new System.Drawing.Size(220, 24);
-        this.chkHasHealthCert.Text = "Có giấy khám sức khỏe";
-        //
+        // 
+        chkHasHealthCert.Location = new Point(36, 240);
+        chkHasHealthCert.Margin = new Padding(4, 4, 4, 4);
+        chkHasHealthCert.Name = "chkHasHealthCert";
+        chkHasHealthCert.Size = new Size(285, 36);
+        chkHasHealthCert.TabIndex = 6;
+        chkHasHealthCert.Text = "Có giấy khám sức khỏe";
+        // 
         // dtHealthCertExpiry
-        //
-        this.dtHealthCertExpiry.Location = new System.Drawing.Point(24, 188);
-        this.dtHealthCertExpiry.Size = new System.Drawing.Size(190, 23);
-        this.dtHealthCertExpiry.Format = System.Windows.Forms.DateTimePickerFormat.Short;
-        this.dtHealthCertExpiry.Enabled = false;
-        //
+        // 
+        dtHealthCertExpiry.Enabled = false;
+        dtHealthCertExpiry.Format = DateTimePickerFormat.Short;
+        dtHealthCertExpiry.Location = new Point(36, 282);
+        dtHealthCertExpiry.Margin = new Padding(4, 4, 4, 4);
+        dtHealthCertExpiry.Name = "dtHealthCertExpiry";
+        dtHealthCertExpiry.Size = new Size(283, 34);
+        dtHealthCertExpiry.TabIndex = 7;
+        // 
         // lblYearsExp
-        //
-        this.lblYearsExp.Location = new System.Drawing.Point(234, 165);
-        this.lblYearsExp.Size = new System.Drawing.Size(190, 18);
-        this.lblYearsExp.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
-        this.lblYearsExp.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
-        this.lblYearsExp.Text = "Số năm kinh nghiệm";
-        //
+        // 
+        lblYearsExp.Font = new Font("Segoe UI", 9F);
+        lblYearsExp.ForeColor = Color.FromArgb(100, 116, 139);
+        lblYearsExp.Location = new Point(362, 248);
+        lblYearsExp.Margin = new Padding(4, 0, 4, 0);
+        lblYearsExp.Name = "lblYearsExp";
+        lblYearsExp.Size = new Size(274, 27);
+        lblYearsExp.TabIndex = 8;
+        lblYearsExp.Text = "Số năm kinh nghiệm";
+        // 
         // numYearsExp
-        //
-        this.numYearsExp.Location = new System.Drawing.Point(234, 188);
-        this.numYearsExp.Size = new System.Drawing.Size(190, 23);
-        this.numYearsExp.Maximum = new decimal(new int[] { 60, 0, 0, 0 });
-        //
+        // 
+        numYearsExp.Location = new Point(351, 282);
+        numYearsExp.Margin = new Padding(4, 4, 4, 4);
+        numYearsExp.Maximum = new decimal(new int[] { 60, 0, 0, 0 });
+        numYearsExp.Name = "numYearsExp";
+        numYearsExp.Size = new Size(285, 34);
+        numYearsExp.TabIndex = 9;
+        // 
         // lblGoogleCalendarId
-        //
-        this.lblGoogleCalendarId.Location = new System.Drawing.Point(24, 218);
-        this.lblGoogleCalendarId.Size = new System.Drawing.Size(400, 18);
-        this.lblGoogleCalendarId.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
-        this.lblGoogleCalendarId.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
-        this.lblGoogleCalendarId.Text = "Google Calendar ID (tuỳ chọn — để đồng bộ lịch chuyến)";
-        //
+        // 
+        lblGoogleCalendarId.Font = new Font("Segoe UI", 9F);
+        lblGoogleCalendarId.ForeColor = Color.FromArgb(100, 116, 139);
+        lblGoogleCalendarId.Location = new Point(36, 327);
+        lblGoogleCalendarId.Margin = new Padding(4, 0, 4, 0);
+        lblGoogleCalendarId.Name = "lblGoogleCalendarId";
+        lblGoogleCalendarId.Size = new Size(600, 27);
+        lblGoogleCalendarId.TabIndex = 10;
+        lblGoogleCalendarId.Text = "Google Calendar ID (tuỳ chọn — để đồng bộ lịch chuyến)";
+        // 
         // txtGoogleCalendarId
-        //
-        this.txtGoogleCalendarId.Location = new System.Drawing.Point(24, 238);
-        this.txtGoogleCalendarId.Size = new System.Drawing.Size(400, 23);
-        //
+        // 
+        txtGoogleCalendarId.Location = new Point(36, 357);
+        txtGoogleCalendarId.Margin = new Padding(4, 4, 4, 4);
+        txtGoogleCalendarId.Name = "txtGoogleCalendarId";
+        txtGoogleCalendarId.Size = new Size(598, 34);
+        txtGoogleCalendarId.TabIndex = 11;
+        // 
         // lblWarehouse
-        //
-        this.lblWarehouse.Location = new System.Drawing.Point(24, 275);
-        this.lblWarehouse.Size = new System.Drawing.Size(400, 18);
-        this.lblWarehouse.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
-        this.lblWarehouse.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
-        this.lblWarehouse.Text = "Kho đóng quân (tuỳ chọn)";
-        //
+        // 
+        lblWarehouse.Font = new Font("Segoe UI", 9F);
+        lblWarehouse.ForeColor = Color.FromArgb(100, 116, 139);
+        lblWarehouse.Location = new Point(36, 412);
+        lblWarehouse.Margin = new Padding(4, 0, 4, 0);
+        lblWarehouse.Name = "lblWarehouse";
+        lblWarehouse.Size = new Size(600, 27);
+        lblWarehouse.TabIndex = 13;
+        lblWarehouse.Text = "Kho đóng quân (tuỳ chọn)";
+        // 
         // cboWarehouse
-        //
-        this.cboWarehouse.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-        this.cboWarehouse.Location = new System.Drawing.Point(24, 295);
-        this.cboWarehouse.Size = new System.Drawing.Size(400, 23);
-        //
+        // 
+        cboWarehouse.DropDownStyle = ComboBoxStyle.DropDownList;
+        cboWarehouse.Location = new Point(36, 442);
+        cboWarehouse.Margin = new Padding(4, 4, 4, 4);
+        cboWarehouse.Name = "cboWarehouse";
+        cboWarehouse.Size = new Size(598, 36);
+        cboWarehouse.TabIndex = 14;
+        // 
         // btnSave
-        //
-        this.btnSave.Location = new System.Drawing.Point(140, 380);
-        this.btnSave.Size = new System.Drawing.Size(180, 38);
-        this.btnSave.Text = "Lưu hồ sơ tài xế";
-        this.btnSave.BackColor = TruckingSystem.Desktop.Common.Theme.Primary;
-        this.btnSave.ForeColor = System.Drawing.Color.White;
-        this.btnSave.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-        this.btnSave.Font = TruckingSystem.Desktop.Common.Theme.FontBold;
-        this.btnSave.Cursor = System.Windows.Forms.Cursors.Hand;
-        this.btnSave.FlatAppearance.BorderSize = 0;
-        this.btnSave.FlatAppearance.MouseOverBackColor = TruckingSystem.Desktop.Common.Theme.PrimaryDark;
-        this.btnSave.Click += new System.EventHandler(this.BtnSave_Click);
-        //
+        // 
+        btnSave.BackColor = Color.FromArgb(37, 99, 235);
+        btnSave.Cursor = Cursors.Hand;
+        btnSave.FlatAppearance.BorderSize = 0;
+        btnSave.FlatAppearance.MouseOverBackColor = Color.FromArgb(29, 78, 216);
+        btnSave.FlatStyle = FlatStyle.Flat;
+        btnSave.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+        btnSave.ForeColor = Color.White;
+        btnSave.Location = new Point(210, 570);
+        btnSave.Margin = new Padding(4, 4, 4, 4);
+        btnSave.Name = "btnSave";
+        btnSave.Size = new Size(270, 57);
+        btnSave.TabIndex = 15;
+        btnSave.Text = "Lưu hồ sơ tài xế";
+        btnSave.UseVisualStyleBackColor = false;
+        btnSave.Click += BtnSave_Click;
+        // 
         // lblStatus
-        //
-        this.lblStatus.Location = new System.Drawing.Point(24, 345);
-        this.lblStatus.Size = new System.Drawing.Size(400, 25);
-        this.lblStatus.ForeColor = TruckingSystem.Desktop.Common.Theme.Danger;
-        this.lblStatus.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
-        //
+        // 
+        lblStatus.Font = new Font("Segoe UI", 9F);
+        lblStatus.ForeColor = Color.FromArgb(220, 38, 38);
+        lblStatus.Location = new Point(36, 518);
+        lblStatus.Margin = new Padding(4, 0, 4, 0);
+        lblStatus.Name = "lblStatus";
+        lblStatus.Size = new Size(600, 38);
+        lblStatus.TabIndex = 12;
+        // 
         // CreateDriverProfileForm
-        //
-        this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
-        this.AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
-        this.BackColor = System.Drawing.Color.White;
-        this.ClientSize = new System.Drawing.Size(450, 440);
-        this.Controls.Add(this.lblLicenseNumber);
-        this.Controls.Add(this.txtLicenseNumber);
-        this.Controls.Add(this.lblLicenseClass);
-        this.Controls.Add(this.cboLicenseClass);
-        this.Controls.Add(this.lblLicenseExpiry);
-        this.Controls.Add(this.dtLicenseExpiry);
-        this.Controls.Add(this.chkHasHealthCert);
-        this.Controls.Add(this.dtHealthCertExpiry);
-        this.Controls.Add(this.lblYearsExp);
-        this.Controls.Add(this.numYearsExp);
-        this.Controls.Add(this.lblGoogleCalendarId);
-        this.Controls.Add(this.txtGoogleCalendarId);
-        this.Controls.Add(this.lblStatus);
-        this.Controls.Add(this.lblWarehouse);
-        this.Controls.Add(this.cboWarehouse);
-        this.Controls.Add(this.btnSave);
-        this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
-        this.MaximizeBox = false;
-        this.Name = "CreateDriverProfileForm";
-        this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
-        this.Text = "Tạo hồ sơ tài xế";
-        ((System.ComponentModel.ISupportInitialize)(this.numYearsExp)).EndInit();
-        this.ResumeLayout(false);
-        this.PerformLayout();
+        // 
+        AutoScaleDimensions = new SizeF(144F, 144F);
+        AutoScaleMode = AutoScaleMode.Dpi;
+        BackColor = Color.White;
+        ClientSize = new Size(675, 660);
+        Controls.Add(lblLicenseNumber);
+        Controls.Add(txtLicenseNumber);
+        Controls.Add(lblLicenseClass);
+        Controls.Add(cboLicenseClass);
+        Controls.Add(lblLicenseExpiry);
+        Controls.Add(dtLicenseExpiry);
+        Controls.Add(chkHasHealthCert);
+        Controls.Add(dtHealthCertExpiry);
+        Controls.Add(lblYearsExp);
+        Controls.Add(numYearsExp);
+        Controls.Add(lblGoogleCalendarId);
+        Controls.Add(txtGoogleCalendarId);
+        Controls.Add(lblStatus);
+        Controls.Add(lblWarehouse);
+        Controls.Add(cboWarehouse);
+        Controls.Add(btnSave);
+        FormBorderStyle = FormBorderStyle.FixedDialog;
+        Margin = new Padding(6, 6, 6, 6);
+        MaximizeBox = false;
+        Name = "CreateDriverProfileForm";
+        StartPosition = FormStartPosition.CenterParent;
+        Text = "Tạo hồ sơ tài xế";
+        ((System.ComponentModel.ISupportInitialize)numYearsExp).EndInit();
+        ResumeLayout(false);
+        PerformLayout();
     }
 
     #endregion

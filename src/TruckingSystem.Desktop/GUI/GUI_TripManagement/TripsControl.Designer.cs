@@ -37,7 +37,7 @@ partial class TripsControl
         // 
         lblTitle.Font = new Font("Segoe UI", 18F, FontStyle.Bold);
         lblTitle.ForeColor = Color.FromArgb(15, 23, 42);
-        lblTitle.Location = new Point(-1, 19);
+        lblTitle.Location = new Point(0, 0);
         lblTitle.Name = "lblTitle";
         lblTitle.Size = new Size(382, 50);
         lblTitle.TabIndex = 0;

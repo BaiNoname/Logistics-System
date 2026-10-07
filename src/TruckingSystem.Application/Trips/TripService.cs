@@ -110,6 +110,12 @@ public class TripService : ITripService
         if (trip.Status != TripStatus.Planned)
             return new TripActionResult(false, "Chỉ có thể bắt đầu chuyến đang ở trạng thái Đã lên kế hoạch (Planned).");
 
+        // Chặng GIAO chỉ được chạy khi TẤT CẢ chặng LẤY HÀNG của đơn đã Hoàn tất
+        // (Vận hành đã duyệt -> hàng đã thật sự nhập kho) — áp dụng CHUNG cho
+        // Desktop bấm Bắt đầu lẫn app tài xế tự bắt đầu qua GPS (xem PingAsync).
+        var blockReason = await GetStartBlockReasonAsync(trip);
+        if (blockReason is not null) return new TripActionResult(false, blockReason);
+
         // Bọc transaction: chuyến có NHIỀU dòng hàng, nếu dòng 1 xuất kho xong mà
         // dòng 2 lỗi (thiếu tồn) thì trước đây dòng 1 ĐÃ BỊ TRỪ KHO vĩnh viễn dù
         // chuyến vẫn chưa bắt đầu. Giờ return khi chưa Commit -> tự Rollback hết.
@@ -243,6 +249,16 @@ public class TripService : ITripService
         if (trip.Status != TripStatus.Planned && trip.Status != TripStatus.InProgress)
             return new ServiceResult(false, "Chuyến này không còn ghi nhận GPS nữa.");
 
+        // GPS ĐẦU TIÊN của chuyến còn "Đã lên kế hoạch" = tài xế bắt đầu chạy.
+        // Trước đây chỉ đổi trạng thái sang Đang chạy -> chặng Giao có thể chạy
+        // khi chặng Lấy hàng chưa xong, và BỎ QUA bước xuất kho (tồn kho sai).
+        // Giờ đi qua ĐÚNG quy trình StartAsync: kiểm tra điều kiện + xuất kho.
+        if (trip.Status == TripStatus.Planned)
+        {
+            var start = await StartAsync(tripId);
+            if (!start.Success) return new ServiceResult(false, start.Message);
+        }
+
         _db.Waypoints.Add(new Waypoint
         {
             TripId = tripId,
@@ -252,13 +268,6 @@ public class TripService : ITripService
             Accuracy = request.Accuracy,
             Timestamp = request.Timestamp ?? DateTime.UtcNow,
         });
-
-        // Trip tự động chuyển InProgress ngay khi nhận điểm GPS đầu tiên (nếu còn Planned)
-        if (trip.Status == TripStatus.Planned)
-        {
-            trip.Status = TripStatus.InProgress;
-            trip.StartTime ??= DateTime.UtcNow;
-        }
 
         await _db.SaveChangesAsync();
         return new ServiceResult(true, null);
@@ -290,6 +299,78 @@ public class TripService : ITripService
 
         return new ServiceResult(true, null);
     }
+
+    /// <summary>Trạng thái chuyến dành cho app tài xế — app hỏi TRƯỚC khi bật
+    /// theo dõi GPS: chuyến đã báo xong / đã hoàn thành / đã hủy thì không cho
+    /// bật nữa; chặng Giao mà chặng Lấy hàng chưa xong thì báo phải chờ.</summary>
+    public async Task<DriverTripStatusDto?> GetDriverStatusAsync(int tripId)
+    {
+        var trip = await _db.Trips.FirstOrDefaultAsync(t => t.Id == tripId);
+        if (trip is null) return null;
+
+        var legText = trip.LegType switch
+        {
+            TripLegType.Pickup => "lấy hàng",
+            TripLegType.Return => "trả hàng",
+            _ => "giao hàng",
+        };
+
+        bool canTrack = true;
+        string? message = null;
+        switch (trip.Status)
+        {
+            case TripStatus.Completed:
+                canTrack = false;
+                message = $"Chuyến #{trip.Id} đã hoàn thành ({legText} xong).";
+                break;
+            case TripStatus.PendingConfirmation:
+                canTrack = false;
+                message = $"Chuyến #{trip.Id} đã báo {legText} xong, đang chờ Vận hành duyệt — không cần theo dõi nữa.";
+                break;
+            case TripStatus.Cancelled:
+                canTrack = false;
+                message = $"Chuyến #{trip.Id} đã bị hủy.";
+                break;
+            case TripStatus.Planned:
+                message = await GetStartBlockReasonAsync(trip);
+                canTrack = message is null;
+                break;
+        }
+
+        return new DriverTripStatusDto(trip.Id, trip.Status.ToString(), trip.LegType.ToString(), canTrack, message);
+    }
+
+    /// <summary>Lý do KHÔNG được bắt đầu chuyến (null = được phép). Chặng Giao
+    /// phụ thuộc hàng đã THẬT SỰ nằm trong kho: mọi chặng Lấy hàng (không tính
+    /// chặng đã hủy) của đơn phải Hoàn tất — "Chờ xác nhận" chưa tính là xong vì
+    /// Vận hành chưa duyệt thì hàng chưa được nhập kho. Đơn khách tự mang hàng
+    /// tới kho (không có chặng Lấy hàng) thì không bị chặn.</summary>
+    private async Task<string?> GetStartBlockReasonAsync(Trip trip)
+    {
+        if (trip.LegType != TripLegType.Delivery) return null;
+
+        var pendingPickups = await _db.Trips
+            .Where(t => t.TransportOrderId == trip.TransportOrderId
+                        && t.LegType == TripLegType.Pickup
+                        && t.Status != TripStatus.Cancelled
+                        && t.Status != TripStatus.Completed)
+            .OrderBy(t => t.Id)
+            .Select(t => new { t.Id, t.Status })
+            .ToListAsync();
+        if (pendingPickups.Count == 0) return null;
+
+        var list = string.Join(", ", pendingPickups.Select(p => $"#{p.Id} ({PickupStatusText(p.Status)})"));
+        return $"Chưa thể bắt đầu chuyến giao hàng — đơn còn chuyến lấy hàng chưa hoàn tất: {list}. " +
+               "Hàng phải được lấy về và nhập kho (Vận hành duyệt) xong mới được xuất kho đi giao.";
+    }
+
+    private static string PickupStatusText(TripStatus s) => s switch
+    {
+        TripStatus.Planned => "chưa chạy",
+        TripStatus.InProgress => "đang chạy",
+        TripStatus.PendingConfirmation => "chờ Vận hành duyệt",
+        _ => s.ToString(),
+    };
 
     public async Task<List<WaypointDto>> GetWaypointsAsync(int tripId)
     {

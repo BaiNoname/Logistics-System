@@ -38,6 +38,10 @@ public interface ITripService
     /// đường đi thực tế trên bản đồ, sắp theo thời gian.</summary>
     Task<List<WaypointDto>> GetWaypointsAsync(int tripId);
 
+    /// <summary>App tài xế hỏi trước khi bật theo dõi GPS: chuyến còn chạy được
+    /// không (đã xong / chờ duyệt / đã hủy / chặng Giao đang chờ Lấy hàng xong).</summary>
+    Task<DriverTripStatusDto?> GetDriverStatusAsync(int tripId);
+
     /// <summary>Tọa độ đầu-cuối ĐÚNG theo chặng của 1 Trip cụ thể — dùng cho
     /// trang điều hướng công khai (navigate.html) app tài xế mở qua WebView,
     /// không cần đăng nhập.</summary>
@@ -73,3 +77,6 @@ public interface ITripService
     /// chiều Kho→Điểm giao) — LƯU LẠI vào Trip để dùng cho thống kê sau này.</summary>
     Task<TripRouteEstimateDto> CalculateAndSaveRouteEstimateAsync(int tripId);
 }
+
+/// <summary>Trạng thái chuyến cho app tài xế. CanTrack=false thì Message giải thích lý do.</summary>
+public record DriverTripStatusDto(int TripId, string Status, string LegType, bool CanTrack, string? Message);
