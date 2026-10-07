@@ -28,10 +28,9 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             // 
             lblTitle.Font = new Font("Segoe UI", 18F, FontStyle.Bold);
             lblTitle.ForeColor = Color.FromArgb(15, 23, 42);
-            lblTitle.Location = new Point(0, 7);
-            lblTitle.Margin = new Padding(2, 0, 2, 0);
+            lblTitle.Location = new Point(0, 10);
             lblTitle.Name = "lblTitle";
-            lblTitle.Size = new Size(200, 60);
+            lblTitle.Size = new Size(300, 52);
             lblTitle.TabIndex = 0;
             lblTitle.Text = "Nhân viên";
             // 
@@ -43,10 +42,9 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             btnRefresh.FlatStyle = FlatStyle.Flat;
             btnRefresh.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
             btnRefresh.ForeColor = Color.FromArgb(15, 23, 42);
-            btnRefresh.Location = new Point(455, 7);
-            btnRefresh.Margin = new Padding(2);
+            btnRefresh.Location = new Point(682, 10);
             btnRefresh.Name = "btnRefresh";
-            btnRefresh.Size = new Size(105, 35);
+            btnRefresh.Size = new Size(158, 52);
             btnRefresh.TabIndex = 1;
             btnRefresh.Text = "🔄 Làm mới";
             btnRefresh.UseVisualStyleBackColor = false;
@@ -61,10 +59,9 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             btnCreate.FlatStyle = FlatStyle.Flat;
             btnCreate.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
             btnCreate.ForeColor = Color.White;
-            btnCreate.Location = new Point(308, 7);
-            btnCreate.Margin = new Padding(2);
+            btnCreate.Location = new Point(462, 10);
             btnCreate.Name = "btnCreate";
-            btnCreate.Size = new Size(143, 35);
+            btnCreate.Size = new Size(214, 52);
             btnCreate.TabIndex = 2;
             btnCreate.Text = "➕ Thêm nhân viên";
             btnCreate.UseVisualStyleBackColor = false;
@@ -78,10 +75,9 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             btnMakeDriver.FlatStyle = FlatStyle.Flat;
             btnMakeDriver.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
             btnMakeDriver.ForeColor = Color.FromArgb(15, 23, 42);
-            btnMakeDriver.Location = new Point(564, 7);
-            btnMakeDriver.Margin = new Padding(2);
+            btnMakeDriver.Location = new Point(846, 10);
             btnMakeDriver.Name = "btnMakeDriver";
-            btnMakeDriver.Size = new Size(120, 35);
+            btnMakeDriver.Size = new Size(180, 52);
             btnMakeDriver.TabIndex = 3;
             btnMakeDriver.Text = "🚗 Hồ sơ tài xế";
             btnMakeDriver.UseVisualStyleBackColor = false;
@@ -95,10 +91,9 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             btnSchedule.FlatStyle = FlatStyle.Flat;
             btnSchedule.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
             btnSchedule.ForeColor = Color.FromArgb(15, 23, 42);
-            btnSchedule.Location = new Point(688, 7);
-            btnSchedule.Margin = new Padding(2);
+            btnSchedule.Location = new Point(1032, 10);
             btnSchedule.Name = "btnSchedule";
-            btnSchedule.Size = new Size(120, 35);
+            btnSchedule.Size = new Size(180, 52);
             btnSchedule.TabIndex = 4;
             btnSchedule.Text = "📅 Lịch làm việc";
             btnSchedule.UseVisualStyleBackColor = false;
@@ -109,26 +104,23 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             lblStatus.AutoSize = true;
             lblStatus.Font = new Font("Segoe UI", 9F);
             lblStatus.ForeColor = Color.FromArgb(100, 116, 139);
-            lblStatus.Location = new Point(0, 29);
-            lblStatus.Margin = new Padding(2, 0, 2, 0);
+            lblStatus.Location = new Point(0, 44);
             lblStatus.Name = "lblStatus";
-            lblStatus.Size = new Size(0, 15);
+            lblStatus.Size = new Size(0, 25);
             lblStatus.TabIndex = 4;
             // 
             // grid
             // 
-            grid.ColumnHeadersHeight = 34;
-            grid.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
-            grid.Location = new Point(0, 51);
-            grid.Margin = new Padding(2);
+            grid.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            grid.Location = new Point(0, 85);
             grid.Name = "grid";
             grid.RowHeadersWidth = 62;
-            grid.Size = new Size(667, 373);
+            grid.Size = new Size(1450, 483);
             grid.TabIndex = 5;
             // 
             // EmployeesControl
             // 
-            AutoScaleDimensions = new SizeF(96F, 96F);
+            AutoScaleDimensions = new SizeF(144F, 144F);
             BackColor = Color.FromArgb(241, 245, 249);
             Controls.Add(lblTitle);
             Controls.Add(btnRefresh);
@@ -137,9 +129,9 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             Controls.Add(btnSchedule);
             Controls.Add(lblStatus);
             Controls.Add(grid);
-            Margin = new Padding(2);
+            Margin = new Padding(3);
             Name = "EmployeesControl";
-            Size = new Size(967, 379);
+            Size = new Size(1450, 568);
             ((System.ComponentModel.ISupportInitialize)grid).EndInit();
             ResumeLayout(false);
             PerformLayout();

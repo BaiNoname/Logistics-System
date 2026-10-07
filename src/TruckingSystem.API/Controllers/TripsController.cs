@@ -152,6 +152,15 @@ public class TripsController : ControllerBase
         return result.Success ? Ok(result) : NotFound(result);
     }
 
+    /// <summary>App tài xế kiểm tra trước khi bật theo dõi GPS.</summary>
+    [HttpGet("{id:int}/driver-status")]
+    [AllowAnonymous]
+    public async Task<ActionResult<DriverTripStatusDto>> GetDriverStatus(int id)
+    {
+        var status = await _tripService.GetDriverStatusAsync(id);
+        return status is null ? NotFound(new { message = "Không tìm thấy chuyến." }) : Ok(status);
+    }
+
     [HttpPost("{id:int}/confirm-arrival")]
     [AllowAnonymous]
     public async Task<ActionResult<ServiceResult>> ConfirmArrival(int id, ConfirmArrivalRequest request)

@@ -14,82 +14,103 @@
 
         private void InitializeComponent()
         {
-            this.lblTitle = new System.Windows.Forms.Label();
-            this.btnAddDocument = new System.Windows.Forms.Button();
-            this.btnDeleteDocument = new System.Windows.Forms.Button();
-            this.lblStatus = new System.Windows.Forms.Label();
-            this.grid = new System.Windows.Forms.DataGridView();
-            ((System.ComponentModel.ISupportInitialize)(this.grid)).BeginInit();
-            this.SuspendLayout();
-            //
+            lblTitle = new Label();
+            btnAddDocument = new Button();
+            btnDeleteDocument = new Button();
+            lblStatus = new Label();
+            grid = new DataGridView();
+            ((System.ComponentModel.ISupportInitialize)grid).BeginInit();
+            SuspendLayout();
+            // 
             // lblTitle
-            //
-            this.lblTitle.Location = new System.Drawing.Point(20, 16);
-            this.lblTitle.AutoSize = true;
-            this.lblTitle.Text = "📄 Giấy tờ xe";
-            this.lblTitle.Font = TruckingSystem.Desktop.Common.Theme.FontSectionTitle;
-            this.lblTitle.ForeColor = TruckingSystem.Desktop.Common.Theme.TextPrimary;
-            //
+            // 
+            lblTitle.AutoSize = true;
+            lblTitle.Font = new Font("Segoe UI", 13F, FontStyle.Bold);
+            lblTitle.ForeColor = Color.FromArgb(15, 23, 42);
+            lblTitle.Location = new Point(30, 9);
+            lblTitle.Margin = new Padding(4, 0, 4, 0);
+            lblTitle.Name = "lblTitle";
+            lblTitle.Size = new Size(180, 36);
+            lblTitle.TabIndex = 0;
+            lblTitle.Text = "📄 Giấy tờ xe";
+            // 
             // btnAddDocument
-            //
-            this.btnAddDocument.Location = new System.Drawing.Point(590, 16);
-            this.btnAddDocument.Size = new System.Drawing.Size(160, 38);
-            this.btnAddDocument.Text = "➕ Nhập giấy tờ mới";
-            this.btnAddDocument.BackColor = TruckingSystem.Desktop.Common.Theme.Primary;
-            this.btnAddDocument.ForeColor = System.Drawing.Color.White;
-            this.btnAddDocument.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnAddDocument.Font = TruckingSystem.Desktop.Common.Theme.FontBold;
-            this.btnAddDocument.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.btnAddDocument.FlatAppearance.BorderSize = 0;
-            this.btnAddDocument.FlatAppearance.MouseOverBackColor = TruckingSystem.Desktop.Common.Theme.PrimaryDark;
-            this.btnAddDocument.Click += new System.EventHandler(this.BtnAddDocument_Click);
-            //
+            // 
+            btnAddDocument.BackColor = Color.FromArgb(37, 99, 235);
+            btnAddDocument.Cursor = Cursors.Hand;
+            btnAddDocument.FlatAppearance.BorderSize = 0;
+            btnAddDocument.FlatAppearance.MouseOverBackColor = Color.FromArgb(29, 78, 216);
+            btnAddDocument.FlatStyle = FlatStyle.Flat;
+            btnAddDocument.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+            btnAddDocument.ForeColor = Color.White;
+            btnAddDocument.Location = new Point(817, 24);
+            btnAddDocument.Margin = new Padding(4, 4, 4, 4);
+            btnAddDocument.Name = "btnAddDocument";
+            btnAddDocument.Size = new Size(240, 57);
+            btnAddDocument.TabIndex = 1;
+            btnAddDocument.Text = "➕ Nhập giấy tờ mới";
+            btnAddDocument.UseVisualStyleBackColor = false;
+            btnAddDocument.Click += BtnAddDocument_Click;
+            // 
             // btnDeleteDocument
-            //
-            this.btnDeleteDocument.Location = new System.Drawing.Point(760, 16);
-            this.btnDeleteDocument.Size = new System.Drawing.Size(140, 38);
-            this.btnDeleteDocument.Text = "🗑️ Xóa giấy tờ";
-            this.btnDeleteDocument.BackColor = System.Drawing.Color.White;
-            this.btnDeleteDocument.ForeColor = TruckingSystem.Desktop.Common.Theme.Danger;
-            this.btnDeleteDocument.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnDeleteDocument.Font = TruckingSystem.Desktop.Common.Theme.FontBold;
-            this.btnDeleteDocument.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.btnDeleteDocument.FlatAppearance.BorderSize = 1;
-            this.btnDeleteDocument.FlatAppearance.BorderColor = TruckingSystem.Desktop.Common.Theme.Danger;
-            this.btnDeleteDocument.Click += new System.EventHandler(this.BtnDeleteDocument_Click);
-            //
+            // 
+            btnDeleteDocument.BackColor = Color.White;
+            btnDeleteDocument.Cursor = Cursors.Hand;
+            btnDeleteDocument.FlatAppearance.BorderColor = Color.FromArgb(220, 38, 38);
+            btnDeleteDocument.FlatStyle = FlatStyle.Flat;
+            btnDeleteDocument.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+            btnDeleteDocument.ForeColor = Color.FromArgb(220, 38, 38);
+            btnDeleteDocument.Location = new Point(1065, 24);
+            btnDeleteDocument.Margin = new Padding(4, 4, 4, 4);
+            btnDeleteDocument.Name = "btnDeleteDocument";
+            btnDeleteDocument.Size = new Size(210, 57);
+            btnDeleteDocument.TabIndex = 2;
+            btnDeleteDocument.Text = "🗑️ Xóa giấy tờ";
+            btnDeleteDocument.UseVisualStyleBackColor = false;
+            btnDeleteDocument.Click += BtnDeleteDocument_Click;
+            // 
             // lblStatus
-            //
-            this.lblStatus.Location = new System.Drawing.Point(20, 56);
-            this.lblStatus.AutoSize = true;
-            this.lblStatus.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
-            this.lblStatus.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
-            //
+            // 
+            lblStatus.AutoSize = true;
+            lblStatus.Font = new Font("Segoe UI", 9F);
+            lblStatus.ForeColor = Color.FromArgb(100, 116, 139);
+            lblStatus.Location = new Point(30, 84);
+            lblStatus.Margin = new Padding(4, 0, 4, 0);
+            lblStatus.Name = "lblStatus";
+            lblStatus.Size = new Size(0, 25);
+            lblStatus.TabIndex = 3;
+            // 
             // grid
-            //
-            this.grid.Location = new System.Drawing.Point(20, 80);
-            this.grid.Size = new System.Drawing.Size(880, 380);
-            this.grid.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
-            //
+            // 
+            grid.ColumnHeadersHeight = 34;
+            grid.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
+            grid.Location = new Point(30, 120);
+            grid.Margin = new Padding(4, 4, 4, 4);
+            grid.Name = "grid";
+            grid.RowHeadersWidth = 62;
+            grid.Size = new Size(1320, 570);
+            grid.TabIndex = 4;
+            // 
             // ManageVehicleDocumentsForm
-            //
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
-            this.AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
-            this.BackColor = System.Drawing.Color.White;
-            this.ClientSize = new System.Drawing.Size(920, 500);
-            this.Controls.Add(this.lblTitle);
-            this.Controls.Add(this.btnAddDocument);
-            this.Controls.Add(this.btnDeleteDocument);
-            this.Controls.Add(this.lblStatus);
-            this.Controls.Add(this.grid);
-            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
-            this.MaximizeBox = false;
-            this.Name = "ManageVehicleDocumentsForm";
-            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
-            this.Text = "Giấy tờ xe";
-            ((System.ComponentModel.ISupportInitialize)(this.grid)).EndInit();
-            this.ResumeLayout(false);
-            this.PerformLayout();
+            // 
+            AutoScaleDimensions = new SizeF(144F, 144F);
+            AutoScaleMode = AutoScaleMode.Dpi;
+            BackColor = Color.White;
+            ClientSize = new Size(1380, 750);
+            Controls.Add(lblTitle);
+            Controls.Add(btnAddDocument);
+            Controls.Add(btnDeleteDocument);
+            Controls.Add(lblStatus);
+            Controls.Add(grid);
+            FormBorderStyle = FormBorderStyle.FixedDialog;
+            Margin = new Padding(6, 6, 6, 6);
+            MaximizeBox = false;
+            Name = "ManageVehicleDocumentsForm";
+            StartPosition = FormStartPosition.CenterParent;
+            Text = "Giấy tờ xe";
+            ((System.ComponentModel.ISupportInitialize)grid).EndInit();
+            ResumeLayout(false);
+            PerformLayout();
         }
 
         #endregion

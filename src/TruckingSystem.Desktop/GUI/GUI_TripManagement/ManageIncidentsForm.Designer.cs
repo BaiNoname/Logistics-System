@@ -14,82 +14,103 @@
 
         private void InitializeComponent()
         {
-            this.lblTitle = new System.Windows.Forms.Label();
-            this.btnAddIncident = new System.Windows.Forms.Button();
-            this.btnDeleteIncident = new System.Windows.Forms.Button();
-            this.lblStatus = new System.Windows.Forms.Label();
-            this.grid = new System.Windows.Forms.DataGridView();
-            ((System.ComponentModel.ISupportInitialize)(this.grid)).BeginInit();
-            this.SuspendLayout();
-            //
+            lblTitle = new Label();
+            btnAddIncident = new Button();
+            btnDeleteIncident = new Button();
+            lblStatus = new Label();
+            grid = new DataGridView();
+            ((System.ComponentModel.ISupportInitialize)grid).BeginInit();
+            SuspendLayout();
+            // 
             // lblTitle
-            //
-            this.lblTitle.Location = new System.Drawing.Point(20, 16);
-            this.lblTitle.AutoSize = true;
-            this.lblTitle.Text = "⚠️ Sự cố giữa đường";
-            this.lblTitle.Font = TruckingSystem.Desktop.Common.Theme.FontSectionTitle;
-            this.lblTitle.ForeColor = TruckingSystem.Desktop.Common.Theme.TextPrimary;
-            //
+            // 
+            lblTitle.AutoSize = true;
+            lblTitle.Font = new Font("Segoe UI", 13F, FontStyle.Bold);
+            lblTitle.ForeColor = Color.FromArgb(15, 23, 42);
+            lblTitle.Location = new Point(30, 24);
+            lblTitle.Margin = new Padding(4, 0, 4, 0);
+            lblTitle.Name = "lblTitle";
+            lblTitle.Size = new Size(275, 36);
+            lblTitle.TabIndex = 0;
+            lblTitle.Text = "⚠️ Sự cố giữa đường";
+            // 
             // btnAddIncident
-            //
-            this.btnAddIncident.Location = new System.Drawing.Point(590, 16);
-            this.btnAddIncident.Size = new System.Drawing.Size(160, 38);
-            this.btnAddIncident.Text = "➕ Ghi nhận sự cố";
-            this.btnAddIncident.BackColor = TruckingSystem.Desktop.Common.Theme.Primary;
-            this.btnAddIncident.ForeColor = System.Drawing.Color.White;
-            this.btnAddIncident.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnAddIncident.Font = TruckingSystem.Desktop.Common.Theme.FontBold;
-            this.btnAddIncident.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.btnAddIncident.FlatAppearance.BorderSize = 0;
-            this.btnAddIncident.FlatAppearance.MouseOverBackColor = TruckingSystem.Desktop.Common.Theme.PrimaryDark;
-            this.btnAddIncident.Click += new System.EventHandler(this.BtnAddIncident_Click);
-            //
+            // 
+            btnAddIncident.BackColor = Color.FromArgb(37, 99, 235);
+            btnAddIncident.Cursor = Cursors.Hand;
+            btnAddIncident.FlatAppearance.BorderSize = 0;
+            btnAddIncident.FlatAppearance.MouseOverBackColor = Color.FromArgb(29, 78, 216);
+            btnAddIncident.FlatStyle = FlatStyle.Flat;
+            btnAddIncident.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+            btnAddIncident.ForeColor = Color.White;
+            btnAddIncident.Location = new Point(798, 24);
+            btnAddIncident.Margin = new Padding(4, 4, 4, 4);
+            btnAddIncident.Name = "btnAddIncident";
+            btnAddIncident.Size = new Size(240, 57);
+            btnAddIncident.TabIndex = 1;
+            btnAddIncident.Text = "➕ Ghi nhận sự cố";
+            btnAddIncident.UseVisualStyleBackColor = false;
+            btnAddIncident.Click += BtnAddIncident_Click;
+            // 
             // btnDeleteIncident
-            //
-            this.btnDeleteIncident.Location = new System.Drawing.Point(760, 16);
-            this.btnDeleteIncident.Size = new System.Drawing.Size(140, 38);
-            this.btnDeleteIncident.Text = "🗑️ Xóa sự cố";
-            this.btnDeleteIncident.BackColor = System.Drawing.Color.White;
-            this.btnDeleteIncident.ForeColor = TruckingSystem.Desktop.Common.Theme.Danger;
-            this.btnDeleteIncident.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnDeleteIncident.Font = TruckingSystem.Desktop.Common.Theme.FontBold;
-            this.btnDeleteIncident.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.btnDeleteIncident.FlatAppearance.BorderSize = 1;
-            this.btnDeleteIncident.FlatAppearance.BorderColor = TruckingSystem.Desktop.Common.Theme.Danger;
-            this.btnDeleteIncident.Click += new System.EventHandler(this.BtnDeleteIncident_Click);
-            //
+            // 
+            btnDeleteIncident.BackColor = Color.White;
+            btnDeleteIncident.Cursor = Cursors.Hand;
+            btnDeleteIncident.FlatAppearance.BorderColor = Color.FromArgb(220, 38, 38);
+            btnDeleteIncident.FlatStyle = FlatStyle.Flat;
+            btnDeleteIncident.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+            btnDeleteIncident.ForeColor = Color.FromArgb(220, 38, 38);
+            btnDeleteIncident.Location = new Point(1064, 24);
+            btnDeleteIncident.Margin = new Padding(4, 4, 4, 4);
+            btnDeleteIncident.Name = "btnDeleteIncident";
+            btnDeleteIncident.Size = new Size(210, 57);
+            btnDeleteIncident.TabIndex = 2;
+            btnDeleteIncident.Text = "🗑️ Xóa sự cố";
+            btnDeleteIncident.UseVisualStyleBackColor = false;
+            btnDeleteIncident.Click += BtnDeleteIncident_Click;
+            // 
             // lblStatus
-            //
-            this.lblStatus.Location = new System.Drawing.Point(20, 56);
-            this.lblStatus.AutoSize = true;
-            this.lblStatus.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
-            this.lblStatus.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
-            //
+            // 
+            lblStatus.AutoSize = true;
+            lblStatus.Font = new Font("Segoe UI", 9F);
+            lblStatus.ForeColor = Color.FromArgb(100, 116, 139);
+            lblStatus.Location = new Point(30, 84);
+            lblStatus.Margin = new Padding(4, 0, 4, 0);
+            lblStatus.Name = "lblStatus";
+            lblStatus.Size = new Size(0, 25);
+            lblStatus.TabIndex = 3;
+            // 
             // grid
-            //
-            this.grid.Location = new System.Drawing.Point(20, 80);
-            this.grid.Size = new System.Drawing.Size(880, 380);
-            this.grid.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
-            //
+            // 
+            grid.ColumnHeadersHeight = 34;
+            grid.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
+            grid.Location = new Point(30, 120);
+            grid.Margin = new Padding(4, 4, 4, 4);
+            grid.Name = "grid";
+            grid.RowHeadersWidth = 62;
+            grid.Size = new Size(1320, 570);
+            grid.TabIndex = 4;
+            // 
             // ManageIncidentsForm
-            //
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
-            this.AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
-            this.BackColor = System.Drawing.Color.White;
-            this.ClientSize = new System.Drawing.Size(920, 500);
-            this.Controls.Add(this.lblTitle);
-            this.Controls.Add(this.btnAddIncident);
-            this.Controls.Add(this.btnDeleteIncident);
-            this.Controls.Add(this.lblStatus);
-            this.Controls.Add(this.grid);
-            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
-            this.MaximizeBox = false;
-            this.Name = "ManageIncidentsForm";
-            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
-            this.Text = "Sự cố";
-            ((System.ComponentModel.ISupportInitialize)(this.grid)).EndInit();
-            this.ResumeLayout(false);
-            this.PerformLayout();
+            // 
+            AutoScaleDimensions = new SizeF(144F, 144F);
+            AutoScaleMode = AutoScaleMode.Dpi;
+            BackColor = Color.White;
+            ClientSize = new Size(1380, 750);
+            Controls.Add(lblTitle);
+            Controls.Add(btnAddIncident);
+            Controls.Add(btnDeleteIncident);
+            Controls.Add(lblStatus);
+            Controls.Add(grid);
+            FormBorderStyle = FormBorderStyle.FixedDialog;
+            Margin = new Padding(6, 6, 6, 6);
+            MaximizeBox = false;
+            Name = "ManageIncidentsForm";
+            StartPosition = FormStartPosition.CenterParent;
+            Text = "Sự cố";
+            ((System.ComponentModel.ISupportInitialize)grid).EndInit();
+            ResumeLayout(false);
+            PerformLayout();
         }
 
         #endregion
