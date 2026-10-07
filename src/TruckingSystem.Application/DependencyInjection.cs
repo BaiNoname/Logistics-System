@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using TruckingSystem.Application.Customers;
+using TruckingSystem.Application.Contracts;
 using TruckingSystem.Application.Drivers;
 using TruckingSystem.Application.Employees;
 using TruckingSystem.Application.Invoices;
@@ -13,6 +14,7 @@ using TruckingSystem.Application.VehicleAllocation;
 using TruckingSystem.Application.Warehouses;
 using TruckingSystem.Application.Reports;
 using TruckingSystem.Application.TripVideos;
+using TruckingSystem.Application.SystemManagement;
 
 namespace TruckingSystem.Application;
 
@@ -30,11 +32,13 @@ public static class DependencyInjection
         services.AddScoped<ITransportOrderService, TransportOrderService>();
         services.AddScoped<IVehicleService, VehicleService>();
         services.AddScoped<ICustomerService, CustomerService>();
+        services.AddScoped<IContractService, ContractService>();
         services.AddScoped<TruckingSystem.Application.Notifications.INotificationService, TruckingSystem.Application.Notifications.NotificationService>();
         services.AddScoped<TruckingSystem.Application.AuditLogs.IAuditLogService, TruckingSystem.Application.AuditLogs.AuditLogService>();
         services.AddScoped<IPublicTrackingService, PublicTrackingService>();
         services.AddScoped<IWarehouseSlottingService, WarehouseSlottingService>();
         services.AddScoped<IEmployeeService, EmployeeService>();
+        services.AddScoped<ISystemManagementService, SystemManagementService>();
         services.AddScoped<IInvoiceService, InvoiceService>();
         services.AddScoped<IVehicleAllocationService, VehicleAllocationService>();
         services.AddScoped<ILocationService, LocationService>();

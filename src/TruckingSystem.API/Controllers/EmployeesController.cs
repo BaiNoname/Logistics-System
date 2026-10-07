@@ -6,7 +6,7 @@ namespace TruckingSystem.API.Controllers;
 
 [ApiController]
 [Route("api/employees")]
-[Authorize]
+[Authorize(Roles = "Admin,Dispatcher")]
 public class EmployeesController : ControllerBase
 {
     private readonly IEmployeeService _service;
@@ -21,8 +21,20 @@ public class EmployeesController : ControllerBase
         => Ok(await _service.GetAllAsync());
 
     [HttpPost]
-    public async Task<ActionResult<EmployeeListItemDto>> Create(CreateEmployeeRequest request)
-        => Ok(await _service.CreateAsync(request));
+    [Authorize(Roles = "Admin")]
+    public async Task<ActionResult<EmployeeActionResult>> Create(CreateEmployeeRequest request)
+    {
+        var result = await _service.CreateAsync(request);
+        return result.Success ? Ok(result) : BadRequest(result);
+    }
+
+    [HttpPut("{id:int}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<ActionResult<EmployeeActionResult>> Update(int id, UpdateEmployeeRequest request)
+    {
+        var result = await _service.UpdateAsync(id, request);
+        return result.Success ? Ok(result) : BadRequest(result);
+    }
 
     [HttpGet("departments")]
     public async Task<ActionResult<List<LookupItemDto>>> GetDepartments()

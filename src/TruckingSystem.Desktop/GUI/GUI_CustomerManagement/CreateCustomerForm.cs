@@ -6,7 +6,6 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
     public partial class CreateCustomerForm : BaseForm
     {
         private ApiServices? _api;
-        private string selectedImagePath;// dùng để lưu đường dẫn tệp ảnh danh thiếp được chọn
 
         public CreateCustomerForm()
         {
@@ -31,11 +30,18 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
 
             try
             {
-                await _api.Customers.CreateCustomerAsync(
+                var result = await _api.Customers.CreateCustomerAsync(
                     txtName.Text.Trim(), txtPhone.Text.Trim(), txtTaxCode.Text.Trim(), (string)cboType.SelectedItem!,
                     string.IsNullOrWhiteSpace(txtAddress.Text) ? null : txtAddress.Text.Trim(),
                     numCreditLimit.Value == 0 ? null : numCreditLimit.Value,
                     string.IsNullOrWhiteSpace(txtGoogleCalendarId.Text) ? null : txtGoogleCalendarId.Text.Trim());
+
+                if (!result.Success)
+                {
+                    lblStatus.Text = "⚠️ " + result.Message;
+                    return;
+                }
+
                 DialogResult = DialogResult.OK;
                 Close();
             }

@@ -6,7 +6,7 @@ namespace TruckingSystem.API.Controllers;
 
 [ApiController]
 [Route("api/warehouses")]
-[Authorize]
+[Authorize(Roles = "Admin,Dispatcher,WarehouseStaff")]
 public class WarehousesController : ControllerBase
 {
     private readonly IWarehouseSlottingService _slottingService;

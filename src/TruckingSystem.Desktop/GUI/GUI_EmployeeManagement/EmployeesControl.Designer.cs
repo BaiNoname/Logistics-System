@@ -17,8 +17,7 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             lblTitle = new Label();
             btnRefresh = new Button();
             btnCreate = new Button();
-            btnMakeDriver = new Button();
-            btnSchedule = new Button();
+            btnEdit = new Button();
             lblStatus = new Label();
             grid = new DataGridView();
             ((System.ComponentModel.ISupportInitialize)grid).BeginInit();
@@ -31,7 +30,7 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             lblTitle.Location = new Point(0, 7);
             lblTitle.Margin = new Padding(2, 0, 2, 0);
             lblTitle.Name = "lblTitle";
-            lblTitle.Size = new Size(200, 60);
+            lblTitle.Size = new Size(195, 35);
             lblTitle.TabIndex = 0;
             lblTitle.Text = "Nhân viên";
             // 
@@ -43,7 +42,7 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             btnRefresh.FlatStyle = FlatStyle.Flat;
             btnRefresh.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
             btnRefresh.ForeColor = Color.FromArgb(15, 23, 42);
-            btnRefresh.Location = new Point(455, 7);
+            btnRefresh.Location = new Point(461, 7);
             btnRefresh.Margin = new Padding(2);
             btnRefresh.Name = "btnRefresh";
             btnRefresh.Size = new Size(105, 35);
@@ -61,7 +60,7 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             btnCreate.FlatStyle = FlatStyle.Flat;
             btnCreate.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
             btnCreate.ForeColor = Color.White;
-            btnCreate.Location = new Point(308, 7);
+            btnCreate.Location = new Point(220, 7);
             btnCreate.Margin = new Padding(2);
             btnCreate.Name = "btnCreate";
             btnCreate.Size = new Size(143, 35);
@@ -70,39 +69,22 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             btnCreate.UseVisualStyleBackColor = false;
             btnCreate.Click += BtnCreate_Click;
             // 
-            // btnMakeDriver
+            // btnEdit
             // 
-            btnMakeDriver.BackColor = Color.White;
-            btnMakeDriver.Cursor = Cursors.Hand;
-            btnMakeDriver.FlatAppearance.MouseOverBackColor = Color.FromArgb(248, 250, 252);
-            btnMakeDriver.FlatStyle = FlatStyle.Flat;
-            btnMakeDriver.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
-            btnMakeDriver.ForeColor = Color.FromArgb(15, 23, 42);
-            btnMakeDriver.Location = new Point(564, 7);
-            btnMakeDriver.Margin = new Padding(2);
-            btnMakeDriver.Name = "btnMakeDriver";
-            btnMakeDriver.Size = new Size(120, 35);
-            btnMakeDriver.TabIndex = 3;
-            btnMakeDriver.Text = "🚗 Hồ sơ tài xế";
-            btnMakeDriver.UseVisualStyleBackColor = false;
-            btnMakeDriver.Click += BtnMakeDriver_Click;
-            // 
-            // btnSchedule
-            // 
-            btnSchedule.BackColor = Color.White;
-            btnSchedule.Cursor = Cursors.Hand;
-            btnSchedule.FlatAppearance.MouseOverBackColor = Color.FromArgb(248, 250, 252);
-            btnSchedule.FlatStyle = FlatStyle.Flat;
-            btnSchedule.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
-            btnSchedule.ForeColor = Color.FromArgb(15, 23, 42);
-            btnSchedule.Location = new Point(688, 7);
-            btnSchedule.Margin = new Padding(2);
-            btnSchedule.Name = "btnSchedule";
-            btnSchedule.Size = new Size(120, 35);
-            btnSchedule.TabIndex = 4;
-            btnSchedule.Text = "📅 Lịch làm việc";
-            btnSchedule.UseVisualStyleBackColor = false;
-            btnSchedule.Click += BtnSchedule_Click;
+            btnEdit.BackColor = Color.White;
+            btnEdit.Cursor = Cursors.Hand;
+            btnEdit.FlatAppearance.MouseOverBackColor = Color.FromArgb(248, 250, 252);
+            btnEdit.FlatStyle = FlatStyle.Flat;
+            btnEdit.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+            btnEdit.ForeColor = Color.FromArgb(15, 23, 42);
+            btnEdit.Location = new Point(367, 7);
+            btnEdit.Margin = new Padding(2);
+            btnEdit.Name = "btnEdit";
+            btnEdit.Size = new Size(90, 35);
+            btnEdit.TabIndex = 3;
+            btnEdit.Text = "✏️ Sửa";
+            btnEdit.UseVisualStyleBackColor = false;
+            btnEdit.Click += BtnEdit_Click;
             // 
             // lblStatus
             // 
@@ -133,8 +115,7 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             Controls.Add(lblTitle);
             Controls.Add(btnRefresh);
             Controls.Add(btnCreate);
-            Controls.Add(btnMakeDriver);
-            Controls.Add(btnSchedule);
+            Controls.Add(btnEdit);
             Controls.Add(lblStatus);
             Controls.Add(grid);
             Margin = new Padding(2);
@@ -150,8 +131,7 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
         private System.Windows.Forms.Label lblTitle;
         private System.Windows.Forms.Button btnRefresh;
         private System.Windows.Forms.Button btnCreate;
-        private System.Windows.Forms.Button btnMakeDriver;
-        private System.Windows.Forms.Button btnSchedule;
+        private System.Windows.Forms.Button btnEdit;
         private System.Windows.Forms.Label lblStatus;
         private System.Windows.Forms.DataGridView grid;
     }

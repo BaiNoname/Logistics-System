@@ -1,7 +1,8 @@
 ﻿namespace TruckingSystem.Application.Employees;
 
-public record EmployeeListItemDto(int Id, string Code, string FullName, string? Phone, string? DepartmentName, string? PositionName, string Status, bool IsDriver);
+public record EmployeeListItemDto(int Id, string Code, string FullName, string? Phone, int? DepartmentId, string? DepartmentName, int? PositionId, string? PositionName, string Status, bool IsDriver);
 public record CreateEmployeeRequest(string Code, string FullName, string? Phone, int? DepartmentId, int? PositionId);
+public record UpdateEmployeeRequest(string Code, string FullName, string? Phone, int? DepartmentId, int? PositionId, string Status);
 public record LookupItemDto(int Id, string Name);
 
 /// <summary>Tạo hồ sơ tài xế (DriverProfile) cho 1 nhân viên đã có sẵn — quan

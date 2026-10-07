@@ -33,6 +33,7 @@ public interface IApplicationDbContext
     DbSet<Customer> Customers { get; }
     DbSet<Location> Locations { get; }
     DbSet<Contract> Contracts { get; }
+    DbSet<PriceList> PriceLists { get; }
     DbSet<SalesOrder> SalesOrders { get; }
 
     DbSet<TransportOrder> TransportOrders { get; }

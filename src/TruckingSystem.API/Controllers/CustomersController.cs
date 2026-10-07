@@ -6,7 +6,7 @@ namespace TruckingSystem.API.Controllers;
 
 [ApiController]
 [Route("api/customers")]
-[Authorize]
+[Authorize(Roles = "Admin,Dispatcher,Accountant")]
 public class CustomersController : ControllerBase
 {
     private readonly ICustomerService _service;
@@ -21,10 +21,15 @@ public class CustomersController : ControllerBase
         => Ok(await _service.GetAllAsync());
 
     [HttpPost]
-    public async Task<ActionResult<CustomerListItemDto>> Create(CreateCustomerRequest request)
-        => Ok(await _service.CreateAsync(request));
+    [Authorize(Roles = "Admin,Dispatcher")]
+    public async Task<ActionResult<CustomerActionResult>> Create(CreateCustomerRequest request)
+    {
+        var result = await _service.CreateAsync(request);
+        return result.Success ? Ok(result) : BadRequest(result);
+    }
 
     [HttpPut("{id:int}")]
+    [Authorize(Roles = "Admin,Dispatcher")]
     public async Task<ActionResult<CustomerActionResult>> Update(int id, UpdateCustomerRequest request)
     {
         var result = await _service.UpdateAsync(id, request);

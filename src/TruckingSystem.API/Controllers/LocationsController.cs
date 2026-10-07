@@ -6,7 +6,7 @@ namespace TruckingSystem.API.Controllers;
 
 [ApiController]
 [Route("api/locations")]
-[Authorize]
+[Authorize(Roles = "Admin,Dispatcher")]
 public class LocationsController : ControllerBase
 {
     private readonly ILocationService _service;

@@ -3,7 +3,8 @@
 public interface IEmployeeService
 {
     Task<List<EmployeeListItemDto>> GetAllAsync();
-    Task<EmployeeListItemDto> CreateAsync(CreateEmployeeRequest request);
+    Task<EmployeeActionResult> CreateAsync(CreateEmployeeRequest request);
+    Task<EmployeeActionResult> UpdateAsync(int id, UpdateEmployeeRequest request);
     Task<List<LookupItemDto>> GetDepartmentsAsync();
     Task<List<LookupItemDto>> GetPositionsAsync();
 

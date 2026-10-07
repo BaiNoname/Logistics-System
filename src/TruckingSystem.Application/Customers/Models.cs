@@ -8,3 +8,10 @@ public record CreateCustomerRequest(string Name, string? Phone, string? TaxCode,
 public record UpdateCustomerRequest(string Name, string? Phone, string? TaxCode, string CustomerType, string? Address, decimal? CreditLimit, string? GoogleCalendarId);
 
 public record CustomerActionResult(bool Success, string? Message);
+
+public record CustomerBusinessCardInfo(
+    string? Name,
+    string? Phone,
+    string? TaxCode,
+    string? CustomerType,
+    string? Address);

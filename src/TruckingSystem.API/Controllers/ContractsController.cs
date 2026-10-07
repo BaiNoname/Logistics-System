@@ -6,7 +6,7 @@ namespace TruckingSystem.API.Controllers;
 
 [ApiController]
 [Route("api/contracts")]
-[Authorize]
+[Authorize(Roles = "Admin,Dispatcher,Accountant")]
 public class ContractsController(IContractService service) : ControllerBase
 {
     [HttpGet]

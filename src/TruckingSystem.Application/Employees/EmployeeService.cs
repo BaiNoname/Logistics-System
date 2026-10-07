@@ -24,7 +24,9 @@ public class EmployeeService : IEmployeeService
             .OrderBy(e => e.FullName)
             .Select(e => new EmployeeListItemDto(
                 e.Id, e.Code, e.FullName, e.Phone,
+                e.DepartmentId,
                 e.Department != null ? e.Department.Name : null,
+                e.PositionId,
                 e.Position != null ? e.Position.Name : null,
                 e.Status.ToString(),
                 driverEmployeeIds.Contains(e.Id)))
@@ -79,13 +81,16 @@ public class EmployeeService : IEmployeeService
         return new EmployeeActionResult(true, null);
     }
 
-    public async Task<EmployeeListItemDto> CreateAsync(CreateEmployeeRequest request)
+    public async Task<EmployeeActionResult> CreateAsync(CreateEmployeeRequest request)
     {
+        var validation = await ValidateAsync(request.Code, request.FullName, request.DepartmentId, request.PositionId);
+        if (validation is not null) return new EmployeeActionResult(false, validation);
+
         var employee = new Employee
         {
-            Code = request.Code,
-            FullName = request.FullName,
-            Phone = request.Phone,
+            Code = request.Code.Trim(),
+            FullName = request.FullName.Trim(),
+            Phone = NullIfWhiteSpace(request.Phone),
             DepartmentId = request.DepartmentId,
             PositionId = request.PositionId,
             HireDate = DateTime.UtcNow,
@@ -94,12 +99,46 @@ public class EmployeeService : IEmployeeService
         _db.Employees.Add(employee);
         await _db.SaveChangesAsync();
 
-        var dept = request.DepartmentId.HasValue ? await _db.Departments.FindAsync(request.DepartmentId) : null;
-        var pos = request.PositionId.HasValue ? await _db.Positions.FindAsync(request.PositionId) : null;
-
-        return new EmployeeListItemDto(employee.Id, employee.Code, employee.FullName, employee.Phone,
-            dept?.Name, pos?.Name, employee.Status.ToString(), IsDriver: false);
+        return new EmployeeActionResult(true, null);
     }
+
+    public async Task<EmployeeActionResult> UpdateAsync(int id, UpdateEmployeeRequest request)
+    {
+        var employee = await _db.Employees.FindAsync(id);
+        if (employee is null) return new EmployeeActionResult(false, "Không tìm thấy nhân viên.");
+
+        var validation = await ValidateAsync(request.Code, request.FullName, request.DepartmentId, request.PositionId, id);
+        if (validation is not null) return new EmployeeActionResult(false, validation);
+        if (!Enum.TryParse<EmployeeStatus>(request.Status, true, out var status))
+            return new EmployeeActionResult(false, "Trạng thái nhân viên không hợp lệ.");
+
+        employee.Code = request.Code.Trim();
+        employee.FullName = request.FullName.Trim();
+        employee.Phone = NullIfWhiteSpace(request.Phone);
+        employee.DepartmentId = request.DepartmentId;
+        employee.PositionId = request.PositionId;
+        employee.Status = status;
+
+        await _db.SaveChangesAsync();
+        return new EmployeeActionResult(true, null);
+    }
+
+    private async Task<string?> ValidateAsync(string code, string fullName, int? departmentId, int? positionId, int? excludedId = null)
+    {
+        if (string.IsNullOrWhiteSpace(code) || string.IsNullOrWhiteSpace(fullName))
+            return "Mã nhân viên và họ tên không được để trống.";
+        if (await _db.Employees.AnyAsync(e => e.Code == code.Trim() && (!excludedId.HasValue || e.Id != excludedId.Value)))
+            return "Mã nhân viên đã tồn tại.";
+        if (departmentId.HasValue && !await _db.Departments.AnyAsync(d => d.Id == departmentId.Value))
+            return "Phòng ban không tồn tại.";
+        if (positionId.HasValue && !await _db.Positions.AnyAsync(p => p.Id == positionId.Value))
+            return "Chức danh không tồn tại.";
+
+        return null;
+    }
+
+    private static string? NullIfWhiteSpace(string? value)
+        => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     public async Task<List<LookupItemDto>> GetDepartmentsAsync()
         => await _db.Departments.Select(d => new LookupItemDto(d.Id, d.Name)).ToListAsync();

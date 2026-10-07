@@ -21,6 +21,7 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
         public CustomersControl(ApiServices api) : this()
         {
             _api = api;
+            btnCreate.Visible = btnEdit.Visible = api.Connection.IsInRole("Admin", "Dispatcher");
         }
 
         private void BtnRefresh_Click(object? sender, EventArgs e) => _ = LoadAsync();

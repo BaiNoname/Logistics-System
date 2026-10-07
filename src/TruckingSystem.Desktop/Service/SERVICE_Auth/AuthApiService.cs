@@ -20,7 +20,7 @@ namespace TruckingSystem.Desktop.SERVICE_Auth
                          ?? new LoginResult { Success = false, Message = "Không đọc được phản hồi từ server." };
 
             if (result.Success && result.Token != null)
-                _conn.SetToken(result.Token);
+                _conn.SetToken(result.Token, result.Roles);
 
             return result;
         }
