@@ -28,9 +28,9 @@
             // 
             lblTitle.Font = new Font("Segoe UI", 18F, FontStyle.Bold);
             lblTitle.ForeColor = Color.FromArgb(15, 23, 42);
-            lblTitle.Location = new Point(0, 11);
+            lblTitle.Location = new Point(0, 0);
             lblTitle.Name = "lblTitle";
-            lblTitle.Size = new Size(200, 60);
+            lblTitle.Size = new Size(129, 47);
             lblTitle.TabIndex = 0;
             lblTitle.Text = "Tài xế";
             // 
