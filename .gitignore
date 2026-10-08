@@ -31,3 +31,4 @@ Thumbs.db
 
 # Video hành trình do app tài xế upload — dữ liệu, không phải code
 **/Storage/TripVideos/
+**/appsettings.json
