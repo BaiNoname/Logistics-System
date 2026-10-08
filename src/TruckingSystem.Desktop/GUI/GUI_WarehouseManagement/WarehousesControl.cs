@@ -23,6 +23,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
         public WarehousesControl()
         {
             InitializeComponent();
+            lblTestTitle.Text = "🧪  Kiểm tra thuật toán Best-Fit — CHỈ GỢI Ý vị trí lưu trữ (không nhập kho)";
 
             // Chống giật/nhòe hình khi vẽ động nhiều Panel lồng nhau (sơ đồ Zone/Bin) —
             // Panel không cho set DoubleBuffered trực tiếp từ ngoài (protected),
@@ -31,7 +32,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                 System.Reflection.BindingFlags.SetProperty | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic,
                 null, zonesPanel, new object[] { true });
 
-            cboWarehouse.SelectedIndexChanged += async (_, _) => await LoadZonesAsync();
+            cboWarehouse.SelectedIndexChanged += async (_, _) => { await LoadZonesAsync(); await LoadOrdersForSuggestAsync(); };
             cboOrderSuggest.SelectedIndexChanged += async (_, _) => await LoadCargoLinesForSuggestAsync();
             cboCargoLineSuggest.SelectedIndexChanged += CboCargoLineSuggest_SelectedIndexChanged;
 
@@ -403,12 +404,25 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
 
         private static string ZoneIcon(string zoneType) => zoneType switch { "Fragile" => "🔷", "Hazmat" => "☣️", _ => "📦" };
 
+        /// <summary>CHỈ các đơn liên quan tới KHO ĐANG CHỌN (chọn kho này / có chuyến
+        /// qua kho / đã nhập-xuất tại kho) — giống màn Nhập/Xuất kho thủ công.</summary>
         private async Task LoadOrdersForSuggestAsync()
         {
-            if (_api is null) return;
+            if (_api is null || cboWarehouse.SelectedValue is not int warehouseId) return;
             try
             {
-                var orders = await _api.TransportOrders.GetTransportOrdersAsync();
+                var orders = await _api.Warehouses.GetOrdersForWarehouseAsync(warehouseId);
+                cboCargoLineSuggest.DataSource = null;
+                if (orders.Count == 0)
+                {
+                    lblResult.Text = "Kho này chưa có đơn nào để thử gợi ý vị trí.";
+                    lblResult.ForeColor = Theme.TextSecondary;
+                }
+                else
+                {
+                    lblResult.Text = "ℹ️ Đây CHỈ LÀ GỢI Ý vị trí theo Best-Fit — không nhập gì vào kho. Hàng được nhập TỰ ĐỘNG khi duyệt chuyến Lấy hàng, hoặc nhập tay ở \"Nhập/Xuất thủ công\".";
+                    lblResult.ForeColor = Theme.TextSecondary;
+                }
                 cboOrderSuggest.DataSource = orders;
                 cboOrderSuggest.DisplayMember = nameof(TransportOrderListItem.DisplayText);
                 cboOrderSuggest.ValueMember = nameof(TransportOrderListItem.Id);
@@ -439,10 +453,26 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             }
         }
 
+        /// <summary>Số lượng thử PHẢI theo đúng quy tắc nhập kho: chỉ trong phần
+        /// CÒN ĐƯỢC NHẬP của dòng hàng (khai báo − đã nhập). Đã nhập đủ thì không
+        /// còn gì để xếp nữa.</summary>
         private void CboCargoLineSuggest_SelectedIndexChanged(object? sender, EventArgs e)
         {
-            if (cboCargoLineSuggest.SelectedItem is CargoLineOptionItem line && line.QtyRemaining > 0)
-                numQty.Value = Math.Min(numQty.Maximum, line.QtyRemaining);
+            if (cboCargoLineSuggest.SelectedItem is not CargoLineOptionItem line) return;
+            if (line.QtyRemaining > 0)
+            {
+                numQty.Maximum = line.QtyRemaining;
+                numQty.Value = line.QtyRemaining;
+                numQty.Enabled = btnSuggest.Enabled = true;
+                lblResult.Text = $"Dòng hàng \"{line.CargoType}\": khai báo {line.QtyTotal:0.##}, đã nhập {line.QtyTotal - line.QtyRemaining:0.##} — còn được nhập tối đa {line.QtyRemaining:0.##}. (Chỉ gợi ý, không nhập kho.)";
+                lblResult.ForeColor = Theme.TextSecondary;
+            }
+            else
+            {
+                numQty.Enabled = btnSuggest.Enabled = false;
+                lblResult.Text = $"✅ Dòng hàng \"{line.CargoType}\" đã nhập đủ {line.QtyTotal:0.##}/{line.QtyTotal:0.##} — không còn gì để xếp vị trí.";
+                lblResult.ForeColor = Theme.Success;
+            }
         }
 
         private async Task RunSuggestAsync()
@@ -460,6 +490,12 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                 lblResult.ForeColor = Theme.Danger;
                 return;
             }
+            if (cboCargoLineSuggest.SelectedItem is CargoLineOptionItem selLine && numQty.Value > selLine.QtyRemaining)
+            {
+                lblResult.Text = $"⚠️ Vượt số lượng còn được nhập — tối đa {selLine.QtyRemaining:0.##}.";
+                lblResult.ForeColor = Theme.Warning;
+                return;
+            }
             lblResult.Text = "Đang tính toán...";
             lblResult.ForeColor = Theme.TextSecondary;
             try
@@ -474,9 +510,9 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                     var header = result.Allocations.Count > 1
                         ? $"✅ Phải chia ra {result.Allocations.Count} vị trí:"
                         : "✅ Đề xuất vị trí:";
-                    lblResult.Text = header + "\n" + string.Join("\n", lines) + (result.Message is null ? "" : "\n" + result.Message);
+                    lblResult.Text = header + "\n" + string.Join("\n", lines) + (result.Message is null ? "" : "\n" + result.Message)
+                        + "\n(Chỉ là gợi ý — sơ đồ kho không thay đổi. Nhập thật ở \"Nhập/Xuất thủ công\" hoặc tự động khi duyệt chuyến Lấy hàng.)";
                     lblResult.ForeColor = Theme.Success;
-                    await LoadZonesAsync(); // vẽ lại sơ đồ ngay để thấy % thay đổi sau khi test
                 }
                 else
                 {

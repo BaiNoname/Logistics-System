@@ -6,7 +6,7 @@ namespace TruckingSystem.API.Controllers;
 
 [ApiController]
 [Route("api/trips")]
-[Authorize(Roles = "Admin,Dispatcher")]
+[Authorize]
 public class TripsController : ControllerBase
 {
     private readonly ITripService _tripService;
@@ -57,6 +57,11 @@ public class TripsController : ControllerBase
         var result = await _tripService.RecordFuelAsync(id, request);
         return Ok(result); // luôn 200 OK — Desktop tự đọc result.Success/Message, tránh PostAsync throw exception khi 400 làm mất thông báo rõ ràng
     }
+
+    /// <summary>Tiến độ nhập/xuất kho của từng chuyến (cột "Kho" ở màn Chuyến).</summary>
+    [HttpGet("warehouse-progress")]
+    public async Task<ActionResult<List<TripWarehouseProgressDto>>> GetWarehouseProgress()
+        => Ok(await _tripService.GetWarehouseProgressAsync());
 
     /// <summary>Điểm GPS thực tế đã ghi nhận — dùng để vẽ đường đi thật trên bản đồ.</summary>
     [HttpGet("{id:int}/waypoints")]

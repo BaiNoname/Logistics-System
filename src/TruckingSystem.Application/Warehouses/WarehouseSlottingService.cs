@@ -20,6 +20,29 @@ public class WarehouseSlottingService : IWarehouseSlottingService
         _db = db;
     }
 
+    /// <summary>Gợi ý vị trí cho màn "Kiểm tra Best-Fit" — áp ĐÚNG quy tắc số
+    /// lượng như khi nhập kho thật: phải > 0 và không vượt phần CÒN ĐƯỢC NHẬP
+    /// của dòng hàng (khai báo − đã nhập). Chỉ gợi ý, KHÔNG ghi gì vào kho.</summary>
+    public async Task<SuggestBinResponse> PreviewSuggestBinAsync(int warehouseId, SuggestBinRequest request)
+    {
+        var cargo = await _db.CargoLines.FirstOrDefaultAsync(c => c.Id == request.CargoLineId);
+        if (cargo is null)
+            return new SuggestBinResponse(false, new List<SuggestedAllocationDto>(), "Không tìm thấy dòng hàng.");
+        if (request.QtyToStore <= 0)
+            return new SuggestBinResponse(false, new List<SuggestedAllocationDto>(), "Số lượng phải lớn hơn 0.");
+
+        var alreadyReceived = await _db.GoodsReceipts.Where(r => r.CargoLineId == cargo.Id).SumAsync(r => r.QtyReceived);
+        var remaining = cargo.QtyTotal - alreadyReceived;
+        if (remaining <= 0)
+            return new SuggestBinResponse(false, new List<SuggestedAllocationDto>(),
+                $"Dòng hàng \"{cargo.CargoType}\" đã nhập đủ {cargo.QtyTotal:0.##}/{cargo.QtyTotal:0.##} — không còn gì để xếp vị trí.");
+        if (request.QtyToStore > remaining)
+            return new SuggestBinResponse(false, new List<SuggestedAllocationDto>(),
+                $"Vượt số lượng — dòng hàng \"{cargo.CargoType}\" khai {cargo.QtyTotal:0.##}, đã nhập {alreadyReceived:0.##}, chỉ còn được nhập tối đa {remaining:0.##}.");
+
+        return await SuggestBinAsync(warehouseId, request);
+    }
+
     public async Task<SuggestBinResponse> SuggestBinAsync(int warehouseId, SuggestBinRequest request)
     {
         var cargo = await _db.CargoLines.Include(c => c.TransportOrder).FirstOrDefaultAsync(c => c.Id == request.CargoLineId);
@@ -588,7 +611,7 @@ public class WarehouseSlottingService : IWarehouseSlottingService
     }
 
     public async Task<ReceiveGoodsResult> ReceiveGoodsAsync(int warehouseId, int transportOrderId, int cargoLineId,
-        decimal qty, int receivedByEmployeeId, int? tripId, int? chosenBinId = null)
+        decimal qty, int? receivedByEmployeeId, int? tripId, int? chosenBinId = null, string? performedByUserName = null)
     {
         // CHẶN nhập khống — không cho nhập vượt quá số lượng ĐÃ KHAI BÁO trong
         // đơn vận chuyển (CargoLine.QtyTotal), tính cả những lần đã nhập trước
@@ -701,6 +724,7 @@ public class WarehouseSlottingService : IWarehouseSlottingService
             WarehouseId = warehouseId,
             TripId = tripId,
             ReceivedByEmployeeId = receivedByEmployeeId,
+            PerformedByUserName = performedByUserName,
             QtyReceived = qty,
         };
         _db.GoodsReceipts.Add(receipt);
@@ -752,7 +776,7 @@ public class WarehouseSlottingService : IWarehouseSlottingService
     }
 
     public async Task<IssueGoodsResult> IssueGoodsAsync(int warehouseId, int transportOrderId, int cargoLineId,
-        decimal qty, int issuedByEmployeeId, int? tripId)
+        decimal qty, int? issuedByEmployeeId, int? tripId, string? performedByUserName = null)
     {
         var stock = await _db.WarehouseStocks.FirstOrDefaultAsync(s => s.WarehouseId == warehouseId && s.CargoLineId == cargoLineId);
         if (stock is null || stock.QtyOnHand < qty)
@@ -765,6 +789,7 @@ public class WarehouseSlottingService : IWarehouseSlottingService
             WarehouseId = warehouseId,
             TripId = tripId,
             IssuedByEmployeeId = issuedByEmployeeId,
+            PerformedByUserName = performedByUserName,
             QtyIssued = qty,
         });
 
@@ -839,18 +864,302 @@ public class WarehouseSlottingService : IWarehouseSlottingService
 
     public async Task<List<WarehouseTransactionDto>> GetTransactionHistoryAsync(int warehouseId)
     {
+        // Lấy dữ liệu thô rồi mới ghép chữ trong bộ nhớ (EF không dịch được
+        // switch/ToString của enum sang SQL).
         var receipts = await _db.GoodsReceipts
-            .Include(r => r.TransportOrder).Include(r => r.CargoLine).Include(r => r.ReceivedByEmployee)
             .Where(r => r.WarehouseId == warehouseId)
-            .Select(r => new WarehouseTransactionDto("Nhập", r.ReceivedAt, r.TransportOrder.Code, r.CargoLine.CargoType, r.QtyReceived, r.ReceivedByEmployee.FullName))
+            .Select(r => new
+            {
+                r.Id,
+                r.ReceivedAt,
+                r.TransportOrderId,
+                OrderCode = r.TransportOrder.Code,
+                PickupMethod = r.TransportOrder.PickupMethod,
+                r.CargoLine.CargoType,
+                r.QtyReceived,
+                r.TripId,
+                TripLeg = r.Trip != null ? (TripLegType?)r.Trip.LegType : null,
+                EmployeeName = r.ReceivedByEmployee != null ? r.ReceivedByEmployee.FullName : null,
+                r.PerformedByUserName,
+            })
             .ToListAsync();
 
         var issues = await _db.GoodsIssues
-            .Include(i => i.TransportOrder).Include(i => i.CargoLine).Include(i => i.IssuedByEmployee)
             .Where(i => i.WarehouseId == warehouseId)
-            .Select(i => new WarehouseTransactionDto("Xuất", i.IssuedAt, i.TransportOrder.Code, i.CargoLine.CargoType, i.QtyIssued, i.IssuedByEmployee.FullName))
+            .Select(i => new
+            {
+                i.Id,
+                i.IssuedAt,
+                i.TransportOrderId,
+                OrderCode = i.TransportOrder.Code,
+                i.CargoLine.CargoType,
+                i.QtyIssued,
+                i.TripId,
+                TripLeg = i.Trip != null ? (TripLegType?)i.Trip.LegType : null,
+                EmployeeName = i.IssuedByEmployee != null ? i.IssuedByEmployee.FullName : null,
+                i.PerformedByUserName,
+                i.ReversedAt,
+                i.ReversedByUserName,
+            })
             .ToListAsync();
 
-        return receipts.Concat(issues).OrderByDescending(t => t.OccurredAt).ToList();
+        var result = new List<WarehouseTransactionDto>();
+        foreach (var r in receipts)
+        {
+            var manual = r.TripId is null && r.PickupMethod == PickupMethod.CompanyPickup;
+            var source = r.TripId is not null ? $"Chuyến #{r.TripId} · {LegText(r.TripLeg)}"
+                       : manual ? "✋ Thủ công"
+                       : "Khách tự mang tới kho";
+            result.Add(new WarehouseTransactionDto("Nhập", r.ReceivedAt, r.OrderCode, r.CargoType, r.QtyReceived,
+                PerformerText(r.TripId, r.EmployeeName, r.PerformedByUserName),
+                r.Id, r.TransportOrderId, r.TripId, source, manual, false, null));
+        }
+        foreach (var i in issues)
+        {
+            var manual = i.TripId is null;
+            var source = manual ? "✋ Thủ công" : $"Chuyến #{i.TripId} · {LegText(i.TripLeg)}";
+            var note = i.ReversedAt is null ? null
+                : $"↩️ Đã hoàn tác lúc {i.ReversedAt.Value.AddHours(7):dd/MM HH:mm}" + (i.ReversedByUserName is null ? "" : $" bởi {i.ReversedByUserName}") + " — hàng đã trả lại kho";
+            result.Add(new WarehouseTransactionDto("Xuất", i.IssuedAt, i.OrderCode, i.CargoType, i.QtyIssued,
+                PerformerText(i.TripId, i.EmployeeName, i.PerformedByUserName),
+                i.Id, i.TransportOrderId, i.TripId, source, manual, i.ReversedAt is not null, note));
+        }
+        return result.OrderByDescending(t => t.OccurredAt).ToList();
     }
+
+    private static string LegText(TripLegType? leg) => leg switch
+    {
+        TripLegType.Pickup => "Lấy hàng",
+        TripLegType.Delivery => "Giao hàng",
+        TripLegType.Return => "Trả hàng",
+        _ => "",
+    };
+
+    /// <summary>Người thực hiện hiển thị: theo chuyến = tài xế; thủ công = tài
+    /// khoản đăng nhập (kèm tên nhân viên nếu tài khoản có gắn nhân viên).
+    /// Dữ liệu thủ công CŨ (trước bản sửa) từng bị gán cứng nhân viên số 1 —
+    /// không còn tin được nên ghi rõ là không xác định.</summary>
+    private static string PerformerText(int? tripId, string? employeeName, string? userName)
+    {
+        if (tripId is not null) return employeeName is null ? "—" : $"{employeeName} (tài xế)";
+        if (userName is not null) return employeeName is null ? userName : $"{employeeName} ({userName})";
+        return "Không xác định (dữ liệu cũ)";
+    }
+
+    // ================= Tình trạng hàng theo đơn =================
+
+    /// <summary>Số lượng đang GIỮ cho các chuyến sắp lấy hàng ra khỏi kho: chuyến
+    /// Giao chưa bắt đầu (bắt đầu mới xuất kho) và chuyến Trả hàng chưa hoàn tất
+    /// (hoàn tất mới xuất kho) — trừ phần chuyến đó đã xuất rồi.</summary>
+    private async Task<decimal> GetReservedQtyAsync(int cargoLineId)
+    {
+        var lines = await _db.TripLines
+            .Where(tl => tl.CargoLineId == cargoLineId
+                && ((tl.Trip.LegType == TripLegType.Delivery && tl.Trip.Status == TripStatus.Planned)
+                    || (tl.Trip.LegType == TripLegType.Return
+                        && tl.Trip.Status != TripStatus.Completed && tl.Trip.Status != TripStatus.Cancelled)))
+            .Select(tl => new { tl.TripId, tl.QtyPlanned })
+            .ToListAsync();
+        if (lines.Count == 0) return 0;
+
+        var tripIds = lines.Select(l => l.TripId).Distinct().ToList();
+        var issued = await _db.GoodsIssues
+            .Where(g => g.CargoLineId == cargoLineId && g.TripId != null && tripIds.Contains(g.TripId.Value) && g.ReversedAt == null)
+            .GroupBy(g => g.TripId!.Value)
+            .Select(g => new { TripId = g.Key, Qty = g.Sum(x => x.QtyIssued) })
+            .ToDictionaryAsync(x => x.TripId, x => x.Qty);
+
+        return lines.Sum(l => Math.Max(0, l.QtyPlanned - (issued.TryGetValue(l.TripId, out var q) ? q : 0)));
+    }
+
+    public async Task<int?> ResolveEmployeeIdAsync(string? userId)
+    {
+        if (string.IsNullOrEmpty(userId)) return null;
+        return await _db.Employees.Where(e => e.UserId == userId).Select(e => (int?)e.Id).FirstOrDefaultAsync();
+    }
+
+    /// <summary>Xuất kho THỦ CÔNG — chỉ được xuất phần hàng KHÔNG thuộc chuyến
+    /// nào (hàng dư, điều chỉnh...). Hàng đã dành cho chuyến Giao/Trả sắp chạy
+    /// thì CHẶN, tránh đúng lỗi: xuất tay mất hàng, tới lúc chuyến giao bắt đầu
+    /// thì báo "không đủ tồn kho".</summary>
+    public async Task<IssueGoodsResult> IssueManualAsync(int warehouseId, int transportOrderId, int cargoLineId, decimal qty, StockPerformer performer)
+    {
+        var stock = await _db.WarehouseStocks.FirstOrDefaultAsync(s => s.WarehouseId == warehouseId && s.CargoLineId == cargoLineId);
+        var onHand = stock?.QtyOnHand ?? 0;
+        var reserved = await GetReservedQtyAsync(cargoLineId);
+        var free = Math.Max(0, onHand - reserved);
+        if (qty > free)
+        {
+            return new IssueGoodsResult(false, reserved > 0
+                ? $"Không thể xuất thủ công {qty:0.##}: trong kho có {onHand:0.##} nhưng {reserved:0.##} đang được GIỮ cho chuyến giao/trả hàng sắp chạy — chỉ còn {free:0.##} có thể xuất tay. Hàng của chuyến sẽ tự xuất kho khi chuyến bắt đầu."
+                : $"Không đủ tồn kho để xuất — hiện có {onHand:0.##}, cần xuất {qty:0.##}.");
+        }
+        return await IssueGoodsAsync(warehouseId, transportOrderId, cargoLineId, qty, performer.EmployeeId, tripId: null, performer.UserName);
+    }
+
+    /// <summary>Hoàn tác 1 phiếu xuất THỦ CÔNG bị làm nhầm: cộng lại tồn kho và
+    /// xếp hàng trở lại ô kệ (Best-Fit, gắn vào phiếu nhập gốc của dòng hàng).
+    /// Phiếu xuất được GIỮ LẠI và đánh dấu "đã hoàn tác" để lịch sử minh bạch.</summary>
+    public async Task<WarehouseActionResult> ReverseManualIssueAsync(int issueId, string? userName)
+    {
+        var issue = await _db.GoodsIssues.Include(i => i.CargoLine).FirstOrDefaultAsync(i => i.Id == issueId);
+        if (issue is null) return new WarehouseActionResult(false, "Không tìm thấy phiếu xuất.");
+        if (issue.TripId is not null)
+            return new WarehouseActionResult(false, "Chỉ hoàn tác được phiếu xuất THỦ CÔNG — phiếu này do chuyến #" + issue.TripId + " tạo ra.");
+        if (issue.ReversedAt is not null) return new WarehouseActionResult(false, "Phiếu xuất này đã được hoàn tác trước đó.");
+
+        var originReceipt = await _db.GoodsReceipts
+            .Where(r => r.WarehouseId == issue.WarehouseId && r.CargoLineId == issue.CargoLineId)
+            .OrderByDescending(r => r.ReceivedAt)
+            .FirstOrDefaultAsync();
+        if (originReceipt is null)
+            return new WarehouseActionResult(false, "Không tìm thấy phiếu nhập gốc của dòng hàng này — không thể xếp hàng trở lại kho.");
+
+        var suggestion = await SuggestBinAsync(issue.WarehouseId, new SuggestBinRequest(issue.CargoLineId, issue.QtyIssued));
+        if (!suggestion.Found)
+            return new WarehouseActionResult(false, "Kho không còn đủ chỗ phù hợp để xếp lại hàng: " + suggestion.Message);
+
+        var ownsTransaction = _db.Database.CurrentTransaction is null;
+        await using var transaction = ownsTransaction ? await _db.Database.BeginTransactionAsync() : null;
+
+        var stock = await _db.WarehouseStocks.FirstOrDefaultAsync(s => s.WarehouseId == issue.WarehouseId && s.CargoLineId == issue.CargoLineId);
+        if (stock is null)
+        {
+            stock = new WarehouseStock { WarehouseId = issue.WarehouseId, CargoLineId = issue.CargoLineId, QtyOnHand = 0 };
+            _db.WarehouseStocks.Add(stock);
+        }
+        stock.QtyOnHand += issue.QtyIssued;
+        stock.LastUpdatedAt = DateTime.UtcNow;
+
+        var unitVolume = UnitVolumeM3(issue.CargoLine);
+        var binCodes = new List<string>();
+        foreach (var alloc in suggestion.Allocations)
+        {
+            var bin = (await _db.StorageBins.FindAsync(alloc.StorageBinId))!;
+            bin.CurrentUsedM3 += alloc.QtyToPlace * unitVolume;
+            _db.StorageAssignments.Add(new StorageAssignment
+            {
+                GoodsReceiptId = originReceipt.Id,
+                StorageBinId = bin.Id,
+                QtyStored = alloc.QtyToPlace,
+            });
+            binCodes.Add(bin.Code);
+        }
+
+        issue.ReversedAt = DateTime.UtcNow;
+        issue.ReversedByUserName = userName;
+
+        await _db.SaveChangesAsync();
+        if (ownsTransaction) await transaction!.CommitAsync();
+        return new WarehouseActionResult(true, $"Đã hoàn tác — trả {issue.QtyIssued:0.##} vào kho, vị trí {string.Join(", ", binCodes)}.");
+    }
+
+    /// <summary>CHỈ các đơn liên quan tới kho này (trước đây màn Nhập/Xuất kho
+    /// liệt kê MỌI đơn của cả công ty, kể cả đơn đi qua kho khác).</summary>
+    public async Task<List<WarehouseOrderDto>> GetOrdersForWarehouseAsync(int warehouseId)
+    {
+        var orders = await _db.TransportOrders
+            .Where(o => o.WarehouseId == warehouseId
+                || _db.Trips.Any(t => t.TransportOrderId == o.Id && t.WarehouseId == warehouseId)
+                || _db.GoodsReceipts.Any(r => r.TransportOrderId == o.Id && r.WarehouseId == warehouseId)
+                || _db.GoodsIssues.Any(i => i.TransportOrderId == o.Id && i.WarehouseId == warehouseId))
+            .OrderByDescending(o => o.Id)
+            .Select(o => new { o.Id, o.Code, CustomerName = o.Customer.Name, o.Status })
+            .ToListAsync();
+
+        return orders.Select(o => new WarehouseOrderDto(o.Id, o.Code, o.CustomerName, o.Status.ToString())).ToList();
+    }
+
+    public async Task<OrderStockFlowDto?> GetOrderStockFlowAsync(int transportOrderId, int warehouseId)
+    {
+        var order = await _db.TransportOrders.FirstOrDefaultAsync(o => o.Id == transportOrderId);
+        if (order is null) return null;
+
+        var cargoLines = await _db.CargoLines.Where(c => c.TransportOrderId == transportOrderId).ToListAsync();
+        var cargoIds = cargoLines.Select(c => c.Id).ToList();
+
+        var receipts = await _db.GoodsReceipts
+            .Where(r => r.WarehouseId == warehouseId && cargoIds.Contains(r.CargoLineId))
+            .Select(r => new { r.CargoLineId, r.TripId, r.QtyReceived })
+            .ToListAsync();
+        var issues = await _db.GoodsIssues
+            .Where(i => i.WarehouseId == warehouseId && cargoIds.Contains(i.CargoLineId) && i.ReversedAt == null)
+            .Select(i => new { i.CargoLineId, i.TripId, i.QtyIssued })
+            .ToListAsync();
+        var stocks = await _db.WarehouseStocks
+            .Where(s => s.WarehouseId == warehouseId && cargoIds.Contains(s.CargoLineId))
+            .ToDictionaryAsync(s => s.CargoLineId, s => s.QtyOnHand);
+
+        var cargoDtos = new List<CargoStockFlowDto>();
+        foreach (var c in cargoLines)
+        {
+            var received = receipts.Where(r => r.CargoLineId == c.Id).Sum(r => r.QtyReceived);
+            var issued = issues.Where(i => i.CargoLineId == c.Id).Sum(i => i.QtyIssued);
+            var onHand = stocks.TryGetValue(c.Id, out var q) ? q : 0;
+            var reserved = await GetReservedQtyAsync(c.Id);
+            var free = Math.Max(0, onHand - reserved);
+
+            string status;
+            if (received == 0) status = "⏳ Chưa nhập kho";
+            else if (received < c.QtyTotal) status = $"📥 Đang nhập — {received:0.##}/{c.QtyTotal:0.##}";
+            else if (issued >= c.QtyTotal) status = $"📤 Đã xuất hết {issued:0.##}/{c.QtyTotal:0.##}";
+            else if (onHand > 0 && reserved > 0) status = $"✅ Đã nhập đủ — {onHand:0.##} trong kho, chờ chuyến giao lấy {reserved:0.##}";
+            else if (onHand > 0) status = $"✅ Đã nhập đủ — {onHand:0.##} trong kho";
+            else status = "⚠️ Đã nhập nhưng kho đang trống";
+            if (onHand < reserved)
+                status += $" — ⚠️ THIẾU {reserved - onHand:0.##} so với chuyến giao cần";
+
+            cargoDtos.Add(new CargoStockFlowDto(c.Id, c.CargoType, c.QtyTotal, received, issued, onHand, reserved, free, status));
+        }
+
+        // Chỉ các chuyến đi QUA KHO NÀY (đơn có thể có chuyến ở kho khác)
+        var trips = await _db.Trips
+            .Where(t => t.TransportOrderId == transportOrderId && t.WarehouseId == warehouseId)
+            .OrderBy(t => t.Id)
+            .Select(t => new
+            {
+                t.Id,
+                t.LegType,
+                t.Status,
+                Driver = t.DriverEmployee.FullName,
+                Planned = t.TripLines.Sum(tl => tl.QtyPlanned),
+            })
+            .ToListAsync();
+
+        var tripDtos = trips.Select(t =>
+        {
+            var done = t.LegType == TripLegType.Pickup
+                ? receipts.Where(r => r.TripId == t.Id).Sum(r => r.QtyReceived)
+                : issues.Where(i => i.TripId == t.Id).Sum(i => i.QtyIssued);
+
+            string progress;
+            if (t.Status == TripStatus.Cancelled) progress = "— (chuyến đã hủy)";
+            else if (t.LegType == TripLegType.Pickup)
+                progress = done >= t.Planned && t.Planned > 0 ? $"✅ Đã nhập kho {done:0.##}/{t.Planned:0.##}"
+                         : done > 0 ? $"📥 Đã nhập {done:0.##}/{t.Planned:0.##}"
+                         : t.Status == TripStatus.PendingConfirmation ? "⏳ Chờ duyệt — duyệt xong mới nhập kho"
+                         : "⏳ Chưa về kho";
+            else
+                progress = done >= t.Planned && t.Planned > 0 ? $"✅ Đã xuất kho {done:0.##}/{t.Planned:0.##}"
+                         : done > 0 ? $"📤 Đã xuất {done:0.##}/{t.Planned:0.##}"
+                         : t.LegType == TripLegType.Return ? "⏳ Xuất kho khi chuyến trả hàng hoàn tất"
+                         : "⏳ Xuất kho khi chuyến bắt đầu";
+
+            return new TripStockFlowDto(t.Id, LegText(t.LegType), TripStatusText(t.Status), t.Driver, t.Planned, done, progress);
+        }).ToList();
+
+        return new OrderStockFlowDto(order.Id, order.Code,
+            order.PickupMethod == PickupMethod.SelfDelivery ? "Khách tự mang tới kho" : "Công ty cử xe lấy hàng",
+            cargoDtos, tripDtos);
+    }
+
+    private static string TripStatusText(TripStatus s) => s switch
+    {
+        TripStatus.Planned => "Đã lên kế hoạch",
+        TripStatus.InProgress => "Đang chạy",
+        TripStatus.PendingConfirmation => "Chờ xác nhận",
+        TripStatus.Completed => "Hoàn tất",
+        TripStatus.Cancelled => "Đã hủy",
+        _ => s.ToString(),
+    };
 }

@@ -674,11 +674,20 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.Property<DateTime>("IssuedAt")
                         .HasColumnType("timestamp without time zone");
 
-                    b.Property<int>("IssuedByEmployeeId")
+                    b.Property<int?>("IssuedByEmployeeId")
                         .HasColumnType("integer");
+
+                    b.Property<string>("PerformedByUserName")
+                        .HasColumnType("text");
 
                     b.Property<decimal>("QtyIssued")
                         .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime?>("ReversedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("ReversedByUserName")
+                        .HasColumnType("text");
 
                     b.Property<int>("TransportOrderId")
                         .HasColumnType("integer");
@@ -721,13 +730,16 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp without time zone");
 
+                    b.Property<string>("PerformedByUserName")
+                        .HasColumnType("text");
+
                     b.Property<decimal>("QtyReceived")
                         .HasColumnType("numeric(18,2)");
 
                     b.Property<DateTime>("ReceivedAt")
                         .HasColumnType("timestamp without time zone");
 
-                    b.Property<int>("ReceivedByEmployeeId")
+                    b.Property<int?>("ReceivedByEmployeeId")
                         .HasColumnType("integer");
 
                     b.Property<int>("TransportOrderId")
@@ -2097,9 +2109,7 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     b.HasOne("TruckingSystem.Domain.Entities.Employee", "IssuedByEmployee")
                         .WithMany()
-                        .HasForeignKey("IssuedByEmployeeId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("IssuedByEmployeeId");
 
                     b.HasOne("TruckingSystem.Domain.Entities.TransportOrder", "TransportOrder")
                         .WithMany("GoodsIssues")
@@ -2139,9 +2149,7 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     b.HasOne("TruckingSystem.Domain.Entities.Employee", "ReceivedByEmployee")
                         .WithMany()
-                        .HasForeignKey("ReceivedByEmployeeId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("ReceivedByEmployeeId");
 
                     b.HasOne("TruckingSystem.Domain.Entities.TransportOrder", "TransportOrder")
                         .WithMany("GoodsReceipts")

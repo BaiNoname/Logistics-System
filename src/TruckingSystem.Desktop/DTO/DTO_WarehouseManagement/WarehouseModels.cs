@@ -94,16 +94,59 @@ namespace TruckingSystem.Desktop.DTO_WarehouseManagement
         public decimal QtyRemaining { get; set; }
         public decimal QtyOnHand { get; set; }
         public string OrderCode { get; set; } = "";
-        public override string ToString() => $"{CargoType} — còn {QtyRemaining}/{QtyTotal} (đơn {OrderCode})";
+        public override string ToString() => $"{CargoType} — khai {QtyTotal:0.##}, trong kho {QtyOnHand:0.##}";
     }
 
     public class WarehouseTransactionItem
     {
+        public int Id { get; set; }
+        public int OrderId { get; set; }
+        public int? TripId { get; set; }
         public string Type { get; set; } = "";
         public DateTime OccurredAt { get; set; }
         public string OrderCode { get; set; } = "";
         public string CargoType { get; set; } = "";
         public decimal Qty { get; set; }
         public string ByEmployeeName { get; set; } = "";
+        /// <summary>"Chuyến #12 · Lấy hàng" / "✋ Thủ công" / "Khách tự mang tới kho".</summary>
+        public string Source { get; set; } = "";
+        public bool IsManual { get; set; }
+        public bool IsReversed { get; set; }
+        public string? Note { get; set; }
+    }
+
+    /// <summary>Toàn cảnh hàng của 1 đơn trong 1 kho.</summary>
+    public class OrderStockFlowItem
+    {
+        public int OrderId { get; set; }
+        public string OrderCode { get; set; } = "";
+        public string PickupMethod { get; set; } = "";
+        public List<CargoStockFlowItem> CargoLines { get; set; } = new();
+        public List<TripStockFlowItem> Trips { get; set; } = new();
+    }
+
+    public class CargoStockFlowItem
+    {
+        public int CargoLineId { get; set; }
+        public string CargoType { get; set; } = "";
+        public decimal QtyTotal { get; set; }
+        public decimal QtyReceived { get; set; }
+        public decimal QtyIssued { get; set; }
+        public decimal QtyOnHand { get; set; }
+        /// <summary>Đang giữ cho chuyến Giao/Trả sắp chạy — KHÔNG được xuất tay.</summary>
+        public decimal QtyReserved { get; set; }
+        public decimal QtyFreeForManualIssue { get; set; }
+        public string StatusText { get; set; } = "";
+    }
+
+    public class TripStockFlowItem
+    {
+        public int TripId { get; set; }
+        public string LegType { get; set; } = "";
+        public string Status { get; set; } = "";
+        public string DriverName { get; set; } = "";
+        public decimal QtyPlanned { get; set; }
+        public decimal QtyDone { get; set; }
+        public string ProgressText { get; set; } = "";
     }
 }

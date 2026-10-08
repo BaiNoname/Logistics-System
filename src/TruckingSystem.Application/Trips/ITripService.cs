@@ -42,6 +42,9 @@ public interface ITripService
     /// không (đã xong / chờ duyệt / đã hủy / chặng Giao đang chờ Lấy hàng xong).</summary>
     Task<DriverTripStatusDto?> GetDriverStatusAsync(int tripId);
 
+    /// <summary>Tiến độ nhập/xuất kho của từng chuyến (cột "Kho" ở màn Chuyến).</summary>
+    Task<List<TripWarehouseProgressDto>> GetWarehouseProgressAsync();
+
     /// <summary>Tọa độ đầu-cuối ĐÚNG theo chặng của 1 Trip cụ thể — dùng cho
     /// trang điều hướng công khai (navigate.html) app tài xế mở qua WebView,
     /// không cần đăng nhập.</summary>
@@ -80,3 +83,6 @@ public interface ITripService
 
 /// <summary>Trạng thái chuyến cho app tài xế. CanTrack=false thì Message giải thích lý do.</summary>
 public record DriverTripStatusDto(int TripId, string Status, string LegType, bool CanTrack, string? Message);
+
+/// <summary>QtyDone = đã NHẬP kho (chuyến Lấy hàng) hoặc đã XUẤT kho (chuyến Giao/Trả).</summary>
+public record TripWarehouseProgressDto(int TripId, string LegType, decimal QtyPlanned, decimal QtyDone);

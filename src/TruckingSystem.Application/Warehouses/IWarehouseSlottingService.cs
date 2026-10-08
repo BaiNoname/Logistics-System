@@ -46,7 +46,7 @@ public interface IWarehouseSlottingService
     /// chosenBinId CÓ giá trị → dùng ĐÚNG vị trí đó (do người dùng tự chọn tay,
     /// bỏ qua Best-Fit); nếu null → tự động chạy Best-Fit như trước.</summary>
     Task<ReceiveGoodsResult> ReceiveGoodsAsync(int warehouseId, int transportOrderId, int cargoLineId,
-        decimal qty, int receivedByEmployeeId, int? tripId, int? chosenBinId = null);
+        decimal qty, int? receivedByEmployeeId, int? tripId, int? chosenBinId = null, string? performedByUserName = null);
 
     /// <summary>Danh sách vị trí (StorageBin) còn đủ chỗ trong 1 kho, ĐÚNG khu
     /// vực phù hợp với tính chất của CargoLine — dùng cho màn Nhập kho thủ
@@ -57,7 +57,7 @@ public interface IWarehouseSlottingService
     /// (FIFO), trừ WarehouseStock. tripId = null nếu xuất kho THỦ CÔNG (không
     /// gắn chuyến nào).</summary>
     Task<IssueGoodsResult> IssueGoodsAsync(int warehouseId, int transportOrderId, int cargoLineId,
-        decimal qty, int issuedByEmployeeId, int? tripId);
+        decimal qty, int? issuedByEmployeeId, int? tripId, string? performedByUserName = null);
 
     /// <summary>Lấy danh sách CargoLine của 1 đơn — dùng cho màn Nhập/Xuất kho
     /// thủ công (chọn đúng dòng hàng cần nhập/xuất).</summary>
@@ -66,4 +66,22 @@ public interface IWarehouseSlottingService
     /// <summary>Lịch sử nhập/xuất kho (gộp cả GoodsReceipt + GoodsIssue), sắp
     /// xếp mới nhất trước — dùng cho màn Nhập/Xuất kho thủ công xem lại.</summary>
     Task<List<WarehouseTransactionDto>> GetTransactionHistoryAsync(int warehouseId);
+
+    /// <summary>Nhân viên gắn với tài khoản đăng nhập (null nếu chưa gắn).</summary>
+    Task<int?> ResolveEmployeeIdAsync(string? userId);
+
+    /// <summary>Xuất kho THỦ CÔNG — chặn xuất phần hàng đang giữ cho chuyến Giao/Trả sắp chạy.</summary>
+    Task<IssueGoodsResult> IssueManualAsync(int warehouseId, int transportOrderId, int cargoLineId, decimal qty, StockPerformer performer);
+
+    /// <summary>Hoàn tác 1 phiếu xuất THỦ CÔNG làm nhầm — trả hàng lại vào kho, giữ phiếu để lưu vết.</summary>
+    Task<WarehouseActionResult> ReverseManualIssueAsync(int issueId, string? userName);
+
+    /// <summary>Toàn cảnh hàng của 1 đơn trong 1 kho: đã nhập/xuất/còn/đang giữ + tiến độ từng chuyến.</summary>
+    Task<OrderStockFlowDto?> GetOrderStockFlowAsync(int transportOrderId, int warehouseId);
+
+    /// <summary>Chỉ các đơn liên quan tới 1 kho (chọn kho này / có chuyến qua kho / đã nhập-xuất tại kho).</summary>
+    Task<List<WarehouseOrderDto>> GetOrdersForWarehouseAsync(int warehouseId);
+
+    /// <summary>Gợi ý vị trí cho màn kiểm tra Best-Fit — kiểm tra số lượng như nhập kho thật, không ghi gì.</summary>
+    Task<SuggestBinResponse> PreviewSuggestBinAsync(int warehouseId, SuggestBinRequest request);
 }

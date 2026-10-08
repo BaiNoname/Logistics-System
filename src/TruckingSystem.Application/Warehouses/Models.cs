@@ -48,7 +48,11 @@ public record ManualStockRequest(int TransportOrderId, int CargoLineId, decimal 
 public record CargoLineOptionDto(int Id, string CargoType, decimal QtyTotal, decimal QtyRemaining, decimal QtyOnHand, string OrderCode);
 
 /// <summary>1 dòng lịch sử nhập/xuất kho — gộp chung GoodsReceipt/GoodsIssue để hiện trên cùng 1 bảng.</summary>
-public record WarehouseTransactionDto(string Type, DateTime OccurredAt, string OrderCode, string CargoType, decimal Qty, string ByEmployeeName);
+/// <summary>1 dòng lịch sử nhập/xuất kho — gộp GoodsReceipt/GoodsIssue.
+/// Source cho biết RÕ phiếu sinh ra từ đâu: "Chuyến #12 · Lấy hàng" / "✋ Thủ
+/// công" / "Khách tự mang tới"; IsReversed = phiếu xuất tay đã được hoàn tác.</summary>
+public record WarehouseTransactionDto(string Type, DateTime OccurredAt, string OrderCode, string CargoType, decimal Qty, string ByEmployeeName,
+    int Id = 0, int OrderId = 0, int? TripId = null, string Source = "", bool IsManual = false, bool IsReversed = false, string? Note = null);
 
 public record WarehouseActionResult(bool Success, string? Message);
 
@@ -61,3 +65,25 @@ public record ReceiveGoodsResult(bool Success, string? Message, List<string> Bin
 
 /// <summary>Kết quả xuất kho — dùng bởi TripService khi chặng Delivery bắt đầu chạy.</summary>
 public record IssueGoodsResult(bool Success, string? Message);
+
+// ================= Tình trạng hàng theo đơn (màn Nhập/Xuất kho) =================
+
+/// <summary>Toàn cảnh hàng của 1 đơn trong 1 kho: từng dòng hàng đã nhập/xuất
+/// bao nhiêu, còn bao nhiêu trong kho, bao nhiêu đang GIỮ cho chuyến giao/trả
+/// (không được xuất tay), và từng chuyến đã nhập/xuất tới đâu.</summary>
+public record OrderStockFlowDto(int OrderId, string OrderCode, string PickupMethod,
+    List<CargoStockFlowDto> CargoLines, List<TripStockFlowDto> Trips);
+
+public record CargoStockFlowDto(int CargoLineId, string CargoType, decimal QtyTotal,
+    decimal QtyReceived, decimal QtyIssued, decimal QtyOnHand,
+    decimal QtyReserved, decimal QtyFreeForManualIssue, string StatusText);
+
+public record TripStockFlowDto(int TripId, string LegType, string Status, string DriverName,
+    decimal QtyPlanned, decimal QtyDone, string ProgressText);
+
+/// <summary>Nhập/xuất thủ công: người bấm (lấy từ tài khoản đăng nhập).</summary>
+public record StockPerformer(int? EmployeeId, string? UserName);
+
+/// <summary>Đơn có liên quan tới 1 kho: đơn chọn kho này, có chuyến đi qua kho
+/// này, hoặc đã từng nhập/xuất hàng tại kho này.</summary>
+public record WarehouseOrderDto(int Id, string Code, string CustomerName, string Status);
