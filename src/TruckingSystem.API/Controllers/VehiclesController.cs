@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TruckingSystem.Application.Vehicles;
 
@@ -22,7 +22,17 @@ public class VehiclesController : ControllerBase
 
     [HttpPost]
     public async Task<ActionResult<VehicleListItemDto>> Create(CreateVehicleRequest request)
-        => Ok(await _service.CreateAsync(request));
+    {
+        try
+        {
+            return Ok(await _service.CreateAsync(request));
+        }
+        catch (InvalidOperationException ex)
+        {
+            // VD trùng biển số — trả 400 kèm thông báo rõ ràng thay vì lỗi 500.
+            return BadRequest(ex.Message);
+        }
+    }
 
     [HttpPut("{id:int}")]
     public async Task<ActionResult<VehicleActionResult>> Update(int id, UpdateVehicleRequest request)

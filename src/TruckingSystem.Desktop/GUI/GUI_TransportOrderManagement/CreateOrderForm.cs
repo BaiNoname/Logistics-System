@@ -21,6 +21,8 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
         private int? _editOrderId; // null = đang Tạo mới; có giá trị = đang Sửa đơn
         private readonly BindingList<CargoLineItem> _cargoLines = new();
         private List<LocationItem> _locations = new();
+        private readonly AutoCompleteStringCollection _cargoTypeSuggestions = new();
+        private List<string> _cargoTypes = new();
 
         public CreateOrderForm()
         {
@@ -29,13 +31,28 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             dtCommitted.Enabled = false;
             chkHasCommittedDate.CheckedChanged += (_, _) => dtCommitted.Enabled = chkHasCommittedDate.Checked;
 
+            // Điểm lấy/giao BẮT BUỘC chọn từ danh mục Địa điểm (có tọa độ) — ô địa
+            // chỉ chỉ để hiển thị, không gõ tay nữa (địa chỉ gõ tay không có tọa độ ->
+            // bản đồ, ước tính quãng đường/số ngày/nhiên liệu đều không tính được).
             cboPickupLocation.SelectedIndexChanged += (_, _) =>
-            {
-                if (cboPickupLocation.SelectedItem is LocationItem loc && loc.Id != 0) txtPickup.Text = loc.Address;
-            };
+                txtPickup.Text = cboPickupLocation.SelectedItem is LocationItem loc && loc.Id != 0 ? loc.Address
+                    : rbSelfDelivery.Checked ? SelfDeliveryPickupText : "";
             cboDropoffLocation.SelectedIndexChanged += (_, _) =>
+                txtDropoff.Text = cboDropoffLocation.SelectedItem is LocationItem loc && loc.Id != 0 ? loc.Address : "";
+            rbSelfDelivery.CheckedChanged += (_, _) => UpdatePickupForMethod();
+            btnAddPickupLocation.Click += async (_, _) => await AddLocationAsync(cboPickupLocation);
+            btnAddDropoffLocation.Click += async (_, _) => await AddLocationAsync(cboDropoffLocation);
+
+            // Cột "Loại hàng": gõ là hiện danh sách gợi ý (loại chuẩn + loại đã dùng),
+            // vẫn gõ được loại mới. Khi lưu, chữ gõ khác hoa/thường sẽ được chuẩn hóa
+            // về đúng tên trong danh sách -> thống kê theo loại hàng không bị lệch.
+            gridCargoLines.EditingControlShowing += (_, e) =>
             {
-                if (cboDropoffLocation.SelectedItem is LocationItem loc && loc.Id != 0) txtDropoff.Text = loc.Address;
+                if (e.Control is not TextBox tb) return;
+                var isCargoType = gridCargoLines.CurrentCell?.OwningColumn == colCargoType;
+                tb.AutoCompleteMode = isCargoType ? AutoCompleteMode.SuggestAppend : AutoCompleteMode.None;
+                tb.AutoCompleteSource = isCargoType ? AutoCompleteSource.CustomSource : AutoCompleteSource.None;
+                if (isCargoType) tb.AutoCompleteCustomSource = _cargoTypeSuggestions;
             };
 
             gridCargoLines.AutoGenerateColumns = false;
@@ -66,6 +83,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             await LoadCustomersAsync();
             await LoadLocationsAsync();
             await LoadWarehousesAsync();
+            await LoadCargoTypesAsync();
 
             if (_editOrderId.HasValue)
                 await LoadExistingOrderAsync(_editOrderId.Value);
@@ -115,27 +133,82 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             }
         }
 
-        private async Task LoadLocationsAsync()
+        private const string SelfDeliveryPickupText = "Khách tự mang hàng tới kho";
+
+        private async Task LoadLocationsAsync(int? selectPickupId = null, int? selectDropoffId = null)
         {
             if (_api is null) return;
             try
             {
-                _locations = await _api.Locations.GetLocationsAsync();
-                var blank = new LocationItem { Id = 0, Name = "-- Không chọn, tự gõ --", Address = "" };
+                var keepPickup = selectPickupId ?? (cboPickupLocation.SelectedItem as LocationItem)?.Id;
+                var keepDropoff = selectDropoffId ?? (cboDropoffLocation.SelectedItem as LocationItem)?.Id;
 
-                var pickupSource = new List<LocationItem> { blank };
-                pickupSource.AddRange(_locations);
-                var dropoffSource = new List<LocationItem> { blank };
-                dropoffSource.AddRange(_locations);
+                _locations = (await _api.Locations.GetLocationsAsync()).OrderBy(l => l.Name).ToList();
+                // Chỉ địa điểm CÓ TỌA ĐỘ mới chọn được (không có tọa độ thì không tính được lộ trình).
+                var usable = _locations.Where(l => l.Lat.HasValue && l.Lng.HasValue).ToList();
+
+                var pickupSource = new List<LocationItem> { new() { Id = 0, Name = "-- Chọn địa điểm lấy hàng --", Address = "" } };
+                pickupSource.AddRange(usable);
+                var dropoffSource = new List<LocationItem> { new() { Id = 0, Name = "-- Chọn địa điểm giao hàng --", Address = "" } };
+                dropoffSource.AddRange(usable);
 
                 cboPickupLocation.DataSource = pickupSource;
                 cboDropoffLocation.DataSource = dropoffSource;
-                cboPickupLocation.SelectedIndex = 0;
-                cboDropoffLocation.SelectedIndex = 0;
+                SelectLocation(cboPickupLocation, keepPickup);
+                SelectLocation(cboDropoffLocation, keepDropoff);
+                UpdatePickupForMethod();
             }
             catch (Exception ex)
             {
                 lblStatus.Text = "Không tải được danh sách địa điểm đã lưu: " + ex.Message;
+            }
+        }
+
+        private static void SelectLocation(ComboBox combo, int? locationId)
+        {
+            if (combo.DataSource is not List<LocationItem> items) return;
+            var index = locationId.HasValue ? items.FindIndex(l => l.Id == locationId.Value) : -1;
+            combo.SelectedIndex = index >= 0 ? index : 0;
+        }
+
+        /// <summary>Khách tự mang hàng tới kho -> không cần điểm lấy hàng.</summary>
+        private void UpdatePickupForMethod()
+        {
+            var self = rbSelfDelivery.Checked;
+            cboPickupLocation.Enabled = btnAddPickupLocation.Enabled = !self;
+            if (self) txtPickup.Text = SelfDeliveryPickupText;
+            else txtPickup.Text = cboPickupLocation.SelectedItem is LocationItem loc && loc.Id != 0 ? loc.Address : "";
+        }
+
+        /// <summary>"＋ Địa điểm mới" — mở form tạo Địa điểm (tìm trên VietMap, có
+        /// tọa độ), lưu xong tự chọn luôn địa điểm vừa tạo.</summary>
+        private async Task AddLocationAsync(ComboBox target)
+        {
+            if (_api is null) return;
+            var oldIds = _locations.Select(l => l.Id).ToHashSet();
+            using var f = new TruckingSystem.Desktop.GUI_LocationManagement.CreateLocationForm(_api);
+            if (f.ShowDialog(this) != DialogResult.OK) return;
+
+            var keepPickup = (cboPickupLocation.SelectedItem as LocationItem)?.Id;
+            var keepDropoff = (cboDropoffLocation.SelectedItem as LocationItem)?.Id;
+            await LoadLocationsAsync(keepPickup, keepDropoff);
+
+            var created = _locations.Where(l => !oldIds.Contains(l.Id)).OrderByDescending(l => l.Id).FirstOrDefault();
+            if (created != null) SelectLocation(target, created.Id);
+        }
+
+        private async Task LoadCargoTypesAsync()
+        {
+            if (_api is null) return;
+            try
+            {
+                _cargoTypes = await _api.Connection.GetAsync<List<string>>("/api/transport-orders/cargo-types") ?? new();
+                _cargoTypeSuggestions.Clear();
+                _cargoTypeSuggestions.AddRange(_cargoTypes.ToArray());
+            }
+            catch
+            {
+                // Không có gợi ý thì vẫn gõ tay được — không chặn việc tạo đơn.
             }
         }
 
@@ -154,16 +227,23 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                 }
 
                 cboCustomer.SelectedValue = order.CustomerId;
-                txtPickup.Text = order.PickupPoint;
-                txtDropoff.Text = order.DropoffPoint;
+                rbCompanyPickup.Checked = order.PickupMethod == "CompanyPickup";
+                rbSelfDelivery.Checked = order.PickupMethod == "SelfDelivery";
+                // Đơn cũ: chọn lại đúng Địa điểm theo địa chỉ đã lưu. Không khớp
+                // (đơn tạo bằng địa chỉ gõ tay trước đây) -> phải chọn lại.
+                // Ưu tiên chọn đúng Địa điểm theo Id đã lưu; đơn cũ không có Id thì khớp theo địa chỉ.
+                SelectLocation(cboPickupLocation, order.PickupLocationId ?? MatchLocationId(order.PickupPoint));
+                SelectLocation(cboDropoffLocation, order.DropoffLocationId ?? MatchLocationId(order.DropoffPoint));
+                UpdatePickupForMethod();
+                if ((cboDropoffLocation.SelectedItem as LocationItem)?.Id is null or 0
+                    || (!rbSelfDelivery.Checked && (cboPickupLocation.SelectedItem as LocationItem)?.Id is null or 0))
+                    lblStatus.Text = "⚠️ Đơn này dùng địa chỉ gõ tay (không có tọa độ) — hãy chọn lại Địa điểm lấy/giao trước khi lưu.";
                 cboWarehouse.SelectedValue = order.WarehouseId;
                 if (order.CommittedDeliveryDate.HasValue)
                 {
                     chkHasCommittedDate.Checked = true;
                     dtCommitted.Value = order.CommittedDeliveryDate.Value;
                 }
-                rbCompanyPickup.Checked = order.PickupMethod == "CompanyPickup";
-                rbSelfDelivery.Checked = order.PickupMethod == "SelfDelivery";
 
                 _cargoLines.Clear();
                 foreach (var c in order.CargoLines) _cargoLines.Add(c);
@@ -172,6 +252,13 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             {
                 lblStatus.Text = "Lỗi tải đơn hàng: " + ex.Message;
             }
+        }
+
+        private int? MatchLocationId(string? address)
+        {
+            if (string.IsNullOrWhiteSpace(address)) return null;
+            return _locations.FirstOrDefault(l => l.Lat.HasValue &&
+                string.Equals(l.Address.Trim(), address.Trim(), StringComparison.OrdinalIgnoreCase))?.Id;
         }
 
         private void AddBlankCargoLine()
@@ -193,9 +280,16 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                 lblStatus.Text = "Vui lòng chọn khách hàng.";
                 return;
             }
-            if (string.IsNullOrWhiteSpace(txtPickup.Text) || string.IsNullOrWhiteSpace(txtDropoff.Text))
+            var pickupLoc = cboPickupLocation.SelectedItem as LocationItem;
+            var dropoffLoc = cboDropoffLocation.SelectedItem as LocationItem;
+            if (!rbSelfDelivery.Checked && (pickupLoc is null || pickupLoc.Id == 0))
             {
-                lblStatus.Text = "Vui lòng nhập đủ điểm lấy/giao hàng.";
+                lblStatus.Text = "Vui lòng chọn Địa điểm lấy hàng (chưa có thì bấm \"＋ Địa điểm mới\").";
+                return;
+            }
+            if (dropoffLoc is null || dropoffLoc.Id == 0)
+            {
+                lblStatus.Text = "Vui lòng chọn Địa điểm giao hàng (chưa có thì bấm \"＋ Địa điểm mới\").";
                 return;
             }
             if (_cargoLines.Count == 0)
@@ -211,10 +305,18 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             if (_api is null) return;
 
             gridCargoLines.EndEdit(); // đảm bảo ô đang gõ dở được chốt lại trước khi đọc dữ liệu
+            // Chuẩn hóa loại hàng: khớp (không phân biệt hoa/thường, khoảng trắng) với
+            // tên trong danh sách gợi ý thì dùng đúng tên đó.
+            foreach (var line in _cargoLines)
+            {
+                var typed = (line.CargoType ?? "").Trim();
+                var canonical = _cargoTypes.FirstOrDefault(t => string.Equals(t, typed, StringComparison.OrdinalIgnoreCase));
+                line.CargoType = canonical ?? typed;
+            }
             var cargoLinesList = _cargoLines.ToList();
             var pickupMethod = rbSelfDelivery.Checked ? "SelfDelivery" : "CompanyPickup";
-            int? pickupLocId = (cboPickupLocation.SelectedItem as LocationItem)?.Id is int pid && pid != 0 ? pid : null;
-            int? dropoffLocId = (cboDropoffLocation.SelectedItem as LocationItem)?.Id is int did && did != 0 ? did : null;
+            int? pickupLocId = rbSelfDelivery.Checked || pickupLoc is null || pickupLoc.Id == 0 ? null : pickupLoc.Id;
+            int? dropoffLocId = dropoffLoc.Id;
             var committedDate = chkHasCommittedDate.Checked ? dtCommitted.Value : (DateTime?)null;
 
             btnSave.Enabled = false;

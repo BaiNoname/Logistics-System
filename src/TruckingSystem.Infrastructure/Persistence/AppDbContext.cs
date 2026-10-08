@@ -173,7 +173,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
         builder.Entity<TripVideoSegment>(e =>
         {
             e.HasOne(v => v.Trip).WithMany().HasForeignKey(v => v.TripId).OnDelete(DeleteBehavior.Cascade);
-            e.HasIndex(v => new { v.TripId, v.StartedAt });
+            // UNIQUE: app gửi lại cùng 1 đoạn (mất mạng giữa chừng) không bị lưu trùng.
+            e.HasIndex(v => new { v.TripId, v.StartedAt }).IsUnique();
             e.Property(v => v.StartedAt).HasColumnType("timestamp without time zone");
             e.Property(v => v.EndedAt).HasColumnType("timestamp without time zone");
             e.Property(v => v.StoragePath).HasMaxLength(300);
@@ -187,6 +188,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
         builder.Entity<Notification>()
             .HasIndex(n => new { n.UserId, n.IsRead });
 
+        ConfigureDataConstraints(builder);
+
         // ---- Kiểu decimal cho tiền tệ/số lượng — chỉ định precision rõ ràng cho PostgreSQL ----
         foreach (var property in builder.Model.GetEntityTypes()
                      .SelectMany(t => t.GetProperties())
@@ -194,5 +197,84 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
         {
             property.SetColumnType("numeric(18,2)");
         }
+
+        // ---- THỂ TÍCH (m³) cần 4 chữ số thập phân — đặt SAU vòng lặp trên (vòng lặp
+        // ép mọi decimal về 2 chữ số). Với 2 chữ số, món hàng 0,004 m³ bị lưu thành 0,00
+        // -> không chiếm chỗ trong kho; mỗi lần nhập/xuất lại bị làm tròn, sai số dồn dần.
+        builder.Entity<CargoLine>().Property(c => c.VolumeM3).HasColumnType("numeric(18,4)");
+        builder.Entity<StorageBin>().Property(b => b.CapacityM3).HasColumnType("numeric(18,4)");
+        builder.Entity<StorageBin>().Property(b => b.CurrentUsedM3).HasColumnType("numeric(18,4)");
+        builder.Entity<Vehicle>().Property(v => v.CapacityM3).HasColumnType("numeric(18,4)");
+    }
+
+    /// <summary>Ràng buộc dữ liệu ở MỨC DATABASE — trước đây gần như chỉ kiểm tra trong
+    /// code, 2 thao tác cùng lúc vẫn lọt; xóa dữ liệu cha thì xóa dây chuyền mất lịch sử.</summary>
+    private static void ConfigureDataConstraints(ModelBuilder builder)
+    {
+        // ===== 1. UNIQUE — dữ liệu code coi là duy nhất =====
+        builder.Entity<TransportOrder>().HasIndex(o => o.Code).IsUnique();
+        builder.Entity<Vehicle>().HasIndex(v => v.PlateNumber).IsUnique();          // code lưu biển số IN HOA
+        builder.Entity<StorageBin>().HasIndex(b => new { b.WarehouseZoneId, b.Code }).IsUnique(); // code còn kiểm tra trùng trong cả kho
+        builder.Entity<DriverSchedule>().HasIndex(s => new { s.DriverEmployeeId, s.ShiftDate }).IsUnique(); // đăng ký theo NGÀY: 1 tài xế 1 ngày 1 dòng
+        // Giá nhiên liệu: 1 hãng + 1 loại + 1 ngày chỉ có 1 giá. Giá thị trường chung
+        // (FuelProviderId = NULL) cần index riêng vì PostgreSQL coi các NULL là khác nhau.
+        builder.Entity<FuelPriceHistory>().HasIndex(p => new { p.FuelProviderId, p.FuelType, p.EffectiveDate })
+            .IsUnique().HasDatabaseName("UX_FuelPrice_Provider_Type_Date");
+        builder.Entity<FuelPriceHistory>().HasIndex(p => new { p.FuelType, p.EffectiveDate })
+            .IsUnique().HasFilter("\"FuelProviderId\" IS NULL").HasDatabaseName("UX_FuelPrice_Market_Type_Date");
+
+        // ===== 2. KHÔNG xóa dây chuyền dữ liệu tài chính / sổ kho / chuyến =====
+        // (Restrict: muốn xóa cha thì phải xử lý con trước — không âm thầm mất hóa đơn,
+        //  phiếu nhập/xuất, chuyến, khi lỡ xóa khách hàng / đơn / kho.)
+        builder.Entity<TransportOrder>().HasOne(o => o.Customer).WithMany(c => c.TransportOrders)
+            .HasForeignKey(o => o.CustomerId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<TransportOrder>().HasOne(o => o.Warehouse).WithMany()
+            .HasForeignKey(o => o.WarehouseId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<Trip>().HasOne(t => t.TransportOrder).WithMany(o => o.Trips)
+            .HasForeignKey(t => t.TransportOrderId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<Invoice>().HasOne(i => i.Customer).WithMany(c => c.Invoices)
+            .HasForeignKey(i => i.CustomerId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<Invoice>().HasOne(i => i.TransportOrder).WithMany(o => o.Invoices)
+            .HasForeignKey(i => i.TransportOrderId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<Payment>().HasOne(p => p.Invoice).WithMany(i => i.Payments)
+            .HasForeignKey(p => p.InvoiceId).OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<GoodsReceipt>().HasOne(r => r.TransportOrder).WithMany(o => o.GoodsReceipts)
+            .HasForeignKey(r => r.TransportOrderId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<GoodsReceipt>().HasOne(r => r.Warehouse).WithMany(w => w.GoodsReceipts)
+            .HasForeignKey(r => r.WarehouseId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<GoodsReceipt>().HasOne(r => r.CargoLine).WithMany()
+            .HasForeignKey(r => r.CargoLineId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<GoodsIssue>().HasOne(i => i.TransportOrder).WithMany(o => o.GoodsIssues)
+            .HasForeignKey(i => i.TransportOrderId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<GoodsIssue>().HasOne(i => i.Warehouse).WithMany(w => w.GoodsIssues)
+            .HasForeignKey(i => i.WarehouseId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<GoodsIssue>().HasOne(i => i.CargoLine).WithMany()
+            .HasForeignKey(i => i.CargoLineId).OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<StorageAssignment>().HasOne(a => a.StorageBin).WithMany(b => b.Assignments)
+            .HasForeignKey(a => a.StorageBinId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<WarehouseStock>().HasOne(s => s.Warehouse).WithMany(w => w.Stocks)
+            .HasForeignKey(s => s.WarehouseId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<WarehouseStock>().HasOne(s => s.CargoLine).WithMany()
+            .HasForeignKey(s => s.CargoLineId).OnDelete(DeleteBehavior.Restrict);
+
+        // ===== 3. CHECK — không bao giờ âm =====
+        builder.Entity<WarehouseStock>().ToTable(t => t.HasCheckConstraint("CK_WarehouseStock_QtyOnHand_NonNegative", "\"QtyOnHand\" >= 0"));
+        builder.Entity<StorageAssignment>().ToTable(t => t.HasCheckConstraint("CK_StorageAssignment_QtyStored_NonNegative", "\"QtyStored\" >= 0"));
+        builder.Entity<StorageBin>().ToTable(t => t.HasCheckConstraint("CK_StorageBin_CurrentUsedM3_NonNegative", "\"CurrentUsedM3\" >= 0"));
+        builder.Entity<FuelLog>().ToTable(t => t.HasCheckConstraint("CK_FuelLog_Positive", "\"Liters\" > 0 AND \"Cost\" >= 0"));
+        builder.Entity<FuelPriceHistory>().ToTable(t => t.HasCheckConstraint("CK_FuelPrice_Positive", "\"Price\" > 0"));
+
+        // ===== 4. Chống 2 người sửa CÙNG LÚC (optimistic concurrency) =====
+        // Dùng cột hệ thống "xmin" của PostgreSQL (không thêm cột mới vào bảng).
+        // 2 người cùng xuất 1 mặt hàng / cùng chia xe trúng 1 xe / bấm hoàn tác 2 lần:
+        // người lưu SAU sẽ bị từ chối ("dữ liệu vừa bị thay đổi") thay vì ghi đè số sai.
+        builder.Entity<WarehouseStock>().Property<uint>("Version").IsRowVersion();
+        builder.Entity<StorageBin>().Property<uint>("Version").IsRowVersion();
+        builder.Entity<StorageAssignment>().Property<uint>("Version").IsRowVersion();
+        builder.Entity<GoodsIssue>().Property<uint>("Version").IsRowVersion();
+        builder.Entity<Vehicle>().Property<uint>("Version").IsRowVersion();
+        builder.Entity<TransportOrder>().Property<uint>("Version").IsRowVersion();
     }
 }

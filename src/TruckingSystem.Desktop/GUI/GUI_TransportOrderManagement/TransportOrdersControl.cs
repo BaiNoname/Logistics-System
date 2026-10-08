@@ -127,7 +127,10 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
         {
             var id = grid.CurrentRow?.Cells["Id"]?.Value as int?;
             var order = id is null ? null : _orders.FirstOrDefault(o => o.Id == id.Value);
-            btnAllocate.Enabled = order?.Status == "Confirmed";
+            // Chỉ chia xe cho đơn Đã xác nhận mà CHƯA có chuyến nào — đơn đã chia xe
+            // vẫn giữ trạng thái "Đã xác nhận" tới khi xe xuất phát, trước đây nút
+            // vẫn sáng và bấm vào thì bị server từ chối.
+            btnAllocate.Enabled = order?.Status == "Confirmed" && order.ActiveTripCount == 0;
         }
 
         private static string TranslateStatus(string s) => s switch

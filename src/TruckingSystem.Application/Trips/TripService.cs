@@ -1,8 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using TruckingSystem.Application.Calendar;
+using TruckingSystem.Application.Common;
 using TruckingSystem.Application.Common.Interfaces;
 using TruckingSystem.Application.Routing;
 using TruckingSystem.Application.Notifications;
+using TruckingSystem.Application.Vehicles;
 using TruckingSystem.Application.Warehouses;
 using TruckingSystem.Domain.Entities;
 using TruckingSystem.Domain.Enums;
@@ -121,6 +123,13 @@ public class TripService : ITripService
         // chuyến vẫn chưa bắt đầu. Giờ return khi chưa Commit -> tự Rollback hết.
         await using var transaction = await _db.Database.BeginTransactionAsync();
 
+        // "GIÀNH" chuyển trạng thái Planned -> InProgress bằng 1 câu UPDATE có điều
+        // kiện: nếu 2 yêu cầu tới cùng lúc (app gửi 2 ping liền nhau, hoặc ping +
+        // Dispatcher bấm Bắt đầu) thì chỉ 1 yêu cầu thắng — yêu cầu còn lại bị DB
+        // chặn chờ rồi thấy 0 dòng -> dừng, KHÔNG xuất kho lần 2.
+        if (!await TryClaimStatusAsync(trip.Id, TripStatus.Planned, TripStatus.InProgress))
+            return new TripActionResult(false, "Chuyến này vừa được bắt đầu bởi thao tác khác.");
+
         // Chặng Delivery bắt đầu chạy = hàng THẬT SỰ rời khỏi kho — xuất kho
         // ngay tại đây (không đợi tới lúc giao xong, vì giao xong đã sang xe khác chở đi rồi).
         if (trip.LegType == TripLegType.Delivery && trip.WarehouseId.HasValue)
@@ -168,7 +177,7 @@ public class TripService : ITripService
         if (trip.Status != TripStatus.InProgress)
             return new TripActionResult(false, "Chỉ có thể hoàn tất chuyến đang ở trạng thái Đang chạy (InProgress).");
 
-        return await FinalizeTripAsync(trip);
+        return await FinalizeTripAsync(trip, TripStatus.InProgress);
     }
 
     /// <summary>Vận hành (Dispatcher) DUYỆT xác nhận "đã xong" của tài xế —
@@ -181,7 +190,7 @@ public class TripService : ITripService
         if (trip.Status != TripStatus.PendingConfirmation)
             return new TripActionResult(false, "Chuyến này không ở trạng thái Chờ xác nhận.");
 
-        return await FinalizeTripAsync(trip);
+        return await FinalizeTripAsync(trip, TripStatus.PendingConfirmation);
     }
 
     /// <summary>Hoàn tất THẬT SỰ 1 chuyến (dùng chung cho Dispatcher tự Hoàn tất
@@ -190,9 +199,14 @@ public class TripService : ITripService
     /// hợp), Rollback toàn bộ: chuyến GIỮ NGUYÊN trạng thái cũ, báo lỗi rõ ràng
     /// cho Dispatcher xử lý (thêm vị trí kho...) rồi bấm lại — thay vì như trước:
     /// chuyến thành "Hoàn tất" nhưng hàng không hề vào kho.</summary>
-    private async Task<TripActionResult> FinalizeTripAsync(Trip trip)
+    private async Task<TripActionResult> FinalizeTripAsync(Trip trip, TripStatus expectedStatus)
     {
         await using var transaction = await _db.Database.BeginTransactionAsync();
+
+        // Chặn 2 thao tác hoàn tất chồng nhau (Dispatcher bấm Hoàn tất đúng lúc tài
+        // xế bấm Đã xong, hoặc bấm Duyệt 2 lần) -> trước đây có thể nhập kho 2 lần.
+        if (!await TryClaimStatusAsync(trip.Id, expectedStatus, TripStatus.Completed))
+            return new TripActionResult(false, "Trạng thái chuyến vừa bị thay đổi bởi thao tác khác — hãy tải lại danh sách.");
 
         var error = await HandleArrivalAsync(trip);
         if (error is not null)
@@ -216,8 +230,11 @@ public class TripService : ITripService
         if (trip.Status != TripStatus.PendingConfirmation)
             return new TripActionResult(false, "Chuyến này không ở trạng thái Chờ xác nhận.");
 
-        trip.Status = TripStatus.InProgress;
-        await _db.SaveChangesAsync();
+        // Chuyến chạy tiếp -> bỏ giờ kết thúc tài xế đã báo (ghi lại khi báo xong lần sau),
+        // trong CÙNG câu UPDATE giành trạng thái. Không gán trip.Status trên bản đã tải
+        // (tránh SaveChanges sau ghi đè trạng thái mới hơn).
+        if (!await TryClaimStatusAsync(trip.Id, TripStatus.PendingConfirmation, TripStatus.InProgress, clearEndTime: true))
+            return new TripActionResult(false, "Trạng thái chuyến vừa bị thay đổi bởi thao tác khác — hãy tải lại danh sách.");
 
         // Đã xử lý (từ chối) -> thông báo "chờ duyệt" cũ không còn việc gì để làm.
         // Nếu tài xế báo xong lại, hệ thống sẽ tạo thông báo MỚI.
@@ -227,29 +244,169 @@ public class TripService : ITripService
 
     public async Task<TripActionResult> RecordFuelAsync(int id, RecordFuelRequest request)
     {
-        var trip = await _db.Trips.FirstOrDefaultAsync(t => t.Id == id);
+        var trip = await _db.Trips.Include(t => t.Vehicle).FirstOrDefaultAsync(t => t.Id == id);
         if (trip is null) return new TripActionResult(false, "Không tìm thấy chuyến.");
-        if (request.Liters <= 0 || request.Cost <= 0)
-            return new TripActionResult(false, "Số lít và chi phí phải lớn hơn 0.");
+        if (request.Liters <= 0)
+            return new TripActionResult(false, "Số lít phải lớn hơn 0.");
+        if (request.Liters > 2000)
+            return new TripActionResult(false, "Số lít quá lớn — kiểm tra lại (tối đa 2.000 lít/lần đổ).");
 
-        // CHẶN ghi xăng cho chuyến CHƯA từng chạy (Planned) hoặc đã hủy —
-        // trước đây cho ghi ở BẤT KỲ trạng thái nào, kể cả chuyến chưa bắt đầu
-        // hoặc đã hủy — không hợp lý (xe chưa chạy sao tốn xăng được).
-        if (trip.Status is TripStatus.Planned or TripStatus.Cancelled)
-            return new TripActionResult(false, "Chỉ ghi nhận đổ xăng cho chuyến ĐANG CHẠY hoặc ĐÃ HOÀN TẤT — chuyến này chưa từng chạy hoặc đã hủy.");
+        // QUY TẮC CHUNG cho xăng / chi phí / sự cố: chỉ ghi cho chuyến ĐÃ TỪNG CHẠY
+        // (có giờ bắt đầu) — kể cả chuyến bị hủy giữa đường (xe đã chạy, đã tốn xăng).
+        // Chuyến chưa từng chạy (Planned, hoặc hủy khi chưa xuất phát) thì không.
+        if (!HasRun(trip.Status, trip.StartTime))
+            return new TripActionResult(false, "Chuyến này chưa từng chạy — không ghi nhận đổ xăng.");
+
+        decimal cost;
+        string? stationName = string.IsNullOrWhiteSpace(request.StationName) ? null : request.StationName.Trim();
+        if (request.AutoPrice)
+        {
+            // Đơn giá lấy TỰ ĐỘNG từ bảng giá nhiên liệu (màn Nhiên liệu) — chỉ
+            // nhập số lít, không nhập tiền tay (tránh gõ sai / khai khống).
+            var quote = await FindFuelPriceAsync(trip.Vehicle.FuelType, request.FuelProviderId);
+            if (!quote.Found) return new TripActionResult(false, quote.Message);
+            cost = Math.Round(request.Liters * quote.UnitPrice, 0);
+
+            var label = quote.SourceText ?? "";
+            stationName = stationName is null ? label : $"{label} — {stationName}";
+        }
+        else
+        {
+            if (request.Cost <= 0) return new TripActionResult(false, "Chi phí phải lớn hơn 0.");
+            cost = request.Cost;
+        }
 
         _db.FuelLogs.Add(new FuelLog
         {
             TripId = id,
             Liters = request.Liters,
-            Cost = request.Cost,
-            StationName = request.StationName,
+            Cost = cost,
+            StationName = stationName,
         });
 
-        trip.ActualFuelCost += request.Cost;
-
         await _db.SaveChangesAsync();
+        // Tổng tiền xăng của chuyến = TÍNH LẠI từ các lần đổ (1 câu UPDATE) — trước đây
+        // cộng dồn "+=" trên bản đã đọc: 2 lần ghi cùng lúc thì mất 1 lần, lệch với báo cáo.
+        await RecalculateActualFuelCostAsync(id);
         return new TripActionResult(true, null);
+    }
+
+    public async Task<List<FuelLogDto>> GetFuelLogsAsync(int tripId)
+    {
+        var rows = await _db.FuelLogs
+            .Where(f => f.TripId == tripId)
+            .OrderBy(f => f.Timestamp)
+            .Select(f => new { f.Id, f.Timestamp, f.Liters, f.Cost, f.StationName })
+            .ToListAsync();
+
+        return rows.Select(f => new FuelLogDto(
+                f.Id, DateTime.SpecifyKind(f.Timestamp, DateTimeKind.Utc), f.Liters,
+                f.Liters > 0 ? Math.Round(f.Cost / f.Liters, 0) : 0, f.Cost, f.StationName))
+            .ToList();
+    }
+
+    public async Task<FuelPriceQuoteDto> GetFuelPriceQuoteAsync(int tripId, int? fuelProviderId)
+    {
+        var trip = await _db.Trips
+            .Where(t => t.Id == tripId)
+            .Select(t => new { t.Status, t.StartTime, t.Vehicle.FuelType, t.Vehicle.PlateNumber })
+            .FirstOrDefaultAsync();
+        if (trip is null)
+            return new FuelPriceQuoteDto(false, false, null, 0, null, null, "Không tìm thấy chuyến.");
+
+        var canRecord = HasRun(trip.Status, trip.StartTime);
+        var quote = await FindFuelPriceAsync(trip.FuelType, fuelProviderId);
+        var message = !canRecord
+            ? (trip.Status == TripStatus.Cancelled
+                ? "Chuyến đã hủy khi chưa xuất phát — không có đổ xăng."
+                : "Chuyến chưa bắt đầu chạy — chưa ghi đổ xăng được.")
+            : quote.Message;
+        return new FuelPriceQuoteDto(canRecord, quote.Found, trip.FuelType, quote.UnitPrice, quote.EffectiveDate, quote.SourceText, message);
+    }
+
+    public async Task<TripActionResult> DeleteFuelLogAsync(int fuelLogId)
+    {
+        var log = await _db.FuelLogs.Include(f => f.Trip).FirstOrDefaultAsync(f => f.Id == fuelLogId);
+        if (log is null) return new TripActionResult(false, "Không tìm thấy lần đổ xăng này.");
+
+        var tripId = log.TripId;
+        _db.FuelLogs.Remove(log);
+        await _db.SaveChangesAsync();
+        await RecalculateActualFuelCostAsync(tripId);
+        return new TripActionResult(true, null);
+    }
+
+    /// <summary>Đặt Trip.ActualFuelCost = TỔNG tiền các lần đổ xăng của chuyến, tính
+    /// ngay trong database (không đọc-sửa-ghi) — luôn khớp với báo cáo.</summary>
+    private Task<int> RecalculateActualFuelCostAsync(int tripId)
+        => _db.Trips
+            .Where(t => t.Id == tripId)
+            .ExecuteUpdateAsync(s => s.SetProperty(
+                t => t.ActualFuelCost,
+                t => t.FuelLogs.Sum(f => (decimal?)f.Cost) ?? 0m));
+
+    private sealed record FuelPriceLookup(bool Found, decimal UnitPrice, DateTime? EffectiveDate, string? SourceText, string? Message);
+
+    /// <summary>Đơn giá MỚI NHẤT (có hiệu lực tới hôm nay, giờ VN) của đúng loại
+    /// nhiên liệu xe dùng. Chọn hãng -> giá của hãng đó; hãng chưa có giá cho loại
+    /// nhiên liệu này -> dùng giá thị trường chung (FuelProviderId = null).</summary>
+    private async Task<FuelPriceLookup> FindFuelPriceAsync(string? vehicleFuelType, int? fuelProviderId, DateTime? atUtc = null)
+    {
+        if (string.IsNullOrWhiteSpace(vehicleFuelType))
+            return new FuelPriceLookup(false, 0, null, null,
+                "Xe của chuyến này CHƯA khai báo loại nhiên liệu — vào Sửa xe để chọn loại nhiên liệu trước.");
+
+        var fuelType = vehicleFuelType.Trim().ToLower();
+        // Giá có hiệu lực tới HẾT NGÀY (giờ VN) của thời điểm cần tính — mặc định hôm nay.
+        // Dùng CHUNG cho: ghi đổ xăng, nút "Ước tính nhiên liệu", báo cáo nhiên liệu.
+        var todayVn = (atUtc ?? DateTime.UtcNow).AddHours(7).Date.AddDays(1).AddTicks(-1);
+
+        string? providerName = null;
+        if (fuelProviderId.HasValue)
+        {
+            providerName = await _db.FuelProviders.Where(p => p.Id == fuelProviderId.Value).Select(p => p.Name).FirstOrDefaultAsync();
+            if (providerName is null)
+                return new FuelPriceLookup(false, 0, null, null, "Hãng nhiên liệu đã chọn không tồn tại.");
+
+            var providerPrice = await _db.FuelPriceHistories
+                .Where(p => p.FuelProviderId == fuelProviderId && p.FuelType.Trim().ToLower() == fuelType && p.EffectiveDate <= todayVn)
+                .OrderByDescending(p => p.EffectiveDate).ThenByDescending(p => p.Id)
+                .Select(p => new { p.Price, p.EffectiveDate })
+                .FirstOrDefaultAsync();
+            if (providerPrice is not null)
+                return new FuelPriceLookup(true, providerPrice.Price, providerPrice.EffectiveDate, providerName, null);
+        }
+
+        var marketPrice = await _db.FuelPriceHistories
+            .Where(p => p.FuelProviderId == null && p.FuelType.Trim().ToLower() == fuelType && p.EffectiveDate <= todayVn)
+            .OrderByDescending(p => p.EffectiveDate).ThenByDescending(p => p.Id)
+            .Select(p => new { p.Price, p.EffectiveDate })
+            .FirstOrDefaultAsync();
+        if (marketPrice is not null)
+        {
+            var note = providerName is null ? null
+                : $"{providerName} chưa có giá '{vehicleFuelType}' — đang dùng giá thị trường chung.";
+            return new FuelPriceLookup(true, marketPrice.Price, marketPrice.EffectiveDate,
+                providerName is null ? "Giá thị trường" : $"{providerName} (giá thị trường)", note);
+        }
+
+        // Không chọn hãng và chưa có giá thị trường chung -> lấy giá mới nhất của bất kỳ hãng nào.
+        if (providerName is null)
+        {
+            var anyPrice = await _db.FuelPriceHistories
+                .Where(p => p.FuelType.Trim().ToLower() == fuelType && p.EffectiveDate <= todayVn)
+                .OrderByDescending(p => p.EffectiveDate).ThenByDescending(p => p.Id)
+                .Select(p => new { p.Price, p.EffectiveDate, ProviderName = p.FuelProvider != null ? p.FuelProvider.Name : null })
+                .FirstOrDefaultAsync();
+            if (anyPrice is not null)
+                return new FuelPriceLookup(true, anyPrice.Price, anyPrice.EffectiveDate,
+                    anyPrice.ProviderName is null ? "Giá thị trường" : $"{anyPrice.ProviderName} (giá mới nhất)", null);
+        }
+
+        return new FuelPriceLookup(false, 0, null, null,
+            providerName is null
+                ? $"Chưa có giá cho '{vehicleFuelType}' — vào màn Nhiên liệu để thêm giá."
+                : $"Chưa có giá '{vehicleFuelType}' của {providerName} (và chưa có giá thị trường chung) — vào màn Nhiên liệu để thêm giá.");
     }
 
     // ================= App tài xế (đã có từ trước) =================
@@ -273,7 +430,23 @@ public class TripService : ITripService
         if (trip.Status == TripStatus.Planned)
         {
             var start = await StartAsync(tripId);
-            if (!start.Success) return new ServiceResult(false, start.Message);
+            if (!start.Success)
+            {
+                // Ping khác (gửi cùng lúc) đã bắt đầu chuyến rồi -> vẫn ghi điểm GPS này.
+                var nowStatus = await _db.Trips.Where(t => t.Id == tripId).Select(t => t.Status).FirstAsync();
+                if (nowStatus != TripStatus.InProgress) return new ServiceResult(false, start.Message);
+            }
+        }
+
+        // Giờ ping do điện thoại gửi: chuẩn hóa về UTC (DB lưu UTC). Giờ lệch xa
+        // (máy chỉnh sai giờ, gửi giờ địa phương không kèm múi giờ) -> dùng giờ
+        // server, tránh làm sai thứ tự điểm GPS (vẽ lộ trình + tính quãng đường).
+        var pingTime = DateTime.UtcNow;
+        if (request.Timestamp is { } ts)
+        {
+            var utc = ts.Kind == DateTimeKind.Unspecified ? DateTime.SpecifyKind(ts, DateTimeKind.Utc) : ts.ToUniversalTime();
+            if (utc <= DateTime.UtcNow.AddMinutes(5) && utc >= DateTime.UtcNow.AddHours(-24))
+                pingTime = utc;
         }
 
         _db.Waypoints.Add(new Waypoint
@@ -283,7 +456,7 @@ public class TripService : ITripService
             Lng = request.Lng,
             SpeedKmh = request.SpeedKmh,
             Accuracy = request.Accuracy,
-            Timestamp = request.Timestamp ?? DateTime.UtcNow,
+            Timestamp = pingTime,
         });
 
         await _db.SaveChangesAsync();
@@ -305,8 +478,15 @@ public class TripService : ITripService
         if (trip.Status != TripStatus.InProgress)
             return new ServiceResult(false, "Chuyến này không ở trạng thái đang chạy.");
 
-        trip.Status = TripStatus.PendingConfirmation;
-        await _db.SaveChangesAsync();
+        // Atomic: nếu Dispatcher vừa bấm Hoàn tất cùng lúc thì KHÔNG ghi đè
+        // Completed thành Chờ xác nhận (trước đây gây nhập kho 2 lần khi Duyệt).
+        // Giờ kết thúc = lúc TÀI XẾ BÁO ĐẾN NƠI (không phải lúc Vận hành duyệt, có thể
+        // trễ cả ngày) — dùng cho thời lượng chuyến, ngày lấy giá xăng, khung giờ video.
+        // Ghi CÙNG câu UPDATE giành trạng thái (không tách 2 lệnh).
+        if (!await TryClaimStatusAsync(trip.Id, TripStatus.InProgress, TripStatus.PendingConfirmation, endTime: DateTime.UtcNow))
+            return new ServiceResult(false, "Chuyến này vừa được Vận hành xử lý — không cần báo xong nữa.");
+        // KHÔNG gán trip.Status trên bản đã tải: lần SaveChanges sau (tạo thông báo) sẽ
+        // ghi đè lại "Chờ xác nhận" nếu Vận hành vừa Duyệt xong trong tích tắc đó.
 
         var legText = trip.LegType == TripLegType.Pickup ? "lấy hàng" : trip.LegType == TripLegType.Return ? "trả hàng" : "giao hàng";
         await _notificationService.CreateBroadcastAsync(
@@ -364,6 +544,13 @@ public class TripService : ITripService
     /// tới kho (không có chặng Lấy hàng) thì không bị chặn.</summary>
     private async Task<string?> GetStartBlockReasonAsync(Trip trip)
     {
+        // Kiểm tra LẠI xe + tài xế lúc xuất phát — Chia xe có thể đã từ nhiều
+        // ngày trước, trong thời gian chờ: xe bị chuyển Bảo trì/Ngưng hoạt động,
+        // Đăng kiểm hoặc bằng lái hết hạn, tài xế nghỉ việc... (trước đây chỉ
+        // kiểm tra 1 lần lúc Chia xe, chuyến vẫn bắt đầu được).
+        var resourceReason = await GetVehicleDriverBlockReasonAsync(trip);
+        if (resourceReason is not null) return resourceReason;
+
         if (trip.LegType != TripLegType.Delivery) return null;
 
         var pendingPickups = await _db.Trips
@@ -374,11 +561,80 @@ public class TripService : ITripService
             .OrderBy(t => t.Id)
             .Select(t => new { t.Id, t.Status })
             .ToListAsync();
-        if (pendingPickups.Count == 0) return null;
+        if (pendingPickups.Count == 0) return await GetStockBlockReasonAsync(trip);
 
         var list = string.Join(", ", pendingPickups.Select(p => $"#{p.Id} ({PickupStatusText(p.Status)})"));
         return $"Chưa thể bắt đầu chuyến giao hàng — đơn còn chuyến lấy hàng chưa hoàn tất: {list}. " +
                "Hàng phải được lấy về và nhập kho (Vận hành duyệt) xong mới được xuất kho đi giao.";
+    }
+
+    /// <summary>Chặng Giao: kho phải còn ĐỦ hàng để xuất cho chuyến — kiểm tra NGAY ở
+    /// bước app hỏi trạng thái (trước khi bật GPS). Trước đây chỉ phát hiện lúc ping
+    /// đầu tiên: bắt đầu thất bại âm thầm, mọi điểm GPS bị bỏ, video kẹt hàng đợi.</summary>
+    private async Task<string?> GetStockBlockReasonAsync(Trip trip)
+    {
+        if (trip.LegType != TripLegType.Delivery || !trip.WarehouseId.HasValue) return null;
+        var warehouseId = trip.WarehouseId.Value;
+
+        var lines = await _db.TripLines
+            .Where(l => l.TripId == trip.Id)
+            .Select(l => new { l.CargoLineId, l.QtyPlanned, l.CargoLine.CargoType })
+            .ToListAsync();
+        foreach (var line in lines)
+        {
+            var issued = await _db.GoodsIssues
+                .Where(g => g.TripId == trip.Id && g.CargoLineId == line.CargoLineId)
+                .SumAsync(g => (decimal?)g.QtyIssued) ?? 0m;
+            var need = line.QtyPlanned - issued;
+            if (need <= 0) continue;
+            var onHand = await _db.WarehouseStocks
+                .Where(s => s.WarehouseId == warehouseId && s.CargoLineId == line.CargoLineId)
+                .SumAsync(s => (decimal?)s.QtyOnHand) ?? 0m;
+            if (onHand < need)
+                return $"Kho không đủ hàng cho chuyến #{trip.Id} — \"{line.CargoType}\": cần xuất {need:0.##}, kho còn {onHand:0.##}. Báo Vận hành kiểm tra tồn kho trước khi xuất phát.";
+        }
+        return null;
+    }
+
+    private async Task<string?> GetVehicleDriverBlockReasonAsync(Trip trip)
+    {
+        // So theo NGÀY Việt Nam, CÙNG quy tắc với Chia xe (VehicleDocumentRules) — trước
+        // đây lúc xuất phát chỉ xét Đăng kiểm, bỏ sót Bảo hiểm / Giấy phép vận tải và
+        // ngày làm của tài xế (chặng Giao thường chạy sau Chia xe vài ngày).
+        var today = VnClock.Today;
+
+        var vehicle = await _db.Vehicles
+            .Where(v => v.Id == trip.VehicleId)
+            .Select(v => new { v.PlateNumber, v.Status })
+            .FirstOrDefaultAsync();
+        if (vehicle is null) return "Không tìm thấy xe của chuyến này.";
+        if (vehicle.Status == VehicleStatus.UnderMaintenance)
+            return $"Xe {vehicle.PlateNumber} đang Bảo trì — chưa thể xuất phát.";
+        if (vehicle.Status == VehicleStatus.OutOfService)
+            return $"Xe {vehicle.PlateNumber} đang Ngưng hoạt động — chưa thể xuất phát.";
+
+        var docs = await VehicleDocumentRules.GetLatestAsync(_db, trip.VehicleId);
+        var docReason = VehicleDocumentRules.BlockReason(docs, vehicle.PlateNumber, today);
+        if (docReason is not null) return docReason;
+
+        var driver = await _db.DriverProfiles
+            .Where(dp => dp.EmployeeId == trip.DriverEmployeeId)
+            .Select(dp => new { dp.LicenseExpiryDate, EmpStatus = dp.Employee.Status, dp.Employee.FullName })
+            .FirstOrDefaultAsync();
+        if (driver is null) return "Tài xế của chuyến này chưa có hồ sơ tài xế.";
+        if (driver.EmpStatus != EmployeeStatus.Active)
+            return $"Tài xế {driver.FullName} hiện không ở trạng thái Đang làm việc — chưa thể xuất phát.";
+        if (driver.LicenseExpiryDate.Date < today)
+            return $"Bằng lái của tài xế {driver.FullName} đã hết hạn ({driver.LicenseExpiryDate:dd/MM/yyyy}) — chưa thể xuất phát.";
+
+        // Tài xế phải có ĐĂNG KÝ NGÀY LÀM hôm nay (giống điều kiện Chia xe).
+        var tomorrow = today.AddDays(1);
+        var hasWorkDayToday = await _db.DriverSchedules.AnyAsync(s =>
+            s.DriverEmployeeId == trip.DriverEmployeeId && s.ShiftDate >= today && s.ShiftDate < tomorrow);
+        if (!hasWorkDayToday)
+            return $"Tài xế {driver.FullName} chưa đăng ký ngày làm hôm nay ({today:dd/MM/yyyy}) — đăng ký trong màn Tài xế trước khi xuất phát.";
+
+        return null;
     }
 
     private static string PickupStatusText(TripStatus s) => s switch
@@ -558,10 +814,10 @@ public class TripService : ITripService
         // thúc) khớp đúng loại nhiên liệu xe này dùng — ưu tiên giá thị trường
         // chung (không giới hạn hãng) vì đa số xe không cố định 1 hãng đổ xăng.
         var referenceDate = trip.EndTime ?? DateTime.UtcNow;
-        var latestPrice = await _db.FuelPriceHistories
-            .Where(p => p.FuelType == trip.Vehicle.FuelType && p.EffectiveDate <= referenceDate)
-            .OrderByDescending(p => p.EffectiveDate)
-            .FirstOrDefaultAsync();
+        // Cùng 1 quy tắc tìm giá với ghi đổ xăng / báo cáo (không phân biệt hoa thường,
+        // khoảng trắng; tính theo ngày VN; ưu tiên giá thị trường chung).
+        var priceLookup = await FindFuelPriceAsync(trip.Vehicle.FuelType, null, referenceDate);
+        var latestPrice = priceLookup.Found ? new { Price = priceLookup.UnitPrice } : null;
 
         if (latestPrice is null)
             return new FuelEstimateDto(actualDistanceKm, null, null, actualCost, null,
@@ -652,7 +908,9 @@ public class TripService : ITripService
         // Ưu tiên giờ THẬT nếu chuyến đã/đang chạy; chưa chạy thì dùng hẹn giao
         // của đơn làm mốc tạm; cuối cùng mới rơi về "1 giờ nữa" cho có giá trị
         // hiển thị hợp lý trên Calendar (không để trống ngày giờ).
-        var startUtc = trip.StartTime ?? order.CommittedDeliveryDate ?? DateTime.UtcNow.AddHours(1);
+        // Hạn giao cam kết lưu theo GIỜ VIỆT NAM (người dùng nhập) -> đổi sang UTC.
+        var committedUtc = order.CommittedDeliveryDate is { } committed ? VnClock.VnToUtc(committed) : (DateTime?)null;
+        var startUtc = trip.StartTime ?? committedUtc ?? DateTime.UtcNow.AddHours(1);
         var endUtc = trip.EndTime ?? startUtc.AddHours(2);
 
         var trackingLink = $"{publicTrackingBaseUrl.TrimEnd('/')}/track.html?token={order.PublicTrackingToken}";
@@ -748,15 +1006,22 @@ public class TripService : ITripService
     /// Trả về null nếu được phép ghi.</summary>
     private async Task<string?> GetTripCostBlockReasonAsync(int tripId, string what)
     {
-        var status = await _db.Trips
+        var trip = await _db.Trips
             .Where(t => t.Id == tripId)
-            .Select(t => (TripStatus?)t.Status)
+            .Select(t => new { t.Status, t.StartTime })
             .FirstOrDefaultAsync();
-        if (status is null) return "Không tìm thấy chuyến.";
-        if (status == TripStatus.Planned)
-            return $"Chuyến chưa bắt đầu chạy — chưa thể ghi {what}. Hãy ghi sau khi chuyến đã xuất phát.";
+        if (trip is null) return "Không tìm thấy chuyến.";
+        if (!HasRun(trip.Status, trip.StartTime))
+            return trip.Status == TripStatus.Cancelled
+                ? $"Chuyến đã hủy khi chưa xuất phát — không ghi {what}."
+                : $"Chuyến chưa bắt đầu chạy — chưa thể ghi {what}. Hãy ghi sau khi chuyến đã xuất phát.";
         return null;
     }
+
+    /// <summary>Chuyến "đã từng chạy" = có giờ bắt đầu (kể cả đã hủy giữa đường).
+    /// Dùng CHUNG cho xăng, chi phí, sự cố và báo cáo nhiên liệu.</summary>
+    private static bool HasRun(TripStatus status, DateTime? startTime)
+        => status != TripStatus.Planned && startTime.HasValue;
 
     public async Task<TripActionResult> DeleteExpenseAsync(int expenseId)
     {
@@ -806,7 +1071,9 @@ public class TripService : ITripService
     private async Task<string?> HandleArrivalAsync(Trip trip)
     {
         trip.Status = TripStatus.Completed;
-        trip.EndTime = DateTime.UtcNow;
+        // Đã có giờ tài xế báo đến nơi (ConfirmArrivalAsync) thì giữ nguyên; Dispatcher
+        // tự bấm Hoàn tất (không qua app) thì lấy giờ hiện tại.
+        trip.EndTime ??= DateTime.UtcNow;
 
         foreach (var line in trip.TripLines)
         {
@@ -816,7 +1083,7 @@ public class TripService : ITripService
 
         if (trip.LegType == TripLegType.Delivery)
         {
-            trip.Vehicle.Status = VehicleStatus.Available;
+            await ReleaseVehicleIfIdleAsync(trip);
             RecalculateOrderProgress(trip.TransportOrder);
         }
         else if (trip.LegType == TripLegType.Pickup && trip.WarehouseId.HasValue)
@@ -826,9 +1093,17 @@ public class TripService : ITripService
             await _db.SaveChangesAsync(); // lưu trạng thái Completed trước, tránh xung đột khi ReceiveGoodsAsync tự SaveChanges
             foreach (var line in trip.TripLines)
             {
+                // Chỉ nhập PHẦN CÒN THIẾU của chuyến này — chống nhập kho 2 lần
+                // nếu chuyến đã từng được hoàn tất/nhập kho trước đó.
+                var alreadyReceived = await _db.GoodsReceipts
+                    .Where(r => r.TripId == trip.Id && r.CargoLineId == line.CargoLineId)
+                    .SumAsync(r => (decimal?)r.QtyReceived) ?? 0m;
+                var qtyToReceive = line.QtyPlanned - alreadyReceived;
+                if (qtyToReceive <= 0) continue;
+
                 var receiveResult = await _warehouseService.ReceiveGoodsAsync(
                     trip.WarehouseId.Value, trip.TransportOrderId, line.CargoLineId,
-                    line.QtyPlanned, trip.DriverEmployeeId, trip.Id);
+                    qtyToReceive, trip.DriverEmployeeId, trip.Id);
                 if (!receiveResult.Success)
                     return "Không thể nhập kho: " + receiveResult.Message;
             }
@@ -858,10 +1133,50 @@ public class TripService : ITripService
                 if (!issueResult.Success)
                     return "Không thể xuất kho trả hàng: " + issueResult.Message;
             }
-            trip.Vehicle.Status = VehicleStatus.Available;
+            await ReleaseVehicleIfIdleAsync(trip);
         }
 
         return null; // null = thành công
+    }
+
+    /// <summary>"Giành" đổi trạng thái chuyến bằng 1 câu UPDATE có điều kiện
+    /// (WHERE Status = from). Trả về false nếu trạng thái đã bị thao tác khác
+    /// đổi trước — chặn 2 thao tác chồng nhau (bấm 2 lần, app + Desktop cùng lúc).</summary>
+    private async Task<bool> TryClaimStatusAsync(int tripId, TripStatus from, TripStatus to,
+        DateTime? endTime = null, bool clearEndTime = false)
+    {
+        var query = _db.Trips.Where(t => t.Id == tripId && t.Status == from);
+        int affected;
+        if (endTime.HasValue)
+        {
+            var value = endTime.Value;
+            affected = await query.ExecuteUpdateAsync(s => s
+                .SetProperty(t => t.Status, to)
+                .SetProperty(t => t.EndTime, value));
+        }
+        else if (clearEndTime)
+        {
+            affected = await query.ExecuteUpdateAsync(s => s
+                .SetProperty(t => t.Status, to)
+                .SetProperty(t => t.EndTime, (DateTime?)null));
+        }
+        else
+        {
+            affected = await query.ExecuteUpdateAsync(s => s.SetProperty(t => t.Status, to));
+        }
+        return affected == 1;
+    }
+
+    /// <summary>Trả xe về Rảnh SAU KHI xong chuyến — chỉ khi xe đang ở trạng
+    /// thái "Đang chạy" (không ghi đè Bảo trì / Ngưng hoạt động mà người dùng
+    /// đặt giữa chừng) VÀ xe không còn chuyến nào khác đang chờ/đang chạy.</summary>
+    private async Task ReleaseVehicleIfIdleAsync(Trip trip)
+    {
+        if (trip.Vehicle.Status != VehicleStatus.OnTrip) return;
+        var hasOtherActiveTrip = await _db.Trips.AnyAsync(t =>
+            t.VehicleId == trip.VehicleId && t.Id != trip.Id &&
+            (t.Status == TripStatus.Planned || t.Status == TripStatus.InProgress || t.Status == TripStatus.PendingConfirmation));
+        if (!hasOtherActiveTrip) trip.Vehicle.Status = VehicleStatus.Available;
     }
 
     private static void RecalculateOrderProgress(TransportOrder order)

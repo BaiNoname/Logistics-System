@@ -17,7 +17,14 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
         {
             InitializeComponent();
             Theme.StyleGrid(grid);
-            cboType.Items.AddRange(new object[] { "Toll", "Parking", "Loading", "Fine", "Other" });
+            cboType.Items.AddRange(new object[]
+            {
+                new ComboOption("Toll", "Phí cầu đường"),
+                new ComboOption("Parking", "Phí bến bãi"),
+                new ComboOption("Loading", "Phí bốc xếp"),
+                new ComboOption("Fine", "Tiền phạt"),
+                new ComboOption("Other", "Chi phí khác"),
+            });
             cboType.SelectedIndex = 0;
         }
 
@@ -67,7 +74,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
             }
             try
             {
-                await _api.Trips.CreateExpenseAsync(_tripId, (string)cboType.SelectedItem!, numAmount.Value,
+                await _api.Trips.CreateExpenseAsync(_tripId, (cboType.SelectedItem as ComboOption)?.Value ?? "Other", numAmount.Value,
                     string.IsNullOrWhiteSpace(txtNote.Text) ? null : txtNote.Text.Trim());
                 numAmount.Value = 0;
                 txtNote.Text = "";

@@ -44,6 +44,8 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             colQtyTotal = new DataGridViewTextBoxColumn();
             btnSave = new Button();
             lblStatus = new Label();
+            btnAddPickupLocation = new Button();
+            btnAddDropoffLocation = new Button();
             ((System.ComponentModel.ISupportInitialize)gridCargoLines).BeginInit();
             SuspendLayout();
             // 
@@ -81,6 +83,8 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             txtPickup.Name = "txtPickup";
             txtPickup.Size = new Size(448, 34);
             txtPickup.TabIndex = 3;
+            txtPickup.ReadOnly = true;
+            txtPickup.BackColor = Color.FromArgb(248, 250, 252);
             // 
             // lblPickupQuick
             // 
@@ -89,7 +93,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             lblPickupQuick.Name = "lblPickupQuick";
             lblPickupQuick.Size = new Size(195, 34);
             lblPickupQuick.TabIndex = 4;
-            lblPickupQuick.Text = "🔽 chọn nhanh:";
+            lblPickupQuick.Text = "📍 Địa điểm lấy *:";
             // 
             // cboPickupLocation
             // 
@@ -116,6 +120,8 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             txtDropoff.Name = "txtDropoff";
             txtDropoff.Size = new Size(448, 34);
             txtDropoff.TabIndex = 7;
+            txtDropoff.ReadOnly = true;
+            txtDropoff.BackColor = Color.FromArgb(248, 250, 252);
             // 
             // lblDropoffQuick
             // 
@@ -124,7 +130,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             lblDropoffQuick.Name = "lblDropoffQuick";
             lblDropoffQuick.Size = new Size(195, 34);
             lblDropoffQuick.TabIndex = 8;
-            lblDropoffQuick.Text = "🔽 chọn nhanh:";
+            lblDropoffQuick.Text = "📍 Địa điểm giao *:";
             // 
             // cboDropoffLocation
             // 
@@ -134,6 +140,28 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             cboDropoffLocation.Name = "cboDropoffLocation";
             cboDropoffLocation.Size = new Size(448, 36);
             cboDropoffLocation.TabIndex = 9;
+            // 
+            // btnAddPickupLocation
+            // 
+            btnAddPickupLocation.Location = new Point(685, 132);
+            btnAddPickupLocation.Margin = new Padding(4, 4, 4, 4);
+            btnAddPickupLocation.Name = "btnAddPickupLocation";
+            btnAddPickupLocation.Size = new Size(190, 36);
+            btnAddPickupLocation.Text = "＋ Địa điểm mới";
+            btnAddPickupLocation.Cursor = Cursors.Hand;
+            btnAddPickupLocation.FlatStyle = FlatStyle.Flat;
+            btnAddPickupLocation.BackColor = Color.White;
+            // 
+            // btnAddDropoffLocation
+            // 
+            btnAddDropoffLocation.Location = new Point(685, 234);
+            btnAddDropoffLocation.Margin = new Padding(4, 4, 4, 4);
+            btnAddDropoffLocation.Name = "btnAddDropoffLocation";
+            btnAddDropoffLocation.Size = new Size(190, 36);
+            btnAddDropoffLocation.Text = "＋ Địa điểm mới";
+            btnAddDropoffLocation.Cursor = Cursors.Hand;
+            btnAddDropoffLocation.FlatStyle = FlatStyle.Flat;
+            btnAddDropoffLocation.BackColor = Color.White;
             // 
             // lblCommitted
             // 
@@ -343,6 +371,8 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             Controls.Add(txtDropoff);
             Controls.Add(lblDropoffQuick);
             Controls.Add(cboDropoffLocation);
+            Controls.Add(btnAddPickupLocation);
+            Controls.Add(btnAddDropoffLocation);
             Controls.Add(lblCommitted);
             Controls.Add(dtCommitted);
             Controls.Add(chkHasCommittedDate);
@@ -399,5 +429,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
         private System.Windows.Forms.DataGridViewTextBoxColumn colQtyTotal;
         private System.Windows.Forms.Button btnSave;
         private System.Windows.Forms.Label lblStatus;
+        private System.Windows.Forms.Button btnAddPickupLocation;
+        private System.Windows.Forms.Button btnAddDropoffLocation;
     }
 }

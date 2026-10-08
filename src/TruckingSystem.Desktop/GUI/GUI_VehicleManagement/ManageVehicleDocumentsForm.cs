@@ -16,6 +16,45 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
         {
             InitializeComponent();
             Theme.StyleGrid(grid);
+            grid.CellDoubleClick += async (_, e) => { if (e.RowIndex >= 0) await OpenSelectedFileAsync(); };
+        }
+
+        /// <summary>Nhấp đúp 1 giấy tờ có file scan -> tải file từ server (kèm token
+        /// đăng nhập) về thư mục tạm rồi mở bằng chương trình mặc định (PDF/ảnh).</summary>
+        private async Task OpenSelectedFileAsync()
+        {
+            if (_api is null || grid.CurrentRow?.Cells["Id"].Value is not int id) return;
+            var doc = _documents.FirstOrDefault(d => d.Id == id);
+            if (doc is null || string.IsNullOrWhiteSpace(doc.FileUrl))
+            {
+                lblStatus.Text = "Giấy tờ này chưa đính kèm file scan.";
+                return;
+            }
+            try
+            {
+                string path;
+                if (doc.FileUrl.StartsWith("/api/", StringComparison.OrdinalIgnoreCase))
+                {
+                    var bytes = await _api.Connection.Http.GetByteArrayAsync(doc.FileUrl);
+                    path = Path.Combine(Path.GetTempPath(), $"giayto-{doc.Id}{Path.GetExtension(doc.FileUrl)}");
+                    await File.WriteAllBytesAsync(path, bytes);
+                }
+                else
+                {
+                    path = doc.FileUrl; // dữ liệu cũ: đường dẫn trên máy đã nhập
+                    if (!File.Exists(path))
+                    {
+                        lblStatus.Text = "Không tìm thấy file trên máy này (giấy tờ cũ lưu đường dẫn máy khác) — hãy thêm lại giấy tờ kèm file.";
+                        return;
+                    }
+                }
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(path) { UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                lblStatus.Text = "Không mở được file: " + ex.Message;
+                lblStatus.ForeColor = Theme.Danger;
+            }
         }
 
         public ManageVehicleDocumentsForm(ApiServices api, int vehicleId, string plateNumber) : this()
@@ -34,13 +73,26 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
             {
                 _documents = await _api.Vehicles.GetDocumentsAsync(_vehicleId);
                 var today = DateTime.Today;
+                // Gia hạn = thêm bản MỚI, bản cũ vẫn giữ làm lịch sử. Chỉ bản mới nhất của
+                // mỗi loại mới quyết định xe còn hạn hay không (khớp quy tắc Chia xe).
+                var latestIdByType = _documents
+                    .Where(d => d.DocType != "Other")
+                    .GroupBy(d => d.DocType)
+                    .ToDictionary(g => g.Key, g => g.OrderByDescending(x => x.ExpiryDate).First().Id);
+                string StatusOf(VehicleDocumentItem d)
+                {
+                    if (latestIdByType.TryGetValue(d.DocType, out var latestId) && latestId != d.Id)
+                        return "↻ Đã gia hạn (bản cũ)";
+                    return d.ExpiryDate.Date < today ? "⚠️ Đã hết hạn" : "✅ Còn hạn";
+                }
                 grid.DataSource = _documents.Select(d => new
                 {
                     d.Id,
                     Loại_giấy_tờ = TranslateDocType(d.DocType),
                     Ngày_cấp = d.IssueDate.ToString("dd/MM/yyyy"),
                     Ngày_hết_hạn = d.ExpiryDate.ToString("dd/MM/yyyy"),
-                    Trạng_thái = d.ExpiryDate < today ? "⚠️ Đã hết hạn" : "✅ Còn hạn",
+                    Trạng_thái = StatusOf(d),
+                    File_scan = string.IsNullOrWhiteSpace(d.FileUrl) ? "" : "📎 Nhấp đúp để mở",
                 }).ToList();
                 grid.DataBindingComplete += (_, _) => { if (grid.Columns["Id"] != null) grid.Columns["Id"]!.Visible = false; };
                 lblStatus.Text = $"{_documents.Count} giấy tờ";

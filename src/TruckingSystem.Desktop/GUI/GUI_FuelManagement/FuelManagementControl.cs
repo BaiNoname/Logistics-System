@@ -33,13 +33,19 @@ namespace TruckingSystem.Desktop.GUI_FuelManagement
             try
             {
                 _providers = await _api.Fuel.GetProvidersAsync();
-                gridProviders.DataSource = _providers.Select(p => new
-                {
-                    p.Id,
-                    Tên_hãng = p.Name,
-                    Điện_thoại = p.ContactPhone ?? "—",
-                    Địa_chỉ = p.Address ?? "—",
-                }).ToList();
+                // Dòng đầu: "Giá thị trường chung" (giá KHÔNG gắn hãng, Id = 0) — dùng làm
+                // giá dự phòng khi hãng được chọn lúc ghi xăng chưa có giá. Trước đây không có
+                // chỗ nào nhập được loại giá này.
+                var rows = new[] { new { Id = 0, Tên_hãng = "🌐 Giá thị trường chung (không theo hãng)", Điện_thoại = "—", Địa_chỉ = "—" } }
+                    .Concat(_providers.Select(p => new
+                    {
+                        p.Id,
+                        Tên_hãng = p.Name,
+                        Điện_thoại = p.ContactPhone ?? "—",
+                        Địa_chỉ = p.Address ?? "—",
+                    }))
+                    .ToList();
+                gridProviders.DataSource = rows;
                 lblStatus.Text = $"{_providers.Count} hãng xăng — double-click vào 1 hãng để xem/thêm giá";
                 lblStatus.ForeColor = Theme.TextSecondary;
             }
@@ -56,6 +62,12 @@ namespace TruckingSystem.Desktop.GUI_FuelManagement
         {
             if (_api is null || e.RowIndex < 0) return;
             var id = (int)gridProviders.Rows[e.RowIndex].Cells["Id"].Value;
+            if (id == 0)
+            {
+                using var market = new FuelProviderPricesForm(_api, null, "Giá thị trường chung");
+                market.ShowDialog(FindForm());
+                return;
+            }
             var provider = _providers.FirstOrDefault(p => p.Id == id);
             if (provider is null) return;
 
@@ -78,6 +90,11 @@ namespace TruckingSystem.Desktop.GUI_FuelManagement
                 return;
             }
             var id = (int)gridProviders.CurrentRow.Cells["Id"].Value;
+            if (id == 0)
+            {
+                MessageBox.Show(FindForm(), "\"Giá thị trường chung\" không phải 1 hãng — không xóa được. Muốn bỏ giá nào thì mở ra và xóa từng mức giá.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
             var confirm = MessageBox.Show(FindForm(), "Xóa hẳn hãng xăng này? Không thể hoàn tác.", "Xác nhận xóa", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
             if (confirm != DialogResult.Yes) return;
 

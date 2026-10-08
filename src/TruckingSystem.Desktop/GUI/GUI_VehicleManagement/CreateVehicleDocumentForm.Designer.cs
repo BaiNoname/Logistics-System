@@ -22,6 +22,7 @@
             this.dtExpiryDate = new System.Windows.Forms.DateTimePicker();
             this.lblFileUrl = new System.Windows.Forms.Label();
             this.txtFileUrl = new System.Windows.Forms.TextBox();
+            this.btnBrowseFile = new System.Windows.Forms.Button();
             this.btnSave = new System.Windows.Forms.Button();
             this.lblStatus = new System.Windows.Forms.Label();
             this.SuspendLayout();
@@ -74,12 +75,24 @@
             this.lblFileUrl.Size = new System.Drawing.Size(360, 18);
             this.lblFileUrl.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
             this.lblFileUrl.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
-            this.lblFileUrl.Text = "Đường dẫn file scan (tuỳ chọn)";
+            this.lblFileUrl.Text = "File scan giấy tờ (tuỳ chọn — PDF/JPG/PNG, tối đa 10 MB)";
             //
             // txtFileUrl
             //
             this.txtFileUrl.Location = new System.Drawing.Point(24, 180);
-            this.txtFileUrl.Size = new System.Drawing.Size(360, 23);
+            this.txtFileUrl.Size = new System.Drawing.Size(250, 23);
+            this.txtFileUrl.ReadOnly = true;
+            this.txtFileUrl.PlaceholderText = "Chưa chọn file";
+            //
+            // btnBrowseFile
+            //
+            this.btnBrowseFile.Location = new System.Drawing.Point(280, 179);
+            this.btnBrowseFile.Size = new System.Drawing.Size(104, 25);
+            this.btnBrowseFile.Text = "📎 Chọn file…";
+            this.btnBrowseFile.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnBrowseFile.BackColor = System.Drawing.Color.White;
+            this.btnBrowseFile.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.btnBrowseFile.Click += new System.EventHandler(this.BtnBrowseFile_Click);
             //
             // btnSave
             //
@@ -116,6 +129,7 @@
             this.Controls.Add(this.dtExpiryDate);
             this.Controls.Add(this.lblFileUrl);
             this.Controls.Add(this.txtFileUrl);
+            this.Controls.Add(this.btnBrowseFile);
             this.Controls.Add(this.lblStatus);
             this.Controls.Add(this.btnSave);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
@@ -137,6 +151,7 @@
         private System.Windows.Forms.DateTimePicker dtExpiryDate;
         private System.Windows.Forms.Label lblFileUrl;
         private System.Windows.Forms.TextBox txtFileUrl;
+        private System.Windows.Forms.Button btnBrowseFile;
         private System.Windows.Forms.Button btnSave;
         private System.Windows.Forms.Label lblStatus;
     }

@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using TruckingSystem.Application.Common.Interfaces;
 using TruckingSystem.Domain.Entities;
+using TruckingSystem.Domain.Enums;
 
 namespace TruckingSystem.Application.TripVideos;
 
@@ -30,13 +31,31 @@ public class TripVideoService : ITripVideoService
     public async Task<UploadTripVideoResult> UploadAsync(int tripId, Stream content, string originalFileName, string? contentType,
         DateTime startedAt, DateTime endedAt, CancellationToken ct = default)
     {
-        var tripExists = await _db.Trips.AnyAsync(t => t.Id == tripId, ct);
-        if (!tripExists) return new UploadTripVideoResult(false, "Không tìm thấy chuyến.", null);
+        var trip = await _db.Trips
+            .Where(t => t.Id == tripId)
+            .Select(t => new { t.Status, t.StartTime, t.EndTime })
+            .FirstOrDefaultAsync(ct);
+        if (trip is null) return new UploadTripVideoResult(false, "Không tìm thấy chuyến.", null);
 
         startedAt = ToUtc(startedAt);
         endedAt = ToUtc(endedAt);
         if (endedAt <= startedAt)
             return new UploadTripVideoResult(false, "Thời gian kết thúc phải sau thời gian bắt đầu.", null);
+
+        // Video chỉ thuộc về khoảng thời gian chuyến chạy. Giờ bắt đầu chuyến = lúc
+        // server nhận được GPS ĐẦU TIÊN — nếu xe xuất phát ở chỗ mất sóng, video có thể
+        // được quay TRƯỚC giờ đó khá lâu -> cho lệch tới 3 tiếng phía trước.
+        //  - Chuyến CHƯA được ghi nhận bắt đầu: KHÔNG từ chối hẳn (Retryable -> 409),
+        //    app giữ file và gửi lại sau khi GPS lên được (trước đây trả 400 -> app XÓA video).
+        //  - Quay sau khi chuyến kết thúc quá 30 phút: từ chối hẳn.
+        if (trip.StartTime is null && trip.Status is TripStatus.Cancelled or TripStatus.Completed)
+            return new UploadTripVideoResult(false, "Chuyến đã đóng mà chưa từng chạy — không nhận video.", null);
+        if (trip.Status == TripStatus.Planned || trip.StartTime is null)
+            return new UploadTripVideoResult(false, "Chuyến chưa được ghi nhận bắt đầu — app sẽ gửi lại sau.", null, Retryable: true);
+        if (startedAt < trip.StartTime.Value - TimeSpan.FromHours(3))
+            return new UploadTripVideoResult(false, "Đoạn video được quay quá sớm so với giờ bắt đầu chuyến — không nhận.", null);
+        if (trip.EndTime is { } end && startedAt > end + TimeSpan.FromMinutes(30))
+            return new UploadTripVideoResult(false, "Đoạn video được quay SAU khi chuyến đã kết thúc — không nhận.", null);
         if ((endedAt - startedAt).TotalMinutes > MaxSegmentMinutes)
             return new UploadTripVideoResult(false, $"Mỗi đoạn video tối đa {MaxSegmentMinutes} phút.", null);
 

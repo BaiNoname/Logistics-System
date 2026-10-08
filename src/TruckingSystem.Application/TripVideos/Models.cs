@@ -1,4 +1,4 @@
-namespace TruckingSystem.Application.TripVideos;
+﻿namespace TruckingSystem.Application.TripVideos;
 
 public record TripVideoSegmentDto(
     int Id,
@@ -10,7 +10,10 @@ public record TripVideoSegmentDto(
     string ContentType,
     string Sha256);
 
-public record UploadTripVideoResult(bool Success, string? Message, int? SegmentId);
+/// <summary>Retryable = true: chưa nhận được LÚC NÀY nhưng sẽ nhận sau (VD chuyến chưa
+/// được ghi nhận bắt đầu vì GPS chưa gửi được) — API trả 409 để app GIỮ file và gửi lại,
+/// không xóa như lỗi 400.</summary>
+public record UploadTripVideoResult(bool Success, string? Message, int? SegmentId, bool Retryable = false);
 
 public record TripVideoFile(string FullPath, string ContentType);
 

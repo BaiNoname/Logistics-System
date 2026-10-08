@@ -11,7 +11,19 @@ public record TripListItemDto(
 public record TripActionResult(bool Success, string? Message);
 
 /// <summary>Ghi nhận 1 lần đổ xăng thực tế cho 1 chuyến cụ thể.</summary>
-public record RecordFuelRequest(decimal Liters, decimal Cost, string? StationName);
+/// <summary>AutoPrice = true: KHÔNG cần nhập tiền — server tự lấy đơn giá mới
+/// nhất của hãng đã chọn (FuelProviderId; null = giá thị trường chung) theo đúng
+/// loại nhiên liệu của xe, Cost = Liters x đơn giá. AutoPrice = false: giữ cách
+/// cũ (nhập tay Cost).</summary>
+public record RecordFuelRequest(decimal Liters, decimal Cost, string? StationName, int? FuelProviderId = null, bool AutoPrice = false);
+
+/// <summary>1 lần đổ xăng đã ghi của chuyến (lịch sử).</summary>
+public record FuelLogDto(int Id, DateTime Timestamp, decimal Liters, decimal UnitPrice, decimal Cost, string? StationName);
+
+/// <summary>Đơn giá tự động cho form ghi đổ xăng. CanRecord = chuyến có đang
+/// cho ghi xăng không (đã chạy, chưa hủy); Found = có tìm được đơn giá không.</summary>
+public record FuelPriceQuoteDto(bool CanRecord, bool Found, string? FuelType, decimal UnitPrice,
+    DateTime? EffectiveDate, string? SourceText, string? Message);
 
 // ==== Dùng cho App tài xế (GPS ping + xác nhận đến nơi) — ĐÃ CÓ TỪ TRƯỚC,
 // giữ nguyên tên/kiểu để không phá vỡ TripsController đã tồn tại ====

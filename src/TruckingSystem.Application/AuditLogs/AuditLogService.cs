@@ -18,10 +18,18 @@ public class AuditLogService : IAuditLogService
 
         if (!string.IsNullOrWhiteSpace(filter.Action))
             query = query.Where(a => a.Action == filter.Action);
+        // Lọc theo NGÀY Việt Nam (UTC+7), Timestamp lưu UTC. "Đến ngày" tính TRỌN
+        // ngày đó — trước đây so <= 00:00 nên mất toàn bộ log của ngày cuối.
         if (filter.FromDate.HasValue)
-            query = query.Where(a => a.Timestamp >= filter.FromDate.Value);
+        {
+            var fromUtc = filter.FromDate.Value.Date.AddHours(-7);
+            query = query.Where(a => a.Timestamp >= fromUtc);
+        }
         if (filter.ToDate.HasValue)
-            query = query.Where(a => a.Timestamp <= filter.ToDate.Value);
+        {
+            var toUtcExclusive = filter.ToDate.Value.Date.AddDays(1).AddHours(-7);
+            query = query.Where(a => a.Timestamp < toUtcExclusive);
+        }
 
         return await query
             .OrderByDescending(a => a.Timestamp)

@@ -16,7 +16,7 @@
         {
             lblTitle = new Label();
             lblFuelType = new Label();
-            txtFuelType = new TextBox();
+            cboFuelType = new ComboBox();
             lblPrice = new Label();
             numPrice = new NumericUpDown();
             lblEffectiveDate = new Label();
@@ -53,14 +53,14 @@
             lblFuelType.TabIndex = 1;
             lblFuelType.Text = "Loại nhiên liệu";
             // 
-            // txtFuelType
+            // cboFuelType
             // 
-            txtFuelType.Location = new Point(30, 114);
-            txtFuelType.Margin = new Padding(4, 4, 4, 4);
-            txtFuelType.Name = "txtFuelType";
-            txtFuelType.PlaceholderText = "VD: Dầu DO, Xăng RON95";
-            txtFuelType.Size = new Size(298, 34);
-            txtFuelType.TabIndex = 2;
+            cboFuelType.DropDownStyle = ComboBoxStyle.DropDownList;
+            cboFuelType.Location = new Point(30, 114);
+            cboFuelType.Margin = new Padding(4, 4, 4, 4);
+            cboFuelType.Name = "cboFuelType";
+            cboFuelType.Size = new Size(298, 33);
+            cboFuelType.TabIndex = 2;
             // 
             // lblPrice
             // 
@@ -170,7 +170,7 @@
             ClientSize = new Size(1485, 818);
             Controls.Add(lblTitle);
             Controls.Add(lblFuelType);
-            Controls.Add(txtFuelType);
+            Controls.Add(cboFuelType);
             Controls.Add(lblPrice);
             Controls.Add(numPrice);
             Controls.Add(lblEffectiveDate);
@@ -195,7 +195,7 @@
 
         private System.Windows.Forms.Label lblTitle;
         private System.Windows.Forms.Label lblFuelType;
-        private System.Windows.Forms.TextBox txtFuelType;
+        private System.Windows.Forms.ComboBox cboFuelType;
         private System.Windows.Forms.Label lblPrice;
         private System.Windows.Forms.NumericUpDown numPrice;
         private System.Windows.Forms.Label lblEffectiveDate;

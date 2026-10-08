@@ -29,7 +29,8 @@ public record UpdateTransportOrderRequest(
 
 public record TransportOrderListItemDto(
     int Id, string Code, string CustomerName, string Status,
-    decimal ProgressPercent, string PickupPoint, string DropoffPoint, string PublicTrackingToken
+    decimal ProgressPercent, string PickupPoint, string DropoffPoint, string PublicTrackingToken,
+    int ActiveTripCount = 0 // số chuyến chưa hủy — Desktop dùng để khóa nút "Chia xe" khi đơn đã chia rồi
 );
 
 public record TripSummaryDto(int Id, string VehiclePlate, string DriverName, string Status, decimal QtyPlanned);
@@ -44,5 +45,6 @@ public record TransportOrderDetailDto(
     string PickupPoint, string DropoffPoint, DateTime? CommittedDeliveryDate,
     string PublicTrackingToken, List<CargoLineDto> CargoLines, List<TripSummaryDto> Trips,
     double? PickupLat, double? PickupLng, double? DropoffLat, double? DropoffLng,
-    string PickupMethod, int CustomerId, int WarehouseId, string WarehouseName
+    string PickupMethod, int CustomerId, int WarehouseId, string WarehouseName,
+    int? PickupLocationId = null, int? DropoffLocationId = null // để form Sửa đơn chọn đúng Địa điểm theo Id
 );

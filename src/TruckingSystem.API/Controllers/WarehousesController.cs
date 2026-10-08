@@ -121,7 +121,8 @@ public class WarehousesController : ControllerBase
         // viên số 1 -> lịch sử kho ghi sai người, VD hiện tên 1 tài xế bất kỳ).
         var performer = await CurrentPerformerAsync();
         var result = await _slottingService.ReceiveGoodsAsync(warehouseId, request.TransportOrderId, request.CargoLineId, request.Qty,
-            performer.EmployeeId, tripId: null, chosenBinId: request.ChosenBinId, performedByUserName: performer.UserName);
+            performer.EmployeeId, tripId: null, chosenBinId: request.ChosenBinId, performedByUserName: performer.UserName,
+            isManual: true);
         // LUÔN trả về 200 OK (kể cả khi thất bại) — để Desktop nhận đúng
         // object ReceiveGoodsResult và tự đọc result.Success/result.Message
         // hiện thông báo SẠCH đã thiết kế sẵn. Trước đây trả 400 khi thất bại

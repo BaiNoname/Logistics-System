@@ -5,7 +5,8 @@ namespace TruckingSystem.Application.Reports;
 /// và chi phí của cùng 1 đơn nằm chung 1 kỳ), không bị lệch khi chi phí phát
 /// sinh sang tháng sau.
 ///   Doanh thu = tổng hóa đơn của đơn (bỏ qua hóa đơn đã hủy).
-///   Chi phí   = nhiên liệu thực tế đã đổ + chi phí phát sinh + chi phí sự cố,
+///   Chi phí   = nhiên liệu (thực đổ theo hóa đơn; chuyến chưa nhập hóa đơn thì tạm
+///               tính theo định mức GPS) + chi phí phát sinh + chi phí sự cố,
 ///               của TẤT CẢ chuyến thuộc đơn (kể cả chuyến Trả hàng khi hủy đơn).</summary>
 public record ProfitReportDto(
     DateTime From, DateTime To,
@@ -16,7 +17,23 @@ public record ProfitReportDto(
     decimal CancelledOrdersCost,
     List<CostCategoryDto> CostBreakdown,
     List<MonthlyProfitDto> Monthly,
-    List<OrderProfitDto> Orders);
+    List<OrderProfitDto> Orders,
+    // ---- Kiểm soát nhiên liệu (các chuyến đã chạy của các đơn trong kỳ) ----
+    decimal FuelPlannedCost = 0,          // dự toán theo km VietMap
+    decimal FuelNormCost = 0,             // định mức theo km GPS thực tế
+    decimal FuelActualCost = 0,           // thực đổ (hóa đơn đã ghi)
+    int TripsUsingFuelEstimate = 0,       // số chuyến chưa nhập hóa đơn xăng -> lãi/lỗ đang tạm tính theo định mức
+    List<FuelControlRowDto>? FuelControl = null);
+
+/// <summary>1 dòng bảng "Kiểm soát nhiên liệu" — 1 chuyến đã chạy.
+/// Flagged = lệch km (GPS so với VietMap) hoặc lệch tiền (thực đổ so với định mức) quá 15%.</summary>
+public record FuelControlRowDto(
+    int TripId, string OrderCode, string LegType, string PlateNumber, string Status, DateTime TripDate,
+    decimal? PlannedKm, decimal? GpsKm, decimal? KmDeviationPct,
+    decimal? ConsumptionPer100Km, decimal? UnitPrice,
+    decimal? PlannedCost, decimal? NormCost, decimal? NormLiters,
+    decimal ActualCost, decimal ActualLiters, decimal? CostDeviationPct,
+    bool HasActual, bool Flagged, string? Note);
 
 public record CostCategoryDto(string Category, decimal Amount);
 

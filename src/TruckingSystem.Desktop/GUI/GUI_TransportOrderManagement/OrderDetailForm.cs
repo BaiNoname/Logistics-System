@@ -44,7 +44,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                 _currentOrder = order;
 
                 lblHeader.Text = $"Đơn {order.Code} — {order.CustomerName}";
-                lblInfo.Text = $"Trạng thái: {order.Status}   |   Tiến độ: {order.ProgressPercent}%   |   " +
+                lblInfo.Text = $"Trạng thái: {TruckingSystem.Desktop.GUI_Shared.ReportFormat.OrderStatus(order.Status)}   |   Tiến độ: {order.ProgressPercent}%   |   " +
                                $"{order.PickupPoint} → {order.DropoffPoint}";
 
                 _trackingUrl = $"{_api.Connection.BaseUrl}/track.html?token={order.PublicTrackingToken}";
@@ -66,7 +66,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                     Mã_chuyến = t.Id,
                     Biển_số_xe = t.VehiclePlate,
                     Tài_xế = t.DriverName,
-                    Trạng_thái = t.Status,
+                    Trạng_thái = TruckingSystem.Desktop.GUI_Shared.ReportFormat.TripStatus(t.Status),
                     Số_lượng_chở = t.QtyPlanned,
                 }).ToList();
 

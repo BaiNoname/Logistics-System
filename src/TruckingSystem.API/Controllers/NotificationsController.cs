@@ -31,7 +31,10 @@ public class NotificationsController : ControllerBase
     [HttpPost("{id:int}/mark-read")]
     public async Task<ActionResult> MarkAsRead(int id)
     {
-        await _service.MarkAsReadAsync(id);
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+        await _service.MarkAsReadAsync(id, userId);
         return Ok();
     }
 

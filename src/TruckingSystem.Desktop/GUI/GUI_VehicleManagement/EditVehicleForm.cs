@@ -12,12 +12,14 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
         private ApiServices? _api;
         private int _vehicleId;
         private int? _currentWarehouseId;
+        private bool _warehousesLoaded;
+        private string _currentStatus = "";
 
         public EditVehicleForm()
         {
             InitializeComponent();
-            cboStatus.Items.AddRange(new object[] { "Available", "OnTrip", "UnderMaintenance", "OutOfService" });
-            cboFuelType.Items.AddRange(new object[] { "", "Dầu DO", "Xăng RON95", "Xăng RON92", "Xăng E5" });
+            // Loại nhiên liệu nạp từ bảng giá ở màn Nhiên liệu (xem FuelTypeOptions) — không gán cứng.
+            cboFuelType.Items.Add("");
         }
 
         public EditVehicleForm(ApiServices api, VehicleListItem vehicle) : this()
@@ -27,14 +29,46 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
             _currentWarehouseId = vehicle.WarehouseId;
 
             txtPlateNumber.Text = vehicle.PlateNumber;
-            txtVehicleType.Text = vehicle.VehicleType;
+            VehicleTypeOptions.Fill(cboVehicleType, vehicle.VehicleType);
             numCapacityQty.Value = vehicle.CapacityQty;
             numCapacityKg.Value = vehicle.CapacityKg;
             numCapacityM3.Value = vehicle.CapacityM3;
-            cboStatus.SelectedItem = vehicle.Status;
+            // Đổi loại xe -> tự điền tải trọng/thể tích gợi ý (giữ nguyên số cũ nếu không đổi loại).
+            cboVehicleType.SelectedIndexChanged += (_, _) =>
+            {
+                var preset = VehicleTypeOptions.Find(cboVehicleType.SelectedItem as string);
+                if (preset is null) return;
+                numCapacityKg.Value = Math.Min(numCapacityKg.Maximum, preset.CapacityKg);
+                numCapacityM3.Value = Math.Min(numCapacityM3.Maximum, preset.CapacityM3);
+            };
+            FillStatusOptions(vehicle.Status);
             numFuelConsumption.Value = vehicle.FuelConsumptionPer100Km ?? 0;
-            cboFuelType.SelectedItem = vehicle.FuelType ?? "";
-            Load += async (_, _) => await LoadWarehousesAsync();
+
+            // Chờ nạp xong danh sách Kho + Loại nhiên liệu mới cho Lưu — trước đây bấm Lưu
+            // sớm sẽ gửi Kho = trống và Loại nhiên liệu = trống, xóa mất dữ liệu cũ.
+            btnSave.Enabled = false;
+            Load += async (_, _) =>
+            {
+                await LoadWarehousesAsync();
+                await FuelTypeOptions.FillAsync(cboFuelType, api, vehicle.FuelType, lblStatus);
+                btnSave.Enabled = true;
+            };
+        }
+
+        /// <summary>Trạng thái hiện tiếng Việt. "Đang chạy" do hệ thống tự gán khi Chia xe
+        /// nên KHÔNG cho chọn tay — chỉ hiện khi xe đang ở trạng thái đó (để giữ nguyên).
+        /// Xe đang chạy vẫn chuyển được sang Bảo trì / Ngưng hoạt động (xe hỏng giữa đường).</summary>
+        private void FillStatusOptions(string current)
+        {
+            _currentStatus = current;
+            cboStatus.Items.Clear();
+            cboStatus.Items.Add(current == "OnTrip"
+                ? new ComboOption("OnTrip", "Đang chạy (hệ thống gán)")
+                : new ComboOption("Available", "Rảnh"));
+            cboStatus.Items.Add(new ComboOption("UnderMaintenance", "Bảo trì"));
+            cboStatus.Items.Add(new ComboOption("OutOfService", "Ngưng hoạt động"));
+            var match = cboStatus.Items.Cast<ComboOption>().FirstOrDefault(o => o.Value == current);
+            cboStatus.SelectedItem = match ?? cboStatus.Items[0];
         }
 
         /// <summary>Đổ dropdown "Kho đóng quân" — để tuỳ chọn (có thể để trống,
@@ -51,6 +85,7 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
                 cboWarehouse.DisplayMember = "Name";
                 cboWarehouse.ValueMember = "Id";
                 cboWarehouse.SelectedValue = _currentWarehouseId;
+                _warehousesLoaded = true;
             }
             catch (Exception ex)
             {
@@ -71,12 +106,12 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
             try
             {
                 var result = await _api.Vehicles.UpdateVehicleAsync(
-                    _vehicleId, txtPlateNumber.Text.Trim(), txtVehicleType.Text.Trim(),
+                    _vehicleId, txtPlateNumber.Text.Trim(), (cboVehicleType.SelectedItem as string ?? "").Trim(),
                     numCapacityQty.Value, numCapacityKg.Value, numCapacityM3.Value,
-                    (string)cboStatus.SelectedItem!,
+                    (cboStatus.SelectedItem as ComboOption)?.Value ?? _currentStatus,
                     numFuelConsumption.Value == 0 ? null : numFuelConsumption.Value,
                     string.IsNullOrEmpty((string)(cboFuelType.SelectedItem ?? "")) ? null : (string)cboFuelType.SelectedItem!,
-                    cboWarehouse.SelectedValue as int?);
+                    _warehousesLoaded ? cboWarehouse.SelectedValue as int? : _currentWarehouseId);
 
                 if (!result.Success)
                 {

@@ -24,7 +24,16 @@ public class LocationsController : ControllerBase
 
     [HttpPost]
     public async Task<ActionResult<LocationDto>> Create(CreateLocationRequest request)
-        => Ok(await _service.CreateAsync(request));
+    {
+        try
+        {
+            return Ok(await _service.CreateAsync(request));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
 
     /// <summary>Gõ tới đâu, gợi ý tới đó — dùng cho ô tìm kiếm địa điểm (VietMap Autocomplete).</summary>
     [HttpGet("search")]

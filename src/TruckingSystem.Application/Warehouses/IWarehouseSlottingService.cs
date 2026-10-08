@@ -46,7 +46,8 @@ public interface IWarehouseSlottingService
     /// chosenBinId CÓ giá trị → dùng ĐÚNG vị trí đó (do người dùng tự chọn tay,
     /// bỏ qua Best-Fit); nếu null → tự động chạy Best-Fit như trước.</summary>
     Task<ReceiveGoodsResult> ReceiveGoodsAsync(int warehouseId, int transportOrderId, int cargoLineId,
-        decimal qty, int? receivedByEmployeeId, int? tripId, int? chosenBinId = null, string? performedByUserName = null);
+        decimal qty, int? receivedByEmployeeId, int? tripId, int? chosenBinId = null, string? performedByUserName = null,
+        bool isManual = false);
 
     /// <summary>Danh sách vị trí (StorageBin) còn đủ chỗ trong 1 kho, ĐÚNG khu
     /// vực phù hợp với tính chất của CargoLine — dùng cho màn Nhập kho thủ
