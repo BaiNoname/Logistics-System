@@ -3,6 +3,9 @@
 public interface ITransportOrderService
 {
     Task<List<TransportOrderListItemDto>> GetAllAsync();
+
+    /// <summary>Gợi ý "Loại hàng" khi tạo đơn: danh mục chuẩn + các loại đã dùng.</summary>
+    Task<List<string>> GetCargoTypeSuggestionsAsync();
     Task<TransportOrderDetailDto?> GetByIdAsync(int id);
     Task<TransportOrderDetailDto> CreateAsync(CreateTransportOrderRequest request);
 

@@ -19,6 +19,6 @@ public interface INotificationService
     /// đã đọc thông báo "chờ duyệt" của chuyến đó.</summary>
     Task ResolveTripPendingAsync(int tripId);
 
-    Task MarkAsReadAsync(int notificationId);
+    Task MarkAsReadAsync(int notificationId, string userId);
     Task MarkAllAsReadAsync(string userId);
 }

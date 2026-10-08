@@ -203,7 +203,7 @@ namespace TruckingSystem.Infrastructure.Migrations
                         .HasColumnType("timestamp without time zone");
 
                     b.Property<decimal>("VolumeM3")
-                        .HasColumnType("numeric(18,2)");
+                        .HasColumnType("numeric(18,4)");
 
                     b.Property<decimal>("WeightKg")
                         .HasColumnType("numeric(18,2)");
@@ -464,7 +464,8 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("DriverEmployeeId");
+                    b.HasIndex("DriverEmployeeId", "ShiftDate")
+                        .IsUnique();
 
                     b.ToTable("DriverSchedules");
                 });
@@ -591,7 +592,10 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     b.HasIndex("TripId");
 
-                    b.ToTable("FuelLogs");
+                    b.ToTable("FuelLogs", t =>
+                        {
+                            t.HasCheckConstraint("CK_FuelLog_Positive", "\"Liters\" > 0 AND \"Cost\" >= 0");
+                        });
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.FuelPriceHistory", b =>
@@ -623,9 +627,19 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("FuelProviderId");
+                    b.HasIndex("FuelType", "EffectiveDate")
+                        .IsUnique()
+                        .HasDatabaseName("UX_FuelPrice_Market_Type_Date")
+                        .HasFilter("\"FuelProviderId\" IS NULL");
 
-                    b.ToTable("FuelPriceHistories");
+                    b.HasIndex("FuelProviderId", "FuelType", "EffectiveDate")
+                        .IsUnique()
+                        .HasDatabaseName("UX_FuelPrice_Provider_Type_Date");
+
+                    b.ToTable("FuelPriceHistories", t =>
+                        {
+                            t.HasCheckConstraint("CK_FuelPrice_Positive", "\"Price\" > 0");
+                        });
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.FuelProvider", b =>
@@ -697,6 +711,12 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp without time zone");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.Property<int>("WarehouseId")
                         .HasColumnType("integer");
@@ -1153,13 +1173,22 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp without time zone");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id");
 
                     b.HasIndex("GoodsReceiptId");
 
                     b.HasIndex("StorageBinId");
 
-                    b.ToTable("StorageAssignments");
+                    b.ToTable("StorageAssignments", t =>
+                        {
+                            t.HasCheckConstraint("CK_StorageAssignment_QtyStored_NonNegative", "\"QtyStored\" >= 0");
+                        });
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.StorageBin", b =>
@@ -1171,7 +1200,7 @@ namespace TruckingSystem.Infrastructure.Migrations
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<decimal>("CapacityM3")
-                        .HasColumnType("numeric(18,2)");
+                        .HasColumnType("numeric(18,4)");
 
                     b.Property<string>("Code")
                         .IsRequired()
@@ -1181,7 +1210,7 @@ namespace TruckingSystem.Infrastructure.Migrations
                         .HasColumnType("timestamp without time zone");
 
                     b.Property<decimal>("CurrentUsedM3")
-                        .HasColumnType("numeric(18,2)");
+                        .HasColumnType("numeric(18,4)");
 
                     b.Property<decimal>("DistanceFromDoorMeters")
                         .HasColumnType("numeric(18,2)");
@@ -1201,6 +1230,12 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp without time zone");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.Property<int>("WarehouseZoneId")
                         .HasColumnType("integer");
 
@@ -1209,9 +1244,13 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("WarehouseZoneId");
+                    b.HasIndex("WarehouseZoneId", "Code")
+                        .IsUnique();
 
-                    b.ToTable("StorageBins");
+                    b.ToTable("StorageBins", t =>
+                        {
+                            t.HasCheckConstraint("CK_StorageBin_CurrentUsedM3_NonNegative", "\"CurrentUsedM3\" >= 0");
+                        });
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.TariffRule", b =>
@@ -1308,10 +1347,19 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp without time zone");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.Property<int>("WarehouseId")
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
 
                     b.HasIndex("CustomerId");
 
@@ -1563,7 +1611,8 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("TripId", "StartedAt");
+                    b.HasIndex("TripId", "StartedAt")
+                        .IsUnique();
 
                     b.ToTable("TripVideoSegments");
                 });
@@ -1580,7 +1629,7 @@ namespace TruckingSystem.Infrastructure.Migrations
                         .HasColumnType("numeric(18,2)");
 
                     b.Property<decimal>("CapacityM3")
-                        .HasColumnType("numeric(18,2)");
+                        .HasColumnType("numeric(18,4)");
 
                     b.Property<decimal>("CapacityQty")
                         .HasColumnType("numeric(18,2)");
@@ -1608,10 +1657,19 @@ namespace TruckingSystem.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.Property<int?>("WarehouseId")
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("PlateNumber")
+                        .IsUnique();
 
                     b.HasIndex("WarehouseId");
 
@@ -1724,6 +1782,12 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp without time zone");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.Property<int>("WarehouseId")
                         .HasColumnType("integer");
 
@@ -1734,7 +1798,10 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.HasIndex("WarehouseId", "CargoLineId")
                         .IsUnique();
 
-                    b.ToTable("WarehouseStocks");
+                    b.ToTable("WarehouseStocks", t =>
+                        {
+                            t.HasCheckConstraint("CK_WarehouseStock_QtyOnHand_NonNegative", "\"QtyOnHand\" >= 0");
+                        });
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.WarehouseZone", b =>
@@ -2104,7 +2171,7 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.HasOne("TruckingSystem.Domain.Entities.CargoLine", "CargoLine")
                         .WithMany()
                         .HasForeignKey("CargoLineId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("TruckingSystem.Domain.Entities.Employee", "IssuedByEmployee")
@@ -2114,7 +2181,7 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.HasOne("TruckingSystem.Domain.Entities.TransportOrder", "TransportOrder")
                         .WithMany("GoodsIssues")
                         .HasForeignKey("TransportOrderId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("TruckingSystem.Domain.Entities.Trip", "Trip")
@@ -2125,7 +2192,7 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.HasOne("TruckingSystem.Domain.Entities.Warehouse", "Warehouse")
                         .WithMany("GoodsIssues")
                         .HasForeignKey("WarehouseId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("CargoLine");
@@ -2144,7 +2211,7 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.HasOne("TruckingSystem.Domain.Entities.CargoLine", "CargoLine")
                         .WithMany()
                         .HasForeignKey("CargoLineId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("TruckingSystem.Domain.Entities.Employee", "ReceivedByEmployee")
@@ -2154,7 +2221,7 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.HasOne("TruckingSystem.Domain.Entities.TransportOrder", "TransportOrder")
                         .WithMany("GoodsReceipts")
                         .HasForeignKey("TransportOrderId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("TruckingSystem.Domain.Entities.Trip", "Trip")
@@ -2165,7 +2232,7 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.HasOne("TruckingSystem.Domain.Entities.Warehouse", "Warehouse")
                         .WithMany("GoodsReceipts")
                         .HasForeignKey("WarehouseId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("CargoLine");
@@ -2195,13 +2262,13 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.HasOne("TruckingSystem.Domain.Entities.Customer", "Customer")
                         .WithMany("Invoices")
                         .HasForeignKey("CustomerId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("TruckingSystem.Domain.Entities.TransportOrder", "TransportOrder")
                         .WithMany("Invoices")
                         .HasForeignKey("TransportOrderId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Customer");
@@ -2234,7 +2301,7 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.HasOne("TruckingSystem.Domain.Entities.Invoice", "Invoice")
                         .WithMany("Payments")
                         .HasForeignKey("InvoiceId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Invoice");
@@ -2285,7 +2352,7 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.HasOne("TruckingSystem.Domain.Entities.StorageBin", "StorageBin")
                         .WithMany("Assignments")
                         .HasForeignKey("StorageBinId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("GoodsReceipt");
@@ -2320,7 +2387,7 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.HasOne("TruckingSystem.Domain.Entities.Customer", "Customer")
                         .WithMany("TransportOrders")
                         .HasForeignKey("CustomerId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("TruckingSystem.Domain.Entities.Location", "DropoffLocation")
@@ -2340,7 +2407,7 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.HasOne("TruckingSystem.Domain.Entities.Warehouse", "Warehouse")
                         .WithMany()
                         .HasForeignKey("WarehouseId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Customer");
@@ -2365,7 +2432,7 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.HasOne("TruckingSystem.Domain.Entities.TransportOrder", "TransportOrder")
                         .WithMany("Trips")
                         .HasForeignKey("TransportOrderId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("TruckingSystem.Domain.Entities.Vehicle", "Vehicle")
@@ -2464,13 +2531,13 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.HasOne("TruckingSystem.Domain.Entities.CargoLine", "CargoLine")
                         .WithMany()
                         .HasForeignKey("CargoLineId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("TruckingSystem.Domain.Entities.Warehouse", "Warehouse")
                         .WithMany("Stocks")
                         .HasForeignKey("WarehouseId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("CargoLine");

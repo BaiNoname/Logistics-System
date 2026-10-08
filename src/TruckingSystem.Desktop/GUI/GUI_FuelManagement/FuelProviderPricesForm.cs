@@ -10,7 +10,7 @@ namespace TruckingSystem.Desktop.GUI_FuelManagement
     public partial class FuelProviderPricesForm : BaseForm
     {
         private ApiServices? _api;
-        private int _providerId;
+        private int? _providerId; // null = Giá thị trường chung (không theo hãng)
         private List<FuelPriceHistoryItem> _prices = new();
 
         public FuelProviderPricesForm()
@@ -20,12 +20,38 @@ namespace TruckingSystem.Desktop.GUI_FuelManagement
             grid.DataBindingComplete += (_, _) => { if (grid.Columns["Id"] != null) grid.Columns["Id"]!.Visible = false; };
         }
 
-        public FuelProviderPricesForm(ApiServices api, int providerId, string providerName) : this()
+        public FuelProviderPricesForm(ApiServices api, int? providerId, string providerName) : this()
         {
             _api = api;
             _providerId = providerId;
             Text = $"Giá xăng dầu — {providerName}";
-            Load += async (_, _) => await LoadAsync();
+            Load += async (_, _) =>
+            {
+                await LoadFuelTypesAsync();
+                await LoadAsync();
+            };
+        }
+
+        /// <summary>Dropdown loại nhiên liệu — lấy từ danh mục chuẩn ở server
+        /// (GET /api/fuel/types), không cho gõ tay -> không sai tên.</summary>
+        private async Task LoadFuelTypesAsync()
+        {
+            if (_api is null) return;
+            try
+            {
+                var types = await _api.Connection.GetAsync<List<string>>("/api/fuel/types") ?? new();
+                cboFuelType.Items.Clear();
+                foreach (var t in types) cboFuelType.Items.Add(t);
+                // Mặc định chọn Dầu DO (nhiên liệu của xe tải) nếu có.
+                var diesel = types.FirstOrDefault(t => t.StartsWith("Dầu DO", StringComparison.OrdinalIgnoreCase));
+                if (diesel != null) cboFuelType.SelectedItem = diesel;
+                else if (cboFuelType.Items.Count > 0) cboFuelType.SelectedIndex = 0;
+            }
+            catch (Exception ex)
+            {
+                lblStatus.Text = "Không tải được danh mục nhiên liệu: " + ex.Message;
+                lblStatus.ForeColor = Theme.Danger;
+            }
         }
 
         private async Task LoadAsync()
@@ -34,7 +60,10 @@ namespace TruckingSystem.Desktop.GUI_FuelManagement
             lblStatus.Text = "Đang tải...";
             try
             {
-                _prices = await _api.Fuel.GetPriceHistoryAsync(_providerId);
+                // providerId = null: API trả về TẤT CẢ giá -> chỉ giữ giá không gắn hãng.
+                _prices = (await _api.Fuel.GetPriceHistoryAsync(_providerId))
+                    .Where(p => _providerId.HasValue || p.FuelProviderId == null)
+                    .ToList();
                 grid.DataSource = _prices.Select(p => new
                 {
                     p.Id,
@@ -55,9 +84,9 @@ namespace TruckingSystem.Desktop.GUI_FuelManagement
         private async void BtnAddPrice_Click(object? sender, EventArgs e)
         {
             if (_api is null) return;
-            if (string.IsNullOrWhiteSpace(txtFuelType.Text))
+            if (cboFuelType.SelectedItem is not string fuelType || string.IsNullOrWhiteSpace(fuelType))
             {
-                lblStatus.Text = "Vui lòng nhập loại nhiên liệu (VD: Dầu DO, Xăng RON95).";
+                lblStatus.Text = "Vui lòng chọn loại nhiên liệu.";
                 lblStatus.ForeColor = Theme.Warning;
                 return;
             }
@@ -70,8 +99,7 @@ namespace TruckingSystem.Desktop.GUI_FuelManagement
 
             try
             {
-                await _api.Fuel.CreatePriceAsync(txtFuelType.Text.Trim(), numPrice.Value, dtEffectiveDate.Value, _providerId);
-                txtFuelType.Text = "";
+                await _api.Fuel.CreatePriceAsync(fuelType, numPrice.Value, dtEffectiveDate.Value.Date, _providerId);
                 numPrice.Value = 0;
                 await LoadAsync();
             }

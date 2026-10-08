@@ -49,7 +49,12 @@ public class TripVideosController : ControllerBase
 
         await using var stream = file.OpenReadStream();
         var result = await _videoService.UploadAsync(id, stream, file.FileName, file.ContentType, start, end, ct);
-        if (!result.Success) return BadRequest(new { success = false, message = result.Message });
+        if (!result.Success)
+        {
+            // 409 = "tạm thời chưa nhận, gửi lại sau" -> app GIỮ file; 400 = từ chối hẳn.
+            if (result.Retryable) return StatusCode(StatusCodes.Status409Conflict, new { success = false, retryable = true, message = result.Message });
+            return BadRequest(new { success = false, message = result.Message });
+        }
         return Ok(new { success = true, message = result.Message, segmentId = result.SegmentId });
     }
 

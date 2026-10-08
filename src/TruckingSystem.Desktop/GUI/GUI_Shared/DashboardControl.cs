@@ -43,9 +43,35 @@ namespace TruckingSystem.Desktop.GUI_Shared
         private readonly Label _lblGridTitle = new()
         {
             Text = "📋 Lãi / Lỗ từng đơn (lỗ nặng nhất lên đầu) — double-click 1 đơn để xem chi tiết từng khoản chi",
-            Font = Theme.FontSectionTitle, ForeColor = Theme.TextPrimary, AutoSize = true, Top = 660,
+            Font = Theme.FontSectionTitle,
+            ForeColor = Theme.TextPrimary,
+            AutoSize = true,
+            Top = 660,
         };
         private readonly DataGridView _grid = new() { Top = 694, Height = 420 };
+
+        // ---- Kiểm soát nhiên liệu: Dự toán (VietMap) · Định mức (GPS) · Thực đổ (hóa đơn) ----
+        private readonly Label _lblFuelTitle = new()
+        {
+            Text = "⛽ Kiểm soát nhiên liệu — so sánh Dự toán (VietMap) · Định mức theo GPS thực tế · Thực đổ (hóa đơn)",
+            Font = Theme.FontSectionTitle,
+            ForeColor = Theme.TextPrimary,
+            AutoSize = true,
+            Top = 1134,
+        };
+        private readonly FlowLayoutPanel _kpiFuel = new() { Top = 1168, Height = 120, WrapContents = false };
+        private readonly Label _lblFuelNote = new()
+        {
+            AutoSize = false,
+            Height = 40,
+            Top = 1294,
+            Font = Theme.FontSmall,
+            ForeColor = Theme.TextSecondary,
+            Text = "Định mức = km GPS × L/100km của xe × giá nhiên liệu ngày chạy (bảng giá ở màn Nhiên liệu). " +
+                   "Dòng tô đỏ: lệch quá 15% (km GPS so với km VietMap — có thể chạy vòng/lệch tuyến; hoặc tiền thực đổ so với định mức — có thể hao hụt). " +
+                   "Chuyến chưa nhập hóa đơn xăng thì lãi/lỗ tạm tính theo định mức.",
+        };
+        private readonly DataGridView _gridFuel = new() { Top = 1338, Height = 360 };
 
         public DashboardControl()
         {
@@ -87,7 +113,12 @@ namespace TruckingSystem.Desktop.GUI_Shared
             _chartMonthly.Paint += (_, e) => PaintMonthlyChart(e.Graphics, _chartMonthly.ClientRectangle);
             _chartCosts.Paint += (_, e) => PaintCostChart(e.Graphics, _chartCosts.ClientRectangle);
 
-            _root.Controls.AddRange(new Control[] { _lblTitle, _filterBar, _kpiFinance, _kpiOps, _chartMonthly, _chartCosts, _lblGridTitle, _grid });
+            Theme.StyleGrid(_gridFuel);
+            _gridFuel.DataBindingComplete += GridFuel_DataBindingComplete;
+            _gridFuel.CellFormatting += GridFuel_CellFormatting;
+
+            _root.Controls.AddRange(new Control[] { _lblTitle, _filterBar, _kpiFinance, _kpiOps, _chartMonthly, _chartCosts, _lblGridTitle, _grid,
+                _lblFuelTitle, _kpiFuel, _lblFuelNote, _gridFuel });
             Controls.Add(_root);
 
             _root.Resize += (_, _) => LayoutChildren();
@@ -96,7 +127,11 @@ namespace TruckingSystem.Desktop.GUI_Shared
 
         private static Label FilterLabel(string text) => new()
         {
-            Text = text, AutoSize = true, Font = Theme.FontNormal, ForeColor = Theme.TextSecondary, Margin = new Padding(0, 8, 6, 0),
+            Text = text,
+            AutoSize = true,
+            Font = Theme.FontNormal,
+            ForeColor = Theme.TextSecondary,
+            Margin = new Padding(0, 8, 6, 0),
         };
 
         /// <summary>Co giãn theo chiều ngang khung nhìn: 2 biểu đồ chia đôi, bảng
@@ -106,8 +141,9 @@ namespace TruckingSystem.Desktop.GUI_Shared
         {
             var x = _root.AutoScrollPosition.X;
             var w = Math.Max(900, _root.ClientSize.Width - 24);
-            foreach (var c in new Control[] { _lblTitle, _filterBar, _kpiFinance, _kpiOps, _lblGridTitle, _grid }) c.Left = x;
+            foreach (var c in new Control[] { _lblTitle, _filterBar, _kpiFinance, _kpiOps, _lblGridTitle, _grid, _lblFuelTitle, _kpiFuel, _lblFuelNote, _gridFuel }) c.Left = x;
             _filterBar.Width = _kpiFinance.Width = _kpiOps.Width = _grid.Width = w;
+            _kpiFuel.Width = _lblFuelNote.Width = _gridFuel.Width = w;
 
             var half = (w - 16) / 2;
             _chartMonthly.Left = x;
@@ -148,6 +184,13 @@ namespace TruckingSystem.Desktop.GUI_Shared
                 return;
             }
 
+            if (!_api.Connection.IsInRole("Admin", "Dispatcher", "Accountant"))
+            {
+                _lblStatus.Text = "Báo cáo tài chính chỉ dành cho Quản trị / Điều phối / Kế toán.";
+                _lblStatus.ForeColor = Theme.Warning;
+                return;
+            }
+
             _btnRefresh.Enabled = false;
             _lblStatus.Text = "Đang tải báo cáo...";
             _lblStatus.ForeColor = Theme.TextSecondary;
@@ -157,16 +200,20 @@ namespace TruckingSystem.Desktop.GUI_Shared
 
                 // Thông tin vận hành tức thời (không phụ thuộc kỳ) — lỗi cũng không sao.
                 int availableVehicles = 0, totalVehicles = 0;
-                try
-                {
-                    var vehicles = await _api.Vehicles.GetVehiclesAsync();
-                    totalVehicles = vehicles.Count;
-                    availableVehicles = vehicles.Count(v => v.Status == "Available");
-                }
-                catch { }
+                // Danh sách xe chỉ Quản trị / Điều phối được xem (Kế toán gọi sẽ bị 403
+                // -> thẻ hiện "0/0" sai sự thật) -> vai trò khác bỏ qua, thẻ hiện "—".
+                if (_api.Connection.IsInRole("Admin", "Dispatcher"))
+                    try
+                    {
+                        var vehicles = await _api.Vehicles.GetVehiclesAsync();
+                        totalVehicles = vehicles.Count;
+                        availableVehicles = vehicles.Count(v => v.Status == "Available");
+                    }
+                    catch { }
 
                 RenderKpis(_report, availableVehicles, totalVehicles);
                 RenderGrid(_report);
+                RenderFuelControl(_report);
                 _chartMonthly.Invalidate();
                 _chartCosts.Invalidate();
 
@@ -198,7 +245,10 @@ namespace TruckingSystem.Desktop.GUI_Shared
             _kpiFinance.Controls.Add(MakeCard(isProfit ? "📈" : "📉", isProfit ? "Lãi" : "Lỗ", ReportFormat.Money(r.Profit), profitColor, profitColor,
                 r.MarginPercent.HasValue ? $"Biên lợi nhuận: {r.MarginPercent:0.#}%" : "Chưa có doanh thu để tính biên", ReportFormat.FullMoney(r.Profit)));
             _kpiFinance.Controls.Add(MakeCard("⛽", "Chi phí nhiên liệu", ReportFormat.Money(r.FuelCost), Theme.Primary, Theme.TextPrimary,
-                $"{ReportFormat.Percent(r.FuelCost, r.TotalCost)} tổng chi phí", ReportFormat.FullMoney(r.FuelCost)));
+                r.TripsUsingFuelEstimate > 0
+                    ? $"{r.TripsUsingFuelEstimate} chuyến tạm tính theo định mức"
+                    : $"{ReportFormat.Percent(r.FuelCost, r.TotalCost)} tổng chi phí",
+                $"{ReportFormat.FullMoney(r.FuelCost)} = thực đổ (hóa đơn) + tạm tính theo định mức GPS cho chuyến chưa nhập hóa đơn"));
             _kpiFinance.Controls.Add(MakeCard("⚠️", "Sự cố + phát sinh", ReportFormat.Money(r.IncidentCost + r.ExpenseCost), Theme.Danger, Theme.TextPrimary,
                 $"Riêng sự cố: {ReportFormat.Money(r.IncidentCost)}", ReportFormat.FullMoney(r.IncidentCost + r.ExpenseCost)));
 
@@ -214,8 +264,9 @@ namespace TruckingSystem.Desktop.GUI_Shared
             _kpiOps.Controls.Add(MakeCard("🧾", "Đơn xong chưa xuất HĐ", r.UninvoicedDoneOrders.ToString(), Theme.Warning,
                 r.UninvoicedDoneOrders > 0 ? Theme.Warning : Theme.TextPrimary,
                 r.UninvoicedDoneOrders > 0 ? "Doanh thu chưa được ghi nhận" : "Đã xuất đủ hóa đơn", null));
-            _kpiOps.Controls.Add(MakeCard("🚛", "Xe sẵn sàng (hiện tại)", $"{availableVehicles}/{totalVehicles}", Theme.Success, Theme.TextPrimary,
-                "Không phụ thuộc kỳ báo cáo", null));
+            _kpiOps.Controls.Add(MakeCard("🚛", "Xe sẵn sàng (hiện tại)",
+                totalVehicles > 0 ? $"{availableVehicles}/{totalVehicles}" : "—", Theme.Success, Theme.TextPrimary,
+                totalVehicles > 0 ? "Không phụ thuộc kỳ báo cáo" : "Không có quyền xem danh sách xe", null));
         }
 
         private static Panel MakeCard(string icon, string label, string value, Color accent, Color valueColor, string sub, string? tooltip)
@@ -234,8 +285,14 @@ namespace TruckingSystem.Desktop.GUI_Shared
             var lblValue = new Label { Text = value, Font = KpiValueFont, ForeColor = valueColor, AutoSize = true, Left = 14, Top = 38 };
             var lblSub = new Label
             {
-                Text = sub, Font = Theme.FontSmall, ForeColor = Theme.TextSecondary,
-                Left = 14, Top = 80, Width = card.Width - 22, Height = 20, AutoEllipsis = true,
+                Text = sub,
+                Font = Theme.FontSmall,
+                ForeColor = Theme.TextSecondary,
+                Left = 14,
+                Top = 80,
+                Width = card.Width - 22,
+                Height = 20,
+                AutoEllipsis = true,
             };
             card.Controls.AddRange(new Control[] { lblIcon, lblLabel, lblValue, lblSub });
 
@@ -313,6 +370,94 @@ namespace TruckingSystem.Desktop.GUI_Shared
 
             using var f = new OrderCostDetailForm(_api, orderId);
             f.ShowDialog(FindForm());
+        }
+
+        // ================= Kiểm soát nhiên liệu =================
+
+        private void RenderFuelControl(ProfitReport r)
+        {
+            var rows = r.FuelControl ?? new List<FuelControlRowItem>();
+            var flagged = rows.Count(x => x.Flagged);
+
+            _kpiFuel.Controls.Clear();
+            _kpiFuel.Controls.Add(MakeCard("🗺️", "Dự toán (VietMap)", ReportFormat.Money(r.FuelPlannedCost), Theme.Primary, Theme.TextPrimary,
+                "Km tuyến dự kiến × định mức", ReportFormat.FullMoney(r.FuelPlannedCost)));
+            _kpiFuel.Controls.Add(MakeCard("📡", "Định mức (GPS thực tế)", ReportFormat.Money(r.FuelNormCost), Theme.Primary, Theme.TextPrimary,
+                $"Lệch dự toán: {DeviationText(r.FuelNormCost, r.FuelPlannedCost)}", ReportFormat.FullMoney(r.FuelNormCost)));
+            _kpiFuel.Controls.Add(MakeCard("🧾", "Thực đổ (hóa đơn)", ReportFormat.Money(r.FuelActualCost), Theme.Warning, Theme.TextPrimary,
+                r.TripsUsingFuelEstimate > 0 ? $"{r.TripsUsingFuelEstimate} chuyến chưa nhập hóa đơn" : "Đã nhập đủ hóa đơn",
+                ReportFormat.FullMoney(r.FuelActualCost)));
+            _kpiFuel.Controls.Add(MakeCard("🚩", "Chuyến lệch > 15%", $"{flagged}/{rows.Count}", Theme.Danger,
+                flagged > 0 ? Theme.Danger : Theme.TextPrimary,
+                flagged > 0 ? "Xem dòng tô đỏ bên dưới" : "Không có chuyến bất thường", null));
+
+            _gridFuel.DataSource = rows.Select(x => new
+            {
+                Chuyến = $"#{x.TripId}",
+                Đơn = x.OrderCode,
+                Chặng = x.LegType,
+                Xe = x.PlateNumber,
+                Ngày = x.TripDate.ToString("dd/MM/yyyy"),
+                Km_kế_hoạch = x.PlannedKm,
+                Km_GPS = x.GpsKm,
+                Lệch_km = x.KmDeviationPct.HasValue ? $"{x.KmDeviationPct:+0.#;-0.#;0}%" : "",
+                Dự_toán = x.PlannedCost,
+                Định_mức_GPS = x.NormCost,
+                Thực_đổ = x.HasActual ? x.ActualCost : (decimal?)null,
+                Lệch_tiền = x.CostDeviationPct.HasValue ? $"{x.CostDeviationPct:+0.#;-0.#;0}%" : "",
+                Ghi_chú = FuelNote(x),
+                Cờ = x.Flagged,
+            }).ToList();
+        }
+
+        private static string DeviationText(decimal value, decimal baseline)
+            => baseline > 0 ? $"{(value - baseline) / baseline * 100:+0.#;-0.#;0}%" : "—";
+
+        private static string FuelNote(FuelControlRowItem x)
+        {
+            if (!string.IsNullOrEmpty(x.Note)) return "⚠️ " + x.Note;
+            var notes = new List<string>();
+            if (x.KmDeviationPct is > 15) notes.Add("Chạy dài hơn tuyến dự kiến");
+            if (x.KmDeviationPct is < -15) notes.Add("Km GPS thiếu (mất sóng?)");
+            if (x.CostDeviationPct is > 15) notes.Add("Đổ nhiều hơn định mức");
+            if (x.CostDeviationPct is < -15) notes.Add("Đổ ít hơn định mức (chưa nhập đủ hóa đơn?)");
+            if (!x.HasActual) notes.Add("Chưa nhập hóa đơn xăng");
+            return string.Join(" · ", notes);
+        }
+
+        private static readonly string[] FuelMoneyColumns = { "Dự_toán", "Định_mức_GPS", "Thực_đổ" };
+
+        private void GridFuel_DataBindingComplete(object? sender, DataGridViewBindingCompleteEventArgs e)
+        {
+            if (_gridFuel.Columns["Cờ"] is { } flagCol) flagCol.Visible = false;
+            foreach (var name in FuelMoneyColumns)
+            {
+                if (_gridFuel.Columns[name] is not { } col) continue;
+                col.DefaultCellStyle.Format = "N0";
+                col.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+            }
+            foreach (var name in new[] { "Km_kế_hoạch", "Km_GPS", "Lệch_km", "Lệch_tiền" })
+                if (_gridFuel.Columns[name] is { } col) col.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+
+            foreach (DataGridViewRow row in _gridFuel.Rows)
+                if (row.Cells["Cờ"].Value is true)
+                    row.DefaultCellStyle.BackColor = ColorTranslator.FromHtml("#FEE2E2");
+        }
+
+        private void GridFuel_CellFormatting(object? sender, DataGridViewCellFormattingEventArgs e)
+        {
+            var name = _gridFuel.Columns[e.ColumnIndex].Name;
+            if ((name == "Lệch_km" || name == "Lệch_tiền") && e.Value is string s && s.Length > 0)
+            {
+                var number = decimal.TryParse(s.TrimEnd('%').Replace("+", ""), System.Globalization.NumberStyles.Any,
+                    System.Globalization.CultureInfo.CurrentCulture, out var v) ? v : 0;
+                e.CellStyle!.ForeColor = Math.Abs(number) > 15 ? Theme.Danger : Theme.TextSecondary;
+                if (Math.Abs(number) > 15) e.CellStyle.Font = Theme.FontBold;
+            }
+            else if (name == "Ghi_chú" && e.Value is string note && note.StartsWith("⚠️"))
+            {
+                e.CellStyle!.ForeColor = Theme.Warning;
+            }
         }
 
         // ================= Biểu đồ (vẽ tay, không cần thư viện ngoài) =================

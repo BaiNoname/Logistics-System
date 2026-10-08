@@ -6,6 +6,18 @@ namespace TruckingSystem.Application.Fuel;
 
 public class FuelService : IFuelService
 {
+    /// <summary>DANH MỤC loại nhiên liệu chuẩn — nguồn DUY NHẤT cho các dropdown
+    /// (thêm giá ở màn Nhiên liệu). Xe tải chủ yếu chạy Dầu DO (diesel); các loại
+    /// xăng dành cho xe tải nhẹ/van chạy máy xăng. Muốn thêm loại mới chỉ cần
+    /// thêm vào danh sách này.</summary>
+    public static readonly string[] StandardFuelTypes =
+    {
+        "Dầu DO",
+        "Xăng RON95",
+        "Xăng E5 RON92",
+        "Xăng E10 RON95",
+    };
+
     private readonly IApplicationDbContext _db;
 
     public FuelService(IApplicationDbContext db)
@@ -59,18 +71,49 @@ public class FuelService : IFuelService
             .ToListAsync();
     }
 
+    public async Task<List<string>> GetFuelTypesAsync(bool pricedOnly)
+    {
+        var priced = await _db.FuelPriceHistories.Select(p => p.FuelType).Distinct().ToListAsync();
+        // Danh mục = loại chuẩn + loại đã có trong bảng giá (dữ liệu cũ). KHÔNG lấy từ
+        // xe nữa — trước đây gõ sai trên xe sẽ thành 1 "loại hợp lệ" trong danh mục.
+        IEnumerable<string> all = pricedOnly ? priced : StandardFuelTypes.Concat(priced);
+        return all
+            .Select(t => t.Trim())
+            .Where(t => t.Length > 0)
+            .GroupBy(t => t, StringComparer.OrdinalIgnoreCase)
+            .Select(g => g.First())
+            .OrderBy(t => t)
+            .ToList();
+    }
+
     public async Task<FuelPriceHistoryDto> CreatePriceAsync(CreateFuelPriceRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.FuelType))
-            throw new InvalidOperationException("Vui lòng nhập loại nhiên liệu.");
+            throw new InvalidOperationException("Vui lòng chọn loại nhiên liệu.");
         if (request.Price <= 0)
             throw new InvalidOperationException("Giá phải lớn hơn 0.");
 
+        // Chỉ nhận loại nhiên liệu có trong danh mục (chọn từ dropdown) — tránh
+        // gõ sai tên khiến xe không tìm được đơn giá ("Dầu DO" vs "dau do ").
+        var allowed = await GetFuelTypesAsync(pricedOnly: false);
+        var fuelType = allowed.FirstOrDefault(t => string.Equals(t, request.FuelType.Trim(), StringComparison.OrdinalIgnoreCase));
+        if (fuelType is null)
+            throw new InvalidOperationException($"Loại nhiên liệu \"{request.FuelType}\" không có trong danh mục.");
+
+        if (request.FuelProviderId.HasValue && !await _db.FuelProviders.AnyAsync(p => p.Id == request.FuelProviderId.Value))
+            throw new InvalidOperationException("Hãng nhiên liệu không tồn tại.");
+
+        var effectiveDate = request.EffectiveDate.Date;
+        var duplicate = await _db.FuelPriceHistories.AnyAsync(p =>
+            p.FuelProviderId == request.FuelProviderId && p.FuelType == fuelType && p.EffectiveDate.Date == effectiveDate);
+        if (duplicate)
+            throw new InvalidOperationException($"Đã có giá \"{fuelType}\" áp dụng ngày {effectiveDate:dd/MM/yyyy} cho hãng này — xóa giá cũ trước nếu muốn nhập lại.");
+
         var price = new FuelPriceHistory
         {
-            FuelType = request.FuelType,
+            FuelType = fuelType,
             Price = request.Price,
-            EffectiveDate = request.EffectiveDate,
+            EffectiveDate = effectiveDate,
             FuelProviderId = request.FuelProviderId,
         };
         _db.FuelPriceHistories.Add(price);

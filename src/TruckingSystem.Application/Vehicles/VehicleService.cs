@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using TruckingSystem.Application.Common;
 using TruckingSystem.Application.Common.Interfaces;
 using TruckingSystem.Domain.Entities;
 using TruckingSystem.Domain.Enums;
@@ -25,15 +26,22 @@ public class VehicleService : IVehicleService
 
     public async Task<VehicleListItemDto> CreateAsync(CreateVehicleRequest request)
     {
+        var plate = (request.PlateNumber ?? "").Trim().ToUpperInvariant(); // lưu biển số IN HOA (khớp ràng buộc UNIQUE)
+        if (plate.Length == 0) throw new InvalidOperationException("Biển số xe không được để trống.");
+        if (await PlateExistsAsync(plate, excludeId: null))
+            throw new InvalidOperationException($"Biển số {plate} đã tồn tại trong hệ thống.");
+        var (fuelTypeOk, fuelType) = await NormalizeFuelTypeAsync(request.FuelType);
+        if (!fuelTypeOk) throw new InvalidOperationException($"Loại nhiên liệu \"{request.FuelType}\" không có trong danh mục.");
+
         var vehicle = new Vehicle
         {
-            PlateNumber = request.PlateNumber,
+            PlateNumber = plate,
             VehicleType = request.VehicleType,
             CapacityQty = request.CapacityQty,
             CapacityKg = request.CapacityKg,
             CapacityM3 = request.CapacityM3,
             FuelConsumptionPer100Km = request.FuelConsumptionPer100Km,
-            FuelType = request.FuelType,
+            FuelType = fuelType,
             WarehouseId = request.WarehouseId,
             Status = VehicleStatus.Available,
         };
@@ -53,17 +61,73 @@ public class VehicleService : IVehicleService
         var vehicle = await _db.Vehicles.FindAsync(id);
         if (vehicle is null) return new VehicleActionResult(false, "Không tìm thấy xe.");
 
-        if (!Enum.TryParse<VehicleStatus>(request.Status, out var status))
+        if (!Enum.TryParse<VehicleStatus>(request.Status, out var status) || !Enum.IsDefined(status))
             return new VehicleActionResult(false, "Trạng thái không hợp lệ.");
 
-        vehicle.PlateNumber = request.PlateNumber;
+        var plate = (request.PlateNumber ?? "").Trim().ToUpperInvariant(); // lưu biển số IN HOA (khớp ràng buộc UNIQUE)
+        if (plate.Length == 0) return new VehicleActionResult(false, "Biển số xe không được để trống.");
+        if (await PlateExistsAsync(plate, excludeId: id))
+            return new VehicleActionResult(false, $"Biển số {plate} đã tồn tại trong hệ thống.");
+        var (fuelTypeOk, fuelType) = await NormalizeFuelTypeAsync(request.FuelType);
+        if (!fuelTypeOk) return new VehicleActionResult(false, $"Loại nhiên liệu \"{request.FuelType}\" không có trong danh mục.");
+
+        // Trạng thái "Đang chạy" do HỆ THỐNG quản lý (Chia xe đặt, hoàn tất/hủy
+        // chuyến trả về) — không cho sửa tay, tránh xe bị "Rảnh" khi vẫn còn chuyến
+        // (bị Chia xe lần 2 cho đơn khác) hoặc kẹt "Đang chạy" mãi khi không có chuyến.
+        var activeTripIds = await _db.Trips
+            .Where(t => t.VehicleId == id &&
+                        (t.Status == TripStatus.Planned || t.Status == TripStatus.InProgress || t.Status == TripStatus.PendingConfirmation))
+            .Select(t => t.Id)
+            .ToListAsync();
+        var tripListText = string.Join(", #", activeTripIds);
+
+        if (status != vehicle.Status)
+        {
+            if (status == VehicleStatus.OnTrip)
+                return new VehicleActionResult(false, "Không thể tự đặt trạng thái \"Đang chạy\" — trạng thái này do hệ thống gán khi Chia xe.");
+
+            if (status == VehicleStatus.Available && activeTripIds.Count > 0)
+            {
+                if (vehicle.Status is VehicleStatus.UnderMaintenance or VehicleStatus.OutOfService)
+                    status = VehicleStatus.OnTrip; // sửa xong mà xe vẫn còn chuyến -> quay lại "Đang chạy" để chạy tiếp
+                else
+                    return new VehicleActionResult(false,
+                        $"Xe còn chuyến chưa xong (#{tripListText}) — không thể đặt \"Rảnh\". Xe tự rảnh lại khi các chuyến này hoàn tất hoặc bị hủy.");
+            }
+            // Bảo trì khi còn chuyến: VẪN cho (xe hỏng giữa chừng, sửa xong chạy tiếp) —
+            // chuyến chưa chạy sẽ bị chặn lúc Bắt đầu cho tới khi xe sẵn sàng lại.
+            // Ngưng hoạt động (bỏ xe hẳn) khi còn chuyến: CHẶN — chuyến không bao giờ chạy
+            // được, tài xế bị tính "đang bận" mãi, đơn không chia xe lại được.
+            if (status == VehicleStatus.OutOfService && activeTripIds.Count > 0)
+                return new VehicleActionResult(false,
+                    $"Xe còn chuyến chưa xong (#{tripListText}) — không thể đặt \"Ngưng hoạt động\". " +
+                    "Nếu xe hỏng tạm thời, chọn \"Bảo trì\"; nếu bỏ xe hẳn, hãy hủy đơn của các chuyến này trước.");
+        }
+
+        // Không giảm sức chứa xuống DƯỚI lượng hàng đã xếp cho 1 chuyến còn chưa xong của xe.
+        if (activeTripIds.Count > 0 && request.CapacityQty < vehicle.CapacityQty)
+        {
+            var maxPlannedQty = await _db.Trips
+                .Where(t => activeTripIds.Contains(t.Id))
+                .Select(t => t.TripLines.Sum(l => (decimal?)l.QtyPlanned) ?? 0m)
+                .MaxAsync();
+            if (request.CapacityQty < maxPlannedQty)
+                return new VehicleActionResult(false,
+                    $"Xe đang được xếp {maxPlannedQty:0.##} đơn vị hàng cho chuyến chưa xong (#{tripListText}) — không thể giảm sức chứa xuống {request.CapacityQty:0.##}.");
+        }
+
+        if (request.WarehouseId != vehicle.WarehouseId && activeTripIds.Count > 0)
+            return new VehicleActionResult(false,
+                $"Xe còn chuyến chưa xong (#{tripListText}) — chưa thể đổi kho đóng quân.");
+
+        vehicle.PlateNumber = plate;
         vehicle.VehicleType = request.VehicleType;
         vehicle.CapacityQty = request.CapacityQty;
         vehicle.CapacityKg = request.CapacityKg;
         vehicle.CapacityM3 = request.CapacityM3;
         vehicle.Status = status;
         vehicle.FuelConsumptionPer100Km = request.FuelConsumptionPer100Km;
-        vehicle.FuelType = request.FuelType;
+        vehicle.FuelType = fuelType;
         vehicle.WarehouseId = request.WarehouseId;
 
         await _db.SaveChangesAsync();
@@ -79,12 +143,40 @@ public class VehicleService : IVehicleService
             .ToListAsync();
     }
 
+    /// <summary>Loại nhiên liệu của xe phải khớp danh mục (danh mục chuẩn + các loại đã có
+    /// giá) — đưa về ĐÚNG cách viết trong danh mục, để ghi xăng/ước tính tìm được giá.
+    /// Bỏ trống = chưa khai báo (hợp lệ).</summary>
+    private async Task<(bool Ok, string? Value)> NormalizeFuelTypeAsync(string? input)
+    {
+        var typed = (input ?? "").Trim();
+        if (typed.Length == 0) return (true, null);
+        var priced = await _db.FuelPriceHistories.Select(p => p.FuelType).Distinct().ToListAsync();
+        var match = TruckingSystem.Application.Fuel.FuelService.StandardFuelTypes
+            .Concat(priced)
+            .Select(t => t.Trim())
+            .FirstOrDefault(t => string.Equals(t, typed, StringComparison.OrdinalIgnoreCase));
+        return match is null ? (false, null) : (true, match);
+    }
+
+    private Task<bool> PlateExistsAsync(string plate, int? excludeId)
+    {
+        var normalized = plate.ToUpper();
+        return _db.Vehicles.AnyAsync(v => v.PlateNumber.ToUpper() == normalized && (excludeId == null || v.Id != excludeId));
+    }
+
     public async Task<VehicleDocumentDto> CreateDocumentAsync(int vehicleId, CreateVehicleDocumentRequest request)
     {
+        if (!await _db.Vehicles.AnyAsync(v => v.Id == vehicleId))
+            throw new InvalidOperationException("Không tìm thấy xe.");
+
         // Trước đây CHỈ kiểm tra ở Desktop (client-side) — gọi thẳng qua API
         // (Swagger, hoặc app khác) sẽ bỏ qua được, lưu dữ liệu vô lý (hết hạn
         // trước ngày cấp). Kiểm tra lại ở Backend cho chắc chắn.
-        if (request.ExpiryDate <= request.IssueDate)
+        // Chỉ lưu NGÀY (theo lịch VN) — giờ trong ngày làm lệch phép so "còn hạn".
+        // Cắt về ngày TRƯỚC rồi mới so, tránh cùng 1 ngày lọt qua kiểm tra.
+        var issueDate = VnClock.ToVnWallClock(request.IssueDate)!.Value.Date;
+        var expiryDate = VnClock.ToVnWallClock(request.ExpiryDate)!.Value.Date;
+        if (expiryDate <= issueDate)
             throw new InvalidOperationException("Ngày hết hạn phải sau ngày cấp.");
 
         var docType = Enum.TryParse<VehicleDocumentType>(request.DocType, out var parsed) ? parsed : VehicleDocumentType.Other;
@@ -93,8 +185,8 @@ public class VehicleService : IVehicleService
         {
             VehicleId = vehicleId,
             DocType = docType,
-            IssueDate = request.IssueDate,
-            ExpiryDate = request.ExpiryDate,
+            IssueDate = issueDate,
+            ExpiryDate = expiryDate,
             FileUrl = request.FileUrl,
         };
         _db.VehicleDocuments.Add(doc);

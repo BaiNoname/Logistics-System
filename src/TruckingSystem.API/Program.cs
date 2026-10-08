@@ -59,6 +59,8 @@ builder.Services.AddSwaggerGen(options =>
 
 var app = builder.Build();
 
+app.UseMiddleware<TruckingSystem.API.Middleware.DbConflictMiddleware>();
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();

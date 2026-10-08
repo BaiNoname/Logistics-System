@@ -23,6 +23,11 @@ public class TransportOrdersController : ControllerBase
     public async Task<ActionResult<List<TransportOrderListItemDto>>> GetAll()
         => Ok(await _service.GetAllAsync());
 
+    /// <summary>Gợi ý "Loại hàng" cho form tạo đơn.</summary>
+    [HttpGet("cargo-types")]
+    public async Task<ActionResult<List<string>>> GetCargoTypes()
+        => Ok(await _service.GetCargoTypeSuggestionsAsync());
+
     [HttpGet("{id:int}")]
     public async Task<ActionResult<TransportOrderDetailDto>> GetById(int id)
     {

@@ -14,6 +14,9 @@ public class TransportOrderListItem
     /// đơn, khó phân biệt khi có nhiều đơn (nhân viên kho dễ chọn nhầm đơn).</summary>
     public string DisplayText => $"{Code} — {CustomerName}";
     public string PublicTrackingToken { get; set; } = "";
+
+    /// <summary>Số chuyến chưa hủy — > 0 nghĩa là đơn đã được chia xe.</summary>
+    public int ActiveTripCount { get; set; }
 }
 
 public class CargoLineItem
@@ -57,6 +60,8 @@ public class TransportOrderDetailItem
     public string PickupMethod { get; set; } = "CompanyPickup";
     public int WarehouseId { get; set; }
     public string WarehouseName { get; set; } = "";
+    public int? PickupLocationId { get; set; }
+    public int? DropoffLocationId { get; set; }
 }
 
 /// <summary>Kết quả thao tác Xác nhận/Hủy đơn.</summary>

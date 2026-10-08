@@ -24,4 +24,18 @@ public class DriversController : ControllerBase
         var drivers = await _driverService.GetAllAsync();
         return Ok(drivers);
     }
+
+    /// <summary>Các ngày làm việc đã đăng ký của 1 tài xế (bảng DriverSchedules).</summary>
+    [HttpGet("{employeeId:int}/workdays")]
+    public async Task<ActionResult<List<DriverWorkDayDto>>> GetWorkDays(int employeeId)
+        => Ok(await _driverService.GetWorkDaysAsync(employeeId));
+
+    /// <summary>Đăng ký ngày làm việc theo khoảng ngày (không chọn ca).</summary>
+    [HttpPost("{employeeId:int}/workdays")]
+    public async Task<ActionResult<DriverWorkDayResult>> RegisterWorkDays(int employeeId, [FromBody] RegisterWorkDaysRequest request)
+        => Ok(await _driverService.RegisterWorkDaysAsync(employeeId, request));
+
+    [HttpDelete("workdays/{id:int}")]
+    public async Task<ActionResult<DriverWorkDayResult>> DeleteWorkDay(int id)
+        => Ok(await _driverService.DeleteWorkDayAsync(id));
 }

@@ -429,7 +429,8 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
             btnComplete.Enabled = st == "InProgress";
             btnApprove.Enabled = st == "PendingConfirmation";
             btnReject.Enabled = st == "PendingConfirmation";
-            btnFuel.Enabled = hasRun;
+            // Chuyến hủy vẫn mở được form xăng: xem lịch sử; ghi thêm chỉ khi chuyến đã từng chạy (server quyết định).
+            btnFuel.Enabled = hasRun || st == "Cancelled";
             btnFuelEstimate.Enabled = hasRun;
             btnExpenses.Enabled = hasRun || st == "Cancelled";
             btnIncidents.Enabled = hasRun || st == "Cancelled";

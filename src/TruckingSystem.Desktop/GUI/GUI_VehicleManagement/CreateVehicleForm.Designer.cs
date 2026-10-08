@@ -30,7 +30,7 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
             this.lblCapacityKg = new System.Windows.Forms.Label();
             this.lblCapacityM3 = new System.Windows.Forms.Label();
             this.txtPlateNumber = new System.Windows.Forms.TextBox();
-            this.txtVehicleType = new System.Windows.Forms.TextBox();
+            this.cboVehicleType = new System.Windows.Forms.ComboBox();
             this.numCapacityQty = new System.Windows.Forms.NumericUpDown();
             this.numCapacityKg = new System.Windows.Forms.NumericUpDown();
             this.numCapacityM3 = new System.Windows.Forms.NumericUpDown();
@@ -89,12 +89,12 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
             this.txtPlateNumber.Name = "txtPlateNumber";
             this.txtPlateNumber.Size = new System.Drawing.Size(220, 23);
             //
-            // txtVehicleType
+            // cboVehicleType
             //
-            this.txtVehicleType.Location = new System.Drawing.Point(150, 55);
-            this.txtVehicleType.Name = "txtVehicleType";
-            this.txtVehicleType.Size = new System.Drawing.Size(220, 23);
-            this.txtVehicleType.Text = "Xe tải 5 tấn";
+            this.cboVehicleType.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cboVehicleType.Location = new System.Drawing.Point(150, 55);
+            this.cboVehicleType.Name = "cboVehicleType";
+            this.cboVehicleType.Size = new System.Drawing.Size(220, 23);
             //
             // numCapacityQty
             //
@@ -199,7 +199,7 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
             this.Controls.Add(this.lblCapacityKg);
             this.Controls.Add(this.lblCapacityM3);
             this.Controls.Add(this.txtPlateNumber);
-            this.Controls.Add(this.txtVehicleType);
+            this.Controls.Add(this.cboVehicleType);
             this.Controls.Add(this.numCapacityQty);
             this.Controls.Add(this.numCapacityKg);
             this.Controls.Add(this.numCapacityM3);
@@ -232,7 +232,7 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
         private System.Windows.Forms.Label lblCapacityKg;
         private System.Windows.Forms.Label lblCapacityM3;
         private System.Windows.Forms.TextBox txtPlateNumber;
-        private System.Windows.Forms.TextBox txtVehicleType;
+        private System.Windows.Forms.ComboBox cboVehicleType;
         private System.Windows.Forms.NumericUpDown numCapacityQty;
         private System.Windows.Forms.NumericUpDown numCapacityKg;
         private System.Windows.Forms.NumericUpDown numCapacityM3;
