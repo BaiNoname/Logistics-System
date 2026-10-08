@@ -26,6 +26,15 @@ public interface ITripService
     /// <summary>Ghi nhận 1 lần đổ xăng thực tế — tạo FuelLog, cộng dồn vào Trip.ActualFuelCost.</summary>
     Task<TripActionResult> RecordFuelAsync(int id, RecordFuelRequest request);
 
+    /// <summary>Lịch sử các lần đổ xăng của 1 chuyến.</summary>
+    Task<List<FuelLogDto>> GetFuelLogsAsync(int tripId);
+
+    /// <summary>Đơn giá tự động theo hãng (null = giá thị trường chung) + loại nhiên liệu của xe.</summary>
+    Task<FuelPriceQuoteDto> GetFuelPriceQuoteAsync(int tripId, int? fuelProviderId);
+
+    /// <summary>Xóa 1 lần đổ xăng ghi nhầm (trừ lại chi phí xăng thực tế của chuyến).</summary>
+    Task<TripActionResult> DeleteFuelLogAsync(int fuelLogId);
+
     // ---- App tài xế (đã có từ trước, giữ nguyên chữ ký) ----
     Task<ServiceResult> PingAsync(int tripId, GpsPingRequest request);
 

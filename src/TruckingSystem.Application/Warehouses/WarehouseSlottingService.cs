@@ -104,7 +104,8 @@ public class WarehouseSlottingService : IWarehouseSlottingService
             : new HashSet<int>();
 
         var committedDate = cargo.TransportOrder.CommittedDeliveryDate;
-        var isUrgent = committedDate.HasValue && (committedDate.Value - DateTime.UtcNow).TotalDays <= 3;
+        // Hạn giao cam kết lưu theo GIỜ VIỆT NAM -> so với giờ VN hiện tại (trước đây so với UTC, lệch 7 tiếng).
+        var isUrgent = committedDate.HasValue && (committedDate.Value - DateTime.UtcNow.AddHours(7)).TotalDays <= 3;
         var qty = request.QtyToStore;
 
         SuggestBinResponse Found(List<SuggestedAllocationDto> allocations, string? note)
@@ -468,6 +469,14 @@ public class WarehouseSlottingService : IWarehouseSlottingService
 
         var zoneType = Enum.TryParse<ZoneType>(request.ZoneType, out var parsed) ? parsed : ZoneType.Normal;
 
+        // Đổi LOẠI khu (Thường / Dễ vỡ / Nguy hiểm) khi khu đang chứa hàng -> hàng nằm
+        // sai loại khu (VD hóa chất trong khu thường). Phải xuất/chuyển hết hàng trước.
+        // Xét cả SỐ LƯỢNG hàng thật (giống khi xóa khu) — m³ có thể làm tròn về 0 dù vẫn còn hàng.
+        if (zoneType != zone.ZoneType &&
+            (await _db.StorageBins.AnyAsync(b => b.WarehouseZoneId == zoneId && b.CurrentUsedM3 > 0) ||
+             await _db.StorageAssignments.AnyAsync(a => a.StorageBin.WarehouseZoneId == zoneId && a.QtyStored > 0)))
+            return new WarehouseActionResult(false, "Khu vực đang chứa hàng — không thể đổi loại khu. Xuất hết hàng trong khu trước.");
+
         zone.Name = request.Name;
         zone.ZoneType = zoneType;
         zone.PosX = request.PosX;
@@ -483,6 +492,9 @@ public class WarehouseSlottingService : IWarehouseSlottingService
     {
         var zone = await _db.WarehouseZones.FindAsync(zoneId);
         if (zone is null) throw new InvalidOperationException("Không tìm thấy khu vực.");
+
+        var codeError = await ValidateBinCodeAsync(zone.WarehouseId, request.Code, excludeBinId: null);
+        if (codeError is not null) throw new InvalidOperationException(codeError);
 
         // CHẶN vị trí vượt ra NGOÀI ranh giới khu vực chứa nó — đúng thực tế
         // vật lý: 1 vị trí lưu trữ không thể to hơn hoặc tràn ra khỏi khu vực.
@@ -502,7 +514,7 @@ public class WarehouseSlottingService : IWarehouseSlottingService
         var bin = new StorageBin
         {
             WarehouseZoneId = zoneId,
-            Code = request.Code,
+            Code = (request.Code ?? "").Trim(),
             CapacityM3 = request.CapacityM3,
             MaxWeightKg = request.MaxWeightKg,
             PosX = request.PosX,
@@ -520,15 +532,40 @@ public class WarehouseSlottingService : IWarehouseSlottingService
         return new StorageBinDto(bin.Id, bin.Code, bin.CapacityM3, bin.CurrentUsedM3, bin.MaxWeightKg, bin.PosX, bin.PosY, bin.WidthMeters, bin.HeightMeters, bin.DistanceFromDoorMeters, new List<BinContentItemDto>());
     }
 
+    /// <summary>Mã vị trí phải có và KHÔNG trùng trong cùng 1 kho — mã dùng để
+    /// thủ kho tìm hàng, trùng mã là lấy nhầm hàng.</summary>
+    private async Task<string?> ValidateBinCodeAsync(int warehouseId, string? code, int? excludeBinId)
+    {
+        var normalized = (code ?? "").Trim().ToUpper();
+        if (normalized.Length == 0) return "Mã vị trí không được để trống.";
+        var duplicate = await _db.StorageBins.AnyAsync(b =>
+            b.WarehouseZone.WarehouseId == warehouseId && b.Code.Trim().ToUpper() == normalized &&
+            (excludeBinId == null || b.Id != excludeBinId));
+        return duplicate ? $"Mã vị trí \"{code!.Trim()}\" đã có trong kho này — chọn mã khác." : null;
+    }
+
     public async Task<WarehouseActionResult> UpdateBinAsync(int binId, CreateBinRequest request)
     {
-        var bin = await _db.StorageBins.Include(b => b.WarehouseZone).FirstOrDefaultAsync(b => b.Id == binId);
+        var bin = await _db.StorageBins
+            .Include(b => b.WarehouseZone)
+            .Include(b => b.Assignments.Where(a => a.QtyStored > 0))
+                .ThenInclude(a => a.GoodsReceipt).ThenInclude(r => r.CargoLine)
+            .FirstOrDefaultAsync(b => b.Id == binId);
         if (bin is null) return new WarehouseActionResult(false, "Không tìm thấy vị trí.");
 
         if (request.CapacityM3 < bin.CurrentUsedM3)
             return new WarehouseActionResult(false, $"Sức chứa mới ({request.CapacityM3} m³) nhỏ hơn lượng hàng đang chứa ({bin.CurrentUsedM3} m³) — không thể sửa.");
 
+        // Tải trọng tối đa mới cũng không được nhỏ hơn khối lượng hàng đang nằm trong ô
+        // (0 = không giới hạn tải trọng, giống quy ước khi xếp hàng).
+        var currentKg = CurrentWeightKg(bin);
+        if (request.MaxWeightKg > 0 && request.MaxWeightKg < currentKg)
+            return new WarehouseActionResult(false, $"Tải trọng tối đa mới ({request.MaxWeightKg:0.##} kg) nhỏ hơn khối lượng hàng đang chứa ({currentKg:0.##} kg) — không thể sửa.");
+
         var zone = bin.WarehouseZone;
+        var codeError = await ValidateBinCodeAsync(zone.WarehouseId, request.Code, excludeBinId: bin.Id);
+        if (codeError is not null) return new WarehouseActionResult(false, codeError);
+
         if (request.PosX < 0 || request.PosY < 0 || request.PosX + request.WidthMeters > zone.WidthMeters || request.PosY + request.HeightMeters > zone.HeightMeters)
             return new WarehouseActionResult(false, $"Vị trí này vượt ra NGOÀI ranh giới khu vực \"{zone.Name}\" (khu vực rộng {zone.WidthMeters}m x {zone.HeightMeters}m) — chỉnh lại tọa độ/kích thước cho vừa trong khu vực.");
 
@@ -539,7 +576,7 @@ public class WarehouseSlottingService : IWarehouseSlottingService
         if (overlappingBin is not null)
             return new WarehouseActionResult(false, $"Vị trí này đè lên vị trí \"{overlappingBin.Code}\" đã có — chọn tọa độ khác.");
 
-        bin.Code = request.Code;
+        bin.Code = (request.Code ?? "").Trim();
         bin.CapacityM3 = request.CapacityM3;
         bin.MaxWeightKg = request.MaxWeightKg;
         bin.PosX = request.PosX;
@@ -567,6 +604,22 @@ public class WarehouseSlottingService : IWarehouseSlottingService
         if (hasTrips)
             return new WarehouseActionResult(false, "Kho này đang được 1 hoặc nhiều Chuyến (Trip) tham chiếu tới — không thể xóa. Chỉ xóa được kho chưa từng dùng trong bất kỳ chuyến nào.");
 
+        // CHẶN xóa kho còn được ĐƠN HÀNG / XE / TÀI XẾ tham chiếu, hoặc đã có lịch sử
+        // nhập/xuất — xóa kho sẽ XÓA DÂY CHUYỀN (cascade) luôn các đơn hàng (kể cả đơn
+        // Nháp chưa chia xe), hóa đơn và lịch sử kho của đơn đó; còn xe/tài xế thì làm
+        // lỗi khóa ngoại. Chỉ xóa được kho chưa từng dùng.
+        var orderCount = await _db.TransportOrders.CountAsync(o => o.WarehouseId == warehouseId);
+        if (orderCount > 0)
+            return new WarehouseActionResult(false, $"Kho này là kho trung chuyển của {orderCount} đơn hàng — không thể xóa (xóa sẽ mất luôn các đơn và hóa đơn liên quan).");
+        var vehicleCount = await _db.Vehicles.CountAsync(v => v.WarehouseId == warehouseId);
+        var driverCount = await _db.DriverProfiles.CountAsync(d => d.WarehouseId == warehouseId);
+        if (vehicleCount + driverCount > 0)
+            return new WarehouseActionResult(false, $"Còn {vehicleCount} xe và {driverCount} tài xế đóng quân ở kho này — hãy chuyển họ sang kho khác trước khi xóa.");
+        var hasHistory = await _db.GoodsReceipts.AnyAsync(r => r.WarehouseId == warehouseId)
+                         || await _db.GoodsIssues.AnyAsync(i => i.WarehouseId == warehouseId);
+        if (hasHistory)
+            return new WarehouseActionResult(false, "Kho này đã có lịch sử nhập/xuất hàng — không thể xóa (cần giữ lịch sử để đối chiếu).");
+
         var zones = await _db.WarehouseZones.Include(z => z.StorageBins).Where(z => z.WarehouseId == warehouseId).ToListAsync();
         foreach (var zone in zones)
         {
@@ -590,6 +643,13 @@ public class WarehouseSlottingService : IWarehouseSlottingService
         if (zone.StorageBins.Any(b => b.CurrentUsedM3 > 0))
             return new WarehouseActionResult(false, "Khu vực này còn vị trí đang chứa hàng — không thể xóa. Cần xuất hết hàng trước.");
 
+        // Kiểm tra theo SỐ LƯỢNG hàng thật (không chỉ m³ — m³ có thể làm tròn về 0).
+        var binIds = zone.StorageBins.Select(b => b.Id).ToList();
+        if (await _db.StorageAssignments.AnyAsync(a => binIds.Contains(a.StorageBinId) && a.QtyStored > 0))
+            return new WarehouseActionResult(false, "Khu vực này còn hàng trong vị trí — không thể xóa. Cần xuất hết hàng trước.");
+
+        // Lịch sử xếp hàng đã hết (số lượng = 0) thì xóa cùng vị trí.
+        _db.StorageAssignments.RemoveRange(await _db.StorageAssignments.Where(a => binIds.Contains(a.StorageBinId)).ToListAsync());
         _db.StorageBins.RemoveRange(zone.StorageBins);
         _db.WarehouseZones.Remove(zone);
 
@@ -605,13 +665,20 @@ public class WarehouseSlottingService : IWarehouseSlottingService
         if (bin.CurrentUsedM3 > 0)
             return new WarehouseActionResult(false, "Vị trí này đang chứa hàng — không thể xóa. Cần xuất hết hàng trước.");
 
+        // Kiểm tra theo SỐ LƯỢNG hàng thật (m³ có thể bị làm tròn về 0 dù vẫn còn hàng).
+        var assignments = await _db.StorageAssignments.Where(a => a.StorageBinId == binId).ToListAsync();
+        if (assignments.Any(a => a.QtyStored > 0))
+            return new WarehouseActionResult(false, "Vị trí này còn hàng — không thể xóa. Cần xuất hết hàng trước.");
+
+        _db.StorageAssignments.RemoveRange(assignments); // lịch sử xếp hàng đã hết (số lượng = 0)
         _db.StorageBins.Remove(bin);
         await _db.SaveChangesAsync();
         return new WarehouseActionResult(true, null);
     }
 
     public async Task<ReceiveGoodsResult> ReceiveGoodsAsync(int warehouseId, int transportOrderId, int cargoLineId,
-        decimal qty, int? receivedByEmployeeId, int? tripId, int? chosenBinId = null, string? performedByUserName = null)
+        decimal qty, int? receivedByEmployeeId, int? tripId, int? chosenBinId = null, string? performedByUserName = null,
+        bool isManual = false)
     {
         // CHẶN nhập khống — không cho nhập vượt quá số lượng ĐÃ KHAI BÁO trong
         // đơn vận chuyển (CargoLine.QtyTotal), tính cả những lần đã nhập trước
@@ -620,6 +687,9 @@ public class WarehouseSlottingService : IWarehouseSlottingService
         var cargoLine = await _db.CargoLines.Include(c => c.TransportOrder).FirstOrDefaultAsync(c => c.Id == cargoLineId);
         if (cargoLine is null)
             return new ReceiveGoodsResult(false, "Không tìm thấy dòng hàng (CargoLine).", new List<string>());
+        // Dòng hàng phải thuộc ĐÚNG đơn ghi trên phiếu — tránh phiếu nhập ghi nhầm đơn.
+        if (cargoLine.TransportOrderId != transportOrderId)
+            return new ReceiveGoodsResult(false, "Dòng hàng không thuộc đơn hàng đã chọn.", new List<string>());
 
         // CHẶN nhập kho THỦ CÔNG khi đơn CompanyPickup nhưng chặng Lấy hàng
         // CHƯA hoàn tất — về mặt vật lý, hàng KHÔNG THỂ đã có mặt tại kho khi
@@ -640,6 +710,51 @@ public class WarehouseSlottingService : IWarehouseSlottingService
         var alreadyReceived = await _db.GoodsReceipts
             .Where(r => r.CargoLineId == cargoLineId)
             .SumAsync(r => r.QtyReceived);
+
+        // NHẬP TAY: không cho nhập cho đơn đã Hủy / đã Hoàn tất, và phải CHỪA LẠI
+        // phần hàng mà các chuyến Lấy hàng CHƯA xong (chưa hủy) sẽ mang về —
+        // trước đây chỉ cần 1 chuyến lấy hàng xong là nhập tay được tới đủ QtyTotal,
+        // khiến chuyến lấy hàng còn lại bị kẹt "Chờ xác nhận" (duyệt sẽ vượt số lượng).
+        // (isManual = true: thủ kho nhập tay trên màn Kho; Chia xe đơn "khách tự mang tới"
+        // cũng gọi hàm này với tripId = null nhưng KHÔNG phải nhập tay.)
+        if (isManual)
+        {
+            var order = cargoLine.TransportOrder;
+            // Chỉ nhập tay cho đơn ĐÃ XÁC NHẬN / ĐANG CHẠY: đơn Nháp còn sửa được — sửa đơn
+            // sẽ xóa dòng hàng kéo theo xóa phiếu nhập nhưng KHÔNG trả lại chỗ trong kho.
+            if (order.Status is not (TransportOrderStatus.Confirmed or TransportOrderStatus.InProgress))
+                return new ReceiveGoodsResult(false,
+                    order.Status switch
+                    {
+                        TransportOrderStatus.Draft => $"Đơn {order.Code} còn Nháp — hãy Xác nhận đơn trước khi nhập kho.",
+                        TransportOrderStatus.Cancelled => $"Đơn {order.Code} đã HỦY — không nhập kho thêm cho đơn này.",
+                        _ => $"Đơn {order.Code} đã HOÀN TẤT — không nhập kho thêm cho đơn này.",
+                    },
+                    new List<string>());
+
+            // Hàng của đơn phải vào ĐÚNG kho trung chuyển của đơn (Chia xe, xuất kho đi
+            // giao đều dùng kho này) — nhập nhầm kho khác thì không xuất được.
+            if (warehouseId != order.WarehouseId)
+                return new ReceiveGoodsResult(false,
+                    $"Đơn {order.Code} dùng kho trung chuyển khác — chỉ nhập hàng của đơn này vào đúng kho đã chọn trên đơn.",
+                    new List<string>());
+
+            var reservedForPickups = await _db.TripLines
+                .Where(l => l.CargoLineId == cargoLineId
+                            && l.Trip.LegType == TripLegType.Pickup
+                            && l.Trip.Status != TripStatus.Cancelled
+                            && l.Trip.Status != TripStatus.Completed)
+                .SumAsync(l => (decimal?)l.QtyPlanned) ?? 0m;
+
+            if (alreadyReceived + reservedForPickups + qty > cargoLine.QtyTotal)
+            {
+                var canReceive = Math.Max(0, cargoLine.QtyTotal - alreadyReceived - reservedForPickups);
+                return new ReceiveGoodsResult(false,
+                    $"Dòng hàng \"{cargoLine.CargoType}\": khai {cargoLine.QtyTotal}, đã nhập {alreadyReceived}, " +
+                    $"còn {reservedForPickups} đang chờ các chuyến Lấy hàng chưa xong mang về — chỉ nhập tay thêm được tối đa {canReceive}.",
+                    new List<string>());
+            }
+        }
 
         if (alreadyReceived + qty > cargoLine.QtyTotal)
         {
@@ -668,6 +783,10 @@ public class WarehouseSlottingService : IWarehouseSlottingService
                 .FirstOrDefaultAsync(b => b.Id == chosenBinId.Value);
             if (chosenBin is null)
                 return new ReceiveGoodsResult(false, "Vị trí đã chọn không tồn tại.", new List<string>());
+            // Vị trí phải nằm trong ĐÚNG kho đang nhập — trước đây chỉ kiểm tra loại khu,
+            // gọi API với vị trí của kho khác vẫn được (tồn kho ghi kho A, hàng nằm kho B).
+            if (chosenBin.WarehouseZone.WarehouseId != warehouseId)
+                return new ReceiveGoodsResult(false, $"Vị trí {chosenBin.Code} không thuộc kho đang nhập.", new List<string>());
 
             if (chosenBin.WarehouseZone.ZoneType != requiredZoneType)
                 return new ReceiveGoodsResult(false,
@@ -984,6 +1103,11 @@ public class WarehouseSlottingService : IWarehouseSlottingService
     /// thì báo "không đủ tồn kho".</summary>
     public async Task<IssueGoodsResult> IssueManualAsync(int warehouseId, int transportOrderId, int cargoLineId, decimal qty, StockPerformer performer)
     {
+        // Dòng hàng phải thuộc ĐÚNG đơn ghi trên phiếu xuất.
+        if (!await _db.CargoLines.AnyAsync(c => c.Id == cargoLineId && c.TransportOrderId == transportOrderId))
+            return new IssueGoodsResult(false, "Dòng hàng không thuộc đơn hàng đã chọn.");
+        if (qty <= 0)
+            return new IssueGoodsResult(false, "Số lượng xuất phải lớn hơn 0.");
         var stock = await _db.WarehouseStocks.FirstOrDefaultAsync(s => s.WarehouseId == warehouseId && s.CargoLineId == cargoLineId);
         var onHand = stock?.QtyOnHand ?? 0;
         var reserved = await GetReservedQtyAsync(cargoLineId);
@@ -1007,6 +1131,17 @@ public class WarehouseSlottingService : IWarehouseSlottingService
         if (issue.TripId is not null)
             return new WarehouseActionResult(false, "Chỉ hoàn tác được phiếu xuất THỦ CÔNG — phiếu này do chuyến #" + issue.TripId + " tạo ra.");
         if (issue.ReversedAt is not null) return new WarehouseActionResult(false, "Phiếu xuất này đã được hoàn tác trước đó.");
+
+        // Đơn đã Hoàn tất / Đã hủy: không còn chuyến nào chở hàng đi nữa -> hoàn tác sẽ
+        // để hàng nằm kẹt trong kho. Chỉ hoàn tác khi đơn còn đang xử lý.
+        var orderStatus = await _db.TransportOrders
+            .Where(o => o.Id == issue.TransportOrderId)
+            .Select(o => (TransportOrderStatus?)o.Status)
+            .FirstOrDefaultAsync();
+        if (orderStatus is TransportOrderStatus.Done or TransportOrderStatus.Cancelled)
+            return new WarehouseActionResult(false, orderStatus == TransportOrderStatus.Done
+                ? "Đơn của phiếu xuất này đã HOÀN TẤT — không hoàn tác được (hàng trả vào kho sẽ không còn chuyến nào chở đi)."
+                : "Đơn của phiếu xuất này đã HỦY — không hoàn tác được (hàng trả vào kho sẽ không còn chuyến nào chở đi).");
 
         var originReceipt = await _db.GoodsReceipts
             .Where(r => r.WarehouseId == issue.WarehouseId && r.CargoLineId == issue.CargoLineId)

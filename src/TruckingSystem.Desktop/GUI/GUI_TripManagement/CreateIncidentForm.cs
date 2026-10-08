@@ -10,7 +10,13 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
         public CreateIncidentForm()
         {
             InitializeComponent();
-            cboType.Items.AddRange(new object[] { "Accident", "Breakdown", "TrafficViolation", "Other" });
+            cboType.Items.AddRange(new object[]
+            {
+                new ComboOption("Accident", "Tai nạn"),
+                new ComboOption("Breakdown", "Hỏng xe"),
+                new ComboOption("TrafficViolation", "Vi phạm giao thông"),
+                new ComboOption("Other", "Khác"),
+            });
             cboType.SelectedIndex = 0;
         }
 
@@ -28,7 +34,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
             try
             {
                 await _api.Trips.CreateIncidentAsync(
-                    _tripId, (string)cboType.SelectedItem!,
+                    _tripId, (cboType.SelectedItem as ComboOption)?.Value ?? "Other",
                     string.IsNullOrWhiteSpace(txtDescription.Text) ? null : txtDescription.Text.Trim(),
                     numCost.Value == 0 ? null : numCost.Value);
 

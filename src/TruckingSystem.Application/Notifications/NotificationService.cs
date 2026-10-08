@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using TruckingSystem.Application.Common;
 using TruckingSystem.Application.Common.Interfaces;
+using TruckingSystem.Application.Vehicles;
 using TruckingSystem.Domain.Entities;
 using TruckingSystem.Domain.Enums;
 
@@ -166,34 +168,35 @@ public class NotificationService : INotificationService
     }
 
     /// <summary>Giấy tờ xe (Đăng kiểm/Bảo hiểm/Giấy phép vận tải) SẮP hết hạn
-    /// (trong 30 ngày) hoặc ĐÃ hết hạn — 1 cảnh báo cho mỗi giấy tờ.</summary>
+    /// (trong 30 ngày) hoặc ĐÃ hết hạn — 1 cảnh báo cho mỗi LOẠI giấy tờ của mỗi xe,
+    /// chỉ xét bản MỚI NHẤT (gia hạn = thêm dòng mới; trước đây dòng cũ đã hết hạn
+    /// vẫn báo "ĐÃ HẾT HẠN" mãi). So theo NGÀY Việt Nam, cùng quy tắc với Chia xe.</summary>
     private async Task<List<(string Title, string Message)>> BuildVehicleDocumentAlertsAsync()
     {
-        var now = DateTime.UtcNow;
-        var warningThreshold = now.AddDays(30);
+        var today = VnClock.Today;
+        var warningThreshold = today.AddDays(30);
 
-        var docsNeedingAlert = await _db.VehicleDocuments
-            .Include(d => d.Vehicle)
-            .Where(d => d.DocType != VehicleDocumentType.Other && d.ExpiryDate <= warningThreshold)
-            .ToListAsync();
+        var latestDocs = await VehicleDocumentRules.GetLatestAsync(_db);
+        var docsNeedingAlert = latestDocs.Where(d => d.ExpiryDate.Date <= warningThreshold).ToList();
+        if (docsNeedingAlert.Count == 0) return new List<(string Title, string Message)>();
+
+        var vehicleIds = docsNeedingAlert.Select(d => d.VehicleId).Distinct().ToList();
+        var plates = await _db.Vehicles
+            .Where(v => vehicleIds.Contains(v.Id))
+            .ToDictionaryAsync(v => v.Id, v => v.PlateNumber);
 
         var result = new List<(string Title, string Message)>();
         foreach (var doc in docsNeedingAlert)
         {
-            var isExpired = doc.ExpiryDate < now;
-            var docTypeText = doc.DocType switch
-            {
-                VehicleDocumentType.Registration => "Đăng kiểm",
-                VehicleDocumentType.Insurance => "Bảo hiểm",
-                VehicleDocumentType.TransportPermit => "Giấy phép vận tải",
-                _ => "Giấy tờ",
-            };
+            if (!plates.TryGetValue(doc.VehicleId, out var plate)) continue;
+            var isExpired = !VehicleDocumentRules.IsValidOn(doc.ExpiryDate, today);
+            var docTypeText = VehicleDocumentRules.DocTypeText(doc.DocType);
             var title = isExpired
-                ? $"{PrefixDocExpired}{docTypeText} xe {doc.Vehicle.PlateNumber} ĐÃ HẾT HẠN"
-                : $"{PrefixDocSoon}{docTypeText} xe {doc.Vehicle.PlateNumber} sắp hết hạn";
+                ? $"{PrefixDocExpired}{docTypeText} xe {plate} ĐÃ HẾT HẠN"
+                : $"{PrefixDocSoon}{docTypeText} xe {plate} sắp hết hạn";
             var message = isExpired
-                ? $"{docTypeText} của xe {doc.Vehicle.PlateNumber} đã hết hạn từ {doc.ExpiryDate:dd/MM/yyyy} — xe này sẽ KHÔNG được Chia xe cho tới khi gia hạn."
-                : $"{docTypeText} của xe {doc.Vehicle.PlateNumber} sẽ hết hạn vào {doc.ExpiryDate:dd/MM/yyyy} — nên gia hạn sớm.";
+                ? $"{docTypeText} của xe {plate} đã hết hạn từ {doc.ExpiryDate:dd/MM/yyyy} — xe này sẽ KHÔNG được Chia xe cho tới khi gia hạn."
+                : $"{docTypeText} của xe {plate} sẽ hết hạn vào {doc.ExpiryDate:dd/MM/yyyy} — nên gia hạn sớm.";
             result.Add((title, message));
         }
         return result;
@@ -204,11 +207,11 @@ public class NotificationService : INotificationService
     private async Task<List<(string Title, string Message)>> BuildDriverScheduleAlertsAsync()
     {
         // "Ngày mai" theo GIỜ VIỆT NAM (UTC+7) — cùng quy ước với Chia xe.
-        var tomorrow = DateTime.UtcNow.AddHours(7).Date.AddDays(1);
+        var tomorrow = VnClock.Today.AddDays(1);
 
         var activeDrivers = await _db.DriverProfiles
             .Include(dp => dp.Employee)
-            .Where(dp => dp.Employee.Status == EmployeeStatus.Active && dp.LicenseExpiryDate > DateTime.UtcNow)
+            .Where(dp => dp.Employee.Status == EmployeeStatus.Active && dp.LicenseExpiryDate >= tomorrow)
             .ToListAsync();
 
         var driverIdsScheduledTomorrow = await _db.DriverSchedules
@@ -220,14 +223,17 @@ public class NotificationService : INotificationService
         return activeDrivers
             .Where(d => !driverIdsScheduledTomorrow.Contains(d.EmployeeId))
             .Select(d => (
-                Title: $"{PrefixSchedule}Tài xế {d.Employee.FullName} ({d.Employee.Code}) chưa đăng ký ca ngày {tomorrow:dd/MM}",
-                Message: $"Tài xế {d.Employee.FullName} chưa đăng ký ca làm việc cho ngày {tomorrow:dd/MM/yyyy} — nếu không đăng ký, sẽ KHÔNG được Chia xe cho các đơn cần chạy vào ngày đó."))
+                Title: $"{PrefixSchedule}Tài xế {d.Employee.FullName} ({d.Employee.Code}) chưa đăng ký ngày làm {tomorrow:dd/MM}",
+                Message: $"Tài xế {d.Employee.FullName} chưa đăng ký ngày làm {tomorrow:dd/MM/yyyy} (màn Tài xế → Ngày làm việc) — nếu không đăng ký, sẽ KHÔNG được Chia xe cho các đơn cần chạy vào ngày đó."))
             .ToList();
     }
 
-    public async Task MarkAsReadAsync(int notificationId)
+    public async Task MarkAsReadAsync(int notificationId, string userId)
     {
-        var notification = await _db.Notifications.FindAsync(notificationId);
+        // Chỉ đánh dấu thông báo CỦA MÌNH hoặc thông báo chung — không đụng được
+        // thông báo riêng của người khác.
+        var notification = await _db.Notifications
+            .FirstOrDefaultAsync(n => n.Id == notificationId && (n.UserId == userId || n.UserId == null));
         if (notification is null) return;
 
         notification.IsRead = true;

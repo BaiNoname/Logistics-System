@@ -19,14 +19,32 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
         public CreateVehicleForm()
         {
             InitializeComponent();
-            cboFuelType.Items.AddRange(new object[] { "", "Dầu DO", "Xăng RON95", "Xăng RON92", "Xăng E5" });
+            // Loại nhiên liệu nạp từ bảng giá ở màn Nhiên liệu (xem FuelTypeOptions) — không gán cứng.
+            cboFuelType.Items.Add("");
             cboFuelType.SelectedIndex = 0;
+
+            // Loại xe chọn từ danh mục (VehicleTypeOptions) — chọn là tự điền tải trọng/thể tích gợi ý.
+            VehicleTypeOptions.Fill(cboVehicleType, null);
+            ApplyVehicleTypePreset();
+            cboVehicleType.SelectedIndexChanged += (_, _) => ApplyVehicleTypePreset();
+        }
+
+        private void ApplyVehicleTypePreset()
+        {
+            var preset = VehicleTypeOptions.Find(cboVehicleType.SelectedItem as string);
+            if (preset is null) return;
+            numCapacityKg.Value = Math.Min(numCapacityKg.Maximum, preset.CapacityKg);
+            numCapacityM3.Value = Math.Min(numCapacityM3.Maximum, preset.CapacityM3);
         }
 
         public CreateVehicleForm(ApiServices api) : this()
         {
             _api = api;
-            Load += async (_, _) => await LoadWarehousesAsync();
+            Load += async (_, _) =>
+            {
+                await LoadWarehousesAsync();
+                await FuelTypeOptions.FillAsync(cboFuelType, api, null, lblStatus);
+            };
         }
 
         /// <summary>Đổ dropdown "Kho đóng quân" — để tuỳ chọn (có thể để trống,
@@ -62,7 +80,7 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
             try
             {
                 await _api.Vehicles.CreateVehicleAsync(
-                    txtPlateNumber.Text.Trim(), txtVehicleType.Text.Trim(),
+                    txtPlateNumber.Text.Trim(), (cboVehicleType.SelectedItem as string ?? "").Trim(),
                     numCapacityQty.Value, numCapacityKg.Value, numCapacityM3.Value,
                     numFuelConsumption.Value == 0 ? null : numFuelConsumption.Value,
                     string.IsNullOrEmpty((string)cboFuelType.SelectedItem!) ? null : (string)cboFuelType.SelectedItem!,

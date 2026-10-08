@@ -44,39 +44,98 @@ namespace TruckingSystem.Desktop.Common
         }
 
         public async Task<T?> GetAsync<T>(string path)
-        {
-            var json = await Http.GetStringAsync(path);
-            return JsonConvert.DeserializeObject<T>(json);
-        }
+            => await ReadResultAsync<T>(await Http.GetAsync(path));
 
         public async Task<T?> PostAsync<T>(string path, object payload)
         {
             var content = new StringContent(JsonConvert.SerializeObject(payload), Encoding.UTF8, "application/json");
-            var resp = await Http.PostAsync(path, content);
-            var body = await resp.Content.ReadAsStringAsync();
-            if (!resp.IsSuccessStatusCode)
-                throw new HttpRequestException($"Lỗi API ({(int)resp.StatusCode}): {body}");
-            return JsonConvert.DeserializeObject<T>(body);
+            return await ReadResultAsync<T>(await Http.PostAsync(path, content));
         }
 
         public async Task<T?> PutAsync<T>(string path, object payload)
         {
             var content = new StringContent(JsonConvert.SerializeObject(payload), Encoding.UTF8, "application/json");
-            var resp = await Http.PutAsync(path, content);
-            var body = await resp.Content.ReadAsStringAsync();
-            if (!resp.IsSuccessStatusCode)
-                throw new HttpRequestException($"Lỗi API ({(int)resp.StatusCode}): {body}");
-            return JsonConvert.DeserializeObject<T>(body);
+            return await ReadResultAsync<T>(await Http.PutAsync(path, content));
         }
 
         public async Task<T?> DeleteAsync<T>(string path)
+            => await ReadResultAsync<T>(await Http.DeleteAsync(path));
+
+        /// <summary>Đọc phản hồi API — xử lý lỗi TẬP TRUNG cho mọi màn hình:
+        /// - 400 mà body là object kết quả {success:false, message:"..."} -> trả về object đó
+        ///   luôn (màn hình tự hiện result.Message sạch sẽ), không ném lỗi.
+        /// - Các lỗi khác -> ném HttpRequestException với thông báo TIẾNG VIỆT dễ hiểu,
+        ///   thay vì "Lỗi API (400): {json thô}" như trước.</summary>
+        private static async Task<T?> ReadResultAsync<T>(HttpResponseMessage resp)
         {
-            var resp = await Http.DeleteAsync(path);
             var body = await resp.Content.ReadAsStringAsync();
-            if (!resp.IsSuccessStatusCode)
-                throw new HttpRequestException($"Lỗi API ({(int)resp.StatusCode}): {body}");
-            return JsonConvert.DeserializeObject<T>(body);
+            if (resp.IsSuccessStatusCode)
+                return string.IsNullOrWhiteSpace(body) ? default : JsonConvert.DeserializeObject<T>(body);
+
+            if ((int)resp.StatusCode == 400 && LooksLikeActionResult(body))
+            {
+                try { return JsonConvert.DeserializeObject<T>(body); } catch { /* không khớp kiểu -> báo lỗi bên dưới */ }
+            }
+            throw new HttpRequestException(FriendlyError((int)resp.StatusCode, body), null, resp.StatusCode);
         }
+
+        private static bool LooksLikeActionResult(string body)
+        {
+            try
+            {
+                return Newtonsoft.Json.Linq.JToken.Parse(body) is Newtonsoft.Json.Linq.JObject obj
+                       && (obj["success"] != null || obj["Success"] != null);
+            }
+            catch { return false; }
+        }
+
+        /// <summary>Đổi lỗi HTTP thành câu tiếng Việt cho người dùng.</summary>
+        public static string FriendlyError(int status, string? body)
+        {
+            switch (status)
+            {
+                case 401: return "Phiên đăng nhập đã hết hạn — vui lòng đăng xuất rồi đăng nhập lại.";
+                case 403: return "Tài khoản của bạn không có quyền thực hiện chức năng này.";
+                case 404 when string.IsNullOrWhiteSpace(body): return "Không tìm thấy dữ liệu (404).";
+            }
+
+            var message = ExtractMessage(body);
+            if (status >= 500)
+                return "Máy chủ gặp lỗi khi xử lý" + (string.IsNullOrWhiteSpace(message) ? "" : ": " + Shorten(message)) + " — thử lại sau.";
+            return string.IsNullOrWhiteSpace(message) ? $"Yêu cầu không hợp lệ ({status})." : message!;
+        }
+
+        /// <summary>Lấy câu thông báo trong body lỗi: chuỗi thuần, {message}, hoặc
+        /// ProblemDetails {title, errors:{field:[...]}} của ASP.NET.</summary>
+        private static string? ExtractMessage(string? body)
+        {
+            if (string.IsNullOrWhiteSpace(body)) return null;
+            try
+            {
+                var token = Newtonsoft.Json.Linq.JToken.Parse(body);
+                if (token.Type == Newtonsoft.Json.Linq.JTokenType.String) return token.ToString();
+                if (token is Newtonsoft.Json.Linq.JObject obj)
+                {
+                    var msg = (string?)(obj["message"] ?? obj["Message"]);
+                    if (!string.IsNullOrWhiteSpace(msg)) return msg;
+                    if (obj["errors"] is Newtonsoft.Json.Linq.JObject errors)
+                    {
+                        var all = errors.Properties().SelectMany(p => p.Value.Values<string>()).Where(s => !string.IsNullOrWhiteSpace(s));
+                        var joined = string.Join("; ", all);
+                        if (joined.Length > 0) return joined;
+                    }
+                    var title = (string?)(obj["title"] ?? obj["Title"]);
+                    if (!string.IsNullOrWhiteSpace(title)) return title;
+                }
+            }
+            catch
+            {
+                // không phải JSON -> chuỗi thuần
+            }
+            return Shorten(body.Trim().Trim('"'));
+        }
+
+        private static string Shorten(string s) => s.Length > 300 ? s[..300] + "…" : s;
 
         /// <summary>Post không cần parse response thành công cụ thể (dùng riêng cho Login vì cần đọc cả trường hợp lỗi 401).</summary>
         public async Task<(bool IsSuccess, string Body)> PostRawAsync(string path, object payload)

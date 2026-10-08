@@ -9,9 +9,9 @@ namespace TruckingSystem.Desktop.GUI_DriverManagement
     /// chính: xem nhanh ai đang "Đang làm / Sẵn sàng / Không sẵn sàng" để
     /// đối chiếu TRƯỚC khi bấm "Chia xe" cho 1 đơn, vì cột Trạng thái ở đây
     /// tính ĐÚNG Y HỆT điều kiện thật mà thuật toán Greedy dùng.
-    /// Tái dùng TRỰC TIẾP 2 form đã có sẵn từ màn Nhân viên
-    /// (CreateDriverProfileForm, ManageDriverScheduleForm) — không viết lại
-    /// logic, chỉ gọi đúng employeeId đang chọn trong lưới này.</summary>
+    /// Tái dùng form hồ sơ tài xế có sẵn từ màn Nhân viên
+    /// CreateDriverProfileForm; ngày làm việc dùng DriverWorkDaysForm (đăng ký
+    /// theo ngày, không chọn ca) — chỉ gọi đúng employeeId đang chọn trong lưới này.</summary>
     public partial class DriversControl : BaseUserControl
     {
         private ApiServices? _api;
@@ -86,14 +86,16 @@ namespace TruckingSystem.Desktop.GUI_DriverManagement
             if (f.ShowDialog(FindForm()) == DialogResult.OK) await LoadAsync();
         }
 
+        /// <summary>Ngày làm việc của tài xế — đăng ký THEO NGÀY (không chọn ca),
+        /// form riêng của màn Tài xế, không dùng form lịch ca bên màn Nhân viên.</summary>
         private void BtnSchedule_Click(object? sender, EventArgs e)
         {
             if (_api is null) return;
             if (!TryGetSelected(out var employeeId, out var fullName)) return;
 
-            using var f = new ManageDriverScheduleForm(_api, employeeId, fullName);
+            using var f = new DriverWorkDaysForm(_api, employeeId, fullName);
             f.ShowDialog(FindForm());
-            _ = LoadAsync(); // Availability có thể đổi (Sẵn sàng/Không sẵn sàng) sau khi thêm/xóa ca
+            if (f.Changed) _ = LoadAsync(); // Availability có thể đổi (Sẵn sàng/Không sẵn sàng) sau khi thêm/xóa ngày
         }
 
         private bool TryGetSelected(out int employeeId, out string fullName)
@@ -131,7 +133,8 @@ namespace TruckingSystem.Desktop.GUI_DriverManagement
                     Kho_đóng_quân = d.WarehouseName ?? "— (mọi kho)",
                     Trạng_thái = d.Availability,
                 }).ToList();
-                lblStatus.Text = $"Tổng {_drivers.Count} tài xế — Trạng thái khớp đúng điều kiện thật dùng khi Chia xe";
+                lblStatus.Text = $"Tổng {_drivers.Count} tài xế — \"Sẵn sàng\" = đang làm việc, bằng lái còn hạn, có ngày làm hôm nay. " +
+                                 "Khi Chia xe còn xét kho đóng quân và chuyến dài nhiều ngày phải đăng ký đủ các ngày.";
                 lblStatus.ForeColor = Theme.TextSecondary;
             }
             catch (Exception ex)

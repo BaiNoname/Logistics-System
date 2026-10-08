@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
+using TruckingSystem.Application.Common;
 using TruckingSystem.Application.Common.Interfaces;
 using TruckingSystem.Application.Routing;
+using TruckingSystem.Application.Vehicles;
 using TruckingSystem.Application.Warehouses;
 using TruckingSystem.Domain.Entities;
 using TruckingSystem.Domain.Enums;
@@ -105,18 +107,21 @@ public class VehicleAllocationService : IVehicleAllocationService
         // MỀM như cũ (chưa nhập thì vẫn cho qua, chỉ chặn khi PHÁT HIỆN thật
         // sự hết hạn) — Đăng kiểm là giấy tờ DUY NHẤT bị siết chặt vì đây là
         // điều kiện PHÁP LÝ bắt buộc để xe được lưu thông trên đường.
-        var today = DateTime.UtcNow;
-        var vehicleIdsWithValidRegistration = await _db.VehicleDocuments
-            .Where(d => d.DocType == VehicleDocumentType.Registration && d.ExpiryDate > today)
+        // Chỉ xét giấy tờ MỚI NHẤT của từng loại (gia hạn = thêm dòng mới, dòng cũ
+        // hết hạn vẫn còn) và so theo NGÀY Việt Nam — xem VehicleDocumentRules.
+        var today = VnClock.Today;
+        var latestDocs = await VehicleDocumentRules.GetLatestAsync(_db);
+        var vehicleIdsWithValidRegistration = latestDocs
+            .Where(d => d.DocType == VehicleDocumentType.Registration && VehicleDocumentRules.IsValidOn(d.ExpiryDate, today))
             .Select(d => d.VehicleId)
             .Distinct()
-            .ToListAsync();
+            .ToList();
 
-        var vehicleIdsWithExpiredOtherDocs = await _db.VehicleDocuments
-            .Where(d => d.DocType != VehicleDocumentType.Other && d.DocType != VehicleDocumentType.Registration && d.ExpiryDate <= today)
+        var vehicleIdsWithExpiredOtherDocs = latestDocs
+            .Where(d => d.DocType != VehicleDocumentType.Registration && !VehicleDocumentRules.IsValidOn(d.ExpiryDate, today))
             .Select(d => d.VehicleId)
             .Distinct()
-            .ToListAsync();
+            .ToList();
 
         var availableVehicles = await _db.Vehicles
             .Where(v => v.Status == VehicleStatus.Available
@@ -142,7 +147,7 @@ public class VehicleAllocationService : IVehicleAllocationService
 
         var driverIds = await _db.DriverProfiles
             .Include(dp => dp.Employee)
-            .Where(dp => dp.Employee.Status == EmployeeStatus.Active && dp.LicenseExpiryDate > today
+            .Where(dp => dp.Employee.Status == EmployeeStatus.Active && dp.LicenseExpiryDate >= today
                       && (dp.WarehouseId == null || dp.WarehouseId == order.WarehouseId))
             .Select(dp => dp.EmployeeId)
             .ToListAsync();
@@ -159,7 +164,7 @@ public class VehicleAllocationService : IVehicleAllocationService
         var estimatedTripDays = await EstimateTripDurationDaysAsync(order);
         // Ngày ca làm việc tính theo GIỜ VIỆT NAM (UTC+7). Dùng UtcNow.Date sẽ
         // lệch 1 ngày khi chia xe trong khoảng 0h–7h sáng (giờ VN).
-        var todayVn = DateTime.UtcNow.AddHours(7).Date;
+        var todayVn = today;
         var neededDates = Enumerable.Range(0, estimatedTripDays).Select(offset => todayVn.AddDays(offset)).ToList();
 
         var scheduleDatesByDriver = await _db.DriverSchedules
@@ -206,6 +211,18 @@ public class VehicleAllocationService : IVehicleAllocationService
         Trip? currentPickupTrip = null, currentDeliveryTrip = null;
         int currentDriverEmployeeId = 0;
 
+        // Đơn khách tự mang hàng tới: thủ kho có thể ĐÃ nhập tay 1 phần/toàn bộ trước
+        // khi Chia xe -> lúc chia chỉ nhập PHẦN CÒN LẠI (trước đây nhập lại toàn bộ ->
+        // báo "vượt số lượng khai báo" và Chia xe thất bại mãi).
+        var cargoLineIds = cargoLines.Select(c => c.Id).ToList();
+        var alreadyReceivedByLine = await _db.GoodsReceipts
+            .Where(r => cargoLineIds.Contains(r.CargoLineId))
+            .GroupBy(r => r.CargoLineId)
+            .Select(g => new { CargoLineId = g.Key, Qty = g.Sum(r => r.QtyReceived) })
+            .ToDictionaryAsync(x => x.CargoLineId, x => x.Qty);
+        var toReceiveByLine = cargoLines.ToDictionary(c => c.Id,
+            c => Math.Max(0, c.QtyTotal - (alreadyReceivedByLine.TryGetValue(c.Id, out var got) ? got : 0)));
+
         while (cargoIndex < cargoLines.Count && vehicleIndex < availableVehicles.Count)
         {
             if (cargoRemaining <= 0)
@@ -219,8 +236,12 @@ public class VehicleAllocationService : IVehicleAllocationService
             // Bắt đầu xe mới -> tạo Trip (1 hoặc 2 chặng tùy PickupMethod)
             if (currentDeliveryTrip is null)
             {
+                // Mỗi xe 1 tài xế RIÊNG — trước đây xoay vòng (driverIndex % số tài
+                // xế) nên 1 tài xế bị gán cho 2 xe cùng lúc khi thiếu tài xế.
+                // Hết tài xế rảnh thì dừng; phần hàng còn lại sẽ bị báo thiếu ở dưới.
+                if (driverIndex >= driverIds.Count) break;
                 var vehicle = availableVehicles[vehicleIndex];
-                var driverEmployeeId = driverIds[driverIndex % driverIds.Count];
+                var driverEmployeeId = driverIds[driverIndex];
                 driverIndex++;
                 currentDriverEmployeeId = driverEmployeeId;
 
@@ -277,12 +298,21 @@ public class VehicleAllocationService : IVehicleAllocationService
             if (unitVolume > 0) qtyThisStep = Math.Min(qtyThisStep, vehicleRemainingM3 / unitVolume);
             qtyThisStep = Math.Max(qtyThisStep, 0); // phòng hờ sai số âm cực nhỏ
 
+            // Hàng đếm theo đơn vị nguyên (số lượng khai là số nguyên) thì không chia
+            // lẻ khi giới hạn kg/m³ cắt giữa chừng (VD 2.5 cái máy) — làm tròn xuống,
+            // phần lẻ chuyển sang xe kế tiếp.
+            if (cargoLine.QtyTotal == Math.Floor(cargoLine.QtyTotal))
+                qtyThisStep = Math.Floor(qtyThisStep);
+
             // Bảo vệ vòng lặp vô hạn: nếu xe HIỆN TẠI (dù còn nguyên, chưa
             // chở gì) vẫn không đủ sức chở NỔI 1 đơn vị hàng này (hàng quá
             // nặng/quá khổ so với sức chứa xe) — ép chuyển sang xe kế tiếp
             // ngay, tránh lặp lại mãi cùng 1 trạng thái không tiến triển.
             if (qtyThisStep <= 0)
             {
+                // Xe vừa mở mà chưa chở được gì (Trip rỗng sẽ bị dọn ở dưới) -> trả
+                // lại tài xế đó cho xe kế tiếp, không tính là đã dùng.
+                if (results.Count > 0 && results[^1].QtyAssigned <= 0) driverIndex--;
                 vehicleIndex++;
                 currentPickupTrip = null;
                 currentDeliveryTrip = null;
@@ -308,15 +338,20 @@ public class VehicleAllocationService : IVehicleAllocationService
                 // chặng Pickup nào để "hoàn tất" và kích hoạt nhập kho sau này
                 // như CompanyPickup, nên phải nhập kho NGAY tại đây.
                 await _db.SaveChangesAsync(); // cần lưu trước để có CargoLine/Trip Id ổn định cho ReceiveGoodsAsync
-                var receiveResult = await _warehouseService.ReceiveGoodsAsync(
-                    defaultWarehouseId, order.Id, cargoLine.Id, qtyThisStep, currentDriverEmployeeId, tripId: null);
-                // Trước đây BỎ QUA kết quả — kho hết chỗ/thiếu khu vực phù hợp vẫn
-                // báo chia xe thành công, nhưng hàng KHÔNG hề vào kho, tới lúc giao
-                // mới lỗi "không đủ tồn kho". Giờ dừng ngay; return khi chưa Commit
-                // -> transaction tự Rollback, không để lại chuyến/nhập kho dở dang.
-                if (!receiveResult.Success)
-                    return new AllocateVehiclesResponse(false, totalQtyToShip, 0, new(),
-                        "Không thể nhập kho cho đơn khách tự mang tới: " + receiveResult.Message);
+                var receiveQty = Math.Min(qtyThisStep, toReceiveByLine[cargoLine.Id]);
+                if (receiveQty > 0)
+                {
+                    var receiveResult = await _warehouseService.ReceiveGoodsAsync(
+                        defaultWarehouseId, order.Id, cargoLine.Id, receiveQty, currentDriverEmployeeId, tripId: null);
+                    // Trước đây BỎ QUA kết quả — kho hết chỗ/thiếu khu vực phù hợp vẫn
+                    // báo chia xe thành công, nhưng hàng KHÔNG hề vào kho, tới lúc giao
+                    // mới lỗi "không đủ tồn kho". Giờ dừng ngay; return khi chưa Commit
+                    // -> transaction tự Rollback, không để lại chuyến/nhập kho dở dang.
+                    if (!receiveResult.Success)
+                        return new AllocateVehiclesResponse(false, totalQtyToShip, 0, new(),
+                            "Không thể nhập kho cho đơn khách tự mang tới: " + receiveResult.Message);
+                    toReceiveByLine[cargoLine.Id] -= receiveQty;
+                }
             }
             _db.TripLines.Add(new TripLine { TripId = currentDeliveryTrip.Id, CargoLineId = cargoLine.Id, QtyPlanned = qtyThisStep });
 
@@ -365,6 +400,9 @@ public class VehicleAllocationService : IVehicleAllocationService
         // xe (phòng hờ gọi trực tiếp API bỏ qua bước Xác nhận thủ công ở UI).
         if (order.Status == TransportOrderStatus.Draft)
             order.Status = TransportOrderStatus.Confirmed;
+        // Luôn "chạm" vào đơn để kích hoạt kiểm tra cập nhật đồng thời (cột xmin): 2 người
+        // bấm Chia xe cùng 1 đơn cùng lúc -> người lưu sau bị từ chối, không tạo 2 bộ chuyến.
+        order.UpdatedAt = DateTime.UtcNow;
 
         _db.AuditLogs.Add(new AuditLog
         {
@@ -375,15 +413,24 @@ public class VehicleAllocationService : IVehicleAllocationService
                      (isCompanyPickup ? " (2 chặng Pickup+Delivery)" : " (1 chặng Delivery)"),
         });
 
-        await _db.SaveChangesAsync();
-
+        // KHÔNG chấp nhận chia xe THIẾU: trước đây vẫn báo thành công khi chỉ chở
+        // được 1 phần, nhưng sau đó KHÔNG chia thêm được (đơn đã có chuyến) -> đơn
+        // kẹt "Đang chạy" mãi ở tiến độ < 100%, cũng không hủy được. Giờ thiếu xe/tài
+        // xế thì hủy toàn bộ lần chia này (Rollback), đơn giữ nguyên để chia lại sau.
         var remaining = totalQtyToShip - totalAssigned;
-        var message = remaining > 0
-            ? $"Chỉ đủ xe chở {totalAssigned}/{totalQtyToShip} — còn thiếu {remaining}, cần thêm xe hoặc chờ xe rảnh."
-            : null;
+        if (remaining > 0.001m)
+        {
+            var reason = driverIndex >= driverIds.Count && vehicleIndex < availableVehicles.Count
+                ? $"chỉ có {driverIds.Count} tài xế rảnh đủ điều kiện"
+                : $"chỉ có {availableVehicles.Count} xe rảnh đủ điều kiện";
+            return new AllocateVehiclesResponse(false, totalQtyToShip, totalAssigned, new(),
+                $"Không đủ xe/tài xế để chở hết đơn — {reason}, chở được {totalAssigned}/{totalQtyToShip}, còn thiếu {remaining}. " +
+                "Chưa chia xe (không lưu gì). Hãy chờ thêm xe/tài xế rảnh (hoặc đăng ký ca) rồi chia lại.");
+        }
 
+        await _db.SaveChangesAsync();
         await transaction.CommitAsync();
-        return new AllocateVehiclesResponse(true, totalQtyToShip, totalAssigned, results, message, estimatedTripDays);
+        return new AllocateVehiclesResponse(true, totalQtyToShip, totalAssigned, results, null, estimatedTripDays);
     }
 
     /// <summary>Ước tính chuyến này có thể mất BAO NHIÊU NGÀY để hoàn tất —

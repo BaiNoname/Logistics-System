@@ -58,6 +58,21 @@ public class TripsController : ControllerBase
         return Ok(result); // luôn 200 OK — Desktop tự đọc result.Success/Message, tránh PostAsync throw exception khi 400 làm mất thông báo rõ ràng
     }
 
+    /// <summary>Lịch sử các lần đổ xăng của chuyến.</summary>
+    [HttpGet("{id:int}/fuel-logs")]
+    public async Task<ActionResult<List<FuelLogDto>>> GetFuelLogs(int id)
+        => Ok(await _tripService.GetFuelLogsAsync(id));
+
+    /// <summary>Đơn giá tự động cho form ghi đổ xăng (providerId bỏ trống = giá thị trường chung).</summary>
+    [HttpGet("{id:int}/fuel-price")]
+    public async Task<ActionResult<FuelPriceQuoteDto>> GetFuelPrice(int id, [FromQuery] int? providerId)
+        => Ok(await _tripService.GetFuelPriceQuoteAsync(id, providerId));
+
+    /// <summary>Xóa 1 lần đổ xăng ghi nhầm.</summary>
+    [HttpDelete("fuel-logs/{fuelLogId:int}")]
+    public async Task<ActionResult<TripActionResult>> DeleteFuelLog(int fuelLogId)
+        => Ok(await _tripService.DeleteFuelLogAsync(fuelLogId));
+
     /// <summary>Tiến độ nhập/xuất kho của từng chuyến (cột "Kho" ở màn Chuyến).</summary>
     [HttpGet("warehouse-progress")]
     public async Task<ActionResult<List<TripWarehouseProgressDto>>> GetWarehouseProgress()

@@ -6,7 +6,9 @@ namespace TruckingSystem.API.Controllers;
 
 [ApiController]
 [Route("api/reports")]
-[Authorize]
+// Báo cáo lãi/lỗ, doanh thu: chỉ Quản trị / Điều phối / Kế toán (trước đây mọi tài
+// khoản đăng nhập — kể cả Tài xế, Thủ kho — đều xem được số liệu tài chính).
+[Authorize(Roles = "Admin,Dispatcher,Accountant")]
 public class ReportsController : ControllerBase
 {
     private readonly IReportService _reportService;

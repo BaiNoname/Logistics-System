@@ -24,7 +24,14 @@ public class PublicTrackingService : IPublicTrackingService
         // nào đang diễn ra) — tránh trộn lẫn 2 chặng gây hiểu nhầm cho khách
         // hàng (VD: khách tưởng xe đang tới chỗ mình, nhưng thật ra là xe đang
         // đi lấy hàng từ người gửi khác).
-        var activeTrip = order.Trips.FirstOrDefault(t => t.Status == TripStatus.InProgress || t.Status == TripStatus.PendingConfirmation);
+        // Đơn nhiều xe: ưu tiên xe đang GIAO (đang tới chỗ khách), rồi mới tới xe
+        // đang lấy hàng — trước đây lấy đại 1 chuyến bất kỳ.
+        var activeTrip = order.Trips
+            .Where(t => t.Status == TripStatus.InProgress || t.Status == TripStatus.PendingConfirmation)
+            .OrderBy(t => t.LegType == TripLegType.Delivery ? 0 : 1)
+            .ThenBy(t => t.Status == TripStatus.InProgress ? 0 : 1)
+            .ThenBy(t => t.Id)
+            .FirstOrDefault();
 
         double? lastLat = null, lastLng = null;
         DateTime? lastUpdatedAt = null;
@@ -56,21 +63,26 @@ public class PublicTrackingService : IPublicTrackingService
         if (orderStatus == TransportOrderStatus.Cancelled) return "Đơn hàng đã bị hủy";
         if (orderStatus == TransportOrderStatus.Done) return "✅ Đã giao hàng thành công";
         if (orderStatus is TransportOrderStatus.Draft or TransportOrderStatus.Confirmed)
-            return "Đơn đang chờ điều phối xe";
+            return trips.Any(t => t.Status != TripStatus.Cancelled)
+                ? "🚛 Đã điều phối xe — chờ xe xuất phát"
+                : "Đơn đang chờ điều phối xe";
 
-        var pickupTrip = trips.FirstOrDefault(t => t.LegType == TripLegType.Pickup);
-        var deliveryTrip = trips.FirstOrDefault(t => t.LegType == TripLegType.Delivery);
+        // Đơn có thể chia NHIỀU xe — xét TẤT CẢ chuyến (bỏ chuyến đã hủy), không
+        // lấy đại 1 chuyến (trước đây có thể báo "Đã giao thành công" trong khi xe
+        // thứ 2 còn đang trên đường).
+        var active = trips.Where(t => t.Status != TripStatus.Cancelled).ToList();
+        var pickups = active.Where(t => t.LegType == TripLegType.Pickup).ToList();
+        var deliveries = active.Where(t => t.LegType == TripLegType.Delivery).ToList();
 
-        if (deliveryTrip?.Status == TripStatus.InProgress) return "🚚 Đang trên đường giao tới bạn";
-        if (deliveryTrip?.Status == TripStatus.PendingConfirmation) return "📍 Tài xế báo đã tới nơi, đang chờ xác nhận giao hàng";
-        if (deliveryTrip?.Status == TripStatus.Completed) return "✅ Đã giao hàng thành công";
+        if (deliveries.Any(t => t.Status == TripStatus.InProgress)) return "🚚 Đang trên đường giao tới bạn";
+        if (deliveries.Any(t => t.Status == TripStatus.PendingConfirmation)) return "📍 Tài xế báo đã tới nơi, đang chờ xác nhận giao hàng";
+        if (deliveries.Count > 0 && deliveries.All(t => t.Status == TripStatus.Completed)) return "✅ Đã giao hàng thành công";
+        if (deliveries.Any(t => t.Status == TripStatus.Completed)) return "🚚 Đã giao 1 phần, phần còn lại đang được chuẩn bị giao";
 
-        if (pickupTrip != null)
-        {
-            if (pickupTrip.Status == TripStatus.InProgress) return "🔽 Đang lấy hàng từ người gửi";
-            if (pickupTrip.Status == TripStatus.PendingConfirmation) return "📦 Tài xế báo đã lấy hàng xong, đang chờ xác nhận";
-            if (pickupTrip.Status == TripStatus.Completed) return "📦 Hàng đã về kho, đang chuẩn bị giao";
-        }
+        if (pickups.Any(t => t.Status == TripStatus.InProgress)) return "🔽 Đang lấy hàng từ người gửi";
+        if (pickups.Any(t => t.Status == TripStatus.PendingConfirmation)) return "📦 Tài xế báo đã lấy hàng xong, đang chờ xác nhận";
+        if (pickups.Count > 0 && pickups.All(t => t.Status == TripStatus.Completed)) return "📦 Hàng đã về kho, đang chuẩn bị giao";
+        if (pickups.Any(t => t.Status == TripStatus.Completed)) return "📦 Đã lấy 1 phần hàng về kho, đang lấy tiếp";
 
         return "Đơn đang được xử lý";
     }
