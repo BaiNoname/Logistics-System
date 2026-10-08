@@ -140,8 +140,11 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                 var result = await _api.TransportOrders.CancelOrderAsync(_orderId);
                 if (result.Success)
                 {
-                    lblResult.Text = "❌ Đã hủy đơn hàng.";
-                    lblResult.ForeColor = Theme.TextSecondary;
+                    lblResult.Text = "❌ Đã hủy đơn hàng." + (string.IsNullOrEmpty(result.Message) ? "" : "\n" + result.Message);
+                    lblResult.ForeColor = string.IsNullOrEmpty(result.Message) ? Theme.TextSecondary : Theme.Warning;
+                    // Có cảnh báo (VD xe lấy hàng đang chạy có thể đã bốc hàng) -> hiện hộp thoại để không bị bỏ sót
+                    if (!string.IsNullOrEmpty(result.Message))
+                        MessageBox.Show(FindForm(), result.Message, "Đã hủy đơn — cần lưu ý", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     await LoadAsync();
                 }
                 else

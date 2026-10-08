@@ -65,6 +65,13 @@ public class VehicleAllocationService : IVehicleAllocationService
         if (order is null)
             return new AllocateVehiclesResponse(false, 0, 0, new(), "Không tìm thấy đơn vận chuyển.");
 
+        // Chỉ chia xe cho đơn còn ở bước đầu (Nháp / Đã xác nhận). Đơn đã Hủy
+        // hoặc đã Hoàn tất mà vẫn chia xe được sẽ tạo chuyến "ma" và giữ xe,
+        // tài xế vô ích (trước đây không kiểm tra trạng thái đơn).
+        if (order.Status is not (TransportOrderStatus.Draft or TransportOrderStatus.Confirmed))
+            return new AllocateVehiclesResponse(false, 0, 0, new(),
+                $"Không thể chia xe — đơn đang ở trạng thái {order.Status}. Chỉ chia xe cho đơn Nháp hoặc Đã xác nhận.");
+
         // CHẶN chia xe 2 lần cho cùng 1 đơn — trước đây không kiểm tra gì cả,
         // bấm 2 lần (double-click, hoặc mở lại form bấm lại) sẽ tạo THÊM 1 bộ
         // Trip mới đè lên bộ cũ, giao hàng trùng lặp thật sự (không chỉ là lỗi
@@ -150,7 +157,10 @@ public class VehicleAllocationService : IVehicleAllocationService
         // ngơi bắt buộc), tránh trường hợp tài xế "hết ca" giữa đường mà hệ
         // thống không hề biết.
         var estimatedTripDays = await EstimateTripDurationDaysAsync(order);
-        var neededDates = Enumerable.Range(0, estimatedTripDays).Select(offset => today.Date.AddDays(offset)).ToList();
+        // Ngày ca làm việc tính theo GIỜ VIỆT NAM (UTC+7). Dùng UtcNow.Date sẽ
+        // lệch 1 ngày khi chia xe trong khoảng 0h–7h sáng (giờ VN).
+        var todayVn = DateTime.UtcNow.AddHours(7).Date;
+        var neededDates = Enumerable.Range(0, estimatedTripDays).Select(offset => todayVn.AddDays(offset)).ToList();
 
         var scheduleDatesByDriver = await _db.DriverSchedules
             .Where(s => driverIds.Contains(s.DriverEmployeeId))

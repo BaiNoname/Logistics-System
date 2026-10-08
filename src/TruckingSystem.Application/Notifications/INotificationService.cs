@@ -15,6 +15,10 @@ public interface INotificationService
     /// nhóm vận hành biết, ví dụ: tài xế báo xong chuyến, cần duyệt.</summary>
     Task CreateBroadcastAsync(string title, string message);
 
+    /// <summary>Chuyến đã được xử lý (Duyệt / Từ chối / Hoàn tất) -> tự đánh dấu
+    /// đã đọc thông báo "chờ duyệt" của chuyến đó.</summary>
+    Task ResolveTripPendingAsync(int tripId);
+
     Task MarkAsReadAsync(int notificationId);
     Task MarkAllAsReadAsync(string userId);
 }

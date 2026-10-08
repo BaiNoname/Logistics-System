@@ -24,6 +24,9 @@ namespace TruckingSystem.Desktop.GUI_DriverManagement
             Resize += (_, _) => { grid.Width = Width; grid.Height = Height - grid.Top; };
             grid.DataBindingComplete += (_, _) => { if (grid.Columns["EmployeeId"] != null) grid.Columns["EmployeeId"]!.Visible = false; };
             grid.CellFormatting += Grid_CellFormatting;
+            // Hồ sơ / Lịch làm việc chỉ bấm được khi đã chọn 1 tài xế
+            grid.SelectionChanged += (_, _) => btnEditProfile.Enabled = btnSchedule.Enabled = grid.CurrentRow is not null;
+            grid.DataBindingComplete += (_, _) => btnEditProfile.Enabled = btnSchedule.Enabled = grid.CurrentRow is not null;
             Load += async (_, _) => await LoadAsync();
         }
 

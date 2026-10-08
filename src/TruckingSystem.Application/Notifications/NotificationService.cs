@@ -7,6 +7,19 @@ namespace TruckingSystem.Application.Notifications;
 
 public class NotificationService : INotificationService
 {
+    // Tiền tố tiêu đề — dùng để PHÂN LOẠI thông báo (lọc trên Desktop) và để
+    // nhận ra thông báo nào do hệ thống TỰ SINH (giấy tờ xe, lịch tài xế).
+    // Không cần thêm cột mới trong DB -> không cần migration.
+    private const string PrefixDocExpired = "🔴 ";
+    private const string PrefixDocSoon = "🟡 ";
+    private const string PrefixSchedule = "📅 ";
+    private const string PrefixTripPending = "🟢 ";
+
+    public const string CategoryTrip = "Chuyến chờ duyệt";
+    public const string CategoryVehicleDoc = "Giấy tờ xe";
+    public const string CategorySchedule = "Lịch tài xế";
+    public const string CategoryOther = "Khác";
+
     private readonly IApplicationDbContext _db;
 
     public NotificationService(IApplicationDbContext db)
@@ -14,50 +27,160 @@ public class NotificationService : INotificationService
         _db = db;
     }
 
+    /// <summary>Phân loại thông báo theo tiền tố tiêu đề.</summary>
+    public static string GetCategory(string title)
+    {
+        if (title.StartsWith(PrefixTripPending)) return CategoryTrip;
+        if (title.StartsWith(PrefixDocExpired) || title.StartsWith(PrefixDocSoon)) return CategoryVehicleDoc;
+        if (title.StartsWith(PrefixSchedule)) return CategorySchedule;
+        return CategoryOther;
+    }
+
+    private static bool IsSystemAlert(string title)
+        => title.StartsWith(PrefixDocExpired) || title.StartsWith(PrefixDocSoon) || title.StartsWith(PrefixSchedule);
+
     public async Task<List<NotificationDto>> CheckAndGetNotificationsAsync(string userId)
     {
-        await GenerateVehicleDocumentAlertsAsync(userId);
-        await GenerateDriverScheduleAlertsAsync(userId);
+        await SyncSystemAlertsAsync(userId);
+        await AutoResolveTripPendingAsync();
 
         // Lấy CẢ thông báo riêng của user này LẪN thông báo CHUNG (UserId =
         // null, xem CreateBroadcastAsync) — ví dụ tài xế báo xong chuyến, cần
         // Vận hành (bất kỳ ai đang trực) thấy và duyệt.
-        return await _db.Notifications
+        var rows = await _db.Notifications
             .Where(n => n.UserId == userId || n.UserId == null)
             .OrderByDescending(n => n.CreatedAt)
-            .Take(50) // giới hạn 50 thông báo gần nhất, tránh danh sách phình to vô hạn
-            .Select(n => new NotificationDto(n.Id, n.Title, n.Message, n.IsRead, n.CreatedAt))
+            .Take(200) // giới hạn, tránh danh sách phình to vô hạn (Desktop có bộ lọc)
+            .Select(n => new { n.Id, n.Title, n.Message, n.IsRead, n.CreatedAt })
             .ToListAsync();
+
+        // CreatedAt lưu giờ UTC (cột timestamp without time zone) -> gắn Kind=Utc
+        // để Desktop đổi đúng sang giờ Việt Nam (trước đây bị lệch 7 tiếng).
+        return rows
+            .Select(n => new NotificationDto(n.Id, n.Title, n.Message, n.IsRead,
+                DateTime.SpecifyKind(n.CreatedAt, DateTimeKind.Utc), GetCategory(n.Title)))
+            .ToList();
     }
 
     /// <summary>Tạo thông báo CHUNG (UserId = null) — không kiểm tra trùng lặp
-    /// theo tiêu đề như 2 hàm Generate* bên dưới, vì mỗi lần gọi hàm này đều
-    /// ứng với 1 SỰ KIỆN THẬT riêng biệt đã xảy ra (VD tài xế báo xong chuyến
-    /// #15 rồi lại báo xong chuyến #16 — đây là 2 thông báo khác nhau, không
-    /// phải lặp lại cùng 1 cảnh báo).</summary>
+    /// vì mỗi lần gọi hàm này đều ứng với 1 SỰ KIỆN THẬT riêng biệt đã xảy ra
+    /// (VD tài xế báo xong chuyến #15 rồi lại báo xong chuyến #16).</summary>
     public async Task CreateBroadcastAsync(string title, string message)
     {
         _db.Notifications.Add(new Notification { UserId = null, Title = title, Message = message, IsRead = false });
         await _db.SaveChangesAsync();
     }
 
-    /// <summary>Quét TOÀN BỘ giấy tờ xe (Đăng kiểm/Bảo hiểm/Giấy phép vận tải)
-    /// SẮP hết hạn (trong 30 ngày) hoặc ĐÃ hết hạn — tạo 1 thông báo RIÊNG cho
-    /// mỗi giấy tờ, chỉ tạo nếu CHƯA có thông báo CÙNG TIÊU ĐỀ đang chưa đọc
-    /// (tránh spam trùng lặp mỗi lần người dùng mở app).</summary>
-    private async Task GenerateVehicleDocumentAlertsAsync(string userId)
+    /// <summary>Chuyến đã được Duyệt / Từ chối / Hoàn tất -> thông báo
+    /// "Tài xế báo xong chuyến #id — chờ duyệt" không còn việc gì để làm nữa,
+    /// tự đánh dấu đã đọc để danh sách "chưa đọc" chỉ còn việc THẬT SỰ cần xử lý.</summary>
+    public async Task ResolveTripPendingAsync(int tripId)
     {
-        var today = DateTime.UtcNow;
-        var warningThreshold = today.AddDays(30);
+        var titlePrefix = $"{PrefixTripPending}Tài xế báo xong chuyến #{tripId} ";
+        var rows = await _db.Notifications
+            .Where(n => n.UserId == null && !n.IsRead && n.Title.StartsWith(titlePrefix))
+            .ToListAsync();
+        if (rows.Count == 0) return;
+        foreach (var n in rows) n.IsRead = true;
+        await _db.SaveChangesAsync();
+    }
+
+    /// <summary>Thông báo "chờ duyệt" CHƯA đọc nhưng chuyến đó đã không còn ở
+    /// trạng thái Chờ xác nhận (đã duyệt / từ chối / hủy, kể cả xử lý trước khi
+    /// có bản sửa này) -> tự đánh dấu đã đọc.</summary>
+    private async Task AutoResolveTripPendingAsync()
+    {
+        var prefix = $"{PrefixTripPending}Tài xế báo xong chuyến #";
+        var pending = await _db.Notifications
+            .Where(n => n.UserId == null && !n.IsRead && n.Title.StartsWith(prefix))
+            .ToListAsync();
+        if (pending.Count == 0) return;
+
+        int? ParseTripId(string title)
+        {
+            var rest = title.Substring(prefix.Length);
+            var digits = new string(rest.TakeWhile(char.IsDigit).ToArray());
+            return int.TryParse(digits, out var id) ? id : null;
+        }
+
+        var tripIds = pending.Select(n => ParseTripId(n.Title)).Where(id => id.HasValue).Select(id => id!.Value).Distinct().ToList();
+        var stillPendingIds = await _db.Trips
+            .Where(t => tripIds.Contains(t.Id) && t.Status == TripStatus.PendingConfirmation)
+            .Select(t => t.Id)
+            .ToListAsync();
+
+        var changed = false;
+        foreach (var n in pending)
+        {
+            var id = ParseTripId(n.Title);
+            if (id.HasValue && stillPendingIds.Contains(id.Value)) continue;
+            n.IsRead = true;
+            changed = true;
+        }
+        if (changed) await _db.SaveChangesAsync();
+    }
+
+    /// <summary>ĐỒNG BỘ cảnh báo tự sinh (giấy tờ xe + lịch tài xế) của user
+    /// với tình trạng HIỆN TẠI:
+    /// 1) Tính ra danh sách cảnh báo ĐÚNG lúc này (tiêu đề + nội dung cố định,
+    ///    không chứa số "còn N ngày" thay đổi mỗi ngày).
+    /// 2) Cảnh báo nào ĐÃ CÓ (dù đã đọc hay chưa) -> giữ nguyên, KHÔNG tạo thêm.
+    ///    (Lỗi cũ: chỉ kiểm tra bản CHƯA đọc, nên bấm vào 1 dòng = đánh dấu đã
+    ///    đọc -> lần tải lại kế tiếp tạo lại y hệt dòng đó -> nhân bản mãi.)
+    /// 3) Cảnh báo cũ KHÔNG còn đúng (đã gia hạn giấy tờ, tài xế đã đăng ký ca,
+    ///    ngày đã qua) hoặc bị TRÙNG -> xóa đi.</summary>
+    private async Task SyncSystemAlertsAsync(string userId)
+    {
+        var expected = new List<(string Title, string Message)>();
+        expected.AddRange(await BuildVehicleDocumentAlertsAsync());
+        expected.AddRange(await BuildDriverScheduleAlertsAsync());
+
+        var existing = (await _db.Notifications
+                .Where(n => n.UserId == userId)
+                .ToListAsync())
+            .Where(n => IsSystemAlert(n.Title))
+            .ToList();
+
+        var expectedKeys = expected.Select(e => e.Title + "\n" + e.Message).ToHashSet();
+        var keptKeys = new HashSet<string>();
+        var changed = false;
+
+        // Giữ lại ĐÚNG 1 bản cho mỗi cảnh báo còn hiệu lực (ưu tiên bản đã đọc,
+        // để không "sống lại" thành chưa đọc), xóa bản trùng + bản hết hiệu lực.
+        foreach (var n in existing.OrderByDescending(n => n.IsRead).ThenBy(n => n.CreatedAt))
+        {
+            var key = n.Title + "\n" + n.Message;
+            if (expectedKeys.Contains(key) && keptKeys.Add(key)) continue;
+            _db.Notifications.Remove(n);
+            changed = true;
+        }
+
+        foreach (var (title, message) in expected)
+        {
+            if (!keptKeys.Add(title + "\n" + message)) continue;
+            _db.Notifications.Add(new Notification { UserId = userId, Title = title, Message = message, IsRead = false });
+            changed = true;
+        }
+
+        if (changed) await _db.SaveChangesAsync();
+    }
+
+    /// <summary>Giấy tờ xe (Đăng kiểm/Bảo hiểm/Giấy phép vận tải) SẮP hết hạn
+    /// (trong 30 ngày) hoặc ĐÃ hết hạn — 1 cảnh báo cho mỗi giấy tờ.</summary>
+    private async Task<List<(string Title, string Message)>> BuildVehicleDocumentAlertsAsync()
+    {
+        var now = DateTime.UtcNow;
+        var warningThreshold = now.AddDays(30);
 
         var docsNeedingAlert = await _db.VehicleDocuments
             .Include(d => d.Vehicle)
-            .Where(d => d.ExpiryDate <= warningThreshold)
+            .Where(d => d.DocType != VehicleDocumentType.Other && d.ExpiryDate <= warningThreshold)
             .ToListAsync();
 
+        var result = new List<(string Title, string Message)>();
         foreach (var doc in docsNeedingAlert)
         {
-            var isExpired = doc.ExpiryDate < today;
+            var isExpired = doc.ExpiryDate < now;
             var docTypeText = doc.DocType switch
             {
                 VehicleDocumentType.Registration => "Đăng kiểm",
@@ -66,27 +189,22 @@ public class NotificationService : INotificationService
                 _ => "Giấy tờ",
             };
             var title = isExpired
-                ? $"🔴 {docTypeText} xe {doc.Vehicle.PlateNumber} ĐÃ HẾT HẠN"
-                : $"🟡 {docTypeText} xe {doc.Vehicle.PlateNumber} sắp hết hạn";
-
-            var alreadyExists = await _db.Notifications.AnyAsync(n => n.UserId == userId && n.Title == title && !n.IsRead);
-            if (alreadyExists) continue;
-
+                ? $"{PrefixDocExpired}{docTypeText} xe {doc.Vehicle.PlateNumber} ĐÃ HẾT HẠN"
+                : $"{PrefixDocSoon}{docTypeText} xe {doc.Vehicle.PlateNumber} sắp hết hạn";
             var message = isExpired
                 ? $"{docTypeText} của xe {doc.Vehicle.PlateNumber} đã hết hạn từ {doc.ExpiryDate:dd/MM/yyyy} — xe này sẽ KHÔNG được Chia xe cho tới khi gia hạn."
-                : $"{docTypeText} của xe {doc.Vehicle.PlateNumber} sẽ hết hạn vào {doc.ExpiryDate:dd/MM/yyyy} (còn {(doc.ExpiryDate - today).Days} ngày) — nên gia hạn sớm.";
-
-            _db.Notifications.Add(new Notification { UserId = userId, Title = title, Message = message, IsRead = false });
+                : $"{docTypeText} của xe {doc.Vehicle.PlateNumber} sẽ hết hạn vào {doc.ExpiryDate:dd/MM/yyyy} — nên gia hạn sớm.";
+            result.Add((title, message));
         }
-        await _db.SaveChangesAsync();
+        return result;
     }
 
-    /// <summary>Quét tài xế (đang Active, đã có hồ sơ tài xế) mà CHƯA đăng ký
-    /// ca làm việc cho NGÀY MAI — cảnh báo sớm 1 ngày để Dispatcher biết cần
-    /// nhắc tài xế đăng ký lịch, tránh phát hiện quá muộn lúc Chia xe.</summary>
-    private async Task GenerateDriverScheduleAlertsAsync(string userId)
+    /// <summary>Tài xế (đang Active, bằng lái còn hạn) CHƯA đăng ký ca làm việc
+    /// cho NGÀY MAI — cảnh báo sớm 1 ngày để Dispatcher nhắc tài xế.</summary>
+    private async Task<List<(string Title, string Message)>> BuildDriverScheduleAlertsAsync()
     {
-        var tomorrow = DateTime.UtcNow.Date.AddDays(1);
+        // "Ngày mai" theo GIỜ VIỆT NAM (UTC+7) — cùng quy ước với Chia xe.
+        var tomorrow = DateTime.UtcNow.AddHours(7).Date.AddDays(1);
 
         var activeDrivers = await _db.DriverProfiles
             .Include(dp => dp.Employee)
@@ -99,17 +217,12 @@ public class NotificationService : INotificationService
             .Distinct()
             .ToListAsync();
 
-        foreach (var driver in activeDrivers.Where(d => !driverIdsScheduledTomorrow.Contains(d.EmployeeId)))
-        {
-            var title = $"📅 Tài xế {driver.Employee.FullName} chưa đăng ký ca làm NGÀY MAI";
-
-            var alreadyExists = await _db.Notifications.AnyAsync(n => n.UserId == userId && n.Title == title && !n.IsRead);
-            if (alreadyExists) continue;
-
-            var message = $"Tài xế {driver.Employee.FullName} chưa đăng ký ca làm việc cho ngày {tomorrow:dd/MM/yyyy} — nếu không đăng ký, sẽ KHÔNG được Chia xe cho các đơn cần chạy vào ngày đó.";
-            _db.Notifications.Add(new Notification { UserId = userId, Title = title, Message = message, IsRead = false });
-        }
-        await _db.SaveChangesAsync();
+        return activeDrivers
+            .Where(d => !driverIdsScheduledTomorrow.Contains(d.EmployeeId))
+            .Select(d => (
+                Title: $"{PrefixSchedule}Tài xế {d.Employee.FullName} ({d.Employee.Code}) chưa đăng ký ca ngày {tomorrow:dd/MM}",
+                Message: $"Tài xế {d.Employee.FullName} chưa đăng ký ca làm việc cho ngày {tomorrow:dd/MM/yyyy} — nếu không đăng ký, sẽ KHÔNG được Chia xe cho các đơn cần chạy vào ngày đó."))
+            .ToList();
     }
 
     public async Task MarkAsReadAsync(int notificationId)
