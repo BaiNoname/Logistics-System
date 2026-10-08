@@ -1,3 +1,4 @@
+using TruckingSystem.Desktop.DTO_TransportOrderManagement;
 using TruckingSystem.Desktop.Common;
 using TruckingSystem.Desktop.DTO_WarehouseManagement;
 
@@ -61,6 +62,18 @@ namespace TruckingSystem.Desktop.SERVICE_WarehouseManagement
 
         public Task<List<CargoLineOptionItem>> GetCargoLinesForOrderAsync(int transportOrderId, int warehouseId)
             => _conn.GetAsync<List<CargoLineOptionItem>>($"/api/warehouses/orders/{transportOrderId}/cargo-lines?warehouseId={warehouseId}")!;
+
+        /// <summary>Chỉ các đơn liên quan tới kho này (chọn kho / có chuyến qua kho / đã nhập-xuất tại kho).</summary>
+        public Task<List<TransportOrderListItem>> GetOrdersForWarehouseAsync(int warehouseId)
+            => _conn.GetAsync<List<TransportOrderListItem>>($"/api/warehouses/{warehouseId}/orders")!;
+
+        /// <summary>Toàn cảnh hàng của 1 đơn trong kho: đã nhập/xuất/còn/đang giữ cho chuyến + tiến độ từng chuyến.</summary>
+        public Task<OrderStockFlowItem> GetOrderStockFlowAsync(int warehouseId, int transportOrderId)
+            => _conn.GetAsync<OrderStockFlowItem>($"/api/warehouses/{warehouseId}/orders/{transportOrderId}/stock-flow")!;
+
+        /// <summary>Hoàn tác 1 phiếu xuất THỦ CÔNG làm nhầm — trả hàng lại vào kho.</summary>
+        public Task<WarehouseActionResultItem> ReverseManualIssueAsync(int issueId)
+            => _conn.PostAsync<WarehouseActionResultItem>($"/api/warehouses/issues/{issueId}/reverse", new { })!;
 
         public Task<List<WarehouseTransactionItem>> GetTransactionHistoryAsync(int warehouseId)
             => _conn.GetAsync<List<WarehouseTransactionItem>>($"/api/warehouses/{warehouseId}/transactions")!;

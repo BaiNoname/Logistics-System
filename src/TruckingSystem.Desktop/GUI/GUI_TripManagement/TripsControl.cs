@@ -13,6 +13,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
     {
         private ApiServices? _api;
         private List<TripListItem> _trips = new();
+        private Dictionary<int, TripWarehouseProgressItem> _progress = new();
 
         public TripsControl()
         {
@@ -29,6 +30,13 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
         /// dễ nhận ra ngay có chuyến cần Duyệt mà không phải đọc kỹ từng dòng.</summary>
         private void Grid_CellFormatting(object? sender, DataGridViewCellFormattingEventArgs e)
         {
+            if (grid.Columns[e.ColumnIndex].Name == "Kho" && e.Value is string kho)
+            {
+                e.CellStyle!.ForeColor = kho.StartsWith("✅") ? Theme.Success
+                    : kho.StartsWith("📥") || kho.StartsWith("📤") ? Theme.Primary
+                    : Theme.TextSecondary;
+                return;
+            }
             if (grid.Columns[e.ColumnIndex].Name != "Trạng_thái" || e.Value is null) return;
             if (e.Value.ToString() == "🟡 Chờ xác nhận")
             {
@@ -343,6 +351,8 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
             try
             {
                 _trips = await _api.Trips.GetTripsAsync();
+                try { _progress = (await _api.Trips.GetWarehouseProgressAsync()).ToDictionary(p => p.TripId); }
+                catch { _progress = new(); } // API cũ chưa có -> chỉ thiếu cột Kho, không chặn cả màn hình
                 grid.DataSource = _trips.Select(t => new
                 {
                     t.Id,
@@ -352,6 +362,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
                     Chặng = TranslateLegType(t.LegType),
                     Trạng_thái = IsWaitingForPickup(t) ? WaitingPickupText : TranslateStatus(t.Status),
                     Số_lượng = t.TotalQtyPlanned,
+                    Kho = WarehouseText(t),
                 }).ToList();
                 lblStatus.Text = $"Tổng {_trips.Count} chuyến — chọn 1 dòng rồi bấm Bắt đầu/Hoàn tất để đổi trạng thái";
                 UpdateStartButton();
@@ -364,6 +375,26 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
         }
 
         private const string WaitingPickupText = "⏳ Chờ lấy hàng xong";
+
+        /// <summary>Cột "Kho": chuyến Lấy hàng đã NHẬP kho bao nhiêu, chuyến Giao/
+        /// Trả đã XUẤT kho bao nhiêu — so với số lượng kế hoạch của chuyến.</summary>
+        private string WarehouseText(TripListItem t)
+        {
+            if (t.Status == "Cancelled") return "—";
+            if (!_progress.TryGetValue(t.Id, out var p)) return "";
+            var planned = p.QtyPlanned;
+            var done = p.QtyDone;
+            if (t.LegType == "Pickup")
+            {
+                if (planned > 0 && done >= planned) return $"✅ Đã nhập {done:0.##}/{planned:0.##}";
+                if (done > 0) return $"📥 Đã nhập {done:0.##}/{planned:0.##}";
+                return t.Status == "PendingConfirmation" ? "⏳ Duyệt xong mới nhập kho" : $"Chưa nhập (0/{planned:0.##})";
+            }
+            var verb = t.LegType == "Return" ? "xuất trả" : "xuất";
+            if (planned > 0 && done >= planned) return $"✅ Đã {verb} {done:0.##}/{planned:0.##}";
+            if (done > 0) return $"📤 Đã {verb} {done:0.##}/{planned:0.##}";
+            return t.LegType == "Return" ? $"Xuất khi trả xong (0/{planned:0.##})" : $"Xuất khi bắt đầu (0/{planned:0.##})";
+        }
 
         /// <summary>Chặng GIAO còn "Đã lên kế hoạch" nhưng đơn vẫn còn chặng LẤY
         /// HÀNG chưa Hoàn tất (chưa chạy / đang chạy / chờ duyệt) — hàng chưa về

@@ -127,9 +127,19 @@ public class TripService : ITripService
         {
             foreach (var line in trip.TripLines)
             {
+                // Chỉ xuất PHẦN CÒN THIẾU của chuyến này: nếu trước đó đã có phiếu
+                // xuất gắn đúng chuyến này (VD lần bắt đầu trước bị gián đoạn, dữ
+                // liệu từ phiên bản cũ) thì không xuất lại lần 2 — tránh báo "không
+                // đủ tồn kho" dù hàng thật ra đã được xuất cho chính chuyến này.
+                var alreadyIssued = await _db.GoodsIssues
+                    .Where(g => g.TripId == trip.Id && g.CargoLineId == line.CargoLineId)
+                    .SumAsync(g => (decimal?)g.QtyIssued) ?? 0m;
+                var qtyToIssue = line.QtyPlanned - alreadyIssued;
+                if (qtyToIssue <= 0) continue;
+
                 var issueResult = await _warehouseService.IssueGoodsAsync(
                     trip.WarehouseId.Value, trip.TransportOrderId, line.CargoLineId,
-                    line.QtyPlanned, trip.DriverEmployeeId, trip.Id);
+                    qtyToIssue, trip.DriverEmployeeId, trip.Id);
 
                 if (!issueResult.Success)
                     return new TripActionResult(false, "Không thể bắt đầu chuyến — " + issueResult.Message);
@@ -371,6 +381,31 @@ public class TripService : ITripService
         TripStatus.PendingConfirmation => "chờ Vận hành duyệt",
         _ => s.ToString(),
     };
+
+    /// <summary>Mỗi chuyến đã nhập (Lấy hàng) / xuất (Giao, Trả hàng) kho được
+    /// bao nhiêu so với kế hoạch — để màn Chuyến hiện cột "Kho" nhìn là biết.</summary>
+    public async Task<List<TripWarehouseProgressDto>> GetWarehouseProgressAsync()
+    {
+        var trips = await _db.Trips
+            .Select(t => new { t.Id, t.LegType, Planned = t.TripLines.Sum(tl => tl.QtyPlanned) })
+            .ToListAsync();
+        var received = await _db.GoodsReceipts
+            .Where(r => r.TripId != null)
+            .GroupBy(r => r.TripId!.Value)
+            .Select(g => new { TripId = g.Key, Qty = g.Sum(x => x.QtyReceived) })
+            .ToDictionaryAsync(x => x.TripId, x => x.Qty);
+        var issued = await _db.GoodsIssues
+            .Where(i => i.TripId != null && i.ReversedAt == null)
+            .GroupBy(i => i.TripId!.Value)
+            .Select(g => new { TripId = g.Key, Qty = g.Sum(x => x.QtyIssued) })
+            .ToDictionaryAsync(x => x.TripId, x => x.Qty);
+
+        return trips.Select(t =>
+        {
+            var source = t.LegType == TripLegType.Pickup ? received : issued;
+            return new TripWarehouseProgressDto(t.Id, t.LegType.ToString(), t.Planned, source.TryGetValue(t.Id, out var q) ? q : 0);
+        }).ToList();
+    }
 
     public async Task<List<WaypointDto>> GetWaypointsAsync(int tripId)
     {
@@ -777,9 +812,19 @@ public class TripService : ITripService
             await _db.SaveChangesAsync();
             foreach (var line in trip.TripLines)
             {
+                // Chỉ xuất PHẦN CÒN THIẾU của chuyến này: nếu trước đó đã có phiếu
+                // xuất gắn đúng chuyến này (VD lần bắt đầu trước bị gián đoạn, dữ
+                // liệu từ phiên bản cũ) thì không xuất lại lần 2 — tránh báo "không
+                // đủ tồn kho" dù hàng thật ra đã được xuất cho chính chuyến này.
+                var alreadyIssued = await _db.GoodsIssues
+                    .Where(g => g.TripId == trip.Id && g.CargoLineId == line.CargoLineId)
+                    .SumAsync(g => (decimal?)g.QtyIssued) ?? 0m;
+                var qtyToIssue = line.QtyPlanned - alreadyIssued;
+                if (qtyToIssue <= 0) continue;
+
                 var issueResult = await _warehouseService.IssueGoodsAsync(
                     trip.WarehouseId.Value, trip.TransportOrderId, line.CargoLineId,
-                    line.QtyPlanned, trip.DriverEmployeeId, trip.Id);
+                    qtyToIssue, trip.DriverEmployeeId, trip.Id);
                 if (!issueResult.Success)
                     return "Không thể xuất kho trả hàng: " + issueResult.Message;
             }

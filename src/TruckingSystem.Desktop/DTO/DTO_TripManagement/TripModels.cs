@@ -96,3 +96,12 @@ public class TripRouteEstimateItem
     public int DurationMinutes { get; set; }
     public string? Message { get; set; }
 }
+
+/// <summary>Chuyến đã nhập (Lấy hàng) / xuất (Giao, Trả) kho được bao nhiêu so với kế hoạch.</summary>
+public class TripWarehouseProgressItem
+{
+    public int TripId { get; set; }
+    public string LegType { get; set; } = "";
+    public decimal QtyPlanned { get; set; }
+    public decimal QtyDone { get; set; }
+}
