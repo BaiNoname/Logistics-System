@@ -17,6 +17,13 @@ public class ContractsController(IContractService service) : ControllerBase
     public async Task<ActionResult<ContractLookupDto>> GetLookups()
         => Ok(await service.GetLookupsAsync());
 
+    [HttpGet("{id:int}")]
+    public async Task<ActionResult<ContractListItemDto>> GetById(int id)
+    {
+        var contract = await service.GetByIdAsync(id);
+        return contract is null ? NotFound() : Ok(contract);
+    }
+
     [HttpPost]
     public async Task<ActionResult<ContractListItemDto>> Create(SaveContractRequest request)
     {
@@ -29,5 +36,12 @@ public class ContractsController(IContractService service) : ControllerBase
     {
         try { return await service.UpdateAsync(id, request) ? NoContent() : NotFound(); }
         catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
+    }
+
+    [HttpDelete("{id:int}")]
+    public async Task<IActionResult> Delete(int id)
+    {
+        try { return await service.DeleteAsync(id) ? NoContent() : NotFound(); }
+        catch (InvalidOperationException ex) { return Conflict(new { message = ex.Message }); }
     }
 }

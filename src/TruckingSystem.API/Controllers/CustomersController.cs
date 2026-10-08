@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Text.Json;
 using TruckingSystem.Application.Customers;
 
 namespace TruckingSystem.API.Controllers;
@@ -10,10 +11,12 @@ namespace TruckingSystem.API.Controllers;
 public class CustomersController : ControllerBase
 {
     private readonly ICustomerService _service;
+    private readonly ICustomerBusinessCardReader _businessCardReader;
 
-    public CustomersController(ICustomerService service)
+    public CustomersController(ICustomerService service, ICustomerBusinessCardReader businessCardReader)
     {
         _service = service;
+        _businessCardReader = businessCardReader;
     }
 
     [HttpGet]
@@ -34,5 +37,43 @@ public class CustomersController : ControllerBase
     {
         var result = await _service.UpdateAsync(id, request);
         return result.Success ? Ok(result) : BadRequest(result);
+    }
+
+    [HttpPost("read-business-card")]
+    [Authorize(Roles = "Admin,Dispatcher")]
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(10 * 1024 * 1024 + 64 * 1024)]
+    public async Task<ActionResult<CustomerBusinessCardInfo>> ReadBusinessCard(IFormFile image, CancellationToken cancellationToken)
+    {
+        if (image is null || image.Length == 0) return BadRequest("Vui lòng chọn ảnh danh thiếp.");
+        if (image.Length > 10 * 1024 * 1024) return BadRequest("Ảnh danh thiếp tối đa 10 MB.");
+        if (image.ContentType is not ("image/jpeg" or "image/png")) return BadRequest("Chỉ hỗ trợ ảnh JPG hoặc PNG.");
+
+        await using var stream = new MemoryStream();
+        await image.CopyToAsync(stream, cancellationToken);
+        try
+        {
+            return Ok(await _businessCardReader.ReadAsync(stream.ToArray(), image.ContentType, cancellationToken));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            return StatusCode(StatusCodes.Status504GatewayTimeout, new { message = "NVIDIA phản hồi quá lâu. Vui lòng thử lại sau." });
+        }
+        catch (HttpRequestException ex)
+        {
+            return StatusCode(StatusCodes.Status502BadGateway, new { message = ex.Message });
+        }
+        catch (JsonException)
+        {
+            return StatusCode(StatusCodes.Status502BadGateway, new { message = "AI trả về dữ liệu không đúng định dạng." });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return StatusCode(StatusCodes.Status502BadGateway, new { message = ex.Message });
+        }
     }
 }

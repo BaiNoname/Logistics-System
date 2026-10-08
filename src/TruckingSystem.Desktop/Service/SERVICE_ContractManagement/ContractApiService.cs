@@ -11,6 +11,12 @@ public class ContractApiService(ApiConnection connection)
     public Task<ContractLookups> GetLookupsAsync()
         => connection.GetAsync<ContractLookups>("/api/contracts/lookups")!;
 
+    public Task<ContractListItem?> GetContractAsync(int id)
+        => connection.GetAsync<ContractListItem>($"/api/contracts/{id}");
+
+    public Task DeleteContractAsync(int id)
+        => connection.DeleteAsync<object>($"/api/contracts/{id}");
+
     public Task CreateContractAsync(int customerId, string code, DateTime startDate, DateTime? endDate, string? terms, int? priceListId)
         => connection.PostAsync<object>("/api/contracts", new { customerId, code, startDate, endDate, terms, priceListId });
 

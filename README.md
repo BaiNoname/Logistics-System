@@ -519,6 +519,12 @@ Màn **Chuyến** → chọn chuyến → **Xem lộ trình**:
 | Đường cam | Đường GPS thật đã đi |
 | Đường tím | Đoạn có video hành trình |
 
+### 10.5. Quản lý hợp đồng (Desktop)
+
+Mở **Hợp đồng** → **Thêm mới**: nhập mã, chọn khách hàng, ngày bắt đầu, ngày kết thúc (tùy chọn), bảng giá (tùy chọn) và điều khoản. Mã không được trùng; ngày kết thúc được phép bằng ngày bắt đầu.
+
+Dùng ô tìm kiếm để lọc theo mã hoặc tên khách hàng, kết hợp bộ lọc trạng thái **Chưa hiệu lực / Đang hiệu lực / Hết hạn**. Trạng thái tính theo ngày Việt Nam (UTC+7), bao gồm cả ngày kết thúc. Nhấp đúp một dòng hoặc bấm **Chi tiết** để xem toàn bộ nội dung; bấm **Sửa** để cập nhật. **Xóa** yêu cầu xác nhận và bị chặn nếu hợp đồng đã được đơn hàng sử dụng; hợp đồng này cũng không được đổi khách hàng.
+
 ## 11. Xử lý sự cố thường gặp
 
 | Hiện tượng | Nguyên nhân & cách xử lý |

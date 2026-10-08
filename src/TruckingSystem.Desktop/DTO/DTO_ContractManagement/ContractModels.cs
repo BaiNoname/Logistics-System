@@ -2,6 +2,15 @@ namespace TruckingSystem.Desktop.DTO_ContractManagement;
 
 public class ContractListItem
 {
+    public string Status { get; set; } = "";
+    public string StatusText => Status switch
+    {
+        "Upcoming" => "Chưa hiệu lực",
+        "Active" => "Đang hiệu lực",
+        "Expired" => "Hết hạn",
+        _ => "—",
+    };
+
     public int Id { get; set; }
     public int CustomerId { get; set; }
     public string Code { get; set; } = "";

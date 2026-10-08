@@ -164,7 +164,7 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
             btnSave.FlatStyle = FlatStyle.Flat;
             btnSave.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
             btnSave.ForeColor = Color.White;
-            btnSave.Location = new Point(248, 483);
+            btnSave.Location = new Point(248, 510);
             btnSave.Name = "btnSave";
             btnSave.Size = new Size(150, 38);
             btnSave.TabIndex = 14;
@@ -174,12 +174,12 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
             // 
             // lblStatus
             // 
-            lblStatus.AutoSize = true;
+            lblStatus.AutoSize = false;
             lblStatus.Font = new Font("Segoe UI", 9F);
             lblStatus.ForeColor = Color.FromArgb(220, 38, 38);
             lblStatus.Location = new Point(24, 470);
             lblStatus.Name = "lblStatus";
-            lblStatus.Size = new Size(0, 15);
+            lblStatus.Size = new Size(400, 34);
             lblStatus.TabIndex = 15;
             // 
             // btnReadWithAi
@@ -191,11 +191,11 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
             btnReadWithAi.FlatStyle = FlatStyle.Flat;
             btnReadWithAi.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
             btnReadWithAi.ForeColor = Color.White;
-            btnReadWithAi.Location = new Point(45, 483);
+            btnReadWithAi.Location = new Point(45, 510);
             btnReadWithAi.Name = "btnReadWithAi";
             btnReadWithAi.Size = new Size(150, 38);
             btnReadWithAi.TabIndex = 16;
-            btnReadWithAi.Text = "Đọc bằng ai";
+            btnReadWithAi.Text = "Quét danh thiếp";
             btnReadWithAi.UseVisualStyleBackColor = false;
             btnReadWithAi.Click += btnReadWithAi_Click;
             // 
