@@ -22,7 +22,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
             Resize += (_, _) => { grid.Width = Width; grid.Height = Height - grid.Top; };
             grid.DataBindingComplete += (_, _) => { if (grid.Columns["Id"] != null) grid.Columns["Id"]!.Visible = false; };
             grid.CellFormatting += Grid_CellFormatting;
-            grid.SelectionChanged += (_, _) => UpdateStartButton();
+            grid.SelectionChanged += (_, _) => UpdateActionButtons();
             Load += async (_, _) => await LoadAsync();
         }
 
@@ -365,7 +365,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
                     Kho = WarehouseText(t),
                 }).ToList();
                 lblStatus.Text = $"Tổng {_trips.Count} chuyến — chọn 1 dòng rồi bấm Bắt đầu/Hoàn tất để đổi trạng thái";
-                UpdateStartButton();
+                UpdateActionButtons();
             }
             catch (Exception ex)
             {
@@ -405,13 +405,52 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
                && _trips.Any(p => p.OrderCode == t.OrderCode && p.LegType == "Pickup"
                                   && p.Status is not ("Completed" or "Cancelled"));
 
-        /// <summary>Nút "Bắt đầu" chỉ bấm được với chuyến "Đã lên kế hoạch" và
-        /// (nếu là chặng Giao) chặng Lấy hàng của đơn đã xong hết.</summary>
-        private void UpdateStartButton()
+        /// <summary>Bật/tắt TỪNG NÚT theo đúng trạng thái chuyến đang chọn — chỉ
+        /// cho bấm những thao tác hợp lệ (trước đây mọi nút đều bấm được ở mọi
+        /// trạng thái, VD Duyệt cả chuyến chưa chạy / đã hoàn tất):
+        ///   Bắt đầu            : Đã lên kế hoạch (+ chặng Giao: lấy hàng đã xong)
+        ///   Hoàn tất           : Đang chạy
+        ///   Duyệt / Từ chối    : Chờ xác nhận
+        ///   Đổ xăng, So sánh xăng : đã chạy (Đang chạy / Chờ xác nhận / Hoàn tất)
+        ///   Chi phí, Sự cố     : đã chạy hoặc đã hủy (chi phí phát sinh trước khi hủy)
+        ///   Đồng bộ lịch, Thông tin tài xế : Đã lên kế hoạch / Đang chạy
+        ///   Ước tính lộ trình  : chưa hủy
+        ///   Xem lộ trình       : mọi trạng thái</summary>
+        private void UpdateActionButtons()
         {
             var id = grid.CurrentRow?.Cells["Id"]?.Value as int?;
             var trip = id is null ? null : _trips.FirstOrDefault(t => t.Id == id.Value);
-            btnStart.Enabled = trip is not null && trip.Status == "Planned" && !IsWaitingForPickup(trip);
+            var st = trip?.Status ?? "";
+
+            var hasRun = st is "InProgress" or "PendingConfirmation" or "Completed";
+            var active = st is "Planned" or "InProgress";
+
+            btnStart.Enabled = trip is not null && st == "Planned" && !IsWaitingForPickup(trip);
+            btnComplete.Enabled = st == "InProgress";
+            btnApprove.Enabled = st == "PendingConfirmation";
+            btnReject.Enabled = st == "PendingConfirmation";
+            btnFuel.Enabled = hasRun;
+            btnFuelEstimate.Enabled = hasRun;
+            btnExpenses.Enabled = hasRun || st == "Cancelled";
+            btnIncidents.Enabled = hasRun || st == "Cancelled";
+            btnSyncCalendar.Enabled = active;
+            btnDriverInfo.Enabled = active;
+            btnQuickEstimate.Enabled = trip is not null && st != "Cancelled";
+            btnViewRoute.Enabled = trip is not null;
+
+            if (trip is null) return;
+            lblStatus.ForeColor = Theme.TextSecondary;
+            lblStatus.Text = $"Tổng {_trips.Count} chuyến   •   Đang chọn chuyến #{trip.Id} · {TranslateLegType(trip.LegType)} · " +
+                (IsWaitingForPickup(trip) ? WaitingPickupText : TranslateStatus(trip.Status)) + " — " + st switch
+                {
+                    "Planned" when IsWaitingForPickup(trip) => "chờ chuyến lấy hàng của đơn hoàn tất mới bắt đầu được",
+                    "Planned" => "có thể: Bắt đầu, Ước tính lộ trình, Đồng bộ lịch, gửi thông tin cho tài xế",
+                    "InProgress" => "có thể: Hoàn tất, ghi Đổ xăng / Chi phí / Sự cố, theo dõi lộ trình",
+                    "PendingConfirmation" => "tài xế đã báo xong — xem lộ trình rồi Duyệt hoặc Từ chối",
+                    "Completed" => "đã hoàn tất — chỉ xem lại / bổ sung chi phí",
+                    "Cancelled" => "đã hủy — chỉ xem lại / ghi chi phí đã phát sinh",
+                    _ => "",
+                };
         }
 
         private static string TranslateLegType(string s) => s switch

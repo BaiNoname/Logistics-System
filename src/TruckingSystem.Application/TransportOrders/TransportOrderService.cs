@@ -177,6 +177,29 @@ public class TransportOrderService : ITransportOrderService
                 && t.Status is TripStatus.InProgress or TripStatus.PendingConfirmation or TripStatus.Completed))
             return new OrderActionResult(false, "Đã có xe xuất kho và đang/đã giao hàng — không thể hủy đơn nữa.");
 
+        // CHẶN nếu có chuyến Lấy hàng đang "Chờ xác nhận": tài xế đã chở hàng về
+        // kho nhưng hàng CHƯA được nhập (nhập kho chỉ xảy ra lúc Duyệt). Hủy lúc
+        // này sẽ làm hàng nằm ở kho mà hệ thống không ghi nhận, cũng không tạo
+        // chuyến Trả hàng. Phải Duyệt (nhập kho) hoặc Từ chối chuyến đó trước.
+        var pendingPickupIds = order.Trips
+            .Where(t => t.LegType == TripLegType.Pickup && t.Status == TripStatus.PendingConfirmation)
+            .Select(t => t.Id).ToList();
+        if (pendingPickupIds.Count > 0)
+            return new OrderActionResult(false,
+                "Chuyến lấy hàng #" + string.Join(", #", pendingPickupIds) +
+                " đang CHỜ XÁC NHẬN (hàng đã về kho nhưng chưa nhập). " +
+                "Hãy Duyệt hoặc Từ chối chuyến đó trước, rồi mới hủy đơn.");
+
+        // Chuyến Lấy hàng đang chạy: vẫn cho hủy, nhưng báo lại để điều phối gọi
+        // tài xế dừng (app tài xế sẽ tự ngừng tracking khi thấy chuyến bị hủy).
+        var pickupsOnRoadIds = order.Trips
+            .Where(t => t.LegType == TripLegType.Pickup && t.Status == TripStatus.InProgress)
+            .Select(t => t.Id).ToList();
+        string? cancelNote = pickupsOnRoadIds.Count > 0
+            ? "Đã hủy đơn. Lưu ý: chuyến lấy hàng #" + string.Join(", #", pickupsOnRoadIds) +
+              " đang trên đường — hãy liên hệ tài xế để dừng lại."
+            : null;
+
         // SelfDelivery: hàng nhập kho NGAY lúc Chia xe -> có tồn kho thật là đủ.
         var isSelfDelivery = order.PickupMethod == PickupMethod.SelfDelivery;
         var cargoLineIds = order.CargoLines.Select(c => c.Id).ToList();
@@ -243,7 +266,7 @@ public class TransportOrderService : ITransportOrderService
         order.Status = TransportOrderStatus.Cancelled;
         await _db.SaveChangesAsync();
         await transaction.CommitAsync();
-        return new OrderActionResult(true, null);
+        return new OrderActionResult(true, cancelNote);
     }
 
     private static PickupMethod ParsePickupMethod(string value)

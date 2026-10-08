@@ -20,6 +20,10 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             };
             Resize += (_, _) => { grid.Width = Width; grid.Height = Height - grid.Top; };
             grid.CellDoubleClick += async (_, _) => await OpenDetailAsync();
+            // "Chia xe" chỉ bấm được với đơn ĐÃ XÁC NHẬN (Nháp phải xác nhận trước;
+            // đơn đang chạy / hoàn tất / đã hủy không chia xe được nữa).
+            grid.SelectionChanged += (_, _) => UpdateActionButtons();
+            grid.DataBindingComplete += (_, _) => UpdateActionButtons();
 
             Load += async (_, _) => await LoadAsync();
         }
@@ -117,6 +121,13 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             {
                 MessageBox.Show(FindForm(), "Lỗi khi chia xe: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+        }
+
+        private void UpdateActionButtons()
+        {
+            var id = grid.CurrentRow?.Cells["Id"]?.Value as int?;
+            var order = id is null ? null : _orders.FirstOrDefault(o => o.Id == id.Value);
+            btnAllocate.Enabled = order?.Status == "Confirmed";
         }
 
         private static string TranslateStatus(string s) => s switch

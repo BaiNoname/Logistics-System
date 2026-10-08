@@ -24,7 +24,9 @@ public class DriverService : IDriverService
             .ToListAsync();
 
         // Tài xế đã đăng ký ÍT NHẤT 1 ca cho HÔM NAY (không phân biệt loại ca).
-        var today = DateTime.UtcNow.Date;
+        // "Hôm nay" theo GIỜ VIỆT NAM (UTC+7) — UtcNow.Date bị lệch 1 ngày
+        // trong khoảng 0h–7h sáng, cùng quy ước với VehicleAllocationService.
+        var today = DateTime.UtcNow.AddHours(7).Date;
         var scheduledTodayIds = await _db.DriverSchedules
             .Where(s => s.ShiftDate.Date == today)
             .Select(s => s.DriverEmployeeId)
