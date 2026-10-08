@@ -200,6 +200,9 @@ public class TripService : ITripService
 
         await _db.SaveChangesAsync();
         await transaction.CommitAsync();
+
+        // Chuyến đã xử lý xong -> thông báo "chờ duyệt" của chuyến này tự đánh dấu đã đọc.
+        await _notificationService.ResolveTripPendingAsync(trip.Id);
         return new TripActionResult(true, null);
     }
 
@@ -215,6 +218,10 @@ public class TripService : ITripService
 
         trip.Status = TripStatus.InProgress;
         await _db.SaveChangesAsync();
+
+        // Đã xử lý (từ chối) -> thông báo "chờ duyệt" cũ không còn việc gì để làm.
+        // Nếu tài xế báo xong lại, hệ thống sẽ tạo thông báo MỚI.
+        await _notificationService.ResolveTripPendingAsync(trip.Id);
         return new TripActionResult(true, null);
     }
 
@@ -586,6 +593,9 @@ public class TripService : ITripService
 
     public async Task<IncidentReportDto> CreateIncidentAsync(int tripId, CreateIncidentReportRequest request)
     {
+        var blockReason = await GetTripCostBlockReasonAsync(tripId, "sự cố");
+        if (blockReason is not null) throw new InvalidOperationException(blockReason);
+
         if (request.Cost.HasValue && request.Cost.Value < 0)
             throw new InvalidOperationException("Chi phí phát sinh không thể là số âm.");
 
@@ -710,6 +720,9 @@ public class TripService : ITripService
 
     public async Task<TripExpenseDto> CreateExpenseAsync(int tripId, CreateTripExpenseRequest request)
     {
+        var blockReason = await GetTripCostBlockReasonAsync(tripId, "chi phí");
+        if (blockReason is not null) throw new InvalidOperationException(blockReason);
+
         if (request.Amount <= 0)
             throw new InvalidOperationException("Số tiền phải lớn hơn 0.");
 
@@ -726,6 +739,23 @@ public class TripService : ITripService
         await _db.SaveChangesAsync();
 
         return new TripExpenseDto(expense.Id, expense.Type.ToString(), expense.Amount, expense.Note);
+    }
+
+    /// <summary>Chặn ghi chi phí / sự cố cho chuyến CHƯA từng chạy (Planned) —
+    /// khớp với nút trên Desktop (chỉ bật khi chuyến đã chạy hoặc đã hủy).
+    /// Trước đây backend cho ghi ở MỌI trạng thái, gọi thẳng API vẫn ghi được
+    /// chi phí cho chuyến chưa xuất phát, làm sai báo cáo chi phí đơn hàng.
+    /// Trả về null nếu được phép ghi.</summary>
+    private async Task<string?> GetTripCostBlockReasonAsync(int tripId, string what)
+    {
+        var status = await _db.Trips
+            .Where(t => t.Id == tripId)
+            .Select(t => (TripStatus?)t.Status)
+            .FirstOrDefaultAsync();
+        if (status is null) return "Không tìm thấy chuyến.";
+        if (status == TripStatus.Planned)
+            return $"Chuyến chưa bắt đầu chạy — chưa thể ghi {what}. Hãy ghi sau khi chuyến đã xuất phát.";
+        return null;
     }
 
     public async Task<TripActionResult> DeleteExpenseAsync(int expenseId)
