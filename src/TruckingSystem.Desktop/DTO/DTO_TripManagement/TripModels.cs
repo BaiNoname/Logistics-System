@@ -13,6 +13,12 @@ public class TripListItem
     public double? FromLng { get; set; }
     public double? ToLat { get; set; }
     public double? ToLng { get; set; }
+    /// <summary>Chuyến đã từng chạy (có giờ bắt đầu) — giống điều kiện server cho Xăng / Chi phí / Sự cố.</summary>
+    public bool HasRun { get; set; }
+    /// <summary>Đã có ước tính lộ trình (số kế hoạch).</summary>
+    public bool HasEstimate { get; set; }
+    /// <summary>Chặng Giao chưa chạy, chờ hàng lấy về được NHẬP KHO (server tính, cùng quy tắc chặn Bắt đầu).</summary>
+    public bool AwaitingReceipt { get; set; }
 }
 
 public class TripActionResultItem

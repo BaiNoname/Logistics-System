@@ -22,6 +22,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
         private TripFuelApiService? _fuel;
         private int _tripId;
         private FuelPriceQuoteItem? _quote;
+        private int _quoteLoadId; // đổi nhà cung cấp nhanh: chỉ dùng đơn giá của lượt hỏi MỚI NHẤT
         private List<FuelLogItem> _logs = new();
         private bool _changed;
         private bool _busy;
@@ -108,9 +109,14 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
         private async Task LoadQuoteAsync()
         {
             if (_fuel is null || cboProvider.SelectedItem is not ProviderOption option) return;
+            var loadId = ++_quoteLoadId;
+            // Chưa có đơn giá của nhà cung cấp vừa chọn -> chưa cho Lưu (tránh hiện thành tiền theo giá cũ).
+            btnSave.Enabled = false;
             try
             {
-                _quote = await _fuel.GetPriceQuoteAsync(_tripId, option.Id);
+                var quote = await _fuel.GetPriceQuoteAsync(_tripId, option.Id);
+                if (IsDisposed || loadId != _quoteLoadId) return; // đã chọn nhà cung cấp khác
+                _quote = quote;
 
                 lblInfo.Text = string.IsNullOrWhiteSpace(_quote.FuelType)
                     ? "Xe của chuyến này chưa khai báo loại nhiên liệu."
@@ -139,6 +145,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
             }
             catch (Exception ex)
             {
+                if (IsDisposed || loadId != _quoteLoadId) return;
                 ShowError("Lỗi lấy đơn giá: " + ex.Message);
             }
         }

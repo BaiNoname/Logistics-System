@@ -89,6 +89,12 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             }
             var doorSide = WarehouseDoorHelper.ToApiValue(cboDoorSide.SelectedIndex);
             decimal? doorOffset = doorSide is null ? null : numDoorOffset.Value;
+            // Tọa độ (0, 0) = chưa có tọa độ thật (điểm giữa biển) — server cũng từ chối.
+            if (_selectedAddress is { Lat: 0, Lng: 0 })
+            {
+                lblStatus.Text = "Địa chỉ đã chọn không có tọa độ hợp lệ (0, 0) — hãy chọn địa chỉ khác trong danh sách gợi ý.";
+                return;
+            }
 
             btnSave.Enabled = false;
             try

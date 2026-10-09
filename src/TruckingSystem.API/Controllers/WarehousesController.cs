@@ -34,7 +34,16 @@ public class WarehousesController : ControllerBase
 
     [HttpPost]
     public async Task<ActionResult<WarehouseListItemDto>> CreateWarehouse(CreateWarehouseRequest request)
-        => Ok(await _slottingService.CreateWarehouseAsync(request));
+    {
+        try
+        {
+            return Ok(await _slottingService.CreateWarehouseAsync(request));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
 
     [HttpPut("{warehouseId:int}")]
     public async Task<ActionResult<WarehouseActionResult>> UpdateWarehouse(int warehouseId, UpdateWarehouseRequest request)

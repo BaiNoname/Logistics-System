@@ -13,7 +13,13 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
         public EditZoneForm()
         {
             InitializeComponent();
-            cboZoneType.Items.AddRange(new object[] { "Normal", "Fragile", "Hazmat" });
+            // Hiện tiếng Việt, gửi đúng mã cho server (trước đây hiện "Normal/Fragile/Hazmat").
+            cboZoneType.Items.AddRange(new object[]
+            {
+                new ComboOption("Normal", "Hàng thường"),
+                new ComboOption("Fragile", "Hàng dễ vỡ"),
+                new ComboOption("Hazmat", "Hàng nguy hiểm"),
+            });
         }
 
         public EditZoneForm(ApiServices api, WarehouseZoneItem zone) : this()
@@ -22,11 +28,21 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             _zoneId = zone.Id;
 
             txtName.Text = zone.Name;
-            cboZoneType.SelectedItem = zone.ZoneType;
-            numPosX.Value = zone.PosX;
-            numPosY.Value = zone.PosY;
-            numWidth.Value = zone.WidthMeters;
-            numHeight.Value = zone.HeightMeters;
+            cboZoneType.SelectedItem = cboZoneType.Items.Cast<ComboOption>().FirstOrDefault(o => o.Value == zone.ZoneType)
+                                       ?? cboZoneType.Items[0];
+            // SetSafe: số đã lưu vượt giới hạn ô nhập (dữ liệu cũ / nhập qua API) -> nới giới hạn
+            // thay vì crash (ArgumentOutOfRangeException) ngay khi mở form.
+            SetSafe(numPosX, zone.PosX);
+            SetSafe(numPosY, zone.PosY);
+            SetSafe(numWidth, zone.WidthMeters);
+            SetSafe(numHeight, zone.HeightMeters);
+        }
+
+        private static void SetSafe(NumericUpDown n, decimal value)
+        {
+            if (value > n.Maximum) n.Maximum = value;
+            if (value < n.Minimum) n.Minimum = value;
+            n.Value = value;
         }
 
         private async void BtnSave_Click(object? sender, EventArgs e)
@@ -47,7 +63,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             try
             {
                 var result = await _api.Warehouses.UpdateZoneAsync(
-                    _zoneId, txtName.Text.Trim(), (string)cboZoneType.SelectedItem!,
+                    _zoneId, txtName.Text.Trim(), ((ComboOption)cboZoneType.SelectedItem!).Value,
                     numPosX.Value, numPosY.Value, numWidth.Value, numHeight.Value);
 
                 if (!result.Success)

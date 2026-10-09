@@ -1,4 +1,4 @@
-namespace TruckingSystem.Desktop.DTO_VehicleManagement
+﻿namespace TruckingSystem.Desktop.DTO_VehicleManagement
 {
     public class VehicleListItem
     {
@@ -13,6 +13,8 @@ namespace TruckingSystem.Desktop.DTO_VehicleManagement
         public string? FuelType { get; set; }
         public int? WarehouseId { get; set; }
         public string? WarehouseName { get; set; }
+        /// <summary>Lý do giấy tờ khiến xe không Chia xe được hôm nay (null = ổn).</summary>
+        public string? DocumentBlockReason { get; set; }
     }
 
     public class VehicleActionResultItem

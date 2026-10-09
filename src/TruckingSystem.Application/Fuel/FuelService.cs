@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using TruckingSystem.Application.Common;
 using TruckingSystem.Application.Common.Interfaces;
 using TruckingSystem.Domain.Entities;
 
@@ -103,11 +104,16 @@ public class FuelService : IFuelService
         if (request.FuelProviderId.HasValue && !await _db.FuelProviders.AnyAsync(p => p.Id == request.FuelProviderId.Value))
             throw new InvalidOperationException("Hãng nhiên liệu không tồn tại.");
 
-        var effectiveDate = request.EffectiveDate.Date;
+        // NGÀY áp dụng theo lịch Việt Nam — Desktop gửi kèm +07:00; nếu máy chủ không chạy
+        // giờ VN thì .Date trực tiếp sẽ lùi 1 ngày (giá áp dụng sớm 1 ngày, kiểm tra trùng sai ngày).
+        var effectiveDate = VnClock.ToVnWallClock(request.EffectiveDate)!.Value.Date;
         var duplicate = await _db.FuelPriceHistories.AnyAsync(p =>
             p.FuelProviderId == request.FuelProviderId && p.FuelType == fuelType && p.EffectiveDate.Date == effectiveDate);
         if (duplicate)
             throw new InvalidOperationException($"Đã có giá \"{fuelType}\" áp dụng ngày {effectiveDate:dd/MM/yyyy} cho hãng này — xóa giá cũ trước nếu muốn nhập lại.");
+
+        var lockReason = await HistoryLockReasonAsync(fuelType, effectiveDate, "nhập giá áp dụng LÙI về");
+        if (lockReason is not null) throw new InvalidOperationException(lockReason);
 
         var price = new FuelPriceHistory
         {
@@ -129,10 +135,33 @@ public class FuelService : IFuelService
         return new FuelPriceHistoryDto(price.Id, price.FuelType, price.Price, price.EffectiveDate, price.FuelProviderId, providerName ?? "(Giá thị trường chung)");
     }
 
+    /// <summary>Giá áp dụng TỪ TRƯỚC hôm nay mà đã có chuyến HOÀN TẤT (cùng loại nhiên liệu) từ ngày
+    /// đó trở đi -> không cho thêm / xóa: báo cáo xăng tính lại dự toán, định mức, cờ lệch của
+    /// các chuyến ĐÃ XONG theo bảng giá mới, trong khi tiền thực đổ đã chốt -> số tháng trước tự
+    /// thay đổi. Giá từ hôm nay trở đi thì thêm / xóa thoải mái (sửa nhập nhầm).</summary>
+    private async Task<string?> HistoryLockReasonAsync(string fuelType, DateTime effectiveDateVn, string action)
+    {
+        if (effectiveDateVn >= VnClock.Today) return null;
+        var fromUtc = VnClock.VnToUtc(effectiveDateVn);
+        var completed = await _db.Trips
+            .Where(t => t.Status == TruckingSystem.Domain.Enums.TripStatus.Completed && t.EndTime != null && t.EndTime >= fromUtc
+                        && t.Vehicle.FuelType != null)
+            .Select(t => new { t.Id, t.Vehicle.FuelType, t.EndTime })
+            .ToListAsync();
+        var hit = completed.Where(t => string.Equals(t.FuelType!.Trim(), fuelType.Trim(), StringComparison.OrdinalIgnoreCase)).ToList();
+        if (hit.Count == 0) return null;
+        return $"Không thể {action} ngày {effectiveDateVn:dd/MM/yyyy}: đã có {hit.Count} chuyến dùng \"{fuelType}\" HOÀN TẤT từ ngày đó " +
+               $"(VD chuyến #{hit.OrderBy(t => t.EndTime).First().Id}) — báo cáo xăng của các chuyến đã xong sẽ bị tính lại theo giá khác. " +
+               "Chỉ thêm / xóa giá áp dụng từ hôm nay trở đi.";
+    }
+
     public async Task<FuelActionResult> DeletePriceAsync(int priceId)
     {
         var price = await _db.FuelPriceHistories.FindAsync(priceId);
         if (price is null) return new FuelActionResult(false, "Không tìm thấy mức giá này.");
+
+        var lockReason = await HistoryLockReasonAsync(price.FuelType, price.EffectiveDate.Date, "xóa giá áp dụng từ");
+        if (lockReason is not null) return new FuelActionResult(false, lockReason);
 
         _db.FuelPriceHistories.Remove(price);
         await _db.SaveChangesAsync();

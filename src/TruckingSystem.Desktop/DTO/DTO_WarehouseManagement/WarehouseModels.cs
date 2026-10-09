@@ -113,6 +113,8 @@ namespace TruckingSystem.Desktop.DTO_WarehouseManagement
         public bool IsManual { get; set; }
         public bool IsReversed { get; set; }
         public string? Note { get; set; }
+        /// <summary>Server tính: phiếu xuất tay, chưa hoàn tác, đơn chưa Hoàn tất/Hủy.</summary>
+        public bool CanReverse { get; set; }
     }
 
     /// <summary>Toàn cảnh hàng của 1 đơn trong 1 kho.</summary>
@@ -137,6 +139,12 @@ namespace TruckingSystem.Desktop.DTO_WarehouseManagement
         public decimal QtyReserved { get; set; }
         public decimal QtyFreeForManualIssue { get; set; }
         public string StatusText { get; set; } = "";
+        /// <summary>Số lượng NHẬP TAY được thật sự (đúng quy tắc server: trạng thái đơn, đúng
+        /// kho, chặng lấy hàng đã xong, chừa phần chuyến lấy hàng chưa về).</summary>
+        public decimal QtyCanReceive { get; set; }
+        /// <summary>Lý do không nhập / không xuất tay được (null = được).</summary>
+        public string? ReceiveBlockReason { get; set; }
+        public string? IssueBlockReason { get; set; }
     }
 
     public class TripStockFlowItem

@@ -6,6 +6,7 @@ using TruckingSystem.Application.Employees;
 using TruckingSystem.Application.Invoices;
 using TruckingSystem.Application.Locations;
 using TruckingSystem.Application.PublicTracking;
+using TruckingSystem.Application.TripPhotos;
 using TruckingSystem.Application.TransportOrders;
 using TruckingSystem.Application.Fuel;
 using TruckingSystem.Application.Trips;
@@ -37,6 +38,7 @@ public static class DependencyInjection
         services.AddScoped<TruckingSystem.Application.AuditLogs.IAuditLogService, TruckingSystem.Application.AuditLogs.AuditLogService>();
         services.AddScoped<IPublicTrackingService, PublicTrackingService>();
         services.AddScoped<IWarehouseSlottingService, WarehouseSlottingService>();
+        services.AddScoped<IPendingReceiptService, PendingReceiptService>();
         services.AddScoped<IEmployeeService, EmployeeService>();
         services.AddScoped<ISystemManagementService, SystemManagementService>();
         services.AddScoped<IInvoiceService, InvoiceService>();
@@ -45,6 +47,7 @@ public static class DependencyInjection
         services.AddScoped<IDriverService, DriverService>();
         services.AddScoped<IReportService, ReportService>();
         services.AddScoped<ITripVideoService, TripVideoService>();
+        services.AddScoped<ITripPhotoService, TripPhotoService>();
         return services;
     }
 }

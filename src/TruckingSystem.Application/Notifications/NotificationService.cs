@@ -184,7 +184,6 @@ public class NotificationService : INotificationService
         var plates = await _db.Vehicles
             .Where(v => vehicleIds.Contains(v.Id))
             .ToDictionaryAsync(v => v.Id, v => v.PlateNumber);
-
         var result = new List<(string Title, string Message)>();
         foreach (var doc in docsNeedingAlert)
         {
@@ -195,7 +194,10 @@ public class NotificationService : INotificationService
                 ? $"{PrefixDocExpired}{docTypeText} xe {plate} ĐÃ HẾT HẠN"
                 : $"{PrefixDocSoon}{docTypeText} xe {plate} sắp hết hạn";
             var message = isExpired
-                ? $"{docTypeText} của xe {plate} đã hết hạn từ {doc.ExpiryDate:dd/MM/yyyy} — xe này sẽ KHÔNG được Chia xe cho tới khi gia hạn."
+                ? $"{docTypeText} của xe {plate} đã hết hạn từ {doc.ExpiryDate:dd/MM/yyyy} — xe này sẽ KHÔNG được Chia xe cho tới khi gia hạn." +
+                  // Câu CỐ ĐỊNH (không liệt kê mã chuyến): cảnh báo được nhận diện theo tiêu đề + nội dung,
+                  // nội dung đổi theo danh sách chuyến sẽ làm cảnh báo đã đọc hiện lại thành chưa đọc.
+                  " Các chuyến ĐÃ CHIA cho xe này mà chưa chạy (VD chặng Giao đang chờ nhập kho) cũng sẽ KHÔNG xuất phát được — gia hạn hoặc Đổi xe / tài xế."
                 : $"{docTypeText} của xe {plate} sẽ hết hạn vào {doc.ExpiryDate:dd/MM/yyyy} — nên gia hạn sớm.";
             result.Add((title, message));
         }

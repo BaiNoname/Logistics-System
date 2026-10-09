@@ -65,13 +65,15 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
 
         private async void BtnAddExpense_Click(object? sender, EventArgs e)
         {
-            if (_api is null) return;
+            if (_api is null || !btnAddExpense.Enabled) return;
             if (numAmount.Value <= 0)
             {
                 lblStatus.Text = "Số tiền phải lớn hơn 0.";
                 lblStatus.ForeColor = Theme.Warning;
                 return;
             }
+            // Khóa nút trong lúc chờ server — bấm 2 lần trước đây tạo 2 khoản chi trùng.
+            btnAddExpense.Enabled = false;
             try
             {
                 await _api.Trips.CreateExpenseAsync(_tripId, (cboType.SelectedItem as ComboOption)?.Value ?? "Other", numAmount.Value,
@@ -82,8 +84,13 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
             }
             catch (Exception ex)
             {
+                if (IsDisposed) return;
                 lblStatus.Text = "Lỗi: " + ex.Message;
                 lblStatus.ForeColor = Theme.Danger;
+            }
+            finally
+            {
+                if (!IsDisposed) btnAddExpense.Enabled = true;
             }
         }
 
@@ -121,7 +128,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
             "Toll" => "🛣️ Phí cầu đường",
             "Parking" => "🅿️ Phí bến bãi",
             "Loading" => "📦 Phí bốc xếp",
-            "Fine" => "🚔 Phạt",
+            "Fine" => "🚔 Tiền phạt",
             _ => "❓ Khác",
         };
     }

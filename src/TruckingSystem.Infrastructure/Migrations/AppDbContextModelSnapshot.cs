@@ -1392,6 +1392,9 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.Property<string>("CancelReason")
                         .HasColumnType("text");
 
+                    b.Property<DateTime?>("ConfirmRejectedAt")
+                        .HasColumnType("timestamp without time zone");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp without time zone");
 
@@ -1492,6 +1495,51 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.HasIndex("TripId");
 
                     b.ToTable("TripCalendarEvents");
+                });
+
+            modelBuilder.Entity("TruckingSystem.Domain.Entities.TripCargoPhoto", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("Sha256")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<long>("SizeBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("StoragePath")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<DateTime>("TakenAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<int>("TripId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TripId");
+
+                    b.ToTable("TripCargoPhotos");
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.TripExpense", b =>
@@ -2455,6 +2503,17 @@ namespace TruckingSystem.Infrastructure.Migrations
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.TripCalendarEvent", b =>
+                {
+                    b.HasOne("TruckingSystem.Domain.Entities.Trip", "Trip")
+                        .WithMany()
+                        .HasForeignKey("TripId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Trip");
+                });
+
+            modelBuilder.Entity("TruckingSystem.Domain.Entities.TripCargoPhoto", b =>
                 {
                     b.HasOne("TruckingSystem.Domain.Entities.Trip", "Trip")
                         .WithMany()

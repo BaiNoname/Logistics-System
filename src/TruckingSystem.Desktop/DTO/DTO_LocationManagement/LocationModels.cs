@@ -7,6 +7,8 @@ namespace TruckingSystem.Desktop.DTO_LocationManagement
         public string Address { get; set; } = "";
         public double? Lat { get; set; }
         public double? Lng { get; set; }
+        /// <summary>null = địa điểm dùng chung; có giá trị = địa chỉ riêng của 1 khách hàng.</summary>
+        public int? CustomerId { get; set; }
 
         // Hiện tên trong ComboBox mà không cần set DisplayMember riêng
         public override string ToString() => Name;

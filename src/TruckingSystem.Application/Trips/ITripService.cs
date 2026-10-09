@@ -77,6 +77,9 @@ public interface ITripService
     /// trong mô tả sự kiện. Gọi lại nhiều lần chỉ CẬP NHẬT, không tạo trùng.</summary>
     Task<CalendarSyncResultDto> SyncCalendarAsync(int tripId, string publicTrackingBaseUrl);
 
+    /// <summary>Chuyến đã từng đồng bộ lịch -> cập nhật lại giờ sự kiện (gọi sau Bắt đầu / Hoàn tất / Duyệt).</summary>
+    Task ResyncCalendarIfSyncedAsync(int tripId, string publicTrackingBaseUrl);
+
     /// <summary>Danh sách chi phí khác (ngoài xăng) đã ghi cho 1 chuyến.</summary>
     Task<List<TripExpenseDto>> GetExpensesAsync(int tripId);
 
@@ -88,6 +91,15 @@ public interface ITripService
     /// của chuyến này (Lấy hàng: round-trip Kho→Đối tác→Kho; Giao hàng: 1
     /// chiều Kho→Điểm giao) — LƯU LẠI vào Trip để dùng cho thống kê sau này.</summary>
     Task<TripRouteEstimateDto> CalculateAndSaveRouteEstimateAsync(int tripId);
+
+    // ---- Gỡ chuyến bị kẹt (chưa chạy) ----
+    /// <summary>Danh sách xe / tài xế có thể thay cho chuyến chưa chạy (kèm lý do không dùng được).</summary>
+    Task<ReassignOptionsDto> GetReassignOptionsAsync(int tripId);
+    /// <summary>Đổi xe và/hoặc tài xế cho chuyến chưa chạy (kiểm tra lại đủ điều kiện như Chia xe).</summary>
+    Task<TripActionResult> ReassignAsync(int tripId, ReassignTripRequest request);
+    /// <summary>Chuyến TRẢ HÀNG chưa chạy -> khách nhận lại hàng ngay tại kho: xuất kho,
+    /// đóng chuyến, trả xe/tài xế (dùng khi xe của chuyến trả hàng không chạy được).</summary>
+    Task<TripActionResult> ReturnAtWarehouseAsync(int tripId, string? userName);
 }
 
 /// <summary>Trạng thái chuyến cho app tài xế. CanTrack=false thì Message giải thích lý do.</summary>
