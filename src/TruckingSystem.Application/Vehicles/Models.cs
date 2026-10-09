@@ -1,7 +1,10 @@
 ﻿namespace TruckingSystem.Application.Vehicles;
 
 public record CreateVehicleRequest(string PlateNumber, string VehicleType, decimal CapacityQty, decimal CapacityKg, decimal CapacityM3, decimal? FuelConsumptionPer100Km, string? FuelType, int? WarehouseId);
-public record VehicleListItemDto(int Id, string PlateNumber, string VehicleType, decimal CapacityQty, decimal CapacityKg, decimal CapacityM3, string Status, decimal? FuelConsumptionPer100Km, string? FuelType, int? WarehouseId, string? WarehouseName);
+/// <summary>DocumentBlockReason: lý do giấy tờ khiến xe KHÔNG được Chia xe hôm nay (null = ổn)
+/// — cùng quy tắc VehicleDocumentRules mà Chia xe / Bắt đầu chuyến dùng.</summary>
+public record VehicleListItemDto(int Id, string PlateNumber, string VehicleType, decimal CapacityQty, decimal CapacityKg, decimal CapacityM3, string Status, decimal? FuelConsumptionPer100Km, string? FuelType, int? WarehouseId, string? WarehouseName,
+    string? DocumentBlockReason = null);
 
 /// <summary>Sửa thông tin xe — CHO PHÉP đổi cả Status thủ công (VD: đánh dấu
 /// đang bảo dưỡng/ngừng hoạt động — Greedy sẽ tự loại trừ xe không Available).</summary>

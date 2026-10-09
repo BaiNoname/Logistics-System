@@ -18,6 +18,9 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
         public EditVehicleForm()
         {
             InitializeComponent();
+            // Server bắt buộc sức chứa > 0 ở cả 3 chiều — không cho chọn 0 ngay trên form.
+            foreach (var n in new[] { numCapacityQty, numCapacityKg, numCapacityM3 })
+                n.Minimum = n.DecimalPlaces == 0 ? 1 : 1m / (decimal)Math.Pow(10, n.DecimalPlaces);
             // Loại nhiên liệu nạp từ bảng giá ở màn Nhiên liệu (xem FuelTypeOptions) — không gán cứng.
             cboFuelType.Items.Add("");
         }
@@ -30,9 +33,10 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
 
             txtPlateNumber.Text = vehicle.PlateNumber;
             VehicleTypeOptions.Fill(cboVehicleType, vehicle.VehicleType);
-            numCapacityQty.Value = vehicle.CapacityQty;
-            numCapacityKg.Value = vehicle.CapacityKg;
-            numCapacityM3.Value = vehicle.CapacityM3;
+            // Kẹp trong giới hạn ô nhập: xe cũ lưu sức chứa 0 (trước khi bắt buộc > 0) vẫn mở được để sửa.
+            numCapacityQty.Value = Math.Clamp(vehicle.CapacityQty, numCapacityQty.Minimum, numCapacityQty.Maximum);
+            numCapacityKg.Value = Math.Clamp(vehicle.CapacityKg, numCapacityKg.Minimum, numCapacityKg.Maximum);
+            numCapacityM3.Value = Math.Clamp(vehicle.CapacityM3, numCapacityM3.Minimum, numCapacityM3.Maximum);
             // Đổi loại xe -> tự điền tải trọng/thể tích gợi ý (giữ nguyên số cũ nếu không đổi loại).
             cboVehicleType.SelectedIndexChanged += (_, _) =>
             {

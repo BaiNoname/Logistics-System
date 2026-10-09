@@ -115,6 +115,19 @@ public class DriverService : IDriverService
             var end = start.AddDays(days - 1);
             if (end < today) end = today; // chạy quá dự kiến: vẫn giữ ít nhất hôm nay
 
+            // Chặng CHƯA chạy (VD chặng Giao đang chờ chặng Lấy hàng của xe khác làm lại)
+            // có thể bắt đầu bất kỳ ngày nào từ hôm nay -> giữ thêm đủ số ngày các chặng
+            // đó cần TÍNH TỪ HÔM NAY (+1 ngày dự phòng), tránh xóa đúng ngày chuyến sẽ chạy.
+            var plannedLegs = order.Where(l => l.Status == TripStatus.Planned).ToList();
+            if (plannedLegs.Count > 0)
+            {
+                var plannedDays = Math.Max(1,
+                    (int)Math.Ceiling(plannedLegs.Sum(l => l.EstimatedDurationMinutes ?? 0) / (double)maxDrivingMinutesPerDay)
+                    + plannedLegs.Count(l => l.EstimatedDurationMinutes is null));
+                var plannedEnd = today.AddDays(plannedDays);
+                if (plannedEnd > end) end = plannedEnd;
+            }
+
             if (date >= start && date <= end)
                 return order.Where(l => l.Status != TripStatus.Completed).Select(l => l.Id).DefaultIfEmpty(order.First().Id).First();
         }

@@ -2,10 +2,17 @@
 
 // ==== Dùng cho màn hình quản lý Trip (Desktop, Dispatcher) ====
 
+/// <summary>HasRun: chuyến ĐÃ TỪNG CHẠY (có giờ bắt đầu) — Desktop dùng để bật nút Xăng /
+/// Chi phí / Sự cố đúng như server (chuyến hủy TRƯỚC khi chạy thì không ghi được).
+/// HasEstimate: đã có ước tính lộ trình (số kế hoạch) chưa.</summary>
 public record TripListItemDto(
     int Id, string OrderCode, string VehiclePlate, string DriverName,
     string Status, string LegType, decimal TotalQtyPlanned,
-    double? FromLat, double? FromLng, double? ToLat, double? ToLng
+    double? FromLat, double? FromLng, double? ToLat, double? ToLng,
+    bool HasRun = false, bool HasEstimate = false,
+    // Chặng Giao chưa chạy, kho CHƯA đủ hàng cho chuyến vì hàng lấy về còn "Chờ nhập kho" —
+    // CÙNG quy tắc server chặn Bắt đầu (Desktop dùng cờ này, không tự đoán).
+    bool AwaitingReceipt = false
 );
 
 public record TripActionResult(bool Success, string? Message);
@@ -80,6 +87,21 @@ public record CreateTripExpenseRequest(string Type, decimal Amount, string? Note
 /// — tài xế hoặc Dispatcher ghi nhận khi có sự cố xảy ra trong lúc chạy chuyến.</summary>
 public record CreateIncidentReportRequest(string Type, string? Description, decimal? Cost);
 
-public record ConfirmArrivalRequest(string? Note);
+/// <summary>ConfirmedCargoLineIds: các dòng hàng tài xế đã tick "nhận/giao ĐỦ" trên app —
+/// phải đủ TẤT CẢ dòng hàng của chuyến (đối tác bắt buộc giao đủ; thiếu thì không xác nhận).</summary>
+public record ConfirmArrivalRequest(string? Note, List<int>? ConfirmedCargoLineIds = null);
 
 public record ServiceResult(bool Success, string? Message);
+
+// ---- Đổi xe / tài xế cho chuyến CHƯA CHẠY (chuyến kẹt: xe hỏng, giấy tờ/bằng lái hết hạn...) ----
+
+/// <summary>1 lựa chọn xe / tài xế. Eligible = dùng được; Reason = lý do không dùng được
+/// (hoặc lưu ý, VD tài xế chưa đăng ký ngày làm hôm nay).</summary>
+public record ReassignOptionDto(int Id, string Text, bool Eligible, string? Reason);
+
+/// <summary>AffectedTripIds: các chuyến sẽ được đổi CÙNG lúc (chặng Lấy hàng + Giao hàng
+/// chưa chạy của cùng xe trong đơn đi cùng nhau). Message != null: không đổi được.</summary>
+public record ReassignOptionsDto(int TripId, List<int> AffectedTripIds, int CurrentVehicleId, int CurrentDriverEmployeeId,
+    List<ReassignOptionDto> Vehicles, List<ReassignOptionDto> Drivers, string? Message);
+
+public record ReassignTripRequest(int VehicleId, int DriverEmployeeId);

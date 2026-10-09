@@ -40,6 +40,9 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             cboDropoffLocation.SelectedIndexChanged += (_, _) =>
                 txtDropoff.Text = cboDropoffLocation.SelectedItem is LocationItem loc && loc.Id != 0 ? loc.Address : "";
             rbSelfDelivery.CheckedChanged += (_, _) => UpdatePickupForMethod();
+            // Đổi khách hàng -> lọc lại địa điểm (địa chỉ riêng của khách khác không được dùng).
+            // (Chế độ Sửa đơn: không đổi được khách; danh sách được lọc 1 lần trong LoadExistingOrderAsync.)
+            cboCustomer.SelectedIndexChanged += async (_, _) => { if (_locations.Count > 0 && !_editOrderId.HasValue) await LoadLocationsAsync(); };
             btnAddPickupLocation.Click += async (_, _) => await AddLocationAsync(cboPickupLocation);
             btnAddDropoffLocation.Click += async (_, _) => await AddLocationAsync(cboDropoffLocation);
 
@@ -144,8 +147,14 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                 var keepDropoff = selectDropoffId ?? (cboDropoffLocation.SelectedItem as LocationItem)?.Id;
 
                 _locations = (await _api.Locations.GetLocationsAsync()).OrderBy(l => l.Name).ToList();
-                // Chỉ địa điểm CÓ TỌA ĐỘ mới chọn được (không có tọa độ thì không tính được lộ trình).
-                var usable = _locations.Where(l => l.Lat.HasValue && l.Lng.HasValue).ToList();
+                // Chỉ địa điểm CÓ TỌA ĐỘ mới chọn được (không có tọa độ thì không tính được lộ trình),
+                // và là địa điểm dùng chung hoặc địa chỉ riêng của ĐÚNG khách đang chọn (server
+                // từ chối địa chỉ riêng của khách khác).
+                var customerId = cboCustomer.SelectedValue as int?;
+                var usable = _locations
+                    .Where(l => l.Lat.HasValue && l.Lng.HasValue)
+                    .Where(l => l.CustomerId is null || l.CustomerId == customerId)
+                    .ToList();
 
                 var pickupSource = new List<LocationItem> { new() { Id = 0, Name = "-- Chọn địa điểm lấy hàng --", Address = "" } };
                 pickupSource.AddRange(usable);
@@ -232,8 +241,9 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                 // Đơn cũ: chọn lại đúng Địa điểm theo địa chỉ đã lưu. Không khớp
                 // (đơn tạo bằng địa chỉ gõ tay trước đây) -> phải chọn lại.
                 // Ưu tiên chọn đúng Địa điểm theo Id đã lưu; đơn cũ không có Id thì khớp theo địa chỉ.
-                SelectLocation(cboPickupLocation, order.PickupLocationId ?? MatchLocationId(order.PickupPoint));
-                SelectLocation(cboDropoffLocation, order.DropoffLocationId ?? MatchLocationId(order.DropoffPoint));
+                // Lọc lại địa điểm theo ĐÚNG khách của đơn rồi chọn lại địa điểm đã lưu.
+                await LoadLocationsAsync(order.PickupLocationId ?? MatchLocationId(order.PickupPoint),
+                                         order.DropoffLocationId ?? MatchLocationId(order.DropoffPoint));
                 UpdatePickupForMethod();
                 if ((cboDropoffLocation.SelectedItem as LocationItem)?.Id is null or 0
                     || (!rbSelfDelivery.Checked && (cboPickupLocation.SelectedItem as LocationItem)?.Id is null or 0))
@@ -317,7 +327,14 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             var pickupMethod = rbSelfDelivery.Checked ? "SelfDelivery" : "CompanyPickup";
             int? pickupLocId = rbSelfDelivery.Checked || pickupLoc is null || pickupLoc.Id == 0 ? null : pickupLoc.Id;
             int? dropoffLocId = dropoffLoc.Id;
-            var committedDate = chkHasCommittedDate.Checked ? dtCommitted.Value : (DateTime?)null;
+            // Chỉ lấy NGÀY (ô chọn chỉ hiện ngày; trước đây gửi kèm giờ lúc mở form -> lệch
+            // quy tắc "hàng gấp trong 3 ngày" và giờ trên lịch).
+            var committedDate = chkHasCommittedDate.Checked ? dtCommitted.Value.Date : (DateTime?)null;
+            if (committedDate.HasValue && committedDate.Value < DateTime.Today && !_editOrderId.HasValue)
+            {
+                lblStatus.Text = "Hạn giao cam kết không được là ngày đã qua.";
+                return;
+            }
 
             btnSave.Enabled = false;
             try

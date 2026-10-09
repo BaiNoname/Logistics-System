@@ -67,12 +67,14 @@ public class VehicleAllocationService : IVehicleAllocationService
         if (order is null)
             return new AllocateVehiclesResponse(false, 0, 0, new(), "Không tìm thấy đơn vận chuyển.");
 
-        // Chỉ chia xe cho đơn còn ở bước đầu (Nháp / Đã xác nhận). Đơn đã Hủy
-        // hoặc đã Hoàn tất mà vẫn chia xe được sẽ tạo chuyến "ma" và giữ xe,
-        // tài xế vô ích (trước đây không kiểm tra trạng thái đơn).
-        if (order.Status is not (TransportOrderStatus.Draft or TransportOrderStatus.Confirmed))
+        // Chỉ chia xe cho đơn ĐÃ XÁC NHẬN — khớp Desktop (nút Chia xe chỉ bật khi đơn Đã
+        // xác nhận). Trước đây server nhận cả đơn Nháp và tự xác nhận luôn, bỏ qua bước
+        // Xác nhận (và các kiểm tra của bước đó). Đơn Hủy/Hoàn tất thì càng không.
+        if (order.Status != TransportOrderStatus.Confirmed)
             return new AllocateVehiclesResponse(false, 0, 0, new(),
-                $"Không thể chia xe — đơn đang ở trạng thái {order.Status}. Chỉ chia xe cho đơn Nháp hoặc Đã xác nhận.");
+                order.Status == TransportOrderStatus.Draft
+                    ? "Đơn còn Nháp — hãy Xác nhận đơn trước khi Chia xe."
+                    : $"Không thể chia xe — đơn đang ở trạng thái {order.Status}. Chỉ chia xe cho đơn Đã xác nhận.");
 
         // CHẶN chia xe 2 lần cho cùng 1 đơn — trước đây không kiểm tra gì cả,
         // bấm 2 lần (double-click, hoặc mở lại form bấm lại) sẽ tạo THÊM 1 bộ
@@ -88,6 +90,40 @@ public class VehicleAllocationService : IVehicleAllocationService
         if (totalQtyToShip <= 0)
             return new AllocateVehiclesResponse(false, 0, 0, new(), "Đơn hàng chưa khai báo số lượng hàng hóa.");
 
+        var isCompanyPickup = order.PickupMethod == PickupMethod.CompanyPickup;
+
+        // Kho vẫn phải còn khu đúng loại hàng (khu có thể bị xóa / đổi loại sau khi xác nhận đơn) —
+        // không chia xe đi lấy hàng về rồi mới phát hiện không nhập kho được.
+        // (Đơn khách tự mang tới: hàng đã nhập đủ trước khi chia — kiểm tra ngay dưới.)
+        var zoneError = !isCompanyPickup ? null : await WarehouseZoneRules.MissingReasonAsync(_db, order.WarehouseId,
+            cargoLines.Select(c => WarehouseZoneRules.Required(c.IsHazmat, c.IsFragile)));
+        if (zoneError is not null)
+            return new AllocateVehiclesResponse(false, totalQtyToShip, 0, new(), zoneError);
+
+        // Đơn KHÁCH TỰ MANG TỚI KHO: Chia xe KHÔNG tự nhập kho nữa — khách mang hàng tới thì
+        // thủ kho nhập (màn Kho → Nhập/Xuất thủ công: tự chọn vị trí hoặc Best-Fit). Phải nhập
+        // ĐỦ số khai báo rồi mới Chia xe (khách giao thiếu thì không chia — hạn chế đã thống
+        // nhất: đối tác phải giao đủ). Trước đây chưa nhập gì thì Chia xe tự nhập toàn bộ ->
+        // tồn kho thành đủ dù hàng thật có thể chưa tới.
+        if (!isCompanyPickup)
+        {
+            var cargoLineIds = cargoLines.Select(c => c.Id).ToList();
+            var receivedByLine = await _db.GoodsReceipts
+                .Where(r => cargoLineIds.Contains(r.CargoLineId))
+                .GroupBy(r => r.CargoLineId)
+                .Select(g => new { CargoLineId = g.Key, Qty = g.Sum(r => r.QtyReceived) })
+                .ToDictionaryAsync(x => x.CargoLineId, x => x.Qty);
+            var missing = cargoLines
+                .Select(c => (Line: c, Missing: c.QtyTotal - (receivedByLine.TryGetValue(c.Id, out var got) ? got : 0)))
+                .Where(x => x.Missing > 0)
+                .Select(x => $"\"{x.Line.CargoType}\" mới nhập {x.Line.QtyTotal - x.Missing:0.##}/{x.Line.QtyTotal:0.##}")
+                .ToList();
+            if (missing.Count > 0)
+                return new AllocateVehiclesResponse(false, totalQtyToShip, 0, new(),
+                    "Đơn khách tự mang hàng tới kho: hàng CHƯA nhập kho đủ — " + string.Join("; ", missing) +
+                    ". Khi khách mang hàng tới, vào màn Kho → Nhập/Xuất thủ công để nhập (tự chọn vị trí hoặc Tự động Best-Fit) đủ số lượng rồi mới Chia xe.");
+        }
+
         // BỌC TOÀN BỘ phần còn lại trong 1 TRANSACTION DUY NHẤT — Chia xe cho
         // đơn lớn có thể cần NHIỀU xe, mỗi xe gọi SaveChangesAsync RIÊNG để
         // tạo Trip. Trước đây KHÔNG có transaction: nếu xe thứ 2 trở đi gặp
@@ -99,6 +135,14 @@ public class VehicleAllocationService : IVehicleAllocationService
         // nào trong phạm vi này đều tự động ROLLBACK SẠCH, không để lại dữ
         // liệu dở dang — đơn vẫn ở trạng thái "chưa chia xe", chia lại được.
         await using var transaction = await _db.Database.BeginTransactionAsync();
+        // Khóa chung "gán xe/tài xế" (cùng khóa với Đổi xe/tài xế): 2 người Chia xe 2 đơn
+        // cùng lúc không thể gán TRÙNG 1 tài xế (xe đã có xmin chặn, tài xế thì chưa).
+        await _db.Database.ExecuteSqlRawAsync(
+            "SELECT pg_advisory_xact_lock(" + TruckingSystem.Application.Trips.TripService.AssignmentLockKey + ")");
+        // Kiểm tra LẠI sau khi giành được khóa: 2 lần bấm Chia xe cùng 1 đơn chạy nối tiếp
+        // nhau — lần sau phải thấy chuyến lần trước vừa tạo.
+        if (await _db.Trips.AnyAsync(t => t.TransportOrderId == transportOrderId && t.Status != TripStatus.Cancelled))
+            return new AllocateVehiclesResponse(false, 0, 0, new(), "Đơn này vừa được chia xe xong (thao tác khác) — không chia lại.");
 
         // Bước 1: sắp xếp giảm dần theo sức chứa — cốt lõi của tính "tham lam"
         // BẮT BUỘC phải có ĐĂNG KIỂM CÒN HẠN mới cho dùng — đúng luật giao
@@ -110,15 +154,20 @@ public class VehicleAllocationService : IVehicleAllocationService
         // Chỉ xét giấy tờ MỚI NHẤT của từng loại (gia hạn = thêm dòng mới, dòng cũ
         // hết hạn vẫn còn) và so theo NGÀY Việt Nam — xem VehicleDocumentRules.
         var today = VnClock.Today;
+        // Giấy tờ xe + bằng lái phải còn hạn tới HẾT NGÀY CUỐI chuyến dự kiến (cùng khoảng
+        // ngày bắt tài xế đăng ký ngày làm bên dưới) — trước đây chỉ xét hôm nay: đăng
+        // kiểm hết hạn ngày mai vẫn chia được, tới ngày 2 chuyến bị chặn không chạy được.
+        var estimatedTripDays = await EstimateTripDurationDaysAsync(order);
+        var lastTripDay = today.AddDays(estimatedTripDays - 1);
         var latestDocs = await VehicleDocumentRules.GetLatestAsync(_db);
         var vehicleIdsWithValidRegistration = latestDocs
-            .Where(d => d.DocType == VehicleDocumentType.Registration && VehicleDocumentRules.IsValidOn(d.ExpiryDate, today))
+            .Where(d => d.DocType == VehicleDocumentType.Registration && VehicleDocumentRules.IsValidOn(d.ExpiryDate, lastTripDay))
             .Select(d => d.VehicleId)
             .Distinct()
             .ToList();
 
         var vehicleIdsWithExpiredOtherDocs = latestDocs
-            .Where(d => d.DocType != VehicleDocumentType.Registration && !VehicleDocumentRules.IsValidOn(d.ExpiryDate, today))
+            .Where(d => d.DocType != VehicleDocumentType.Registration && !VehicleDocumentRules.IsValidOn(d.ExpiryDate, lastTripDay))
             .Select(d => d.VehicleId)
             .Distinct()
             .ToList();
@@ -132,7 +181,7 @@ public class VehicleAllocationService : IVehicleAllocationService
             .ToListAsync();
 
         if (!availableVehicles.Any())
-            return new AllocateVehiclesResponse(false, totalQtyToShip, 0, new(), "Không còn xe nào đang rảnh VÀ đang đóng quân đúng kho của đơn này VÀ có Đăng kiểm còn hạn (xe chưa nhập Đăng kiểm hoặc Đăng kiểm đã hết hạn đều bị loại — bắt buộc theo luật giao thông).");
+            return new AllocateVehiclesResponse(false, totalQtyToShip, 0, new(), $"Không còn xe nào đang rảnh VÀ đang đóng quân đúng kho của đơn này VÀ có giấy tờ (Đăng kiểm, Bảo hiểm, Giấy phép vận tải) còn hạn tới hết ngày {lastTripDay:dd/MM} (xe chưa nhập Đăng kiểm hoặc giấy tờ hết hạn trong thời gian chuyến đều bị loại).");
 
         // Danh sách tài xế hợp lệ (có DriverProfile thật + đang Active + bằng
         // lái CÒN HẠN) — xoay vòng nếu cần nhiều xe hơn số tài xế rảnh (đơn
@@ -147,13 +196,13 @@ public class VehicleAllocationService : IVehicleAllocationService
 
         var driverIds = await _db.DriverProfiles
             .Include(dp => dp.Employee)
-            .Where(dp => dp.Employee.Status == EmployeeStatus.Active && dp.LicenseExpiryDate >= today
+            .Where(dp => dp.Employee.Status == EmployeeStatus.Active && dp.LicenseExpiryDate >= lastTripDay
                       && (dp.WarehouseId == null || dp.WarehouseId == order.WarehouseId))
             .Select(dp => dp.EmployeeId)
             .ToListAsync();
         driverIds = driverIds.Except(busyDriverIds).ToList();
 
-        // BẮT BUỘC tài xế phải có ca làm việc ĐĂNG KÝ SẴN, đủ hết TẤT CẢ các
+        // BẮT BUỘC tài xế phải có NGÀY LÀM ĐĂNG KÝ SẴN, đủ hết TẤT CẢ các
         // ngày trong toàn bộ thời gian chuyến dự kiến chạy — nhất quán với quy
         // tắc Đăng kiểm xe (cũng bắt buộc phải có, không cho qua nếu thiếu dữ
         // liệu). Tài xế CHƯA đăng ký lịch nào cũng bị loại giống như thiếu ca
@@ -161,8 +210,7 @@ public class VehicleAllocationService : IVehicleAllocationService
         // thực tế thường mất HƠN 1 NGÀY do quy định giờ lái xe liên tục + nghỉ
         // ngơi bắt buộc), tránh trường hợp tài xế "hết ca" giữa đường mà hệ
         // thống không hề biết.
-        var estimatedTripDays = await EstimateTripDurationDaysAsync(order);
-        // Ngày ca làm việc tính theo GIỜ VIỆT NAM (UTC+7). Dùng UtcNow.Date sẽ
+        // Ngày làm tính theo GIỜ VIỆT NAM (UTC+7). Dùng UtcNow.Date sẽ
         // lệch 1 ngày khi chia xe trong khoảng 0h–7h sáng (giờ VN).
         var todayVn = today;
         var neededDates = Enumerable.Range(0, estimatedTripDays).Select(offset => todayVn.AddDays(offset)).ToList();
@@ -185,7 +233,7 @@ public class VehicleAllocationService : IVehicleAllocationService
                 ? $" từ {neededDates.First():dd/MM} tới {neededDates.Last():dd/MM} (ước tính chuyến kéo dài {estimatedTripDays} ngày do quãng đường xa)"
                 : $" ngày {neededDates.First():dd/MM}";
             return new AllocateVehiclesResponse(false, totalQtyToShip, 0, new(),
-                $"Không có tài xế nào khả dụng (đã hết hạn bằng lái, đang bận chuyến khác, không đóng quân đúng kho của đơn này, hoặc CHƯA đăng ký ĐỦ ca làm việc{dayRangeText} — bắt buộc phải đăng ký lịch trước).");
+                $"Không có tài xế nào khả dụng (đã hết hạn bằng lái, đang bận chuyến khác, không đóng quân đúng kho của đơn này, hoặc CHƯA đăng ký ĐỦ ngày làm{dayRangeText} — bắt buộc phải đăng ký ngày làm trước, màn Tài xế → Ngày làm).");
         }
 
         // Dùng ĐÚNG kho trung chuyển Dispatcher đã CHỌN khi tạo đơn (order.WarehouseId)
@@ -193,8 +241,6 @@ public class VehicleAllocationService : IVehicleAllocationService
         // gây ra lộ trình vô lý (VD đơn Bình Dương -> Hà Nội nhưng lại đi qua
         // 1 kho không liên quan gì tới tuyến đường thực tế).
         var defaultWarehouseId = order.WarehouseId;
-
-        var isCompanyPickup = order.PickupMethod == PickupMethod.CompanyPickup;
 
         var results = new List<AllocationResultItem>();
         int vehicleIndex = 0, driverIndex = 0;
@@ -210,18 +256,6 @@ public class VehicleAllocationService : IVehicleAllocationService
 
         Trip? currentPickupTrip = null, currentDeliveryTrip = null;
         int currentDriverEmployeeId = 0;
-
-        // Đơn khách tự mang hàng tới: thủ kho có thể ĐÃ nhập tay 1 phần/toàn bộ trước
-        // khi Chia xe -> lúc chia chỉ nhập PHẦN CÒN LẠI (trước đây nhập lại toàn bộ ->
-        // báo "vượt số lượng khai báo" và Chia xe thất bại mãi).
-        var cargoLineIds = cargoLines.Select(c => c.Id).ToList();
-        var alreadyReceivedByLine = await _db.GoodsReceipts
-            .Where(r => cargoLineIds.Contains(r.CargoLineId))
-            .GroupBy(r => r.CargoLineId)
-            .Select(g => new { CargoLineId = g.Key, Qty = g.Sum(r => r.QtyReceived) })
-            .ToDictionaryAsync(x => x.CargoLineId, x => x.Qty);
-        var toReceiveByLine = cargoLines.ToDictionary(c => c.Id,
-            c => Math.Max(0, c.QtyTotal - (alreadyReceivedByLine.TryGetValue(c.Id, out var got) ? got : 0)));
 
         while (cargoIndex < cargoLines.Count && vehicleIndex < availableVehicles.Count)
         {
@@ -301,8 +335,14 @@ public class VehicleAllocationService : IVehicleAllocationService
             // Hàng đếm theo đơn vị nguyên (số lượng khai là số nguyên) thì không chia
             // lẻ khi giới hạn kg/m³ cắt giữa chừng (VD 2.5 cái máy) — làm tròn xuống,
             // phần lẻ chuyển sang xe kế tiếp.
+            // (+0.0001: phép chia kg/m³ có thể ra 3,9999… -> vẫn tính là 4 đơn vị.)
             if (cargoLine.QtyTotal == Math.Floor(cargoLine.QtyTotal))
-                qtyThisStep = Math.Floor(qtyThisStep);
+                qtyThisStep = Math.Min(cargoRemaining, Math.Floor(qtyThisStep + 0.0001m));
+            // Hàng số lượng LẺ (VD 2,5 tấn): cắt về 2 chữ số thập phân (đúng độ chính xác
+            // cột số lượng trong DB) — trước đây 0,8333 bị DB làm tròn thành 0,83 ×3 = 2,49,
+            // đơn kẹt 99,6% không bao giờ Hoàn tất (hoặc làm tròn lên -> nhập kho "vượt số lượng").
+            else if (qtyThisStep < cargoRemaining)
+                qtyThisStep = Math.Floor(qtyThisStep * 100m) / 100m;
 
             // Bảo vệ vòng lặp vô hạn: nếu xe HIỆN TẠI (dù còn nguyên, chưa
             // chở gì) vẫn không đủ sức chở NỔI 1 đơn vị hàng này (hàng quá
@@ -332,27 +372,8 @@ public class VehicleAllocationService : IVehicleAllocationService
             {
                 _db.TripLines.Add(new TripLine { TripId = currentPickupTrip.Id, CargoLineId = cargoLine.Id, QtyPlanned = qtyThisStep });
             }
-            else if (!isCompanyPickup)
-            {
-                // SelfDelivery: khách đã tự mang hàng tới kho rồi — không có
-                // chặng Pickup nào để "hoàn tất" và kích hoạt nhập kho sau này
-                // như CompanyPickup, nên phải nhập kho NGAY tại đây.
-                await _db.SaveChangesAsync(); // cần lưu trước để có CargoLine/Trip Id ổn định cho ReceiveGoodsAsync
-                var receiveQty = Math.Min(qtyThisStep, toReceiveByLine[cargoLine.Id]);
-                if (receiveQty > 0)
-                {
-                    var receiveResult = await _warehouseService.ReceiveGoodsAsync(
-                        defaultWarehouseId, order.Id, cargoLine.Id, receiveQty, currentDriverEmployeeId, tripId: null);
-                    // Trước đây BỎ QUA kết quả — kho hết chỗ/thiếu khu vực phù hợp vẫn
-                    // báo chia xe thành công, nhưng hàng KHÔNG hề vào kho, tới lúc giao
-                    // mới lỗi "không đủ tồn kho". Giờ dừng ngay; return khi chưa Commit
-                    // -> transaction tự Rollback, không để lại chuyến/nhập kho dở dang.
-                    if (!receiveResult.Success)
-                        return new AllocateVehiclesResponse(false, totalQtyToShip, 0, new(),
-                            "Không thể nhập kho cho đơn khách tự mang tới: " + receiveResult.Message);
-                    toReceiveByLine[cargoLine.Id] -= receiveQty;
-                }
-            }
+            // SelfDelivery: hàng ĐÃ được thủ kho nhập đủ trước khi Chia xe (kiểm tra ở đầu hàm)
+            // — Chia xe không nhập kho gì nữa, chỉ tạo chặng Giao.
             _db.TripLines.Add(new TripLine { TripId = currentDeliveryTrip.Id, CargoLineId = cargoLine.Id, QtyPlanned = qtyThisStep });
 
             // Cộng dồn đúng vào kết quả của Trip (Delivery) tương ứng đang hiển thị cho Dispatcher
@@ -396,10 +417,6 @@ public class VehicleAllocationService : IVehicleAllocationService
             results.Remove(empty);
         }
 
-        // Đơn chuyển sang Confirmed nếu vì lý do nào đó vẫn còn Draft khi Chia
-        // xe (phòng hờ gọi trực tiếp API bỏ qua bước Xác nhận thủ công ở UI).
-        if (order.Status == TransportOrderStatus.Draft)
-            order.Status = TransportOrderStatus.Confirmed;
         // Luôn "chạm" vào đơn để kích hoạt kiểm tra cập nhật đồng thời (cột xmin): 2 người
         // bấm Chia xe cùng 1 đơn cùng lúc -> người lưu sau bị từ chối, không tạo 2 bộ chuyến.
         order.UpdatedAt = DateTime.UtcNow;
@@ -425,7 +442,7 @@ public class VehicleAllocationService : IVehicleAllocationService
                 : $"chỉ có {availableVehicles.Count} xe rảnh đủ điều kiện";
             return new AllocateVehiclesResponse(false, totalQtyToShip, totalAssigned, new(),
                 $"Không đủ xe/tài xế để chở hết đơn — {reason}, chở được {totalAssigned}/{totalQtyToShip}, còn thiếu {remaining}. " +
-                "Chưa chia xe (không lưu gì). Hãy chờ thêm xe/tài xế rảnh (hoặc đăng ký ca) rồi chia lại.");
+                "Chưa chia xe (không lưu gì). Hãy chờ thêm xe/tài xế rảnh (hoặc đăng ký thêm ngày làm cho tài xế) rồi chia lại.");
         }
 
         await _db.SaveChangesAsync();
@@ -453,7 +470,11 @@ public class VehicleAllocationService : IVehicleAllocationService
         double? dropoffLat = order.DropoffLocation?.Lat, dropoffLng = order.DropoffLocation?.Lng;
         double? warehouseLat = order.Warehouse?.Lat, warehouseLng = order.Warehouse?.Lng;
 
-        if (pickupLat.HasValue && pickupLng.HasValue && warehouseLat.HasValue && warehouseLng.HasValue)
+        // Chặng Lấy hàng CHỈ có khi công ty cử xe đi lấy — đơn khách tự mang tới thì không
+        // cộng đoạn này (trước đây vẫn cộng nếu đơn có điểm lấy hàng -> đòi tài xế đăng ký
+        // thừa ngày làm).
+        if (order.PickupMethod == PickupMethod.CompanyPickup
+            && pickupLat.HasValue && pickupLng.HasValue && warehouseLat.HasValue && warehouseLng.HasValue)
         {
             // Chặng Lấy hàng là round-trip THẬT SỰ: xe xuất phát RỖNG từ Kho ra
             // chỗ đối tác lấy hàng, RỒI QUAY VỀ ĐÚNG KHO ĐÓ để nộp hàng — trước

@@ -18,6 +18,7 @@ namespace TruckingSystem.Desktop.GUI_Shared
     {
         private ApiServices? _api;
         private ProfitReport? _report;
+        private int _loadId; // đếm lượt tải báo cáo — bỏ kết quả của lượt cũ
 
         private static readonly Font KpiValueFont = new("Segoe UI", 18, FontStyle.Bold);
         private static readonly Font KpiIconFont = new("Segoe UI Emoji", 13);
@@ -191,12 +192,17 @@ namespace TruckingSystem.Desktop.GUI_Shared
                 return;
             }
 
+            // Đổi kỳ báo cáo liên tục: chỉ hiện kết quả của lượt tải MỚI NHẤT — lượt cũ trả về
+            // muộn không được vẽ đè số liệu của kỳ khác.
+            var loadId = ++_loadId;
             _btnRefresh.Enabled = false;
             _lblStatus.Text = "Đang tải báo cáo...";
             _lblStatus.ForeColor = Theme.TextSecondary;
             try
             {
-                _report = await _api.Reports.GetProfitReportAsync(from, to);
+                var report = await _api.Reports.GetProfitReportAsync(from, to);
+                if (loadId != _loadId || IsDisposed) return;
+                _report = report;
 
                 // Thông tin vận hành tức thời (không phụ thuộc kỳ) — lỗi cũng không sao.
                 int availableVehicles = 0, totalVehicles = 0;
@@ -207,9 +213,12 @@ namespace TruckingSystem.Desktop.GUI_Shared
                     {
                         var vehicles = await _api.Vehicles.GetVehiclesAsync();
                         totalVehicles = vehicles.Count;
-                        availableVehicles = vehicles.Count(v => v.Status == "Available");
+                        // "Sẵn sàng" = Rảnh VÀ giấy tờ hợp lệ — đúng xe mà Chia xe dùng được
+                        // (trước đây đếm cả xe Rảnh nhưng hết Đăng kiểm).
+                        availableVehicles = vehicles.Count(v => v.Status == "Available" && v.DocumentBlockReason is null);
                     }
                     catch { }
+                if (loadId != _loadId || IsDisposed) return;
 
                 RenderKpis(_report, availableVehicles, totalVehicles);
                 RenderGrid(_report);
@@ -221,12 +230,13 @@ namespace TruckingSystem.Desktop.GUI_Shared
             }
             catch (Exception ex)
             {
+                if (loadId != _loadId || IsDisposed) return;
                 _lblStatus.Text = "Không tải được báo cáo: " + ex.Message;
                 _lblStatus.ForeColor = Theme.Danger;
             }
             finally
             {
-                _btnRefresh.Enabled = true;
+                if (loadId == _loadId && !IsDisposed) _btnRefresh.Enabled = true;
             }
         }
 
@@ -266,7 +276,7 @@ namespace TruckingSystem.Desktop.GUI_Shared
                 r.UninvoicedDoneOrders > 0 ? "Doanh thu chưa được ghi nhận" : "Đã xuất đủ hóa đơn", null));
             _kpiOps.Controls.Add(MakeCard("🚛", "Xe sẵn sàng (hiện tại)",
                 totalVehicles > 0 ? $"{availableVehicles}/{totalVehicles}" : "—", Theme.Success, Theme.TextPrimary,
-                totalVehicles > 0 ? "Không phụ thuộc kỳ báo cáo" : "Không có quyền xem danh sách xe", null));
+                totalVehicles > 0 ? "Rảnh + giấy tờ còn hạn (không phụ thuộc kỳ)" : "Không có quyền xem danh sách xe", null));
         }
 
         private static Panel MakeCard(string icon, string label, string value, Color accent, Color valueColor, string sub, string? tooltip)
@@ -383,7 +393,12 @@ namespace TruckingSystem.Desktop.GUI_Shared
             _kpiFuel.Controls.Add(MakeCard("🗺️", "Dự toán (VietMap)", ReportFormat.Money(r.FuelPlannedCost), Theme.Primary, Theme.TextPrimary,
                 "Km tuyến dự kiến × định mức", ReportFormat.FullMoney(r.FuelPlannedCost)));
             _kpiFuel.Controls.Add(MakeCard("📡", "Định mức (GPS thực tế)", ReportFormat.Money(r.FuelNormCost), Theme.Primary, Theme.TextPrimary,
-                $"Lệch dự toán: {DeviationText(r.FuelNormCost, r.FuelPlannedCost)}", ReportFormat.FullMoney(r.FuelNormCost)));
+                // "Lệch dự toán" chỉ so trên các chuyến hoàn tất có ĐỦ cả dự toán lẫn định mức
+                // (2 tổng ở trên có thể gồm 2 tập chuyến khác nhau).
+                r.FuelComparedTripCount > 0
+                    ? $"Lệch dự toán: {DeviationText(r.FuelNormCostCompared, r.FuelPlannedCostCompared)} ({r.FuelComparedTripCount} chuyến đủ số liệu)"
+                    : "Lệch dự toán: chưa có chuyến hoàn tất đủ số liệu",
+                ReportFormat.FullMoney(r.FuelNormCost)));
             _kpiFuel.Controls.Add(MakeCard("🧾", "Thực đổ (hóa đơn)", ReportFormat.Money(r.FuelActualCost), Theme.Warning, Theme.TextPrimary,
                 r.TripsUsingFuelEstimate > 0 ? $"{r.TripsUsingFuelEstimate} chuyến chưa nhập hóa đơn" : "Đã nhập đủ hóa đơn",
                 ReportFormat.FullMoney(r.FuelActualCost)));
@@ -417,6 +432,10 @@ namespace TruckingSystem.Desktop.GUI_Shared
         {
             if (!string.IsNullOrEmpty(x.Note)) return "⚠️ " + x.Note;
             var notes = new List<string>();
+            // Chuyến CHƯA hoàn tất: km GPS / hóa đơn còn đang tăng -> chưa so lệch (trước đây
+            // chuyến đang chạy bị ghi "Km GPS thiếu", "Đổ ít hơn định mức" dù chưa chạy xong).
+            if (x.Status != "Completed")
+                return x.Status == "Cancelled" ? "Chuyến đã hủy — chỉ tính chi phí đã phát sinh" : "Chuyến chưa hoàn tất — chưa so lệch";
             if (x.KmDeviationPct is > 15) notes.Add("Chạy dài hơn tuyến dự kiến");
             if (x.KmDeviationPct is < -15) notes.Add("Km GPS thiếu (mất sóng?)");
             if (x.CostDeviationPct is > 15) notes.Add("Đổ nhiều hơn định mức");

@@ -7,8 +7,9 @@ using TruckingSystem.Desktop.DTO_WarehouseManagement;
 namespace TruckingSystem.Desktop.GUI_WarehouseManagement
 {
     /// <summary>
-    /// Nhập/Xuất kho THỦ CÔNG — dùng cho trường hợp KHÔNG qua Trip (hàng dư, sửa
-    /// sai lệch tồn kho...). Luồng tự động (gắn Trip) vẫn chạy như cũ.
+    /// Nhập/Xuất kho THỦ CÔNG — dùng cho trường hợp KHÔNG qua Trip: hàng KHÁCH TỰ MANG
+    /// TỚI kho (nhập đủ rồi mới Chia xe được), hàng dư, xuất hàng còn sót của đơn đã đóng...
+    /// Hàng của chuyến Lấy hàng nhập ở màn riêng "📦 Hàng chờ nhập" (PendingReceiptsForm).
     ///
     /// Màn hình cho thấy ĐẦY ĐỦ tình trạng hàng của đơn đang chọn:
     ///   - Khai báo / đã nhập / đã xuất / đang trong kho / đang GIỮ cho chuyến
@@ -26,6 +27,9 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
         private List<StorageBinItem> _availableBins = new();
         private List<WarehouseTransactionItem> _history = new();
         private OrderStockFlowItem? _flow;
+        // Đổi đơn nhanh: chỉ hiện kết quả của lượt tải MỚI NHẤT (lượt cũ trả về muộn bị bỏ).
+        private int _orderLoadId, _binsLoadId;
+        private bool _busy;
 
         public ManualStockForm()
         {
@@ -92,17 +96,21 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
 
         private async Task OnOrderChangedAsync()
         {
-            await LoadCargoLinesAsync();
-            await LoadFlowAsync();
+            var loadId = ++_orderLoadId;
+            await LoadCargoLinesAsync(loadId: loadId);
+            if (loadId != _orderLoadId || IsDisposed) return;
+            await LoadFlowAsync(loadId);
+            if (loadId != _orderLoadId || IsDisposed) return;
             BindHistory();
         }
 
-        private async Task LoadCargoLinesAsync(int? keepCargoLineId = null)
+        private async Task LoadCargoLinesAsync(int? keepCargoLineId = null, int? loadId = null)
         {
             if (_api is null || SelectedOrderId is not int orderId) return;
             try
             {
                 var lines = await _api.Warehouses.GetCargoLinesForOrderAsync(orderId, _warehouseId);
+                if (IsDisposed || (loadId is not null && loadId != _orderLoadId)) return; // đã đổi sang đơn khác
                 cboCargoLine.DataSource = lines;
                 cboCargoLine.DisplayMember = nameof(CargoLineOptionItem.CargoType);
                 cboCargoLine.ValueMember = nameof(CargoLineOptionItem.Id);
@@ -116,14 +124,16 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
         }
 
         /// <summary>Tải toàn cảnh hàng của đơn: từng dòng hàng + từng chuyến.</summary>
-        private async Task LoadFlowAsync()
+        private async Task LoadFlowAsync(int? loadId = null)
         {
             _flow = null;
             gridTrips.DataSource = null;
             if (_api is null || SelectedOrderId is not int orderId) { UpdateFlowSummary(); return; }
             try
             {
-                _flow = await _api.Warehouses.GetOrderStockFlowAsync(_warehouseId, orderId);
+                var flow = await _api.Warehouses.GetOrderStockFlowAsync(_warehouseId, orderId);
+                if (IsDisposed || (loadId is not null && loadId != _orderLoadId) || SelectedOrderId != orderId) return; // đã đổi đơn
+                _flow = flow;
                 gridTrips.DataSource = _flow.Trips.Select(t => new
                 {
                     Chuyến = $"#{t.TripId}",
@@ -157,16 +167,27 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                 return;
             }
 
-            var remainingToReceive = Math.Max(0, f.QtyTotal - f.QtyReceived);
+            // Số nhập / xuất tay được do SERVER tính theo đúng quy tắc sẽ áp dụng khi bấm
+            // (trước đây form tự tính "khai báo − đã nhập", bật nút cả khi server sẽ từ chối).
+            var canReceive = f.QtyCanReceive;
+            var notes = new[] { f.ReceiveBlockReason is null ? null : "📥 " + f.ReceiveBlockReason,
+                                f.IssueBlockReason is null || f.QtyOnHand <= 0 ? null : "📤 " + f.IssueBlockReason }
+                .Where(n => n is not null);
             lblFlowSummary.Text =
-                $"Khai báo {f.QtyTotal:0.##}   •   📥 Đã nhập {f.QtyReceived:0.##}   •   📤 Đã xuất {f.QtyIssued:0.##}   •   " +
+                $"Khai báo {f.QtyTotal:0.##}   •   📥 Đã nhập {f.QtyReceived:0.##} (nhập tay được {canReceive:0.##})   •   📤 Đã xuất {f.QtyIssued:0.##}   •   " +
                 $"🏬 Trong kho {f.QtyOnHand:0.##}   •   🔒 Giữ cho chuyến giao/trả {f.QtyReserved:0.##}   •   ✋ Có thể xuất tay {f.QtyFreeForManualIssue:0.##}\n" +
-                $"{f.StatusText}   ({_flow!.PickupMethod})";
+                $"{f.StatusText}   ({_flow!.PickupMethod})" +
+                (notes.Any() ? "   |   " + string.Join("   |   ", notes) : ""); // nhãn chỉ cao 2 dòng
             lblFlowSummary.ForeColor = f.StatusText.Contains("⚠️") ? Theme.Danger : Theme.TextPrimary;
 
-            btnReceive.Enabled = remainingToReceive > 0;
-            btnIssue.Enabled = f.QtyFreeForManualIssue > 0;
-            numQty.Value = Math.Min(numQty.Maximum, remainingToReceive > 0 ? remainingToReceive : f.QtyFreeForManualIssue);
+            btnReceive.Enabled = !_busy && canReceive > 0;
+            btnIssue.Enabled = !_busy && f.QtyFreeForManualIssue > 0;
+            // Hàng đếm theo đơn vị NGUYÊN (số lượng khai là số nguyên) -> ô nhập không cho số lẻ
+            // (server cũng từ chối 2,5 máy); hàng số lượng lẻ cho 2 chữ số thập phân.
+            var wholeUnits = f.QtyTotal == Math.Floor(f.QtyTotal);
+            numQty.DecimalPlaces = wholeUnits ? 0 : 2;
+            numQty.Increment = wholeUnits ? 1 : 0.01m;
+            numQty.Value = Math.Min(numQty.Maximum, canReceive > 0 ? canReceive : f.QtyFreeForManualIssue);
         }
 
         /// <summary>Danh sách vị trí còn trống đúng khu vực — kèm dòng "Tự động
@@ -174,9 +195,12 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
         private async Task LoadAvailableBinsAsync()
         {
             if (_api is null || SelectedCargo is not CargoLineOptionItem cargo) { gridBins.DataSource = null; return; }
+            var loadId = ++_binsLoadId;
             try
             {
-                _availableBins = await _api.Warehouses.GetAvailableBinsForCargoAsync(_warehouseId, cargo.Id);
+                var bins = await _api.Warehouses.GetAvailableBinsForCargoAsync(_warehouseId, cargo.Id);
+                if (IsDisposed || loadId != _binsLoadId) return; // đã chọn dòng hàng khác
+                _availableBins = bins;
 
                 var rows = new List<object>
                 {
@@ -246,11 +270,12 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             return _history.FirstOrDefault(h => h.Id == id && (type.Contains("Nhập") ? h.Type == "Nhập" : h.Type == "Xuất"));
         }
 
-        /// <summary>Chỉ cho hoàn tác phiếu XUẤT THỦ CÔNG chưa hoàn tác.</summary>
+        /// <summary>Chỉ cho hoàn tác phiếu XUẤT THỦ CÔNG chưa hoàn tác (không gồm phiếu tự động trả khách khi hủy đơn)
+        /// (server tính sẵn CanReverse — cùng điều kiện lúc hoàn tác thật).</summary>
         private void UpdateReverseButton()
         {
             var h = SelectedHistory();
-            btnReverse.Enabled = h is not null && h.Type == "Xuất" && h.IsManual && !h.IsReversed;
+            btnReverse.Enabled = !_busy && h is not null && h.Type == "Xuất" && h.CanReverse;
         }
 
         // ================= Tô màu =================
@@ -317,12 +342,14 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
 
         private async Task SubmitAsync(bool isReceive)
         {
-            if (_api is null) return;
+            if (_api is null || _busy) return;
             if (SelectedOrderId is not int orderId || SelectedCargo is not CargoLineOptionItem cargo)
             {
                 ShowStatus("Vui lòng chọn đủ đơn hàng và dòng hàng.", Theme.Warning);
                 return;
             }
+            // Hàng nguyên chiếc: ô hiện số đã làm tròn nhưng giá trị gõ vào có thể còn lẻ (2,5) -> làm tròn.
+            if (numQty.DecimalPlaces == 0) numQty.Value = Math.Round(numQty.Value);
             if (numQty.Value <= 0)
             {
                 ShowStatus("Số lượng phải lớn hơn 0.", Theme.Warning);
@@ -331,7 +358,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
 
             var f = _flow?.CargoLines.FirstOrDefault(c => c.CargoLineId == cargo.Id);
             var actionText = isReceive ? "NHẬP" : "XUẤT";
-            var referenceQty = f is null ? 0 : isReceive ? Math.Max(0, f.QtyTotal - f.QtyReceived) : f.QtyFreeForManualIssue;
+            var referenceQty = f is null ? 0 : isReceive ? f.QtyCanReceive : f.QtyFreeForManualIssue;
 
             var confirmText = $"Xác nhận {actionText} THỦ CÔNG {numQty.Value:0.##} \"{cargo.CargoType}\" của đơn {(f is null ? "" : _flow!.OrderCode)}?\n\n" +
                 (isReceive
@@ -348,6 +375,9 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             if (isReceive && gridBins.CurrentRow?.Cells["Id"].Value is int selectedId && selectedId != 0)
                 chosenBinId = selectedId;
 
+            // Khóa nút trong lúc chờ server — bấm 2 lần trước đây có thể nhập/xuất 2 lần.
+            _busy = true;
+            btnReceive.Enabled = btnIssue.Enabled = btnReverse.Enabled = false;
             try
             {
                 if (isReceive)
@@ -367,17 +397,22 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             }
             catch (Exception ex)
             {
-                ShowStatus("Lỗi: " + ex.Message, Theme.Danger);
+                if (!IsDisposed) ShowStatus("Lỗi: " + ex.Message, Theme.Danger);
+            }
+            finally
+            {
+                _busy = false;
+                if (!IsDisposed) { UpdateFlowSummary(); UpdateReverseButton(); }
             }
         }
 
         private async void BtnReverse_Click(object? sender, EventArgs e)
         {
-            if (_api is null) return;
+            if (_api is null || _busy) return;
             var h = SelectedHistory();
-            if (h is null || h.Type != "Xuất" || !h.IsManual || h.IsReversed)
+            if (h is null || h.Type != "Xuất" || !h.CanReverse)
             {
-                ShowStatus("Chọn 1 dòng XUẤT THỦ CÔNG (chưa hoàn tác) trong lịch sử để hoàn tác.", Theme.Warning);
+                ShowStatus("Chọn 1 dòng XUẤT THỦ CÔNG chưa hoàn tác trong lịch sử để hoàn tác (phiếu tự động trả khách khi hủy đơn thì không hoàn tác được).", Theme.Warning);
                 return;
             }
 
@@ -387,6 +422,8 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                 "Hoàn tác phiếu xuất tay", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
             if (confirm != DialogResult.Yes) return;
 
+            _busy = true;
+            btnReceive.Enabled = btnIssue.Enabled = btnReverse.Enabled = false;
             try
             {
                 var result = await _api.Warehouses.ReverseManualIssueAsync(h.Id);
@@ -395,7 +432,12 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             }
             catch (Exception ex)
             {
-                ShowStatus("Lỗi: " + ex.Message, Theme.Danger);
+                if (!IsDisposed) ShowStatus("Lỗi: " + ex.Message, Theme.Danger);
+            }
+            finally
+            {
+                _busy = false;
+                if (!IsDisposed) { UpdateFlowSummary(); UpdateReverseButton(); }
             }
         }
 

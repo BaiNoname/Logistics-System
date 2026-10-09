@@ -47,13 +47,15 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             _oldLng = warehouse.Lng;
 
             txtName.Text = warehouse.Name;
-            numCapacity.Value = warehouse.CapacityM3 ?? 0;
-            numLength.Value = warehouse.LengthMeters ?? 0;
-            numWidth.Value = warehouse.WidthMeters ?? 0;
+            // SetSafe: số đã lưu vượt giới hạn ô nhập (dữ liệu cũ / nhập qua API) -> nới giới hạn
+            // thay vì crash (ArgumentOutOfRangeException) ngay khi mở form.
+            SetSafe(numCapacity, warehouse.CapacityM3 ?? 0);
+            SetSafe(numLength, warehouse.LengthMeters ?? 0);
+            SetSafe(numWidth, warehouse.WidthMeters ?? 0);
 
             // Nạp lại vị trí cửa đã khai báo (nếu có)
             cboDoorSide.SelectedIndex = WarehouseDoorHelper.ToIndex(warehouse.DoorSide);
-            numDoorOffset.Value = Math.Min(numDoorOffset.Maximum, warehouse.DoorOffsetMeters ?? 0);
+            numDoorOffset.Value = Math.Clamp(warehouse.DoorOffsetMeters ?? 0, numDoorOffset.Minimum, numDoorOffset.Maximum);
 
             _suppressNextSearch = true;
             txtSearch.Text = warehouse.Address ?? "";
@@ -99,6 +101,13 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             lblStatus.Text = "";
         }
 
+        private static void SetSafe(NumericUpDown n, decimal value)
+        {
+            if (value > n.Maximum) n.Maximum = value;
+            if (value < n.Minimum) n.Minimum = value;
+            n.Value = value;
+        }
+
         private async void BtnSave_Click(object? sender, EventArgs e)
         {
             if (string.IsNullOrWhiteSpace(txtName.Text))
@@ -106,7 +115,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                 lblStatus.Text = "Vui lòng nhập tên kho.";
                 return;
             }
-            if (_api is null) return;
+            if (_api is null || !btnSave.Enabled) return;
 
             var doorError = WarehouseDoorHelper.Validate(cboDoorSide.SelectedIndex, numDoorOffset.Value, numLength.Value, numWidth.Value);
             if (doorError is not null)
@@ -122,6 +131,12 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             var address = _newSelectedAddress?.Address ?? _oldAddress;
             var lat = _newSelectedAddress?.Lat ?? _oldLat;
             var lng = _newSelectedAddress?.Lng ?? _oldLng;
+            // Tọa độ (0, 0) = chưa có tọa độ thật (điểm giữa biển) — server cũng từ chối.
+            if (lat == 0 && lng == 0)
+            {
+                lblStatus.Text = "Tọa độ kho (0, 0) không hợp lệ — hãy tìm và chọn lại địa chỉ kho từ danh sách gợi ý.";
+                return;
+            }
 
             btnSave.Enabled = false;
             try
@@ -149,7 +164,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             }
             finally
             {
-                btnSave.Enabled = true;
+                if (!IsDisposed) btnSave.Enabled = true;
             }
         }
     }

@@ -61,9 +61,12 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                     Số_lượng = c.QtyTotal,
                 }).ToList();
 
+                // Cột Chặng: cùng 1 lô hàng đi qua chặng Lấy hàng rồi Giao hàng (và Trả hàng khi
+                // hủy) — không có cột này thì cộng "số lượng chở" ra gấp đôi/gấp ba.
                 gridTrips.DataSource = order.Trips.Select(t => new
                 {
                     Mã_chuyến = t.Id,
+                    Chặng = LegText(t.LegType),
                     Biển_số_xe = t.VehiclePlate,
                     Tài_xế = t.DriverName,
                     Trạng_thái = TruckingSystem.Desktop.GUI_Shared.ReportFormat.TripStatus(t.Status),
@@ -71,13 +74,16 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                 }).ToList();
 
                 btnAllocate.Enabled = order.Trips.Count == 0 && order.Status == "Confirmed";
-                btnViewRoute.Enabled = order.PickupLat.HasValue && order.PickupLng.HasValue
-                                    && order.DropoffLat.HasValue && order.DropoffLng.HasValue;
+                btnViewRoute.Enabled = BuildRouteStops(order).Count >= 2;
 
                 // Chỉ cho Sửa/Xác nhận khi đơn còn Draft; chỉ cho Hủy khi Draft hoặc Confirmed
                 btnEdit.Enabled = order.Status == "Draft";
                 btnConfirm.Enabled = order.Status == "Draft" && order.CargoLines.Count > 0;
-                btnCancel.Enabled = order.Status is not ("Done" or "Cancelled");
+                // Khớp server: KHÔNG hủy được khi đã có xe giao hàng xuất kho (đang chạy / chờ
+                // duyệt / đã giao), hoặc còn chuyến lấy hàng đang chờ duyệt (phải duyệt trước).
+                var deliveryLeft = order.Trips.Any(t => t.LegType == "Delivery" && t.Status is "InProgress" or "PendingConfirmation" or "Completed");
+                var pickupPending = order.Trips.Any(t => t.LegType == "Pickup" && t.Status == "PendingConfirmation");
+                btnCancel.Enabled = order.Status is not ("Done" or "Cancelled") && !deliveryLeft && !pickupPending;
             }
             catch (Exception ex)
             {
@@ -115,7 +121,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                 {
                     lblResult.Text = "⚠️ " + result.Message;
                     lblResult.ForeColor = Theme.Warning;
-                    btnConfirm.Enabled = true;
+                    await LoadAsync(); // đơn có thể vừa bị người khác đổi -> bật/tắt nút theo dữ liệu mới
                 }
             }
             catch (Exception ex)
@@ -151,7 +157,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                 {
                     lblResult.Text = "⚠️ " + result.Message;
                     lblResult.ForeColor = Theme.Warning;
-                    btnCancel.Enabled = true;
+                    await LoadAsync();
                 }
             }
             catch (Exception ex)
@@ -162,24 +168,41 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             }
         }
 
+        private static string LegText(string legType) => legType switch
+        {
+            "Pickup" => "Lấy hàng",
+            "Return" => "Trả hàng",
+            _ => "Giao hàng",
+        };
+
+        /// <summary>Lộ trình của đơn ĐI QUA KHO trung chuyển — đúng như các chuyến và ước
+        /// tính chạy thật: (Điểm lấy hàng →) Kho → Điểm giao hàng. Đơn khách tự mang tới
+        /// không có chặng lấy hàng: Kho → Điểm giao.</summary>
+        private static List<RouteStopItem> BuildRouteStops(TransportOrderDetailItem order)
+        {
+            var stops = new List<RouteStopItem>();
+            if (order.PickupMethod != "SelfDelivery" && order.PickupLat.HasValue && order.PickupLng.HasValue)
+                stops.Add(new() { Lat = order.PickupLat, Lng = order.PickupLng, Label = "📍 Điểm lấy hàng" });
+            if (order.WarehouseLat.HasValue && order.WarehouseLng.HasValue)
+                stops.Add(new() { Lat = order.WarehouseLat, Lng = order.WarehouseLng, Label = "🏬 Kho " + order.WarehouseName });
+            if (order.DropoffLat.HasValue && order.DropoffLng.HasValue)
+                stops.Add(new() { Lat = order.DropoffLat, Lng = order.DropoffLng, Label = "🏁 Điểm giao hàng" });
+            return stops;
+        }
+
         private void BtnViewRoute_Click(object? sender, EventArgs e)
         {
             if (_api is null || _currentOrder is null) return;
-            if (_currentOrder.PickupLat is null || _currentOrder.PickupLng is null
-                || _currentOrder.DropoffLat is null || _currentOrder.DropoffLng is null)
+            var stops = BuildRouteStops(_currentOrder);
+            if (stops.Count < 2)
             {
                 MessageBox.Show(FindForm(),
-                    "Đơn này chưa chọn địa điểm từ danh sách đã lưu (chỉ gõ tay), nên chưa có tọa độ để vẽ lộ trình.\n\n" +
-                    "Vào mục 'Địa điểm' để thêm tọa độ, rồi tạo lại đơn bằng cách chọn từ danh sách địa điểm đã lưu.",
+                    "Chưa đủ tọa độ để vẽ lộ trình (cần kho trung chuyển và điểm giao có tọa độ" +
+                    (_currentOrder.PickupMethod == "SelfDelivery" ? "" : ", cùng điểm lấy hàng") + ").\n\n" +
+                    "Kiểm tra tọa độ của kho (màn Kho) và địa điểm (màn Địa điểm).",
                     "Thiếu tọa độ", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
-
-            var stops = new List<RouteStopItem>
-            {
-                new() { Lat = _currentOrder.PickupLat, Lng = _currentOrder.PickupLng, Label = "📍 Điểm lấy hàng" },
-                new() { Lat = _currentOrder.DropoffLat, Lng = _currentOrder.DropoffLng, Label = "🏁 Điểm giao hàng" },
-            };
             using var f = new RouteMapForm(_api, _currentOrder.Code, stops);
             f.ShowDialog(FindForm());
         }
@@ -206,7 +229,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                 {
                     lblResult.Text = "⚠️ " + (result.Message ?? "Không thể chia xe.");
                     lblResult.ForeColor = Theme.Warning;
-                    btnAllocate.Enabled = true;
+                    await LoadAsync(); // VD người khác vừa chia xe xong -> nút Chia xe tự tắt
                 }
             }
             catch (Exception ex)

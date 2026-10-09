@@ -47,7 +47,8 @@ namespace TruckingSystem.Desktop.GUI_RouteManagement
             _tripId = tripId;
             // Chờ duyệt cũng xem như "xem lại": GPS đã ngừng ghi từ lúc tài xế báo
             // xong, và người duyệt cần xem lại đường đi + video trước khi duyệt.
-            _isCompleted = tripStatus is "Completed" or "PendingConfirmation";
+            // Chuyến đã HỦY (kể cả hủy giữa đường) cũng không còn GPS mới -> xem lại hành trình.
+            _isCompleted = tripStatus is "Completed" or "PendingConfirmation" or "Cancelled";
             Text = $"Lộ trình — {title}";
             lblInfo.Text = "Đang tải...";
 

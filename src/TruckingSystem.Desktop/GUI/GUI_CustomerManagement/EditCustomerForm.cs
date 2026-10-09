@@ -14,7 +14,12 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
         public EditCustomerForm()
         {
             InitializeComponent();
-            cboType.Items.AddRange(new object[] { "Individual", "Company" });
+            // Hiện tiếng Việt (khớp danh sách khách hàng), gửi đúng mã cho server.
+            cboType.Items.AddRange(new object[]
+            {
+                new ComboOption("Individual", "Cá nhân"),
+                new ComboOption("Company", "Doanh nghiệp"),
+            });
         }
 
         public EditCustomerForm(ApiServices api, CustomerListItem customer) : this()
@@ -25,9 +30,15 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
             txtName.Text = customer.Name;
             txtPhone.Text = customer.Phone ?? "";
             txtTaxCode.Text = customer.TaxCode ?? "";
-            cboType.SelectedItem = customer.CustomerType;
+            cboType.SelectedItem = cboType.Items.Cast<ComboOption>().FirstOrDefault(o => o.Value == customer.CustomerType)
+                                   ?? cboType.Items[0];
             txtAddress.Text = customer.Address ?? "";
-            numCreditLimit.Value = customer.CreditLimit ?? 0;
+            // Hạn mức đã lưu có thể lớn hơn giới hạn ô nhập (dữ liệu cũ / nhập qua API) -> nới giới
+            // hạn thay vì để form crash (ArgumentOutOfRangeException) ngay khi mở.
+            var credit = customer.CreditLimit ?? 0;
+            if (credit > numCreditLimit.Maximum) numCreditLimit.Maximum = credit;
+            if (credit < numCreditLimit.Minimum) numCreditLimit.Minimum = credit;
+            numCreditLimit.Value = credit;
             txtGoogleCalendarId.Text = customer.GoogleCalendarId ?? "";
         }
 
@@ -38,13 +49,13 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
                 lblStatus.Text = "Vui lòng nhập tên khách hàng.";
                 return;
             }
-            if (_api is null) return;
+            if (_api is null || !btnSave.Enabled) return;
 
             btnSave.Enabled = false;
             try
             {
                 var result = await _api.Customers.UpdateCustomerAsync(
-                    _customerId, txtName.Text.Trim(), txtPhone.Text.Trim(), txtTaxCode.Text.Trim(), (string)cboType.SelectedItem!,
+                    _customerId, txtName.Text.Trim(), txtPhone.Text.Trim(), txtTaxCode.Text.Trim(), ((ComboOption)cboType.SelectedItem!).Value,
                     string.IsNullOrWhiteSpace(txtAddress.Text) ? null : txtAddress.Text.Trim(),
                     numCreditLimit.Value == 0 ? null : numCreditLimit.Value,
                     string.IsNullOrWhiteSpace(txtGoogleCalendarId.Text) ? null : txtGoogleCalendarId.Text.Trim());
@@ -64,7 +75,7 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
             }
             finally
             {
-                btnSave.Enabled = true;
+                if (!IsDisposed) btnSave.Enabled = true;
             }
         }
     }

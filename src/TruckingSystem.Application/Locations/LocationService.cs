@@ -33,6 +33,10 @@ public class LocationService : ILocationService
             throw new InvalidOperationException("Địa điểm phải có tọa độ — chọn địa chỉ từ ô tìm kiếm bản đồ.");
         if (lat is < -90 or > 90 || lng is < -180 or > 180)
             throw new InvalidOperationException("Tọa độ không hợp lệ.");
+        // (0, 0) là điểm giữa biển (vịnh Guinea) — gần như luôn do ô nhập để mặc định / chưa
+        // chọn địa chỉ từ bản đồ; lưu vào sẽ làm lộ trình, quãng đường, số ngày chạy sai hẳn.
+        if (lat == 0 && lng == 0)
+            throw new InvalidOperationException("Tọa độ (0, 0) không hợp lệ — hãy chọn địa chỉ từ ô tìm kiếm bản đồ để lấy đúng tọa độ.");
         if (request.CustomerId.HasValue && !await _db.Customers.AnyAsync(c => c.Id == request.CustomerId.Value))
             throw new InvalidOperationException("Khách hàng của địa điểm không tồn tại.");
 

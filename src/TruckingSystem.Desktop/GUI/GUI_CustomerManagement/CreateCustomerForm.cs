@@ -10,7 +10,12 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
         public CreateCustomerForm()
         {
             InitializeComponent();
-            cboType.Items.AddRange(new object[] { "Individual", "Company" });
+            // Hiện tiếng Việt (khớp danh sách khách hàng), gửi đúng mã cho server.
+            cboType.Items.AddRange(new object[]
+            {
+                new ComboOption("Individual", "Cá nhân"),
+                new ComboOption("Company", "Doanh nghiệp"),
+            });
             cboType.SelectedIndex = 0;
         }
 
@@ -26,12 +31,14 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
                 lblStatus.Text = "Vui lòng nhập tên khách hàng.";
                 return;
             }
-            if (_api is null) return;
+            if (_api is null || !btnSave.Enabled) return;
 
+            // Khóa nút Lưu trong lúc chờ server — bấm 2 lần trước đây tạo 2 khách hàng trùng.
+            btnSave.Enabled = false;
             try
             {
                 var result = await _api.Customers.CreateCustomerAsync(
-                    txtName.Text.Trim(), txtPhone.Text.Trim(), txtTaxCode.Text.Trim(), (string)cboType.SelectedItem!,
+                    txtName.Text.Trim(), txtPhone.Text.Trim(), txtTaxCode.Text.Trim(), ((ComboOption)cboType.SelectedItem!).Value,
                     string.IsNullOrWhiteSpace(txtAddress.Text) ? null : txtAddress.Text.Trim(),
                     numCreditLimit.Value == 0 ? null : numCreditLimit.Value,
                     string.IsNullOrWhiteSpace(txtGoogleCalendarId.Text) ? null : txtGoogleCalendarId.Text.Trim());
@@ -48,6 +55,10 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
             catch (Exception ex)
             {
                 lblStatus.Text = "Lỗi: " + ex.Message;
+            }
+            finally
+            {
+                if (!IsDisposed) btnSave.Enabled = true;
             }
         }
 

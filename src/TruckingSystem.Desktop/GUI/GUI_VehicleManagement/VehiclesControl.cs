@@ -46,6 +46,7 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
 
             using var f = new ManageVehicleDocumentsForm(_api, id, vehicle.PlateNumber);
             f.ShowDialog(FindForm());
+            _ = LoadAsync(); // giấy tờ có thể vừa thêm/xóa -> cột "Giấy tờ" cập nhật
         }
 
         private async void BtnEdit_Click(object? sender, EventArgs e)
@@ -76,6 +77,9 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
                     Loại_xe = v.VehicleType,
                     Sức_chứa = v.CapacityQty,
                     Trạng_thái = TranslateStatus(v.Status),
+                    // Lý do giấy tờ (server tính, cùng quy tắc Chia xe / Bắt đầu chuyến) — xe "Rảnh"
+                    // nhưng hết Đăng kiểm sẽ KHÔNG được chia xe.
+                    Giấy_tờ = v.DocumentBlockReason is null ? "✅ Hợp lệ" : "⛔ " + v.DocumentBlockReason,
                 }).ToList();
                 lblStatus.Text = $"Tổng {_vehicles.Count} xe — chọn 1 dòng rồi bấm Sửa để chỉnh sửa";
             }
@@ -88,10 +92,11 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
 
         private static string TranslateStatus(string s) => s switch
         {
-            "Available" => "Sẵn sàng",
+            // Cùng cách gọi với form Sửa xe.
+            "Available" => "Rảnh",
             "OnTrip" => "Đang chạy",
-            "UnderMaintenance" => "Đang bảo trì",
-            "OutOfService" => "Ngừng hoạt động",
+            "UnderMaintenance" => "Bảo trì",
+            "OutOfService" => "Ngưng hoạt động",
             _ => s,
         };
     }

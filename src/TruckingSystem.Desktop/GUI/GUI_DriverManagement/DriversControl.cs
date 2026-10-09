@@ -56,11 +56,12 @@ namespace TruckingSystem.Desktop.GUI_DriverManagement
                 return;
             }
 
-            var candidates = allEmployees.Where(x => !x.IsDriver).ToList();
+            // Nhân viên ĐÃ NGHỈ VIỆC không được làm tài xế mới (Chia xe cũng chỉ chọn nhân viên đang làm).
+            var candidates = allEmployees.Where(x => !x.IsDriver && x.Status != "Terminated").ToList();
             if (candidates.Count == 0)
             {
                 MessageBox.Show(FindForm(),
-                    "Mọi nhân viên hiện có đều đã là tài xế rồi.\nCần vào màn Nhân viên tạo nhân viên mới trước, rồi quay lại đây thêm hồ sơ tài xế cho người đó.",
+                    "Không còn nhân viên nào (đang làm việc) chưa là tài xế.\nCần vào màn Nhân viên tạo nhân viên mới trước, rồi quay lại đây thêm hồ sơ tài xế cho người đó.",
                     "Không còn ai để thêm", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }

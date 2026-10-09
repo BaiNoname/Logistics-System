@@ -26,7 +26,10 @@ public class PublicTrackingService : IPublicTrackingService
         // đi lấy hàng từ người gửi khác).
         // Đơn nhiều xe: ưu tiên xe đang GIAO (đang tới chỗ khách), rồi mới tới xe
         // đang lấy hàng — trước đây lấy đại 1 chuyến bất kỳ.
-        var activeTrip = order.Trips
+        // Không hiện xe chặng TRẢ HÀNG (đơn đã hủy, xe chở hàng về người gửi — khách nhận
+        // không liên quan) và không hiện GPS gì khi đơn đã hủy.
+        var activeTrip = order.Status == TransportOrderStatus.Cancelled ? null : order.Trips
+            .Where(t => t.LegType != TripLegType.Return)
             .Where(t => t.Status == TripStatus.InProgress || t.Status == TripStatus.PendingConfirmation)
             .OrderBy(t => t.LegType == TripLegType.Delivery ? 0 : 1)
             .ThenBy(t => t.Status == TripStatus.InProgress ? 0 : 1)

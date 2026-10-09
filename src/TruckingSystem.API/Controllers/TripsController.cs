@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 using TruckingSystem.Application.Trips;
 
 namespace TruckingSystem.API.Controllers;
@@ -25,6 +26,7 @@ public class TripsController : ControllerBase
     public async Task<ActionResult<TripActionResult>> Start(int id)
     {
         var result = await _tripService.StartAsync(id);
+        if (result.Success) await _tripService.ResyncCalendarIfSyncedAsync(id, PublicBaseUrl); // lịch theo giờ chạy THẬT
         return Ok(result); // luôn 200 OK — Desktop tự đọc result.Success/Message, tránh PostAsync throw exception khi 400 làm mất thông báo rõ ràng
     }
 
@@ -32,6 +34,7 @@ public class TripsController : ControllerBase
     public async Task<ActionResult<TripActionResult>> Complete(int id)
     {
         var result = await _tripService.CompleteAsync(id);
+        if (result.Success) await _tripService.ResyncCalendarIfSyncedAsync(id, PublicBaseUrl);
         return Ok(result); // luôn 200 OK — Desktop tự đọc result.Success/Message, tránh PostAsync throw exception khi 400 làm mất thông báo rõ ràng
     }
 
@@ -40,8 +43,24 @@ public class TripsController : ControllerBase
     public async Task<ActionResult<TripActionResult>> ApproveCompletion(int id)
     {
         var result = await _tripService.ApproveCompletionAsync(id);
+        if (result.Success) await _tripService.ResyncCalendarIfSyncedAsync(id, PublicBaseUrl);
         return Ok(result);
     }
+
+    /// <summary>Xe / tài xế có thể thay cho chuyến CHƯA CHẠY (kèm lý do không dùng được).</summary>
+    [HttpGet("{id:int}/reassign-options")]
+    public async Task<ActionResult<ReassignOptionsDto>> GetReassignOptions(int id)
+        => Ok(await _tripService.GetReassignOptionsAsync(id));
+
+    /// <summary>Đổi xe và/hoặc tài xế cho chuyến chưa chạy (gỡ chuyến bị kẹt).</summary>
+    [HttpPost("{id:int}/reassign")]
+    public async Task<ActionResult<TripActionResult>> Reassign(int id, ReassignTripRequest request)
+        => Ok(await _tripService.ReassignAsync(id, request));
+
+    /// <summary>Chuyến Trả hàng chưa chạy -> khách nhận lại hàng tại kho (xuất kho, đóng chuyến, trả xe).</summary>
+    [HttpPost("{id:int}/return-at-warehouse")]
+    public async Task<ActionResult<TripActionResult>> ReturnAtWarehouse(int id)
+        => Ok(await _tripService.ReturnAtWarehouseAsync(id, User.FindFirstValue(ClaimTypes.Name)));
 
     /// <summary>Vận hành TỪ CHỐI xác nhận của tài xế — đẩy chuyến quay lại Đang chạy.</summary>
     [HttpPost("{id:int}/reject-completion")]
@@ -130,6 +149,8 @@ public class TripsController : ControllerBase
     }
 
     /// <summary>Đồng bộ lịch chuyến lên Google Calendar của tài xế + khách hàng.</summary>
+    private string PublicBaseUrl => $"{Request.Scheme}://{Request.Host}";
+
     [HttpPost("{id:int}/sync-calendar")]
     public async Task<ActionResult<CalendarSyncResultDto>> SyncCalendar(int id)
     {
@@ -186,6 +207,9 @@ public class TripsController : ControllerBase
     public async Task<ActionResult<ServiceResult>> ConfirmArrival(int id, ConfirmArrivalRequest request)
     {
         var result = await _tripService.ConfirmArrivalAsync(id, request);
+        // App tự bắt đầu chuyến qua GPS (không qua nút Bắt đầu) -> lúc báo đến nơi cập nhật lịch
+        // theo giờ chạy THẬT (bắt đầu + đến nơi) — 1 lần, không cập nhật ở mỗi lần gửi GPS.
+        if (result.Success) await _tripService.ResyncCalendarIfSyncedAsync(id, PublicBaseUrl);
         return result.Success ? Ok(result) : NotFound(result);
     }
 }
