@@ -49,6 +49,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
     public DbSet<Trip> Trips => Set<Trip>();
     public DbSet<Waypoint> Waypoints => Set<Waypoint>();
     public DbSet<TripVideoSegment> TripVideoSegments => Set<TripVideoSegment>();
+    public DbSet<TripCargoPhoto> TripCargoPhotos => Set<TripCargoPhoto>();
     public DbSet<IncidentReport> IncidentReports => Set<IncidentReport>();
 
     // Nhóm E — Tài chính
@@ -169,6 +170,16 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
         // ---- Index cho các bảng dữ liệu lớn / hay truy vấn realtime ----
         builder.Entity<Waypoint>()
             .HasIndex(w => new { w.TripId, w.Timestamp });
+
+        builder.Entity<TripCargoPhoto>(e =>
+        {
+            e.HasOne(p => p.Trip).WithMany().HasForeignKey(p => p.TripId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(p => p.TripId);
+            e.Property(p => p.TakenAt).HasColumnType("timestamp without time zone");
+            e.Property(p => p.StoragePath).HasMaxLength(300);
+            e.Property(p => p.ContentType).HasMaxLength(50);
+            e.Property(p => p.Sha256).HasMaxLength(64);
+        });
 
         builder.Entity<TripVideoSegment>(e =>
         {

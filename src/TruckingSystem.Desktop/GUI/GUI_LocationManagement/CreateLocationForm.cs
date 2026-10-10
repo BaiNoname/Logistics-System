@@ -91,8 +91,18 @@ namespace TruckingSystem.Desktop.GUI_LocationManagement
                 lblStatus.ForeColor = Theme.Danger;
                 return;
             }
-            if (_api is null) return;
+            // Gợi ý thiếu địa chỉ / tọa độ (0, 0) = không dùng được cho bản đồ, lộ trình, Chia xe
+            // (server cũng từ chối) — báo ngay, không gửi đi.
+            if (string.IsNullOrWhiteSpace(_selectedDetail.Address) || (_selectedDetail.Lat == 0 && _selectedDetail.Lng == 0))
+            {
+                lblStatus.Text = "Gợi ý đã chọn thiếu địa chỉ hoặc tọa độ (0, 0) — hãy chọn 1 địa chỉ khác trong danh sách.";
+                lblStatus.ForeColor = Theme.Danger;
+                return;
+            }
+            if (_api is null || !btnSave.Enabled) return;
 
+            // Khóa nút Lưu trong lúc chờ server — bấm 2 lần trước đây tạo 2 địa điểm trùng.
+            btnSave.Enabled = false;
             try
             {
                 await _api.Locations.CreateLocationAsync(txtName.Text.Trim(), _selectedDetail.Address, _selectedDetail.Lat, _selectedDetail.Lng);
@@ -103,6 +113,10 @@ namespace TruckingSystem.Desktop.GUI_LocationManagement
             {
                 lblStatus.Text = "Lỗi: " + ex.Message;
                 lblStatus.ForeColor = Theme.Danger;
+            }
+            finally
+            {
+                if (!IsDisposed) btnSave.Enabled = true;
             }
         }
     }

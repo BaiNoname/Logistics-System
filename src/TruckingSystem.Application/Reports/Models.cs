@@ -23,7 +23,10 @@ public record ProfitReportDto(
     decimal FuelNormCost = 0,             // định mức theo km GPS thực tế
     decimal FuelActualCost = 0,           // thực đổ (hóa đơn đã ghi)
     int TripsUsingFuelEstimate = 0,       // số chuyến chưa nhập hóa đơn xăng -> lãi/lỗ đang tạm tính theo định mức
-    List<FuelControlRowDto>? FuelControl = null);
+    List<FuelControlRowDto>? FuelControl = null,
+    decimal FuelPlannedCostCompared = 0,  // dự toán — chỉ các chuyến hoàn tất có đủ cả dự toán lẫn định mức
+    decimal FuelNormCostCompared = 0,     // định mức — cùng tập chuyến trên (để tính "Lệch dự toán")
+    int FuelComparedTripCount = 0);
 
 /// <summary>1 dòng bảng "Kiểm soát nhiên liệu" — 1 chuyến đã chạy.
 /// Flagged = lệch km (GPS so với VietMap) hoặc lệch tiền (thực đổ so với định mức) quá 15%.</summary>

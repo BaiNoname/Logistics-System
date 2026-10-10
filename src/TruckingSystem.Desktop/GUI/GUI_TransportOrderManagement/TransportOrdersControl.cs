@@ -8,6 +8,8 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
     {
         private ApiServices? _api;
         private List<TransportOrderListItem> _orders = new();
+        // Đang Chia xe (VietMap + thuật toán có thể mất vài giây) -> khóa nút, chống bấm 2 lần.
+        private bool _allocating;
 
         public TransportOrdersControl()
         {
@@ -90,9 +92,14 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                 return;
             }
 
+            if (_allocating) return;
             var orderId = (int)grid.CurrentRow.Cells["Id"].Value;
             var orderCode = _orders.First(o => o.Id == orderId).Code;
 
+            _allocating = true;
+            btnAllocate.Enabled = false;
+            UseWaitCursor = true;
+            lblStatus.Text = $"Đang chia xe cho đơn {orderCode}...";
             try
             {
                 var result = await _api.TransportOrders.AllocateVehiclesAsync(orderId);
@@ -100,6 +107,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                 if (!result.Trips.Any())
                 {
                     MessageBox.Show(FindForm(), result.Message ?? "Không có xe nào rảnh để chia.", "Không thể chia xe", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    await LoadAsync(); // VD người khác vừa chia xe đơn này -> danh sách + nút cập nhật
                     return;
                 }
 
@@ -121,6 +129,11 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             {
                 MessageBox.Show(FindForm(), "Lỗi khi chia xe: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+            finally
+            {
+                _allocating = false;
+                if (!IsDisposed) { UseWaitCursor = false; UpdateActionButtons(); }
+            }
         }
 
         private void UpdateActionButtons()
@@ -130,7 +143,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             // Chỉ chia xe cho đơn Đã xác nhận mà CHƯA có chuyến nào — đơn đã chia xe
             // vẫn giữ trạng thái "Đã xác nhận" tới khi xe xuất phát, trước đây nút
             // vẫn sáng và bấm vào thì bị server từ chối.
-            btnAllocate.Enabled = order?.Status == "Confirmed" && order.ActiveTripCount == 0;
+            btnAllocate.Enabled = !_allocating && order?.Status == "Confirmed" && order.ActiveTripCount == 0;
         }
 
         private static string TranslateStatus(string s) => s switch

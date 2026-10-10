@@ -11,7 +11,12 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
         public CreateCustomerForm()
         {
             InitializeComponent();
-            cboType.Items.AddRange(new object[] { "Individual", "Company" });
+            // Hiện tiếng Việt (khớp danh sách khách hàng), gửi đúng mã cho server.
+            cboType.Items.AddRange(new object[]
+            {
+                new ComboOption("Individual", "Cá nhân"),
+                new ComboOption("Company", "Doanh nghiệp"),
+            });
             cboType.SelectedIndex = 0;
         }
 
@@ -34,17 +39,12 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
                 MessageBox.Show(this, lblStatus.Text, "Thiếu thông tin khách hàng", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
-            if (_api is null)
-            {
-                MessageBox.Show(this, "Không kết nối được dịch vụ khách hàng.", "Lỗi lưu khách hàng", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return;
-            }
+            if (_api is null) return;
 
-            btnSave.Enabled = btnReadWithAi.Enabled = false;
             try
             {
                 var result = await _api.Customers.CreateCustomerAsync(
-                    txtName.Text.Trim(), txtPhone.Text.Trim(), txtTaxCode.Text.Trim(), (string)cboType.SelectedItem!,
+                    txtName.Text.Trim(), txtPhone.Text.Trim(), txtTaxCode.Text.Trim(), ((ComboOption)cboType.SelectedItem!).Value,
                     string.IsNullOrWhiteSpace(txtAddress.Text) ? null : txtAddress.Text.Trim(),
                     numCreditLimit.Value == 0 ? null : numCreditLimit.Value,
                     string.IsNullOrWhiteSpace(txtGoogleCalendarId.Text) ? null : txtGoogleCalendarId.Text.Trim());
@@ -65,10 +65,6 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
                 if (IsDisposed || Disposing) return;
                 lblStatus.Text = "Lỗi: " + ex.Message;
                 MessageBox.Show(this, ex.Message, "Lỗi lưu khách hàng", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-            finally
-            {
-                if (!IsDisposed && !Disposing) btnSave.Enabled = btnReadWithAi.Enabled = true;
             }
         }
 

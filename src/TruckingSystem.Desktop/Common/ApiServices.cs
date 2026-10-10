@@ -2,6 +2,7 @@ using TruckingSystem.Desktop.SERVICE_Auth;
 using TruckingSystem.Desktop.SERVICE_AuditLogManagement;
 using TruckingSystem.Desktop.SERVICE_CustomerManagement;
 using TruckingSystem.Desktop.SERVICE_ContractManagement;
+using TruckingSystem.Desktop.SERVICE_PricingManagement;
 using TruckingSystem.Desktop.SERVICE_DriverManagement;
 using TruckingSystem.Desktop.SERVICE_EmployeeManagement;
 using TruckingSystem.Desktop.SERVICE_InvoiceManagement;
@@ -38,6 +39,7 @@ namespace TruckingSystem.Desktop.Common
         public WarehouseApiService Warehouses { get; }
         public CustomerApiService Customers { get; }
         public ContractApiService Contracts { get; }
+        public PricingApiService Pricing { get; }
         public EmployeeApiService Employees { get; }
         public DriverApiService Drivers { get; }
         public InvoiceApiService Invoices { get; }
@@ -62,6 +64,7 @@ namespace TruckingSystem.Desktop.Common
             Warehouses = new WarehouseApiService(Connection);
             Customers = new CustomerApiService(Connection);
             Contracts = new ContractApiService(Connection);
+            Pricing = new PricingApiService(Connection);
             Employees = new EmployeeApiService(Connection);
             Drivers = new DriverApiService(Connection);
             Invoices = new InvoiceApiService(Connection);

@@ -23,13 +23,22 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             lblZoneInfo.Text = $"Khu vực \"{zoneName}\" — kích thước {zoneWidth}m x {zoneHeight}m (X: 0–{zoneWidth}, Y: 0–{zoneHeight})";
 
             txtCode.Text = bin.Code;
-            numCapacity.Value = bin.CapacityM3;
-            numMaxWeight.Value = bin.MaxWeightKg;
-            numPosX.Value = bin.PosX;
-            numPosY.Value = bin.PosY;
-            numWidth.Value = bin.WidthMeters;
-            numHeight.Value = bin.HeightMeters;
-            numDistanceFromDoor.Value = bin.DistanceFromDoorMeters;
+            // Nới giới hạn ô nhập nếu giá trị đang lưu vượt giới hạn mặc định (VD vị trí tạo qua
+            // API) — trước đây gán thẳng làm form lỗi ngay khi mở.
+            SetSafe(numCapacity, bin.CapacityM3);
+            SetSafe(numMaxWeight, bin.MaxWeightKg);
+            SetSafe(numPosX, bin.PosX);
+            SetSafe(numPosY, bin.PosY);
+            SetSafe(numWidth, bin.WidthMeters);
+            SetSafe(numHeight, bin.HeightMeters);
+            SetSafe(numDistanceFromDoor, bin.DistanceFromDoorMeters);
+        }
+
+        private static void SetSafe(NumericUpDown n, decimal value)
+        {
+            if (value > n.Maximum) n.Maximum = value;
+            if (value < n.Minimum) n.Minimum = value;
+            n.Value = value;
         }
 
         private async void BtnSave_Click(object? sender, EventArgs e)

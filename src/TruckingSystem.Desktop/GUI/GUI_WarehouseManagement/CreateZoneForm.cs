@@ -14,7 +14,13 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
         public CreateZoneForm()
         {
             InitializeComponent();
-            cboZoneType.Items.AddRange(new object[] { "Normal", "Fragile", "Hazmat" });
+            // Hiện tiếng Việt, gửi đúng mã cho server (trước đây hiện "Normal/Fragile/Hazmat").
+            cboZoneType.Items.AddRange(new object[]
+            {
+                new ComboOption("Normal", "Hàng thường"),
+                new ComboOption("Fragile", "Hàng dễ vỡ"),
+                new ComboOption("Hazmat", "Hàng nguy hiểm"),
+            });
             cboZoneType.SelectedIndex = 0;
         }
 
@@ -42,7 +48,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             try
             {
                 await _api.Warehouses.CreateZoneAsync(
-                    _warehouseId, txtName.Text.Trim(), (string)cboZoneType.SelectedItem!,
+                    _warehouseId, txtName.Text.Trim(), ((ComboOption)cboZoneType.SelectedItem!).Value,
                     numPosX.Value, numPosY.Value, numWidth.Value, numHeight.Value);
 
                 DialogResult = DialogResult.OK;

@@ -124,6 +124,10 @@ public class GoogleCalendarService : IGoogleCalendarService
             await _service.Events.Delete(calendarId, eventId).ExecuteAsync();
             return true;
         }
+        catch (Google.GoogleApiException ex) when (ex.HttpStatusCode is System.Net.HttpStatusCode.NotFound or System.Net.HttpStatusCode.Gone)
+        {
+            return true; // sự kiện đã không còn trên Google (bị xóa tay) = coi như gỡ xong
+        }
         catch
         {
             return false; // Không chặn nghiệp vụ nếu xóa lỗi — Calendar không phải nguồn dữ liệu chính

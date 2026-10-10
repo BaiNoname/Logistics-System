@@ -30,7 +30,7 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             lblTitle.Location = new Point(0, 7);
             lblTitle.Margin = new Padding(2, 0, 2, 0);
             lblTitle.Name = "lblTitle";
-            lblTitle.Size = new Size(130, 23);
+            lblTitle.Size = new Size(130, 33);
             lblTitle.TabIndex = 0;
             lblTitle.Text = "Nhân viên";
             // 
@@ -43,7 +43,7 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             btnRefresh.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
             btnRefresh.ForeColor = Color.FromArgb(15, 23, 42);
             btnRefresh.Location = new Point(381, 5);
-            btnRefresh.Margin = new Padding(1, 1, 1, 1);
+            btnRefresh.Margin = new Padding(1);
             btnRefresh.Name = "btnRefresh";
             btnRefresh.Size = new Size(105, 35);
             btnRefresh.TabIndex = 1;
@@ -61,7 +61,7 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             btnCreate.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
             btnCreate.ForeColor = Color.White;
             btnCreate.Location = new Point(147, 5);
-            btnCreate.Margin = new Padding(1, 1, 1, 1);
+            btnCreate.Margin = new Padding(1);
             btnCreate.Name = "btnCreate";
             btnCreate.Size = new Size(143, 35);
             btnCreate.TabIndex = 2;
@@ -78,7 +78,7 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             btnEdit.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
             btnEdit.ForeColor = Color.FromArgb(15, 23, 42);
             btnEdit.Location = new Point(292, 5);
-            btnEdit.Margin = new Padding(1, 1, 1, 1);
+            btnEdit.Margin = new Padding(1);
             btnEdit.Name = "btnEdit";
             btnEdit.Size = new Size(87, 35);
             btnEdit.TabIndex = 3;
@@ -101,7 +101,7 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             // 
             grid.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             grid.Location = new Point(0, 57);
-            grid.Margin = new Padding(2, 2, 2, 2);
+            grid.Margin = new Padding(2);
             grid.Name = "grid";
             grid.RowHeadersWidth = 62;
             grid.Size = new Size(967, 322);
@@ -117,7 +117,7 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             Controls.Add(btnEdit);
             Controls.Add(lblStatus);
             Controls.Add(grid);
-            Margin = new Padding(2, 2, 2, 2);
+            Margin = new Padding(2);
             Name = "EmployeesControl";
             Size = new Size(967, 379);
             ((System.ComponentModel.ISupportInitialize)grid).EndInit();

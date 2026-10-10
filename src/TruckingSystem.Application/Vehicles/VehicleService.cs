@@ -17,11 +17,19 @@ public class VehicleService : IVehicleService
 
     public async Task<List<VehicleListItemDto>> GetAllAsync()
     {
-        return await _db.Vehicles
+        var vehicles = await _db.Vehicles
             .Include(v => v.Warehouse)
             .OrderBy(v => v.PlateNumber)
-            .Select(v => new VehicleListItemDto(v.Id, v.PlateNumber, v.VehicleType, v.CapacityQty, v.CapacityKg, v.CapacityM3, v.Status.ToString(), v.FuelConsumptionPer100Km, v.FuelType, v.WarehouseId, v.Warehouse == null ? null : v.Warehouse.Name))
+            .Select(v => new VehicleListItemDto(v.Id, v.PlateNumber, v.VehicleType, v.CapacityQty, v.CapacityKg, v.CapacityM3, v.Status.ToString(), v.FuelConsumptionPer100Km, v.FuelType, v.WarehouseId, v.Warehouse == null ? null : v.Warehouse.Name, null))
             .ToListAsync();
+
+        // Kèm lý do giấy tờ (nếu có) để Desktop biết xe "Rảnh" nào thực ra KHÔNG chia xe được
+        // (VD Dashboard "Xe sẵn sàng" trước đây đếm cả xe hết Đăng kiểm).
+        var today = VnClock.Today;
+        var docsByVehicle = (await VehicleDocumentRules.GetLatestAsync(_db)).ToLookup(d => d.VehicleId);
+        return vehicles
+            .Select(v => v with { DocumentBlockReason = VehicleDocumentRules.BlockReason(docsByVehicle[v.Id], v.PlateNumber, today) })
+            .ToList();
     }
 
     public async Task<VehicleListItemDto> CreateAsync(CreateVehicleRequest request)
@@ -32,6 +40,8 @@ public class VehicleService : IVehicleService
             throw new InvalidOperationException($"Biển số {plate} đã tồn tại trong hệ thống.");
         var (fuelTypeOk, fuelType) = await NormalizeFuelTypeAsync(request.FuelType);
         if (!fuelTypeOk) throw new InvalidOperationException($"Loại nhiên liệu \"{request.FuelType}\" không có trong danh mục.");
+        var capacityError = ValidateCapacity(request.CapacityQty, request.CapacityKg, request.CapacityM3, request.FuelConsumptionPer100Km);
+        if (capacityError is not null) throw new InvalidOperationException(capacityError);
 
         var vehicle = new Vehicle
         {
@@ -104,16 +114,41 @@ public class VehicleService : IVehicleService
                     "Nếu xe hỏng tạm thời, chọn \"Bảo trì\"; nếu bỏ xe hẳn, hãy hủy đơn của các chuyến này trước.");
         }
 
-        // Không giảm sức chứa xuống DƯỚI lượng hàng đã xếp cho 1 chuyến còn chưa xong của xe.
-        if (activeTripIds.Count > 0 && request.CapacityQty < vehicle.CapacityQty)
+        var capacityError = ValidateCapacity(request.CapacityQty, request.CapacityKg, request.CapacityM3, request.FuelConsumptionPer100Km);
+        if (capacityError is not null) return new VehicleActionResult(false, capacityError);
+
+        // Không giảm sức chứa (số lượng / kg / m³) xuống DƯỚI lượng hàng đã xếp cho 1 chuyến
+        // còn chưa xong của xe — chuyến đó sẽ thành chở quá tải.
+        if (activeTripIds.Count > 0 &&
+            (request.CapacityQty < vehicle.CapacityQty || request.CapacityKg < vehicle.CapacityKg || request.CapacityM3 < vehicle.CapacityM3))
         {
-            var maxPlannedQty = await _db.Trips
-                .Where(t => activeTripIds.Contains(t.Id))
-                .Select(t => t.TripLines.Sum(l => (decimal?)l.QtyPlanned) ?? 0m)
-                .MaxAsync();
-            if (request.CapacityQty < maxPlannedQty)
+            var lines = await _db.TripLines
+                .Where(l => activeTripIds.Contains(l.TripId))
+                .Select(l => new { l.TripId, l.QtyPlanned, l.CargoLine.QtyTotal, l.CargoLine.WeightKg, l.CargoLine.VolumeM3 })
+                .ToListAsync();
+            var loads = lines
+                .GroupBy(l => l.TripId)
+                .Select(g => new
+                {
+                    Qty = g.Sum(l => l.QtyPlanned),
+                    Kg = g.Sum(l => l.QtyTotal > 0 ? l.QtyPlanned * l.WeightKg / l.QtyTotal : 0),
+                    M3 = g.Sum(l => l.QtyTotal > 0 ? l.QtyPlanned * l.VolumeM3 / l.QtyTotal : 0),
+                })
+                .ToList();
+            // Làm tròn (kg, m³ tính qua phép chia -> lẻ ở chữ số rất xa) và chỉ xét chiều
+            // nào THẬT SỰ bị giảm — tránh chặn oan khi chỉ sửa chiều khác.
+            var maxQty = loads.Count == 0 ? 0 : Math.Round(loads.Max(x => x.Qty), 3);
+            var maxKg = loads.Count == 0 ? 0 : Math.Round(loads.Max(x => x.Kg), 3);
+            var maxM3 = loads.Count == 0 ? 0 : Math.Round(loads.Max(x => x.M3), 4);
+            if (request.CapacityQty < vehicle.CapacityQty && request.CapacityQty < maxQty)
                 return new VehicleActionResult(false,
-                    $"Xe đang được xếp {maxPlannedQty:0.##} đơn vị hàng cho chuyến chưa xong (#{tripListText}) — không thể giảm sức chứa xuống {request.CapacityQty:0.##}.");
+                    $"Xe đang được xếp {maxQty:0.##} đơn vị hàng cho chuyến chưa xong (#{tripListText}) — không thể giảm sức chứa xuống {request.CapacityQty:0.##}.");
+            if (request.CapacityKg < vehicle.CapacityKg && request.CapacityKg < maxKg)
+                return new VehicleActionResult(false,
+                    $"Xe đang được xếp {maxKg:0.##} kg hàng cho chuyến chưa xong (#{tripListText}) — không thể giảm tải trọng xuống {request.CapacityKg:0.##} kg.");
+            if (request.CapacityM3 < vehicle.CapacityM3 && request.CapacityM3 < maxM3)
+                return new VehicleActionResult(false,
+                    $"Xe đang được xếp {maxM3:0.##} m³ hàng cho chuyến chưa xong (#{tripListText}) — không thể giảm thể tích xuống {request.CapacityM3:0.##} m³.");
         }
 
         if (request.WarehouseId != vehicle.WarehouseId && activeTripIds.Count > 0)
@@ -156,6 +191,19 @@ public class VehicleService : IVehicleService
             .Select(t => t.Trim())
             .FirstOrDefault(t => string.Equals(t, typed, StringComparison.OrdinalIgnoreCase));
         return match is null ? (false, null) : (true, match);
+    }
+
+    /// <summary>Sức chứa phải &gt; 0 ở CẢ 3 chiều — Chia xe giới hạn theo số lượng, kg VÀ m³:
+    /// xe có kg hoặc m³ = 0 sẽ luôn bị bỏ qua nhưng vẫn hiện "Rảnh" như xe dùng được.</summary>
+    private static string? ValidateCapacity(decimal qty, decimal kg, decimal m3, decimal? fuelPer100Km)
+    {
+        if (qty <= 0) return "Sức chứa (số lượng) phải lớn hơn 0.";
+        if (kg <= 0) return "Tải trọng (kg) phải lớn hơn 0.";
+        if (m3 <= 0) return "Thể tích (m³) phải lớn hơn 0.";
+        if (qty > 1_000_000 || kg > 1_000_000 || m3 > 1_000_000) return "Sức chứa quá lớn (tối đa 1.000.000 cho mỗi chiều).";
+        // Định mức xăng âm/0 làm dự toán nhiên liệu ra số âm.
+        if (fuelPer100Km is { } f && (f <= 0 || f > 200)) return "Định mức nhiên liệu phải trong khoảng 0 – 200 lít/100 km (để trống nếu chưa biết).";
+        return null;
     }
 
     private Task<bool> PlateExistsAsync(string plate, int? excludeId)

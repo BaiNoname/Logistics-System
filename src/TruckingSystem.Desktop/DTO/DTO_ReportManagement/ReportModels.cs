@@ -26,6 +26,11 @@
         public decimal FuelNormCost { get; set; }      // định mức theo km GPS thực tế
         public decimal FuelActualCost { get; set; }    // thực đổ (hóa đơn)
         public int TripsUsingFuelEstimate { get; set; }
+        /// <summary>Dự toán / định mức chỉ trên CÙNG 1 tập chuyến (hoàn tất, có đủ cả 2 số)
+        /// — dùng để tính "Lệch dự toán" cho đúng.</summary>
+        public decimal FuelPlannedCostCompared { get; set; }
+        public decimal FuelNormCostCompared { get; set; }
+        public int FuelComparedTripCount { get; set; }
         public List<FuelControlRowItem>? FuelControl { get; set; }
     }
 

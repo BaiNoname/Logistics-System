@@ -34,6 +34,7 @@ public interface IApplicationDbContext
     DbSet<Location> Locations { get; }
     DbSet<Contract> Contracts { get; }
     DbSet<PriceList> PriceLists { get; }
+    DbSet<TariffRule> TariffRules { get; }
     DbSet<SalesOrder> SalesOrders { get; }
 
     DbSet<TransportOrder> TransportOrders { get; }
@@ -46,6 +47,7 @@ public interface IApplicationDbContext
     DbSet<Trip> Trips { get; }
     DbSet<Waypoint> Waypoints { get; }
     DbSet<TripVideoSegment> TripVideoSegments { get; }
+    DbSet<TripCargoPhoto> TripCargoPhotos { get; }
     DbSet<IncidentReport> IncidentReports { get; }
     DbSet<TripExpense> TripExpenses { get; }
     DbSet<Notification> Notifications { get; }

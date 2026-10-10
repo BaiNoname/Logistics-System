@@ -52,7 +52,8 @@ public record CargoLineOptionDto(int Id, string CargoType, decimal QtyTotal, dec
 /// Source cho biết RÕ phiếu sinh ra từ đâu: "Chuyến #12 · Lấy hàng" / "✋ Thủ
 /// công" / "Khách tự mang tới"; IsReversed = phiếu xuất tay đã được hoàn tác.</summary>
 public record WarehouseTransactionDto(string Type, DateTime OccurredAt, string OrderCode, string CargoType, decimal Qty, string ByEmployeeName,
-    int Id = 0, int OrderId = 0, int? TripId = null, string Source = "", bool IsManual = false, bool IsReversed = false, string? Note = null);
+    int Id = 0, int OrderId = 0, int? TripId = null, string Source = "", bool IsManual = false, bool IsReversed = false, string? Note = null,
+    bool CanReverse = false);
 
 public record WarehouseActionResult(bool Success, string? Message);
 
@@ -74,9 +75,13 @@ public record IssueGoodsResult(bool Success, string? Message);
 public record OrderStockFlowDto(int OrderId, string OrderCode, string PickupMethod,
     List<CargoStockFlowDto> CargoLines, List<TripStockFlowDto> Trips);
 
+/// <summary>QtyCanReceive / QtyFreeForManualIssue: số lượng NHẬP / XUẤT TAY được thật sự
+/// (đúng quy tắc server áp dụng khi bấm). ReceiveBlockReason / IssueBlockReason: lý do
+/// không được (null = được) — màn Nhập/Xuất tay dùng để bật/tắt nút và hiện lý do.</summary>
 public record CargoStockFlowDto(int CargoLineId, string CargoType, decimal QtyTotal,
     decimal QtyReceived, decimal QtyIssued, decimal QtyOnHand,
-    decimal QtyReserved, decimal QtyFreeForManualIssue, string StatusText);
+    decimal QtyReserved, decimal QtyFreeForManualIssue, string StatusText,
+    decimal QtyCanReceive = 0, string? ReceiveBlockReason = null, string? IssueBlockReason = null);
 
 public record TripStockFlowDto(int TripId, string LegType, string Status, string DriverName,
     decimal QtyPlanned, decimal QtyDone, string ProgressText);

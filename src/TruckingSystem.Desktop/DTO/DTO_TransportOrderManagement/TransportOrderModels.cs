@@ -37,6 +37,8 @@ public class TripSummaryItem
     public string DriverName { get; set; } = "";
     public string Status { get; set; } = "";
     public decimal QtyPlanned { get; set; }
+    /// <summary>Pickup / Delivery / Return.</summary>
+    public string LegType { get; set; } = "";
 }
 
 public class TransportOrderDetailItem
@@ -57,6 +59,8 @@ public class TransportOrderDetailItem
     public double? PickupLng { get; set; }
     public double? DropoffLat { get; set; }
     public double? DropoffLng { get; set; }
+    public double? WarehouseLat { get; set; }
+    public double? WarehouseLng { get; set; }
     public string PickupMethod { get; set; } = "CompanyPickup";
     public int WarehouseId { get; set; }
     public string WarehouseName { get; set; } = "";

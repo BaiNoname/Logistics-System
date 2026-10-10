@@ -93,8 +93,16 @@ public class ReportService : IReportService
             fuelStats.Sum(s => s.NormCost ?? 0),
             fuelStats.Sum(s => s.ActualCost),
             fuelStats.Count(s => s.UsesEstimate),
-            fuelStats.Select(s => s.ToDto()).OrderByDescending(r => r.Flagged).ThenBy(r => r.TripId).ToList());
+            fuelStats.Select(s => s.ToDto()).OrderByDescending(r => r.Flagged).ThenBy(r => r.TripId).ToList(),
+            // "Lệch dự toán" chỉ so trên CÙNG 1 tập chuyến: chuyến hoàn tất có ĐỦ cả dự toán
+            // (km VietMap) lẫn định mức (km GPS) — trước đây 2 tổng lấy từ 2 tập chuyến khác nhau.
+            fuelStats.Where(IsComparable).Sum(s => s.PlannedCost!.Value),
+            fuelStats.Where(IsComparable).Sum(s => s.NormCost!.Value),
+            fuelStats.Count(IsComparable));
     }
+
+    private static bool IsComparable(TripFuelStats s)
+        => s.Status == TripStatus.Completed && s.PlannedCost.HasValue && s.NormCost.HasValue;
 
     public async Task<OrderCostDetailDto?> GetOrderCostDetailAsync(int orderId)
     {
@@ -200,7 +208,10 @@ public class ReportService : IReportService
             PlannedCost.HasValue ? Math.Round(PlannedCost.Value, 0) : null,
             NormCost.HasValue ? Math.Round(NormCost.Value, 0) : null,
             NormLiters, ActualCost, ActualLiters, CostDeviationPct, HasActual,
-            Math.Abs(KmDeviationPct ?? 0) > FuelDeviationThresholdPct || Math.Abs(CostDeviationPct ?? 0) > FuelDeviationThresholdPct,
+            // Chỉ gắn cờ chuyến ĐÃ HOÀN TẤT — chuyến đang chạy / chờ duyệt / hủy giữa đường
+            // có km GPS dở dang, so với km kế hoạch luôn "thiếu" -> cờ đỏ oan.
+            Status == TripStatus.Completed &&
+            (Math.Abs(KmDeviationPct ?? 0) > FuelDeviationThresholdPct || Math.Abs(CostDeviationPct ?? 0) > FuelDeviationThresholdPct),
             Note);
     }
 
@@ -259,6 +270,9 @@ public class ReportService : IReportService
         foreach (var t in trips)
         {
             var tripDate = t.EndTime ?? t.StartTime ?? DateTime.UtcNow;
+            // Mốc lấy GIÁ: giờ kết thúc, đang chạy thì hôm nay — CÙNG mốc với lúc ghi đổ
+            // xăng và nút So sánh xăng (trước đây đang chạy thì lấy giá ngày bắt đầu).
+            var priceDate = t.EndTime ?? DateTime.UtcNow;
             gpsKmByTrip.TryGetValue(t.Id, out var gpsKm);
             fuelByTrip.TryGetValue(t.Id, out var actual);
 
@@ -270,7 +284,7 @@ public class ReportService : IReportService
             {
                 var fuelType = t.FuelType.Trim();
                 // Giá có hiệu lực tới NGÀY chạy (giờ VN) — EffectiveDate nhập theo ngày VN.
-                var refDateVn = (tripDate + VnOffset).Date.AddDays(1);
+                var refDateVn = (priceDate + VnOffset).Date.AddDays(1);
                 // Cùng quy tắc với ghi đổ xăng / nút Ước tính: ưu tiên giá thị trường chung
                 // mới nhất; chưa có thì giá mới nhất của bất kỳ hãng nào.
                 var candidates = prices

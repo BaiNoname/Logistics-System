@@ -33,7 +33,9 @@ public record TransportOrderListItemDto(
     int ActiveTripCount = 0 // số chuyến chưa hủy — Desktop dùng để khóa nút "Chia xe" khi đơn đã chia rồi
 );
 
-public record TripSummaryDto(int Id, string VehiclePlate, string DriverName, string Status, decimal QtyPlanned);
+/// <summary>LegType: Pickup / Delivery / Return — cùng 1 lô hàng đi qua nhiều chặng, nên
+/// cộng "số lượng chở" của mọi chuyến sẽ ra gấp đôi/gấp ba; Desktop hiện cột Chặng.</summary>
+public record TripSummaryDto(int Id, string VehiclePlate, string DriverName, string Status, decimal QtyPlanned, string LegType = "Delivery");
 
 /// <summary>Kết quả của các thao tác đổi trạng thái đơn (Xác nhận/Hủy) — không
 /// trả nguyên TransportOrderDetailDto vì Desktop chỉ cần biết có thành công
@@ -46,5 +48,6 @@ public record TransportOrderDetailDto(
     string PublicTrackingToken, List<CargoLineDto> CargoLines, List<TripSummaryDto> Trips,
     double? PickupLat, double? PickupLng, double? DropoffLat, double? DropoffLng,
     string PickupMethod, int CustomerId, int WarehouseId, string WarehouseName,
-    int? PickupLocationId = null, int? DropoffLocationId = null // để form Sửa đơn chọn đúng Địa điểm theo Id
+    int? PickupLocationId = null, int? DropoffLocationId = null, // để form Sửa đơn chọn đúng Địa điểm theo Id
+    double? WarehouseLat = null, double? WarehouseLng = null    // lộ trình đơn đi QUA kho trung chuyển
 );

@@ -52,6 +52,10 @@ public class Trip : BaseEntity
 
     public string? CancelReason { get; set; }
 
+    /// <summary>Lần gần nhất Vận hành TỪ CHỐI xác nhận của tài xế — ảnh hàng chụp TRƯỚC mốc
+    /// này không còn tính cho lần xác nhận sau (tài xế phải chụp ảnh mới).</summary>
+    public DateTime? ConfirmRejectedAt { get; set; }
+
     public ICollection<TripLine> TripLines { get; set; } = new List<TripLine>();
     public ICollection<Waypoint> Waypoints { get; set; } = new List<Waypoint>();
     public ICollection<IncidentReport> IncidentReports { get; set; } = new List<IncidentReport>();
