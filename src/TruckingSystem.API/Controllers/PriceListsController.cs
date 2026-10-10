@@ -1,0 +1,62 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using TruckingSystem.Application.Pricing;
+
+namespace TruckingSystem.API.Controllers;
+
+[ApiController]
+[Route("api/price-lists")]
+[Authorize(Roles = "Admin,Dispatcher,Accountant")]
+public class PriceListsController(IPricingService service) : ControllerBase
+{
+    [HttpGet]
+    public async Task<ActionResult<List<PriceListDto>>> GetAll()
+        => Ok(await service.GetPriceListsAsync());
+
+    [HttpGet("vehicle-types")]
+    public async Task<ActionResult<List<string>>> GetVehicleTypes()
+        => Ok(await service.GetVehicleTypesAsync());
+
+    [HttpPost]
+    public async Task<ActionResult<PriceListDto>> Create(SavePriceListRequest request)
+    {
+        try { return Ok(await service.CreatePriceListAsync(request)); }
+        catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
+    }
+
+    [HttpPut("{id:int}")]
+    public async Task<IActionResult> Update(int id, SavePriceListRequest request)
+    {
+        try { return await service.UpdatePriceListAsync(id, request) ? NoContent() : NotFound(); }
+        catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
+    }
+
+    [HttpDelete("{id:int}")]
+    public async Task<IActionResult> Delete(int id)
+    {
+        try { return await service.DeletePriceListAsync(id) ? NoContent() : NotFound(); }
+        catch (InvalidOperationException ex) { return Conflict(new { message = ex.Message }); }
+    }
+
+    [HttpGet("{priceListId:int}/tariff-rules")]
+    public async Task<ActionResult<List<TariffRuleDto>>> GetRules(int priceListId)
+        => Ok(await service.GetTariffRulesAsync(priceListId));
+
+    [HttpPost("{priceListId:int}/tariff-rules")]
+    public async Task<ActionResult<TariffRuleDto>> CreateRule(int priceListId, SaveTariffRuleRequest request)
+    {
+        try { return Ok(await service.CreateTariffRuleAsync(priceListId, request)); }
+        catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
+    }
+
+    [HttpPut("{priceListId:int}/tariff-rules/{id:int}")]
+    public async Task<IActionResult> UpdateRule(int priceListId, int id, SaveTariffRuleRequest request)
+    {
+        try { return await service.UpdateTariffRuleAsync(priceListId, id, request) ? NoContent() : NotFound(); }
+        catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
+    }
+
+    [HttpDelete("{priceListId:int}/tariff-rules/{id:int}")]
+    public async Task<IActionResult> DeleteRule(int priceListId, int id)
+        => await service.DeleteTariffRuleAsync(priceListId, id) ? NoContent() : NotFound();
+}

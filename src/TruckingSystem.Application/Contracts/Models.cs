@@ -2,6 +2,9 @@ namespace TruckingSystem.Application.Contracts;
 
 public class ContractListItemDto
 {
+    public string Status => TruckingSystem.Domain.Entities.Contract.GetStatus(
+        StartDate, EndDate, DateTime.UtcNow.AddHours(7)).ToString();
+
     public int Id { get; set; }
     public int CustomerId { get; set; }
     public string Code { get; set; } = string.Empty;

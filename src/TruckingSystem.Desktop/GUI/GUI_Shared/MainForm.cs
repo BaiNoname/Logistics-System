@@ -1,6 +1,8 @@
 using System.Drawing;
 using System.Windows.Forms;
 using TruckingSystem.Desktop.Common;
+using TruckingSystem.Desktop.GUI.GUI_ContractManagement;
+using TruckingSystem.Desktop.GUI.GUI_PricingManagement;
 using TruckingSystem.Desktop.GUI_CustomerManagement;
 using TruckingSystem.Desktop.GUI_EmployeeManagement;
 using TruckingSystem.Desktop.GUI_InvoiceManagement;
@@ -72,6 +74,8 @@ namespace TruckingSystem.Desktop.GUI_Shared
                 ("🚚", "Đội xe", new[] { "Admin", "Dispatcher" }, () => new VehiclesControl(_api)),
                 ("🏬", "Kho trung chuyển", new[] { "Admin", "Dispatcher", "WarehouseStaff" }, () => new WarehousesControl(_api)),
                 ("👥", "Khách hàng", new[] { "Admin", "Dispatcher", "Accountant" }, () => new CustomersControl(_api)),
+                ("📄", "Hợp đồng", new[] { "Admin", "Dispatcher", "Accountant" }, () => new ContractsControl(_api)),
+                ("₫", "Bảng giá", new[] { "Admin", "Dispatcher", "Accountant" }, () => new PricingControl(_api)),
                 ("🧑‍💼", "Nhân viên", new[] { "Admin", "Dispatcher" }, () => new EmployeesControl(_api)),
                 ("🚕", "Tài xế", new[] { "Admin", "Dispatcher" }, () => new DriversControl(_api)),
                 ("🧾", "Hóa đơn", new[] { "Admin", "Accountant" }, () => new InvoicesControl(_api)),

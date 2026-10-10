@@ -34,6 +34,7 @@ public interface IApplicationDbContext
     DbSet<Location> Locations { get; }
     DbSet<Contract> Contracts { get; }
     DbSet<PriceList> PriceLists { get; }
+    DbSet<TariffRule> TariffRules { get; }
     DbSet<SalesOrder> SalesOrders { get; }
 
     DbSet<TransportOrder> TransportOrders { get; }

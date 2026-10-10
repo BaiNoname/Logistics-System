@@ -1,0 +1,34 @@
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Host=localhost;Port=5432;Database=trucking_system;Username=postgres;Password=Nhm@8177"
+  },
+  "Jwt": {
+    "Issuer": "TruckingSystemApi",
+    "Audience": "TruckingSystemClients",
+    "Key": "DOI_CHUOI_NAY_THANH_KHOA_BI_MAT_DAI_TOI_THIEU_32_KY_TU"
+  },
+  "VietMap": {
+    "RouteApiKey": "eb432249fb287ca143f8f99689f8b91c297ef5eee9e0f144", // key cho tính năng định tuyến
+    "MapApiKey": "0bac9990e8d586f2f23efe71d687f79f4fc28abd6eb0f44c" // key cho tính năng hiển thị bản đồ nền
+  },
+  "GoogleCalendar": {
+    // Đường dẫn TUYỆT ĐỐI tới file JSON key của Service Account đã tạo trên
+    // Google Cloud — chỉ hoạt động khi Calendar của driver/customer ĐÃ ĐƯỢC
+    // CHIA SẺ (share) quyền "Make changes to events" cho đúng email Service
+    // Account này. VD Windows: "D:\\Keys\\trucking-calendar-sa.json"
+    "ServiceAccountKeyPath": "D:\\TDC IT\\HK5\\do_an_dotnet\\chua tam\\trucking-calendar-sync.json",
+    "ApplicationName": "TruckingSystem"
+  },
+  "Nvidia": {
+    "BaseUrl": "https://integrate.api.nvidia.com/v1/",
+    "ApiKey": "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",
+    "Model": "meta/llama-3.2-11b-vision-instruct"
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "AllowedHosts": "*"
+}

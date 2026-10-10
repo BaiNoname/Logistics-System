@@ -21,6 +21,7 @@ publish/
 appsettings.json
 *.publishsettings
 AGENTS.md
+/tests/
 # ==== Log/cache khác ====
 *.log
 *.tmp

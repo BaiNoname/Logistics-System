@@ -60,7 +60,7 @@
             btnRefresh.Name = "btnRefresh";
             btnRefresh.Size = new Size(103, 35);
             btnRefresh.TabIndex = 1;
-            btnRefresh.Text = "🔄 Làm mới";
+            btnRefresh.Text = "Làm mới";
             btnRefresh.UseVisualStyleBackColor = false;
             btnRefresh.Click += BtnRefresh_Click;
             // 
@@ -78,7 +78,7 @@
             btnCreate.Name = "btnCreate";
             btnCreate.Size = new Size(125, 35);
             btnCreate.TabIndex = 2;
-            btnCreate.Text = "➕ Thêm mới";
+            btnCreate.Text = "Thêm mới";
             btnCreate.UseVisualStyleBackColor = false;
             btnCreate.Click += BtnCreate_Click;
             // 
@@ -95,7 +95,7 @@
             btnEdit.Name = "btnEdit";
             btnEdit.Size = new Size(90, 35);
             btnEdit.TabIndex = 3;
-            btnEdit.Text = "✏️ Sửa";
+            btnEdit.Text = "Sửa";
             btnEdit.UseVisualStyleBackColor = false;
             btnEdit.Click += BtnEdit_Click;
             // 
