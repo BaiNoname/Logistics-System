@@ -56,6 +56,15 @@ public class Trip : BaseEntity
     /// này không còn tính cho lần xác nhận sau (tài xế phải chụp ảnh mới).</summary>
     public DateTime? ConfirmRejectedAt { get; set; }
 
+    // ---- Số liệu nhiên liệu CHỐT lúc chuyến BẮT ĐẦU ----
+    // Báo cáo xăng / lợi nhuận của chuyến đã chạy dùng ĐÚNG số liệu lúc chạy: sửa loại nhiên
+    // liệu / định mức của xe, hay thêm / xóa giá xăng sau này không làm đổi số các tháng đã qua.
+    // Null = chuyến chạy trước khi có tính năng này -> báo cáo tính theo xe + bảng giá hiện tại.
+    public string? FuelTypeAtStart { get; set; }
+    public decimal? FuelConsumptionPer100KmAtStart { get; set; }
+    /// <summary>Đơn giá tham chiếu (giá thị trường chung ngày bắt đầu, chưa có thì giá hãng mới nhất).</summary>
+    public decimal? FuelUnitPriceAtStart { get; set; }
+
     public ICollection<TripLine> TripLines { get; set; } = new List<TripLine>();
     public ICollection<Waypoint> Waypoints { get; set; } = new List<Waypoint>();
     public ICollection<IncidentReport> IncidentReports { get; set; } = new List<IncidentReport>();
