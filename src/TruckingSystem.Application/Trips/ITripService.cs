@@ -80,6 +80,10 @@ public interface ITripService
     /// <summary>Chuyến đã từng đồng bộ lịch -> cập nhật lại giờ sự kiện (gọi sau Bắt đầu / Hoàn tất / Duyệt).</summary>
     Task ResyncCalendarIfSyncedAsync(int tripId, string publicTrackingBaseUrl);
 
+    /// <summary>Kho vừa đổi tọa độ -> tính lại ước tính (km, thời gian) cho mọi chuyến CHƯA CHẠY đi qua kho.
+    /// Trả về (số chuyến tính lại được, số chuyến không tính được).</summary>
+    Task<(int Updated, int Failed)> RecalculatePlannedEstimatesForWarehouseAsync(int warehouseId);
+
     /// <summary>Danh sách chi phí khác (ngoài xăng) đã ghi cho 1 chuyến.</summary>
     Task<List<TripExpenseDto>> GetExpensesAsync(int tripId);
 

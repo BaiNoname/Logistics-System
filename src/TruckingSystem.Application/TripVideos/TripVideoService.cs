@@ -50,6 +50,11 @@ public class TripVideoService : ITripVideoService
         //  - Quay sau khi chuyến kết thúc quá 30 phút: từ chối hẳn.
         if (trip.StartTime is null && trip.Status is TripStatus.Cancelled or TripStatus.Completed)
             return new UploadTripVideoResult(false, "Chuyến đã đóng mà chưa từng chạy — không nhận video.", null);
+        // Quay đã quá 2 ngày mà chuyến vẫn chưa bắt đầu (VD quay nhầm lúc chặng Giao còn chờ
+        // nhập kho, hoặc chuyến đã đổi cho tài xế khác) -> từ chối HẲN, app bỏ đoạn đó thay vì
+        // giữ mãi trong hàng đợi.
+        if ((trip.Status == TripStatus.Planned || trip.StartTime is null) && startedAt < DateTime.UtcNow.AddDays(-2))
+            return new UploadTripVideoResult(false, "Đoạn video quay đã quá 2 ngày mà chuyến vẫn chưa bắt đầu — không nhận.", null);
         if (trip.Status == TripStatus.Planned || trip.StartTime is null)
             return new UploadTripVideoResult(false, "Chuyến chưa được ghi nhận bắt đầu — app sẽ gửi lại sau.", null, Retryable: true);
         if (startedAt < trip.StartTime.Value - TimeSpan.FromHours(3))

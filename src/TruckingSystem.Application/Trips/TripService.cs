@@ -184,6 +184,19 @@ public class TripService : ITripService
         trip.Status = TripStatus.InProgress;
         trip.StartTime = DateTime.UtcNow;
 
+        // CHỐT số liệu nhiên liệu lúc xuất phát (loại nhiên liệu, định mức của xe, đơn giá tham
+        // chiếu ngày chạy) — báo cáo xăng / lợi nhuận của chuyến dùng số này, sửa xe hay bảng giá
+        // về sau không làm đổi số của chuyến đã chạy.
+        var fuelInfo = await _db.Vehicles.Where(v => v.Id == trip.VehicleId)
+            .Select(v => new { v.FuelType, v.FuelConsumptionPer100Km }).FirstAsync();
+        trip.FuelTypeAtStart = string.IsNullOrWhiteSpace(fuelInfo.FuelType) ? null : fuelInfo.FuelType.Trim();
+        trip.FuelConsumptionPer100KmAtStart = fuelInfo.FuelConsumptionPer100Km;
+        if (trip.FuelTypeAtStart is not null)
+        {
+            var refPrice = await FindFuelPriceAsync(trip.FuelTypeAtStart, null, trip.StartTime);
+            trip.FuelUnitPriceAtStart = refPrice.Found ? refPrice.UnitPrice : null;
+        }
+
         if (trip.TransportOrder.Status == TransportOrderStatus.Confirmed)
             trip.TransportOrder.Status = TransportOrderStatus.InProgress;
 
@@ -306,6 +319,8 @@ public class TripService : ITripService
         // Chuyến chưa từng chạy (Planned, hoặc hủy khi chưa xuất phát) thì không.
         if (!HasRun(trip.Status, trip.StartTime))
             return new TripActionResult(false, "Chuyến này chưa từng chạy — không ghi nhận đổ xăng.");
+        var fuelLock = ClosedCostLockReason(trip.Status, trip.EndTime, "đổ xăng");
+        if (fuelLock is not null) return new TripActionResult(false, fuelLock);
 
         decimal cost;
         string? stationName = string.IsNullOrWhiteSpace(request.StationName) ? null : request.StationName.Trim();
@@ -313,10 +328,15 @@ public class TripService : ITripService
         {
             // Đơn giá lấy TỰ ĐỘNG từ bảng giá nhiên liệu (màn Nhiên liệu) — chỉ
             // nhập số lít, không nhập tiền tay (tránh gõ sai / khai khống).
-            // Giá theo NGÀY CHUYẾN (giờ kết thúc; đang chạy thì hôm nay) — CÙNG mốc với nút
-            // So sánh xăng và báo cáo. Trước đây lấy giá ngày NHẬP: nhập hóa đơn trễ sau
-            // khi giá đổi thì "thực đổ" lệch định mức dù thực tế không lệch.
-            var quote = await FindFuelPriceAsync(trip.Vehicle.FuelType, request.FuelProviderId, trip.EndTime);
+            // Giá theo NGÀY BẮT ĐẦU chuyến — CÙNG mốc với nút So sánh xăng và báo cáo. Trước
+            // đây lấy theo giờ kết thúc (đang chạy thì hôm nay): chuyến nhiều ngày, giá đổi giữa
+            // chừng thì các lần đổ và định mức lấy giá 2 ngày khác nhau -> lệch giả; Từ chối xác
+            // nhận còn xóa giờ kết thúc làm mốc giá nhảy lại. Giờ bắt đầu thì cố định.
+            // Không chọn hãng + đã CHỐT giá lúc xuất phát -> dùng đúng giá đó (cùng giá báo cáo /
+            // So sánh xăng dùng); giá nhập thêm trong ngày hay nhập lùi không làm lệch.
+            var quote = request.FuelProviderId is null && trip.FuelUnitPriceAtStart is decimal pinned
+                ? new FuelPriceLookup(true, pinned, null, "Giá thị trường (chốt lúc xuất phát)", null)
+                : await FindFuelPriceAsync(trip.FuelTypeAtStart ?? trip.Vehicle.FuelType, request.FuelProviderId, trip.StartTime);
             if (!quote.Found) return new TripActionResult(false, quote.Message);
             cost = Math.Round(request.Liters * quote.UnitPrice, 0);
 
@@ -363,13 +383,15 @@ public class TripService : ITripService
     {
         var trip = await _db.Trips
             .Where(t => t.Id == tripId)
-            .Select(t => new { t.Status, t.StartTime, t.EndTime, t.Vehicle.FuelType, t.Vehicle.PlateNumber })
+            .Select(t => new { t.Status, t.StartTime, t.EndTime, FuelType = t.FuelTypeAtStart ?? t.Vehicle.FuelType, t.Vehicle.PlateNumber, t.FuelUnitPriceAtStart })
             .FirstOrDefaultAsync();
         if (trip is null)
             return new FuelPriceQuoteDto(false, false, null, 0, null, null, "Không tìm thấy chuyến.");
 
         var canRecord = HasRun(trip.Status, trip.StartTime);
-        var quote = await FindFuelPriceAsync(trip.FuelType, fuelProviderId, trip.EndTime); // cùng mốc với lúc ghi
+        var quote = fuelProviderId is null && trip.FuelUnitPriceAtStart is decimal pinned
+            ? new FuelPriceLookup(true, pinned, null, "Giá thị trường (chốt lúc xuất phát)", null)
+            : await FindFuelPriceAsync(trip.FuelType, fuelProviderId, trip.StartTime); // cùng mốc với lúc ghi (ngày bắt đầu)
         var message = !canRecord
             ? (trip.Status == TripStatus.Cancelled
                 ? "Chuyến đã hủy khi chưa xuất phát — không có đổ xăng."
@@ -382,6 +404,8 @@ public class TripService : ITripService
     {
         var log = await _db.FuelLogs.Include(f => f.Trip).FirstOrDefaultAsync(f => f.Id == fuelLogId);
         if (log is null) return new TripActionResult(false, "Không tìm thấy lần đổ xăng này.");
+        var fuelLock = ClosedCostLockReason(log.Trip.Status, log.Trip.EndTime, "đổ xăng");
+        if (fuelLock is not null) return new TripActionResult(false, fuelLock);
 
         var tripId = log.TripId;
         _db.FuelLogs.Remove(log);
@@ -647,9 +671,10 @@ public class TripService : ITripService
                    "Hàng phải được lấy về (Vận hành duyệt) và nhập kho xong mới được xuất kho đi giao.";
         }
 
-        // Chỉ chặn khi tồn kho THẬT SỰ chưa đủ cho chính chuyến giao này: hàng của xe này đã
-        // nhập đủ thì xe này đi được ngay, không phải chờ hàng của xe khác (cùng đơn) còn chờ
-        // nhập — trước đây chặn cả đơn, xe + tài xế bị giữ vô ích.
+        // Chỉ chặn khi tồn kho THẬT SỰ chưa đủ cho chính chuyến giao này — trước đây chặn cả đơn,
+        // xe + tài xế bị giữ vô ích. Hàng cùng dòng hàng của 1 đơn là hàng GIỐNG HỆT nhau (tồn kho
+        // tính theo dòng hàng, không theo xe): chuyến giao nào xuất phát trước dùng hàng đã nhập
+        // trước; chuyến còn lại chờ phần hàng còn chờ nhập — tổng hàng giao đi vẫn đúng.
         var stockReason = await GetStockBlockReasonAsync(trip);
         if (stockReason is null) return null;
 
@@ -838,6 +863,32 @@ public class TripService : ITripService
         };
     }
 
+    public async Task<(int Updated, int Failed)> RecalculatePlannedEstimatesForWarehouseAsync(int warehouseId)
+    {
+        var tripIds = await _db.Trips
+            .Where(t => t.WarehouseId == warehouseId && t.Status == TripStatus.Planned)
+            .Select(t => t.Id).ToListAsync();
+        // Tối đa 30 chuyến trong 1 lần lưu kho (mỗi chuyến gọi VietMap) — phần còn lại bấm Ước tính
+        // trên màn Chuyến. Lỗi lưu 1 chuyến thì DỪNG (dữ liệu dở trong cùng phiên sẽ làm các lần lưu
+        // sau lỗi dây chuyền), các chuyến còn lại tính là chưa tính lại được.
+        int updated = 0, failed = 0;
+        foreach (var id in tripIds)
+        {
+            if (updated + failed >= 30) { failed++; continue; }
+            try
+            {
+                var r = await CalculateAndSaveRouteEstimateAsync(id);
+                if (r.Message is null) updated++; else failed++;
+            }
+            catch
+            {
+                failed += tripIds.Count - updated - failed;
+                break;
+            }
+        }
+        return (updated, failed);
+    }
+
     public async Task<TripRouteEstimateDto> CalculateAndSaveRouteEstimateAsync(int tripId)
     {
         var trip = await _db.Trips
@@ -921,25 +972,30 @@ public class TripService : ITripService
             return new FuelEstimateDto(actualDistanceKm, null, null, actualCost, null,
                 "Chưa đủ dữ liệu GPS để tính khoảng cách (cần ít nhất 2 điểm ping) — chưa ước tính được.");
 
-        if (trip.Vehicle.FuelConsumptionPer100Km is null || string.IsNullOrEmpty(trip.Vehicle.FuelType))
+        // Số liệu CHỐT lúc xuất phát (chuyến cũ chưa có thì lấy theo xe hiện tại).
+        var fuelType = trip.FuelTypeAtStart ?? trip.Vehicle.FuelType;
+        var consumption = trip.FuelConsumptionPer100KmAtStart ?? trip.Vehicle.FuelConsumptionPer100Km;
+        if (consumption is null || string.IsNullOrEmpty(fuelType))
             return new FuelEstimateDto(actualDistanceKm, null, null, actualCost, null,
                 "Xe này CHƯA khai báo định mức tiêu hao (L/100km) hoặc loại nhiên liệu — vào Sửa xe để khai báo trước khi ước tính được.");
 
         // Bước 3: Lấy giá nhiên liệu MỚI NHẤT (tính tới thời điểm chuyến kết
         // thúc) khớp đúng loại nhiên liệu xe này dùng — ưu tiên giá thị trường
         // chung (không giới hạn hãng) vì đa số xe không cố định 1 hãng đổ xăng.
-        var referenceDate = trip.EndTime ?? DateTime.UtcNow;
-        // Cùng 1 quy tắc tìm giá với ghi đổ xăng / báo cáo (không phân biệt hoa thường,
-        // khoảng trắng; tính theo ngày VN; ưu tiên giá thị trường chung).
-        var priceLookup = await FindFuelPriceAsync(trip.Vehicle.FuelType, null, referenceDate);
+        // Mốc giá = NGÀY BẮT ĐẦU chuyến (cùng mốc ghi đổ xăng / báo cáo); đã chốt giá lúc xuất
+        // phát thì dùng luôn giá đó.
+        var referenceDate = trip.StartTime ?? DateTime.UtcNow;
+        var priceLookup = trip.FuelUnitPriceAtStart is null
+            ? await FindFuelPriceAsync(fuelType, null, referenceDate)
+            : new FuelPriceLookup(true, trip.FuelUnitPriceAtStart.Value, null, null, null);
         var latestPrice = priceLookup.Found ? new { Price = priceLookup.UnitPrice } : null;
 
         if (latestPrice is null)
             return new FuelEstimateDto(actualDistanceKm, null, null, actualCost, null,
-                $"Chưa có giá nhiên liệu '{trip.Vehicle.FuelType}' nào được nhập — vào màn Nhiên liệu để thêm giá trước khi ước tính được.");
+                $"Chưa có giá nhiên liệu '{fuelType}' nào được nhập — vào màn Nhiên liệu để thêm giá trước khi ước tính được.");
 
         // Bước 4: Tính ước tính = (khoảng cách / 100) x định mức x đơn giá
-        var estimatedLiters = (actualDistanceKm / 100m) * trip.Vehicle.FuelConsumptionPer100Km.Value;
+        var estimatedLiters = (actualDistanceKm / 100m) * consumption.Value;
         var estimatedCost = estimatedLiters * latestPrice.Price;
         var variance = actualCost - estimatedCost; // dương = tốn thực tế NHIỀU hơn ước tính, âm = tiết kiệm hơn
 
@@ -964,7 +1020,9 @@ public class TripService : ITripService
 
     public async Task<IncidentReportDto> CreateIncidentAsync(int tripId, CreateIncidentReportRequest request)
     {
-        var blockReason = await GetTripCostBlockReasonAsync(tripId, "sự cố");
+        // Sự cố CÓ chi phí được tính vào chi phí chuyến (báo cáo) -> cùng khóa 7 ngày sau khi đóng;
+        // sự cố không có chi phí thì ghi bổ sung lúc nào cũng được.
+        var blockReason = await GetTripCostBlockReasonAsync(tripId, "sự cố có chi phí", lockClosed: request.Cost is > 0);
         if (blockReason is not null) throw new InvalidOperationException(blockReason);
 
         if (request.Cost.HasValue && request.Cost.Value < 0)
@@ -990,8 +1048,13 @@ public class TripService : ITripService
 
     public async Task<TripActionResult> DeleteIncidentAsync(int incidentId)
     {
-        var incident = await _db.IncidentReports.FindAsync(incidentId);
+        var incident = await _db.IncidentReports.Include(i => i.Trip).FirstOrDefaultAsync(i => i.Id == incidentId);
         if (incident is null) return new TripActionResult(false, "Không tìm thấy sự cố.");
+        if (incident.Cost is > 0)
+        {
+            var costLock = ClosedCostLockReason(incident.Trip.Status, incident.Trip.EndTime, "sự cố có chi phí");
+            if (costLock is not null) return new TripActionResult(false, costLock);
+        }
 
         _db.IncidentReports.Remove(incident);
         await _db.SaveChangesAsync();
@@ -1165,18 +1228,30 @@ public class TripService : ITripService
     /// Trước đây backend cho ghi ở MỌI trạng thái, gọi thẳng API vẫn ghi được
     /// chi phí cho chuyến chưa xuất phát, làm sai báo cáo chi phí đơn hàng.
     /// Trả về null nếu được phép ghi.</summary>
-    private async Task<string?> GetTripCostBlockReasonAsync(int tripId, string what)
+    private async Task<string?> GetTripCostBlockReasonAsync(int tripId, string what, bool lockClosed = true)
     {
         var trip = await _db.Trips
             .Where(t => t.Id == tripId)
-            .Select(t => new { t.Status, t.StartTime })
+            .Select(t => new { t.Status, t.StartTime, t.EndTime })
             .FirstOrDefaultAsync();
         if (trip is null) return "Không tìm thấy chuyến.";
         if (!HasRun(trip.Status, trip.StartTime))
             return trip.Status == TripStatus.Cancelled
                 ? $"Chuyến đã hủy khi chưa xuất phát — không ghi {what}."
                 : $"Chuyến chưa bắt đầu chạy — chưa thể ghi {what}. Hãy ghi sau khi chuyến đã xuất phát.";
-        return null;
+        return lockClosed ? ClosedCostLockReason(trip.Status, trip.EndTime, what) : null;
+    }
+
+    /// <summary>Số ngày sau khi chuyến ĐÓNG (hoàn tất / hủy) vẫn được bổ sung / xóa chi phí, đổ
+    /// xăng (hóa đơn về trễ). Quá hạn thì KHÓA: trước đây sửa được bất cứ lúc nào -> báo cáo chi
+    /// phí / lợi nhuận các tháng đã chốt tự thay đổi.</summary>
+    private const int CostEditDaysAfterClose = 7;
+
+    private static string? ClosedCostLockReason(TripStatus status, DateTime? endTime, string what)
+    {
+        if (status is not (TripStatus.Completed or TripStatus.Cancelled) || endTime is null) return null;
+        if (endTime.Value >= DateTime.UtcNow.AddDays(-CostEditDaysAfterClose)) return null;
+        return $"Chuyến đã đóng từ {DateTime.SpecifyKind(endTime.Value, DateTimeKind.Utc).AddHours(7):dd/MM/yyyy} (quá {CostEditDaysAfterClose} ngày) — số liệu đã chốt, không thêm / xóa {what} nữa.";
     }
 
     /// <summary>Chuyến "đã từng chạy" = có giờ bắt đầu (kể cả đã hủy giữa đường).
@@ -1186,8 +1261,10 @@ public class TripService : ITripService
 
     public async Task<TripActionResult> DeleteExpenseAsync(int expenseId)
     {
-        var expense = await _db.TripExpenses.FindAsync(expenseId);
+        var expense = await _db.TripExpenses.Include(e => e.Trip).FirstOrDefaultAsync(e => e.Id == expenseId);
         if (expense is null) return new TripActionResult(false, "Không tìm thấy chi phí.");
+        var costLock = ClosedCostLockReason(expense.Trip.Status, expense.Trip.EndTime, "chi phí");
+        if (costLock is not null) return new TripActionResult(false, costLock);
 
         _db.TripExpenses.Remove(expense);
         await _db.SaveChangesAsync();

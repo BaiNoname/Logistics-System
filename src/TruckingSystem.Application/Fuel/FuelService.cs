@@ -144,14 +144,19 @@ public class FuelService : IFuelService
         if (effectiveDateVn >= VnClock.Today) return null;
         var fromUtc = VnClock.VnToUtc(effectiveDateVn);
         var completed = await _db.Trips
-            .Where(t => t.Status == TruckingSystem.Domain.Enums.TripStatus.Completed && t.EndTime != null && t.EndTime >= fromUtc
-                        && t.Vehicle.FuelType != null)
-            .Select(t => new { t.Id, t.Vehicle.FuelType, t.EndTime })
+            // Chuyến đã CHỐT giá lúc xuất phát (FuelUnitPriceAtStart) không bị bảng giá ảnh hưởng nữa
+            // -> chỉ bảo vệ chuyến cũ chưa chốt giá: đã hoàn tất, hoặc bị hủy GIỮA ĐƯỜNG (đã chạy, có
+            // tính xăng vào chi phí đơn hủy). Mốc theo NGÀY BẮT ĐẦU — cùng mốc giá với báo cáo.
+            .Where(t => t.FuelUnitPriceAtStart == null && t.StartTime != null && t.StartTime >= fromUtc
+                        && (t.Status == TruckingSystem.Domain.Enums.TripStatus.Completed || t.Status == TruckingSystem.Domain.Enums.TripStatus.Cancelled)
+                        && (t.FuelTypeAtStart ?? t.Vehicle.FuelType) != null)
+            // Cùng loại nhiên liệu báo cáo dùng: đã chốt lúc xuất phát thì theo bản chốt.
+            .Select(t => new { t.Id, FuelType = t.FuelTypeAtStart ?? t.Vehicle.FuelType, t.StartTime })
             .ToListAsync();
         var hit = completed.Where(t => string.Equals(t.FuelType!.Trim(), fuelType.Trim(), StringComparison.OrdinalIgnoreCase)).ToList();
         if (hit.Count == 0) return null;
-        return $"Không thể {action} ngày {effectiveDateVn:dd/MM/yyyy}: đã có {hit.Count} chuyến dùng \"{fuelType}\" HOÀN TẤT từ ngày đó " +
-               $"(VD chuyến #{hit.OrderBy(t => t.EndTime).First().Id}) — báo cáo xăng của các chuyến đã xong sẽ bị tính lại theo giá khác. " +
+        return $"Không thể {action} ngày {effectiveDateVn:dd/MM/yyyy}: đã có {hit.Count} chuyến cũ dùng \"{fuelType}\" đã chạy xong từ ngày đó " +
+               $"(VD chuyến #{hit.OrderBy(t => t.StartTime).First().Id}) — báo cáo xăng của các chuyến đã xong sẽ bị tính lại theo giá khác. " +
                "Chỉ thêm / xóa giá áp dụng từ hôm nay trở đi.";
     }
 

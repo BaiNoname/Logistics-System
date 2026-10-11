@@ -154,6 +154,9 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                     lblStatus.Text = "⚠️ " + result.Message;
                     return;
                 }
+                // Dời tọa độ kho: server báo đã tính lại ước tính cho các chuyến chưa chạy.
+                if (!string.IsNullOrWhiteSpace(result.Message))
+                    MessageBox.Show(this, result.Message, "Đã lưu kho", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
                 DialogResult = DialogResult.OK;
                 Close();

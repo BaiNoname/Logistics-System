@@ -234,8 +234,10 @@ public class ReportService : IReportService
                 t.EndTime,
                 t.EstimatedDistanceKm,
                 t.Vehicle.PlateNumber,
-                t.Vehicle.FuelConsumptionPer100Km,
-                t.Vehicle.FuelType,
+                // Số liệu CHỐT lúc xuất phát; chuyến cũ (chưa chốt) thì theo xe hiện tại.
+                FuelConsumptionPer100Km = t.FuelConsumptionPer100KmAtStart ?? t.Vehicle.FuelConsumptionPer100Km,
+                FuelType = t.FuelTypeAtStart ?? t.Vehicle.FuelType,
+                t.FuelUnitPriceAtStart,
             })
             .ToListAsync();
         if (trips.Count == 0) return new List<TripFuelStats>();
@@ -270,9 +272,9 @@ public class ReportService : IReportService
         foreach (var t in trips)
         {
             var tripDate = t.EndTime ?? t.StartTime ?? DateTime.UtcNow;
-            // Mốc lấy GIÁ: giờ kết thúc, đang chạy thì hôm nay — CÙNG mốc với lúc ghi đổ
-            // xăng và nút So sánh xăng (trước đây đang chạy thì lấy giá ngày bắt đầu).
-            var priceDate = t.EndTime ?? DateTime.UtcNow;
+            // Mốc lấy GIÁ: NGÀY BẮT ĐẦU chuyến — CÙNG mốc với lúc ghi đổ xăng và nút So sánh
+            // xăng (cố định, không đổi khi chuyến kéo dài nhiều ngày / bị từ chối xác nhận).
+            var priceDate = t.StartTime ?? DateTime.UtcNow;
             gpsKmByTrip.TryGetValue(t.Id, out var gpsKm);
             fuelByTrip.TryGetValue(t.Id, out var actual);
 
@@ -280,6 +282,10 @@ public class ReportService : IReportService
             decimal? unitPrice = null;
             if (t.FuelConsumptionPer100Km is null or <= 0) note = "Xe chưa khai báo định mức L/100km";
             else if (string.IsNullOrWhiteSpace(t.FuelType)) note = "Xe chưa chọn loại nhiên liệu";
+            else if (t.FuelUnitPriceAtStart is decimal pinned)
+            {
+                unitPrice = pinned; // giá đã CHỐT lúc xuất phát — bảng giá sửa về sau không ảnh hưởng
+            }
             else
             {
                 var fuelType = t.FuelType.Trim();

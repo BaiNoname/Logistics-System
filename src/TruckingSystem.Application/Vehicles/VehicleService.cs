@@ -111,7 +111,8 @@ public class VehicleService : IVehicleService
             if (status == VehicleStatus.OutOfService && activeTripIds.Count > 0)
                 return new VehicleActionResult(false,
                     $"Xe còn chuyến chưa xong (#{tripListText}) — không thể đặt \"Ngưng hoạt động\". " +
-                    "Nếu xe hỏng tạm thời, chọn \"Bảo trì\"; nếu bỏ xe hẳn, hãy hủy đơn của các chuyến này trước.");
+                    "Nếu xe hỏng tạm thời, chọn \"Bảo trì\". Nếu bỏ xe hẳn: chuyển các chuyến chưa chạy sang xe khác " +
+                    "(màn Chuyến → Đổi xe / tài xế; chuyến Trả hàng có thể chọn Trả khách tại kho), chuyến đang chạy thì chờ hoàn tất.");
         }
 
         var capacityError = ValidateCapacity(request.CapacityQty, request.CapacityKg, request.CapacityM3, request.FuelConsumptionPer100Km);
@@ -247,6 +248,35 @@ public class VehicleService : IVehicleService
     {
         var doc = await _db.VehicleDocuments.FindAsync(documentId);
         if (doc is null) return new VehicleActionResult(false, "Không tìm thấy giấy tờ.");
+
+        // Xóa Đăng kiểm CÒN HẠN cuối cùng của xe đang có chuyến (chưa chạy / đang chạy) -> các
+        // chuyến đó bị chặn lúc xuất phát mà không ai được báo. Nhập bản đúng TRƯỚC rồi xóa bản
+        // này (cũng là cách sửa 1 Đăng kiểm nhập nhầm ngày).
+        // So CÙNG quy tắc với lúc Bắt đầu chuyến: Đăng kiểm mới nhất CÒN LẠI phải còn hạn tới
+        // hết ngày cuối (dự kiến) của từng chuyến CHƯA CHẠY của xe (chuyến đang chạy đã qua bước
+        // kiểm tra xuất phát).
+        if (doc.DocType == VehicleDocumentType.Registration && VehicleDocumentRules.IsValidOn(doc.ExpiryDate, VnClock.Today))
+        {
+            var today = VnClock.Today;
+            var remainingExpiry = await _db.VehicleDocuments
+                .Where(d => d.VehicleId == doc.VehicleId && d.Id != doc.Id && d.DocType == VehicleDocumentType.Registration)
+                .MaxAsync(d => (DateTime?)d.ExpiryDate);
+            var planned = await _db.Trips
+                .Where(t => t.VehicleId == doc.VehicleId && t.Status == TripStatus.Planned)
+                .Select(t => new { t.Id, t.EstimatedDurationMinutes })
+                .ToListAsync();
+            var blocked = planned
+                .Where(t =>
+                {
+                    var lastDay = today.AddDays(Math.Max(1, (int)Math.Ceiling((t.EstimatedDurationMinutes ?? 0) / 480.0)) - 1);
+                    return remainingExpiry is null || !VehicleDocumentRules.IsValidOn(remainingExpiry.Value, lastDay);
+                })
+                .Select(t => t.Id).OrderBy(id => id).Take(5).ToList();
+            if (blocked.Count > 0)
+                return new VehicleActionResult(false,
+                    $"Xóa Đăng kiểm này thì xe không còn Đăng kiểm hợp lệ cho chuyến chưa chạy #{string.Join(", #", blocked)} — các chuyến đó sẽ không xuất phát được. " +
+                    "Nếu nhập nhầm, hãy THÊM Đăng kiểm đúng trước rồi mới xóa bản này.");
+        }
 
         _db.VehicleDocuments.Remove(doc);
         await _db.SaveChangesAsync();
