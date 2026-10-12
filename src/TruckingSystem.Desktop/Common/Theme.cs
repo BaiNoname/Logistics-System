@@ -36,9 +36,14 @@ namespace TruckingSystem.Desktop.Common
         {
             var btn = new Button
             {
-                Text = text, Width = width, Height = height,
-                BackColor = Primary, ForeColor = Color.White,
-                FlatStyle = FlatStyle.Flat, Font = FontBold, Cursor = Cursors.Hand,
+                Text = text,
+                Width = width,
+                Height = height,
+                BackColor = Primary,
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Font = FontBold,
+                Cursor = Cursors.Hand,
             };
             btn.FlatAppearance.BorderSize = 0;
             btn.FlatAppearance.MouseOverBackColor = PrimaryDark;
@@ -49,9 +54,14 @@ namespace TruckingSystem.Desktop.Common
         {
             var btn = new Button
             {
-                Text = text, Width = width, Height = height,
-                BackColor = Color.White, ForeColor = TextPrimary,
-                FlatStyle = FlatStyle.Flat, Font = FontBold, Cursor = Cursors.Hand,
+                Text = text,
+                Width = width,
+                Height = height,
+                BackColor = Color.White,
+                ForeColor = TextPrimary,
+                FlatStyle = FlatStyle.Flat,
+                Font = FontBold,
+                Cursor = Cursors.Hand,
             };
             btn.FlatAppearance.BorderSize = 1;
             btn.FlatAppearance.BorderColor = BorderColor;
@@ -59,47 +69,59 @@ namespace TruckingSystem.Desktop.Common
             return btn;
         }
 
+        /// <summary>Định dạng ĐẦY ĐỦ cho bảng danh sách (chỉ xem): phần nhìn + chỉ đọc, chọn
+        /// nguyên dòng, 1 dòng mỗi lần, không có dòng trống cuối bảng.</summary>
         public static void StyleGrid(DataGridView grid)
         {
-            grid.BorderStyle = BorderStyle.None;
-            grid.BackgroundColor = Color.White;
-            grid.GridColor = BorderColor;
-            grid.RowHeadersVisible = false;
+            StyleGridLook(grid);
             grid.AllowUserToAddRows = false;
             grid.AllowUserToResizeRows = false;
             grid.ReadOnly = true;
             grid.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
             grid.MultiSelect = false;
+        }
+
+        /// <summary>Chỉ PHẦN NHÌN của bảng (dùng chung, tự áp cho mọi bảng khi form mở — xem
+        /// UiStyle): cột giãn kín bề ngang dù ít cột (không còn mảng xám trống bên phải), nền
+        /// trắng, tiêu đề đậm, tiêu đề cột "_" -> " ". Gọi nhiều lần cũng chỉ áp 1 lần.</summary>
+        public static void StyleGridLook(DataGridView grid)
+        {
+            if (!UiStyle.MarkStyled(grid)) return;
+
+            grid.BorderStyle = BorderStyle.None;
+            grid.BackgroundColor = Color.White;
+            grid.GridColor = BorderColor;
+            grid.RowHeadersVisible = false;
             grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
-            grid.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
-            grid.ColumnHeadersHeight = 42;
+            grid.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            grid.ColumnHeadersDefaultCellStyle.WrapMode = DataGridViewTriState.True;
             grid.RowTemplate.Height = 36;
             grid.EnableHeadersVisualStyles = false;
 
             grid.ColumnHeadersDefaultCellStyle.BackColor = GridHeaderBg;
             grid.ColumnHeadersDefaultCellStyle.ForeColor = Color.White;
+            grid.ColumnHeadersDefaultCellStyle.SelectionBackColor = GridHeaderBg;
             grid.ColumnHeadersDefaultCellStyle.Font = FontBold;
             grid.ColumnHeadersDefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleLeft;
-            grid.ColumnHeadersDefaultCellStyle.Padding = new Padding(8, 0, 0, 0);
+            grid.ColumnHeadersDefaultCellStyle.Padding = new Padding(8, 6, 4, 6);
 
             grid.DefaultCellStyle.Font = FontNormal;
             grid.DefaultCellStyle.ForeColor = TextPrimary;
             grid.DefaultCellStyle.SelectionBackColor = ColorTranslator.FromHtml("#DBEAFE");
             grid.DefaultCellStyle.SelectionForeColor = TextPrimary;
-            grid.DefaultCellStyle.Padding = new Padding(8, 0, 0, 0);
+            grid.DefaultCellStyle.Padding = new Padding(8, 0, 4, 0);
             grid.AlternatingRowsDefaultCellStyle.BackColor = GridAltRow;
 
-            // Sửa lỗi tiêu đề cột hiện dấu gạch dưới thay vì khoảng trắng — vì tên
-            // thuộc tính C# (property name của anonymous type dùng làm DataSource)
-            // không được phép chứa dấu cách, nên phải viết "Mã_đơn" thay vì "Mã đơn".
-            // Đoạn này tự động thay "_" thành " " mỗi khi grid nhận dữ liệu mới,
-            // áp dụng chung cho MỌI DataGridView gọi StyleGrid — không cần sửa tay
-            // từng màn hình riêng lẻ.
-            grid.DataBindingComplete += (_, _) =>
-            {
-                foreach (DataGridViewColumn col in grid.Columns)
-                    col.HeaderText = col.HeaderText.Replace('_', ' ');
-            };
+            // Tiêu đề cột lấy từ tên thuộc tính C# ("Mã_đơn") -> đổi "_" thành khoảng trắng mỗi
+            // khi bảng nhận dữ liệu mới.
+            FixHeaders(grid);
+            grid.DataBindingComplete += (_, _) => FixHeaders(grid);
+        }
+
+        private static void FixHeaders(DataGridView grid)
+        {
+            foreach (DataGridViewColumn col in grid.Columns)
+                col.HeaderText = col.HeaderText.Replace('_', ' ');
         }
 
         public static Panel MakeLabeledInput(string label, Control input, int width = 320)

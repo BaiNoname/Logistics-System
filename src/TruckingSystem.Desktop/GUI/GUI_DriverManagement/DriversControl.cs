@@ -21,7 +21,6 @@ namespace TruckingSystem.Desktop.GUI_DriverManagement
         {
             InitializeComponent();
             Theme.StyleGrid(grid);
-            Resize += (_, _) => { grid.Width = Width; grid.Height = Height - grid.Top; };
             grid.DataBindingComplete += (_, _) => { if (grid.Columns["EmployeeId"] != null) grid.Columns["EmployeeId"]!.Visible = false; };
             grid.CellFormatting += Grid_CellFormatting;
             // Hồ sơ / Lịch làm việc chỉ bấm được khi đã chọn 1 tài xế

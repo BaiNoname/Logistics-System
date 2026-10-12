@@ -7,7 +7,6 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
     public partial class CustomersControl : BaseUserControl
     {
         private ApiServices? _api;
-        private CustomerContactsControl? _contactsControl;
         private List<CustomerListItem> _customers = new();
 
         public CustomersControl()
@@ -22,12 +21,6 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
         {
             _api = api;
             btnCreate.Visible = btnEdit.Visible = api.Connection.IsInRole("Admin", "Dispatcher");
-            _contactsControl = new CustomerContactsControl(api) { Dock = DockStyle.Fill };
-            contactsTab.Controls.Add(_contactsControl);
-            tabs.SelectedIndexChanged += async (_, _) =>
-            {
-                if (tabs.SelectedTab == contactsTab) await _contactsControl.LoadAsync();
-            };
         }
 
         private void BtnRefresh_Click(object? sender, EventArgs e) => _ = LoadAsync();
@@ -57,7 +50,6 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
         {
             if (_api is null) return;
             lblStatus.Text = "Đang tải...";
-            lblStatus.ForeColor = Theme.TextSecondary;
             try
             {
                 _customers = await _api.Customers.GetCustomersAsync();

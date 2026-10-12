@@ -20,7 +20,6 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             {
                 if (grid.Columns["Id"] != null) grid.Columns["Id"]!.Visible = false;
             };
-            Resize += (_, _) => { grid.Width = Width; grid.Height = Height - grid.Top; };
             grid.CellDoubleClick += async (_, _) => await OpenDetailAsync();
             // "Chia xe" chỉ bấm được với đơn ĐÃ XÁC NHẬN (Nháp phải xác nhận trước;
             // đơn đang chạy / hoàn tất / đã hủy không chia xe được nữa).

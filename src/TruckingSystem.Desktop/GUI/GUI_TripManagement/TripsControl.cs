@@ -15,25 +15,15 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
         private List<TripListItem> _trips = new();
         private Dictionary<int, TripWarehouseProgressItem> _progress = new();
 
-        // 2 nút gỡ chuyến bị kẹt — tạo bằng code (không sửa file Designer).
-        private readonly Button btnReassign;
-        private readonly Button btnReturnAtWarehouse;
-        private readonly Button btnCargoPhotos;
         // Đang chờ server (Bắt đầu / Ước tính...) -> khóa nút, chống bấm 2 lần gửi 2 yêu cầu.
         private bool _busy;
 
         public TripsControl()
         {
+            // Giao diện (vị trí, cỡ chữ, nút) nằm hết trong TripsControl.Designer.cs — bố cục tự co
+            // giãn (TableLayoutPanel + FlowLayoutPanel), không còn tính tọa độ bằng code.
             InitializeComponent();
-            // Đặt THEO VỊ TRÍ nút "Từ chối" (đã được co giãn theo DPI màn hình) — không dùng
-            // tọa độ cứng, tránh lệch/đè lên lưới ở màn hình 100% / 125%.
-            var w = btnReject.Width * 190 / 160;
-            btnReassign = MakeActionButton("🔁 Đổi xe / tài xế", new Point(btnReject.Right + 10, btnReject.Top), w, BtnReassign_Click);
-            btnReturnAtWarehouse = MakeActionButton("🏬 Trả khách tại kho", new Point(btnReassign.Right + 10, btnReject.Top), w, BtnReturnAtWarehouse_Click);
-            btnCargoPhotos = MakeActionButton("📷 Ảnh hàng", new Point(btnReturnAtWarehouse.Right + 10, btnReject.Top), btnReject.Width, BtnCargoPhotos_Click);
-            lblStatus.Left = btnCargoPhotos.Right + 10;
             Theme.StyleGrid(grid);
-            Resize += (_, _) => { grid.Width = Width; grid.Height = Height - grid.Top; };
             grid.DataBindingComplete += (_, _) => { if (grid.Columns["Id"] != null) grid.Columns["Id"]!.Visible = false; };
             grid.CellFormatting += Grid_CellFormatting;
             grid.SelectionChanged += (_, _) => UpdateActionButtons();
@@ -147,26 +137,6 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
             {
                 MessageBox.Show(FindForm(), "Lỗi: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
-        }
-
-        private Button MakeActionButton(string text, Point location, int width, EventHandler onClick)
-        {
-            var b = new Button
-            {
-                Text = text,
-                Location = location,
-                Size = new Size(width, btnReject.Height),
-                BackColor = Color.White,
-                ForeColor = Color.FromArgb(15, 23, 42),
-                FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
-                Cursor = Cursors.Hand,
-                Enabled = false,
-            };
-            b.Click += onClick;
-            Controls.Add(b);
-            b.BringToFront();
-            return b;
         }
 
         /// <summary>Xem danh sách hàng + ảnh hàng tài xế đã gửi (không duyệt).</summary>

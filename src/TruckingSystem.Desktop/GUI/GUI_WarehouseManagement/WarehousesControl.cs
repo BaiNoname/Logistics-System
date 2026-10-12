@@ -15,37 +15,22 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
     /// </summary>
     public partial class WarehousesControl : BaseUserControl
     {
-        private const decimal PixelsPerMeter = 25; // tỉ lệ vẽ — 1 mét thật = 25 pixel trên màn hình
+        private const decimal PixelsPerMeter = 25; // tỉ lệ vẽ — 1 mét thật = 25 pixel LOGIC (màn 100%)
+        /// <summary>Pixel THẬT cho 1 mét ở DPI hiện tại (150% -> 37,5 px) — sơ đồ trông y hệt
+        /// nhau trên laptop phóng to và màn PC 100% (khu/ô vẽ bằng code không được Windows tự nhân DPI).</summary>
+        private decimal Ppm => PixelsPerMeter * DeviceDpi / 96m;
         private bool _currentHasDoor; // kho đang xem đã khai báo cửa chưa (để hiện khoảng cách trong tooltip)
 
         private ApiServices? _api;
         // Đếm lượt tải: đổi kho nhanh -> lượt tải CŨ trả về muộn KHÔNG được vẽ đè (trước đây
         // sơ đồ có thể lẫn khu của 2 kho).
         private int _zonesLoadId, _ordersLoadId, _linesLoadId;
-        private readonly Button btnPendingReceipts;
 
         public WarehousesControl()
         {
+            // Bố cục (thanh nút gồm cả "📦 Hàng chờ nhập kho", sơ đồ Dock Fill, khung thử Best-Fit)
+            // nằm hết trong WarehousesControl.Designer.cs — tự co giãn, không còn Resize tính tay.
             InitializeComponent();
-            // Nút "Hàng chờ nhập kho" tạo bằng code — đặt ở HÀNG TRÊN, ngay trên nút "Thêm kho mới"
-            // (cạnh tiêu đề, chỗ trống): hàng nút phía dưới đã kín tới ~1320 px, đặt nối đuôi sẽ bị
-            // khuất trên màn hình nhỏ — mà đây là lối DUY NHẤT để nhập hàng chờ (chặn cả chặng Giao).
-            btnPendingReceipts = new Button
-            {
-                Text = "📦 Hàng chờ nhập kho",
-                Location = new Point(btnCreateWarehouse.Left, Math.Max(0, btnCreateWarehouse.Top - btnManualStock.Height - 4)),
-                Size = new Size(btnManualStock.Width + btnManualStock.Width / 5, btnManualStock.Height),
-                BackColor = btnManualStock.BackColor,
-                ForeColor = btnManualStock.ForeColor,
-                FlatStyle = FlatStyle.Flat,
-                Font = btnManualStock.Font,
-                Cursor = Cursors.Hand,
-            };
-            btnPendingReceipts.FlatAppearance.BorderSize = 0;
-            btnPendingReceipts.Click += BtnPendingReceipts_Click;
-            Controls.Add(btnPendingReceipts);
-            btnPendingReceipts.BringToFront();
-            lblTestTitle.Text = "🧪  Kiểm tra thuật toán Best-Fit — CHỈ GỢI Ý vị trí lưu trữ (không nhập kho)";
 
             // Chống giật/nhòe hình khi vẽ động nhiều Panel lồng nhau (sơ đồ Zone/Bin) —
             // Panel không cho set DoubleBuffered trực tiếp từ ngoài (protected),
@@ -58,13 +43,8 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             cboOrderSuggest.SelectedIndexChanged += async (_, _) => await LoadCargoLinesForSuggestAsync();
             cboCargoLineSuggest.SelectedIndexChanged += CboCargoLineSuggest_SelectedIndexChanged;
 
-            Resize += (_, _) =>
-            {
-                testPanel.Width = Width;
-                testPanel.Top = Height - 190;
-                zonesPanel.Width = Width;
-                zonesPanel.Height = testPanel.Top - zonesPanel.Top - 10;
-            };
+            // Kéo cửa sổ sang màn hình khác DPI -> vẽ lại sơ đồ theo tỉ lệ pixel mới.
+            DpiChangedAfterParent += (_, _) => _ = LoadZonesAsync();
 
             Load += async (_, _) => { await LoadWarehousesAsync(); await LoadOrdersForSuggestAsync(); };
         }
@@ -204,8 +184,8 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                 // 1 kích thước mặc định hợp lý để vẫn hiển thị được, không vỡ layout.
                 var lengthM = warehouse.LengthMeters ?? 30;
                 var widthM = warehouse.WidthMeters ?? 20;
-                var canvasWidth = (int)(lengthM * PixelsPerMeter);
-                var canvasHeight = (int)(widthM * PixelsPerMeter);
+                var canvasWidth = (int)(lengthM * Ppm);
+                var canvasHeight = (int)(widthM * Ppm);
 
                 // AutoScrollMinSize thay vì đổi Size trực tiếp — giữ đúng cơ chế
                 // cuộn của Panel khi nội dung lớn hơn khung nhìn thực tế.
@@ -221,12 +201,18 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                 }
                 if (loadId != _zonesLoadId || IsDisposed) return;
                 zonesPanel.Controls.Clear();
+                // Left/Top của control con trong Panel AutoScroll tính theo KHUNG NHÌN (đã trừ phần
+                // đang cuộn) -> đưa thanh cuộn về gốc trước khi đặt khu/ô theo tọa độ canvas, vẽ xong
+                // mới trả lại vị trí cuộn cũ (không thì sơ đồ vẽ lại bị lệch đúng bằng đoạn đã cuộn).
+                var scroll = zonesPanel.AutoScrollPosition;
+                zonesPanel.AutoScrollPosition = Point.Empty;
                 foreach (var (zone, bins) in binsByZone)
                     zonesPanel.Controls.Add(BuildZonePanel(zone, bins));
 
                 // Vẽ TƯỜNG kho (khung viền) và CỬA kho lên sơ đồ
                 AddWarehouseWalls(canvasWidth, canvasHeight);
                 _currentHasDoor = AddDoorMarker(warehouse, canvasWidth, canvasHeight);
+                zonesPanel.AutoScrollPosition = new Point(-scroll.X, -scroll.Y);
 
                 var missingSize = warehouse.LengthMeters is null || warehouse.WidthMeters is null;
                 var warnings = new List<string>();
@@ -250,7 +236,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             var floor = new Panel { Left = 0, Top = 0, Width = canvasWidth, Height = canvasHeight, BackColor = Color.Transparent };
             floor.Paint += (_, e) =>
             {
-                using var pen = new Pen(Theme.TextSecondary, 2) { DashStyle = System.Drawing.Drawing2D.DashStyle.Dash };
+                using var pen = new Pen(Theme.TextSecondary, LogicalToDeviceUnits(2)) { DashStyle = System.Drawing.Drawing2D.DashStyle.Dash };
                 e.Graphics.DrawRectangle(pen, 1, 1, floor.Width - 3, floor.Height - 3);
             };
             zonesPanel.Controls.Add(floor);
@@ -266,10 +252,10 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                 || warehouse.LengthMeters is null || warehouse.WidthMeters is null)
                 return false;
 
-            const int thickness = 10;
+            var thickness = LogicalToDeviceUnits(10);
             var doorColor = Color.FromArgb(234, 88, 12); // cam đậm — nổi bật trên nền sơ đồ
-            var doorLength = Math.Max(40, (int)(3 * PixelsPerMeter));
-            var offsetPx = (int)(warehouse.DoorOffsetMeters.Value * PixelsPerMeter);
+            var doorLength = Math.Max(LogicalToDeviceUnits(40), (int)(3 * Ppm));
+            var offsetPx = (int)(warehouse.DoorOffsetMeters.Value * Ppm);
 
             var rect = warehouse.DoorSide switch
             {
@@ -300,12 +286,13 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             var size = label.PreferredSize;
             int ClampX(int x) => Math.Clamp(x, 0, Math.Max(0, canvasWidth - size.Width));
             int ClampY(int y) => Math.Clamp(y, 0, Math.Max(0, canvasHeight - size.Height));
+            var gap = LogicalToDeviceUnits(2);
             label.Location = warehouse.DoorSide switch
             {
-                "Top" => new Point(ClampX(rect.X + rect.Width / 2 - size.Width / 2), rect.Bottom + 2),
-                "Bottom" => new Point(ClampX(rect.X + rect.Width / 2 - size.Width / 2), rect.Top - size.Height - 2),
-                "Left" => new Point(rect.Right + 2, ClampY(rect.Y + rect.Height / 2 - size.Height / 2)),
-                _ => new Point(rect.Left - size.Width - 2, ClampY(rect.Y + rect.Height / 2 - size.Height / 2)),
+                "Top" => new Point(ClampX(rect.X + rect.Width / 2 - size.Width / 2), rect.Bottom + gap),
+                "Bottom" => new Point(ClampX(rect.X + rect.Width / 2 - size.Width / 2), rect.Top - size.Height - gap),
+                "Left" => new Point(rect.Right + gap, ClampY(rect.Y + rect.Height / 2 - size.Height / 2)),
+                _ => new Point(rect.Left - size.Width - gap, ClampY(rect.Y + rect.Height / 2 - size.Height / 2)),
             };
             new ToolTip().SetToolTip(label, tipText);
             label.BringToFront();
@@ -327,23 +314,25 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
         ///     vị trí" → chọn dòng → "Sửa vị trí" như trước, nhanh hơn nhiều.</summary>
         private Panel BuildZonePanel(WarehouseZoneItem zone, List<StorageBinItem> bins)
         {
-            const int headerHeight = 26;
-            const int padding = 6;
+            // Mọi khoảng cách cố định tính theo pixel LOGIC rồi nhân DPI (LogicalToDeviceUnits).
+            var headerHeight = LogicalToDeviceUnits(26);
+            var padding = LogicalToDeviceUnits(6);
+            var ppm = Ppm;
 
             var zoneColor = zone.ZoneType switch { "Fragile" => Theme.Warning, "Hazmat" => Theme.Danger, _ => Theme.Primary };
 
             var zonePanel = new Panel
             {
-                Left = (int)(zone.PosX * PixelsPerMeter),
-                Top = (int)(zone.PosY * PixelsPerMeter),
-                Width = Math.Max(60, (int)(zone.WidthMeters * PixelsPerMeter)),
-                Height = Math.Max(60, (int)(zone.HeightMeters * PixelsPerMeter)),
+                Left = (int)(zone.PosX * ppm),
+                Top = (int)(zone.PosY * ppm),
+                Width = Math.Max(LogicalToDeviceUnits(60), (int)(zone.WidthMeters * ppm)),
+                Height = Math.Max(LogicalToDeviceUnits(60), (int)(zone.HeightMeters * ppm)),
                 BackColor = Theme.CardBg,
                 Cursor = Cursors.Hand,
             };
             zonePanel.Paint += (_, e) =>
             {
-                using var pen = new Pen(zoneColor, 2);
+                using var pen = new Pen(zoneColor, LogicalToDeviceUnits(2));
                 e.Graphics.DrawRectangle(pen, 1, 1, zonePanel.Width - 3, zonePanel.Height - 3);
             };
             // Click vào NỀN khu vực (không phải vào 1 ô vị trí cụ thể) -> mở Sửa khu vực
@@ -354,8 +343,8 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                 Text = $"{ZoneIcon(zone.ZoneType)} {zone.Name}",
                 Font = Theme.FontSmall,
                 ForeColor = Theme.TextPrimary,
-                Top = 4,
-                Left = 6,
+                Top = LogicalToDeviceUnits(4),
+                Left = LogicalToDeviceUnits(6),
                 AutoSize = true,
                 Cursor = Cursors.Hand,
             };
@@ -374,10 +363,10 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                 // theo lưới Row/Column, không phản ánh kích thước thật.
                 var cell = new Panel
                 {
-                    Left = padding + (int)(bin.PosX * PixelsPerMeter),
-                    Top = headerHeight + (int)(bin.PosY * PixelsPerMeter),
-                    Width = Math.Max(4, (int)(bin.WidthMeters * PixelsPerMeter)),
-                    Height = Math.Max(4, (int)(bin.HeightMeters * PixelsPerMeter)),
+                    Left = padding + (int)(bin.PosX * ppm),
+                    Top = headerHeight + (int)(bin.PosY * ppm),
+                    Width = Math.Max(LogicalToDeviceUnits(4), (int)(bin.WidthMeters * ppm)),
+                    Height = Math.Max(LogicalToDeviceUnits(4), (int)(bin.HeightMeters * ppm)),
                     BackColor = Theme.Success, // nền XANH = phần còn TRỐNG
                     Cursor = Cursors.Hand,
                 };
@@ -397,7 +386,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
 
                 // Chỉ hiện chữ nếu ô đủ lớn để đọc được — ô quá nhỏ (kho nhiều vị
                 // trí) chỉ cần thấy MÀU là đủ, nhồi chữ vào sẽ chỉ rối mắt.
-                if (cell.Width >= 36 && cell.Height >= 28)
+                if (cell.Width >= LogicalToDeviceUnits(36) && cell.Height >= LogicalToDeviceUnits(28))
                 {
                     var lblCode = new Label
                     {

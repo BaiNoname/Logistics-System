@@ -19,13 +19,14 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             InitializeComponent();
             Theme.StyleGrid(gridCargo);
             Theme.StyleGrid(gridTrips);
-            lblTrackingLink.Cursor = Cursors.Hand;
-            lblTrackingLink.Click += (_, _) =>
-            {
-                if (string.IsNullOrEmpty(_trackingUrl)) return;
-                Clipboard.SetText(_trackingUrl);
-                MessageBox.Show(FindForm(), "Đã copy link theo dõi vào Clipboard:\n" + _trackingUrl, "Đã copy", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            };
+        }
+
+        /// <summary>Bấm link theo dõi -> copy vào Clipboard (gắn sự kiện trong Designer).</summary>
+        private void LblTrackingLink_Click(object? sender, EventArgs e)
+        {
+            if (string.IsNullOrEmpty(_trackingUrl)) return;
+            Clipboard.SetText(_trackingUrl);
+            MessageBox.Show(FindForm(), "Đã copy link theo dõi vào Clipboard:\n" + _trackingUrl, "Đã copy", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         public OrderDetailForm(ApiServices api, int orderId) : this()

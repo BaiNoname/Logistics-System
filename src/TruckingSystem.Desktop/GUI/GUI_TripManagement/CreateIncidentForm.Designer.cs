@@ -12,104 +12,186 @@
 
         #region Windows Form Designer generated code
 
+        /// <summary>Bố cục: root (TableLayoutPanel 1 cột) = bảng nhập liệu (nhãn | ô nhập, ô mô tả
+        /// nhiều dòng giãn theo chiều cao) / dòng trạng thái / thanh nút (phải -> trái).
+        /// Không có tọa độ cứng.</summary>
         private void InitializeComponent()
         {
-            this.lblType = new System.Windows.Forms.Label();
-            this.cboType = new System.Windows.Forms.ComboBox();
-            this.lblDescription = new System.Windows.Forms.Label();
-            this.txtDescription = new System.Windows.Forms.TextBox();
-            this.lblCost = new System.Windows.Forms.Label();
-            this.numCost = new System.Windows.Forms.NumericUpDown();
-            this.btnSave = new System.Windows.Forms.Button();
-            this.lblStatus = new System.Windows.Forms.Label();
-            ((System.ComponentModel.ISupportInitialize)(this.numCost)).BeginInit();
-            this.SuspendLayout();
+            root = new System.Windows.Forms.TableLayoutPanel();
+            fields = new System.Windows.Forms.TableLayoutPanel();
+            lblType = new System.Windows.Forms.Label();
+            cboType = new System.Windows.Forms.ComboBox();
+            lblDescription = new System.Windows.Forms.Label();
+            txtDescription = new System.Windows.Forms.TextBox();
+            lblCost = new System.Windows.Forms.Label();
+            numCost = new System.Windows.Forms.NumericUpDown();
+            lblStatus = new System.Windows.Forms.Label();
+            buttonBar = new System.Windows.Forms.FlowLayoutPanel();
+            btnSave = new System.Windows.Forms.Button();
+            root.SuspendLayout();
+            fields.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)numCost).BeginInit();
+            buttonBar.SuspendLayout();
+            SuspendLayout();
+            //
+            // root
+            //
+            root.ColumnCount = 1;
+            root.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            root.Controls.Add(fields, 0, 0);
+            root.Controls.Add(lblStatus, 0, 1);
+            root.Controls.Add(buttonBar, 0, 2);
+            root.Dock = System.Windows.Forms.DockStyle.Fill;
+            root.Name = "root";
+            root.Padding = new System.Windows.Forms.Padding(20, 16, 20, 16);
+            root.RowCount = 3;
+            root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+            root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+            root.Size = new System.Drawing.Size(460, 340);
+            root.TabIndex = 0;
+            //
+            // fields
+            //
+            fields.ColumnCount = 2;
+            fields.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.AutoSize));
+            fields.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            fields.Controls.Add(lblType, 0, 0);
+            fields.Controls.Add(cboType, 1, 0);
+            fields.Controls.Add(lblDescription, 0, 1);
+            fields.Controls.Add(txtDescription, 1, 1);
+            fields.Controls.Add(lblCost, 0, 2);
+            fields.Controls.Add(numCost, 1, 2);
+            fields.Dock = System.Windows.Forms.DockStyle.Fill;
+            fields.Margin = new System.Windows.Forms.Padding(0);
+            fields.Name = "fields";
+            fields.RowCount = 3;
+            fields.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+            fields.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            fields.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+            fields.TabIndex = 0;
             //
             // lblType
             //
-            this.lblType.Location = new System.Drawing.Point(24, 20);
-            this.lblType.Size = new System.Drawing.Size(360, 18);
-            this.lblType.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
-            this.lblType.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
-            this.lblType.Text = "Loại sự cố *";
+            lblType.Anchor = System.Windows.Forms.AnchorStyles.Left;
+            lblType.AutoSize = true;
+            lblType.Font = new System.Drawing.Font("Segoe UI", 9F);
+            lblType.ForeColor = System.Drawing.Color.FromArgb(100, 116, 139);
+            lblType.Margin = new System.Windows.Forms.Padding(0, 0, 12, 8);
+            lblType.Name = "lblType";
+            lblType.TabIndex = 0;
+            lblType.Text = "Loại sự cố *";
             //
             // cboType
             //
-            this.cboType.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.cboType.Location = new System.Drawing.Point(24, 40);
-            this.cboType.Size = new System.Drawing.Size(360, 23);
+            cboType.Dock = System.Windows.Forms.DockStyle.Fill;
+            cboType.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            cboType.Margin = new System.Windows.Forms.Padding(0, 0, 0, 8);
+            cboType.Name = "cboType";
+            cboType.TabIndex = 1;
             //
             // lblDescription
             //
-            this.lblDescription.Location = new System.Drawing.Point(24, 90);
-            this.lblDescription.Size = new System.Drawing.Size(360, 18);
-            this.lblDescription.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
-            this.lblDescription.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
-            this.lblDescription.Text = "Mô tả chi tiết (tuỳ chọn)";
+            lblDescription.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            lblDescription.AutoSize = true;
+            lblDescription.Font = new System.Drawing.Font("Segoe UI", 9F);
+            lblDescription.ForeColor = System.Drawing.Color.FromArgb(100, 116, 139);
+            lblDescription.Margin = new System.Windows.Forms.Padding(0, 4, 12, 8);
+            lblDescription.Name = "lblDescription";
+            lblDescription.TabIndex = 2;
+            lblDescription.Text = "Mô tả chi tiết (tuỳ chọn)";
             //
             // txtDescription
             //
-            this.txtDescription.Location = new System.Drawing.Point(24, 110);
-            this.txtDescription.Size = new System.Drawing.Size(360, 60);
-            this.txtDescription.Multiline = true;
+            txtDescription.Dock = System.Windows.Forms.DockStyle.Fill;
+            txtDescription.Margin = new System.Windows.Forms.Padding(0, 0, 0, 8);
+            txtDescription.MinimumSize = new System.Drawing.Size(0, 60);
+            txtDescription.Multiline = true;
+            txtDescription.Name = "txtDescription";
+            txtDescription.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
+            txtDescription.TabIndex = 3;
             //
             // lblCost
             //
-            this.lblCost.Location = new System.Drawing.Point(24, 185);
-            this.lblCost.Size = new System.Drawing.Size(360, 18);
-            this.lblCost.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
-            this.lblCost.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
-            this.lblCost.Text = "Chi phí phát sinh (đ, tuỳ chọn)";
+            lblCost.Anchor = System.Windows.Forms.AnchorStyles.Left;
+            lblCost.AutoSize = true;
+            lblCost.Font = new System.Drawing.Font("Segoe UI", 9F);
+            lblCost.ForeColor = System.Drawing.Color.FromArgb(100, 116, 139);
+            lblCost.Margin = new System.Windows.Forms.Padding(0, 0, 12, 8);
+            lblCost.Name = "lblCost";
+            lblCost.TabIndex = 4;
+            lblCost.Text = "Chi phí phát sinh (đ, tuỳ chọn)";
             //
             // numCost
             //
-            this.numCost.Location = new System.Drawing.Point(24, 205);
-            this.numCost.Size = new System.Drawing.Size(200, 23);
-            this.numCost.Maximum = new decimal(new int[] { 999999999, 0, 0, 0 });
-            //
-            // btnSave
-            //
-            this.btnSave.Location = new System.Drawing.Point(100, 275);
-            this.btnSave.Size = new System.Drawing.Size(200, 40);
-            this.btnSave.Text = "Lưu sự cố";
-            this.btnSave.BackColor = TruckingSystem.Desktop.Common.Theme.Primary;
-            this.btnSave.ForeColor = System.Drawing.Color.White;
-            this.btnSave.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnSave.Font = TruckingSystem.Desktop.Common.Theme.FontBold;
-            this.btnSave.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.btnSave.FlatAppearance.BorderSize = 0;
-            this.btnSave.FlatAppearance.MouseOverBackColor = TruckingSystem.Desktop.Common.Theme.PrimaryDark;
-            this.btnSave.Click += new System.EventHandler(this.BtnSave_Click);
+            numCost.Dock = System.Windows.Forms.DockStyle.Fill;
+            numCost.Margin = new System.Windows.Forms.Padding(0, 0, 0, 8);
+            numCost.Maximum = new decimal(new int[] { 999999999, 0, 0, 0 });
+            numCost.Name = "numCost";
+            numCost.TabIndex = 5;
             //
             // lblStatus
             //
-            this.lblStatus.Location = new System.Drawing.Point(24, 240);
-            this.lblStatus.Size = new System.Drawing.Size(360, 25);
-            this.lblStatus.ForeColor = TruckingSystem.Desktop.Common.Theme.Danger;
-            this.lblStatus.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
+            lblStatus.Anchor = System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
+            lblStatus.AutoSize = true;
+            lblStatus.Font = new System.Drawing.Font("Segoe UI", 9F);
+            lblStatus.ForeColor = System.Drawing.Color.FromArgb(220, 38, 38);
+            lblStatus.Margin = new System.Windows.Forms.Padding(0, 4, 0, 8);
+            lblStatus.Name = "lblStatus";
+            lblStatus.TabIndex = 1;
+            //
+            // buttonBar
+            //
+            buttonBar.AutoSize = true;
+            buttonBar.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            buttonBar.Controls.Add(btnSave);
+            buttonBar.Dock = System.Windows.Forms.DockStyle.Fill;
+            buttonBar.FlowDirection = System.Windows.Forms.FlowDirection.RightToLeft;
+            buttonBar.Margin = new System.Windows.Forms.Padding(0);
+            buttonBar.Name = "buttonBar";
+            buttonBar.TabIndex = 2;
+            buttonBar.WrapContents = true;
+            //
+            // btnSave
+            //
+            btnSave.AutoSize = true;
+            btnSave.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            btnSave.BackColor = System.Drawing.Color.FromArgb(37, 99, 235);
+            btnSave.Cursor = System.Windows.Forms.Cursors.Hand;
+            btnSave.FlatAppearance.BorderSize = 0;
+            btnSave.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(29, 78, 216);
+            btnSave.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            btnSave.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            btnSave.ForeColor = System.Drawing.Color.White;
+            btnSave.Margin = new System.Windows.Forms.Padding(0);
+            btnSave.MinimumSize = new System.Drawing.Size(0, 38);
+            btnSave.Name = "btnSave";
+            btnSave.Padding = new System.Windows.Forms.Padding(10, 4, 10, 4);
+            btnSave.TabIndex = 0;
+            btnSave.Text = "Lưu sự cố";
+            btnSave.UseVisualStyleBackColor = false;
+            btnSave.Click += new System.EventHandler(this.BtnSave_Click);
             //
             // CreateIncidentForm
             //
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
-            this.AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
-            this.BackColor = System.Drawing.Color.White;
-            this.ClientSize = new System.Drawing.Size(410, 335);
-            this.Controls.Add(this.lblType);
-            this.Controls.Add(this.cboType);
-            this.Controls.Add(this.lblDescription);
-            this.Controls.Add(this.txtDescription);
-            this.Controls.Add(this.lblCost);
-            this.Controls.Add(this.numCost);
-            this.Controls.Add(this.lblStatus);
-            this.Controls.Add(this.btnSave);
-            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
-            this.MaximizeBox = false;
-            this.Name = "CreateIncidentForm";
-            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
-            this.Text = "Ghi nhận sự cố";
-            ((System.ComponentModel.ISupportInitialize)(this.numCost)).EndInit();
-            this.ResumeLayout(false);
-            this.PerformLayout();
+            AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
+            AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
+            BackColor = System.Drawing.Color.White;
+            ClientSize = new System.Drawing.Size(460, 340);
+            Controls.Add(root);
+            MaximizeBox = false;
+            MinimumSize = new System.Drawing.Size(420, 320);
+            Name = "CreateIncidentForm";
+            StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
+            Text = "Ghi nhận sự cố";
+            root.ResumeLayout(false);
+            root.PerformLayout();
+            fields.ResumeLayout(false);
+            fields.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)numCost).EndInit();
+            buttonBar.ResumeLayout(false);
+            buttonBar.PerformLayout();
+            ResumeLayout(false);
         }
 
         #endregion
@@ -122,5 +204,8 @@
         private System.Windows.Forms.NumericUpDown numCost;
         private System.Windows.Forms.Button btnSave;
         private System.Windows.Forms.Label lblStatus;
+        private System.Windows.Forms.TableLayoutPanel root;
+        private System.Windows.Forms.TableLayoutPanel fields;
+        private System.Windows.Forms.FlowLayoutPanel buttonBar;
     }
 }

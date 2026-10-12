@@ -12,230 +12,384 @@ partial class EditWarehouseForm
 
     #region Windows Form Designer generated code
 
+    /// <summary>Bố cục: root (TableLayoutPanel 1 cột) = vùng nhập liệu cuộn được (Panel AutoScroll chứa
+    /// TableLayoutPanel 2 cột bằng nhau: nhãn ở trên, ô nhập ở dưới, giãn theo bề ngang) / dòng trạng thái /
+    /// thanh nút (phải sang trái). Không tọa độ cứng — co giãn theo DPI; màn nhỏ thì cuộn được.</summary>
     private void InitializeComponent()
     {
-        this.lblName = new System.Windows.Forms.Label();
-        this.txtName = new System.Windows.Forms.TextBox();
-        this.lblAddress = new System.Windows.Forms.Label();
-        this.txtSearch = new System.Windows.Forms.TextBox();
-        this.lstSuggestions = new System.Windows.Forms.ListBox();
-        this.lblSelectedAddress = new System.Windows.Forms.Label();
-        this.lblCapacity = new System.Windows.Forms.Label();
-        this.numCapacity = new System.Windows.Forms.NumericUpDown();
-        this.lblLength = new System.Windows.Forms.Label();
-        this.numLength = new System.Windows.Forms.NumericUpDown();
-        this.lblWidth = new System.Windows.Forms.Label();
-        this.numWidth = new System.Windows.Forms.NumericUpDown();
-        this.lblAreaNote = new System.Windows.Forms.Label();
-        this.lblDoorSide = new System.Windows.Forms.Label();
-        this.cboDoorSide = new System.Windows.Forms.ComboBox();
-        this.lblDoorOffset = new System.Windows.Forms.Label();
-        this.numDoorOffset = new System.Windows.Forms.NumericUpDown();
-        this.lblDoorNote = new System.Windows.Forms.Label();
-        this.btnSave = new System.Windows.Forms.Button();
-        this.lblStatus = new System.Windows.Forms.Label();
-        ((System.ComponentModel.ISupportInitialize)(this.numCapacity)).BeginInit();
-        ((System.ComponentModel.ISupportInitialize)(this.numLength)).BeginInit();
-        ((System.ComponentModel.ISupportInitialize)(this.numWidth)).BeginInit();
-        ((System.ComponentModel.ISupportInitialize)(this.numDoorOffset)).BeginInit();
-        this.SuspendLayout();
-        //
+        root = new System.Windows.Forms.TableLayoutPanel();
+        scrollPanel = new System.Windows.Forms.Panel();
+        inputs = new System.Windows.Forms.TableLayoutPanel();
+        lblName = new System.Windows.Forms.Label();
+        txtName = new System.Windows.Forms.TextBox();
+        lblAddress = new System.Windows.Forms.Label();
+        txtSearch = new System.Windows.Forms.TextBox();
+        lstSuggestions = new System.Windows.Forms.ListBox();
+        lblSelectedAddress = new System.Windows.Forms.Label();
+        lblCapacity = new System.Windows.Forms.Label();
+        numCapacity = new System.Windows.Forms.NumericUpDown();
+        lblLength = new System.Windows.Forms.Label();
+        lblWidth = new System.Windows.Forms.Label();
+        numLength = new System.Windows.Forms.NumericUpDown();
+        numWidth = new System.Windows.Forms.NumericUpDown();
+        lblAreaNote = new System.Windows.Forms.Label();
+        lblDoorSide = new System.Windows.Forms.Label();
+        lblDoorOffset = new System.Windows.Forms.Label();
+        cboDoorSide = new System.Windows.Forms.ComboBox();
+        numDoorOffset = new System.Windows.Forms.NumericUpDown();
+        lblDoorNote = new System.Windows.Forms.Label();
+        lblStatus = new System.Windows.Forms.Label();
+        buttonBar = new System.Windows.Forms.FlowLayoutPanel();
+        btnSave = new System.Windows.Forms.Button();
+        root.SuspendLayout();
+        scrollPanel.SuspendLayout();
+        inputs.SuspendLayout();
+        buttonBar.SuspendLayout();
+        ((System.ComponentModel.ISupportInitialize)numCapacity).BeginInit();
+        ((System.ComponentModel.ISupportInitialize)numLength).BeginInit();
+        ((System.ComponentModel.ISupportInitialize)numWidth).BeginInit();
+        ((System.ComponentModel.ISupportInitialize)numDoorOffset).BeginInit();
+        SuspendLayout();
+        // 
+        // root
+        // 
+        root.ColumnCount = 1;
+        root.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
+        root.Controls.Add(scrollPanel, 0, 0);
+        root.Controls.Add(lblStatus, 0, 1);
+        root.Controls.Add(buttonBar, 0, 2);
+        root.Dock = System.Windows.Forms.DockStyle.Fill;
+        root.Margin = new System.Windows.Forms.Padding(0);
+        root.Name = "root";
+        root.RowCount = 3;
+        root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
+        root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+        root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+        root.TabIndex = 0;
+        root.Padding = new System.Windows.Forms.Padding(20, 16, 20, 16);
+        root.Size = new System.Drawing.Size(500, 600);
+        // 
+        // scrollPanel
+        // 
+        scrollPanel.AutoScroll = true;
+        scrollPanel.Controls.Add(inputs);
+        scrollPanel.Dock = System.Windows.Forms.DockStyle.Fill;
+        scrollPanel.Margin = new System.Windows.Forms.Padding(0);
+        scrollPanel.Name = "scrollPanel";
+        scrollPanel.TabIndex = 0;
+        // 
+        // inputs
+        // 
+        inputs.AutoSize = true;
+        inputs.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+        inputs.ColumnCount = 2;
+        inputs.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 50F));
+        inputs.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 50F));
+        inputs.Controls.Add(lblName, 0, 0);
+        inputs.Controls.Add(txtName, 0, 1);
+        inputs.Controls.Add(lblAddress, 0, 2);
+        inputs.Controls.Add(txtSearch, 0, 3);
+        inputs.Controls.Add(lstSuggestions, 0, 4);
+        inputs.Controls.Add(lblSelectedAddress, 0, 5);
+        inputs.Controls.Add(lblCapacity, 0, 6);
+        inputs.Controls.Add(numCapacity, 0, 7);
+        inputs.Controls.Add(lblLength, 0, 8);
+        inputs.Controls.Add(lblWidth, 1, 8);
+        inputs.Controls.Add(numLength, 0, 9);
+        inputs.Controls.Add(numWidth, 1, 9);
+        inputs.Controls.Add(lblAreaNote, 0, 10);
+        inputs.Controls.Add(lblDoorSide, 0, 11);
+        inputs.Controls.Add(lblDoorOffset, 1, 11);
+        inputs.Controls.Add(cboDoorSide, 0, 12);
+        inputs.Controls.Add(numDoorOffset, 1, 12);
+        inputs.Controls.Add(lblDoorNote, 0, 13);
+        inputs.Dock = System.Windows.Forms.DockStyle.Top;
+        inputs.Margin = new System.Windows.Forms.Padding(0);
+        inputs.Name = "inputs";
+        inputs.RowCount = 14;
+        inputs.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+        inputs.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+        inputs.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+        inputs.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+        inputs.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+        inputs.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+        inputs.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+        inputs.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+        inputs.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+        inputs.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+        inputs.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+        inputs.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+        inputs.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+        inputs.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+        inputs.SetColumnSpan(lblName, 2);
+        inputs.SetColumnSpan(txtName, 2);
+        inputs.SetColumnSpan(lblAddress, 2);
+        inputs.SetColumnSpan(txtSearch, 2);
+        inputs.SetColumnSpan(lstSuggestions, 2);
+        inputs.SetColumnSpan(lblSelectedAddress, 2);
+        inputs.SetColumnSpan(lblCapacity, 2);
+        inputs.SetColumnSpan(numCapacity, 2);
+        inputs.SetColumnSpan(lblAreaNote, 2);
+        inputs.SetColumnSpan(lblDoorNote, 2);
+        inputs.TabIndex = 0;
+        // 
         // lblName
-        //
-        this.lblName.Location = new System.Drawing.Point(24, 20);
-        this.lblName.Size = new System.Drawing.Size(400, 18);
-        this.lblName.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
-        this.lblName.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
-        this.lblName.Text = "Tên kho * (VD: Kho Hà Nội)";
-        //
+        // 
+        lblName.Anchor = System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
+        lblName.AutoSize = true;
+        lblName.Font = new System.Drawing.Font("Segoe UI", 9F);
+        lblName.ForeColor = System.Drawing.Color.FromArgb(100, 116, 139);
+        lblName.Margin = new System.Windows.Forms.Padding(0, 0, 0, 4);
+        lblName.Name = "lblName";
+        lblName.TabIndex = 0;
+        lblName.Text = "Tên kho * (VD: Kho Hà Nội)";
+        // 
         // txtName
-        //
-        this.txtName.Location = new System.Drawing.Point(24, 40);
-        this.txtName.Size = new System.Drawing.Size(400, 23);
-        //
+        // 
+        txtName.Dock = System.Windows.Forms.DockStyle.Fill;
+        txtName.Margin = new System.Windows.Forms.Padding(0, 0, 0, 12);
+        txtName.Name = "txtName";
+        txtName.TabIndex = 1;
+        // 
         // lblAddress
-        //
-        this.lblAddress.Location = new System.Drawing.Point(24, 90);
-        this.lblAddress.Size = new System.Drawing.Size(400, 18);
-        this.lblAddress.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
-        this.lblAddress.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
-        this.lblAddress.Text = "🔍 Tìm địa chỉ (tuỳ chọn, gõ từ khóa rồi chọn từ gợi ý)";
-        //
+        // 
+        lblAddress.Anchor = System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
+        lblAddress.AutoSize = true;
+        lblAddress.Font = new System.Drawing.Font("Segoe UI", 9F);
+        lblAddress.ForeColor = System.Drawing.Color.FromArgb(100, 116, 139);
+        lblAddress.Margin = new System.Windows.Forms.Padding(0, 0, 0, 4);
+        lblAddress.Name = "lblAddress";
+        lblAddress.TabIndex = 2;
+        lblAddress.Text = "🔍 Tìm địa chỉ (tuỳ chọn, gõ từ khóa rồi chọn từ gợi ý)";
+        // 
         // txtSearch
-        //
-        this.txtSearch.Location = new System.Drawing.Point(24, 110);
-        this.txtSearch.Size = new System.Drawing.Size(400, 23);
-        //
+        // 
+        txtSearch.Dock = System.Windows.Forms.DockStyle.Fill;
+        txtSearch.Margin = new System.Windows.Forms.Padding(0, 0, 0, 4);
+        txtSearch.Name = "txtSearch";
+        txtSearch.TabIndex = 3;
+        // 
         // lstSuggestions
-        //
-        this.lstSuggestions.Location = new System.Drawing.Point(24, 138);
-        this.lstSuggestions.Size = new System.Drawing.Size(400, 90);
-        this.lstSuggestions.Visible = false;
-        this.lstSuggestions.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
-        //
+        // 
+        lstSuggestions.Dock = System.Windows.Forms.DockStyle.Fill;
+        lstSuggestions.Font = new System.Drawing.Font("Segoe UI", 9F);
+        lstSuggestions.IntegralHeight = false;
+        lstSuggestions.MaximumSize = new System.Drawing.Size(0, 150);
+        lstSuggestions.MinimumSize = new System.Drawing.Size(0, 90);
+        lstSuggestions.Visible = false;
+        lstSuggestions.Margin = new System.Windows.Forms.Padding(0, 0, 0, 4);
+        lstSuggestions.Name = "lstSuggestions";
+        lstSuggestions.TabIndex = 4;
+        // 
         // lblSelectedAddress
-        //
-        this.lblSelectedAddress.Location = new System.Drawing.Point(24, 138);
-        this.lblSelectedAddress.Size = new System.Drawing.Size(400, 20);
-        this.lblSelectedAddress.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
-        this.lblSelectedAddress.ForeColor = TruckingSystem.Desktop.Common.Theme.Success;
-        //
+        // 
+        lblSelectedAddress.Anchor = System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
+        lblSelectedAddress.AutoSize = true;
+        lblSelectedAddress.Font = new System.Drawing.Font("Segoe UI", 9F);
+        lblSelectedAddress.ForeColor = System.Drawing.Color.FromArgb(22, 163, 74);
+        lblSelectedAddress.Margin = new System.Windows.Forms.Padding(0, 0, 0, 12);
+        lblSelectedAddress.Name = "lblSelectedAddress";
+        lblSelectedAddress.TabIndex = 5;
+        // 
         // lblCapacity
-        //
-        this.lblCapacity.Location = new System.Drawing.Point(24, 160);
-        this.lblCapacity.Size = new System.Drawing.Size(400, 18);
-        this.lblCapacity.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
-        this.lblCapacity.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
-        this.lblCapacity.Text = "Sức chứa (m³) — dùng để tính Best-Fit, tuỳ chọn";
-        //
+        // 
+        lblCapacity.Anchor = System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
+        lblCapacity.AutoSize = true;
+        lblCapacity.Font = new System.Drawing.Font("Segoe UI", 9F);
+        lblCapacity.ForeColor = System.Drawing.Color.FromArgb(100, 116, 139);
+        lblCapacity.Margin = new System.Windows.Forms.Padding(0, 0, 0, 4);
+        lblCapacity.Name = "lblCapacity";
+        lblCapacity.TabIndex = 6;
+        lblCapacity.Text = "Sức chứa (m³) — dùng để tính Best-Fit, tuỳ chọn";
+        // 
         // numCapacity
-        //
-        this.numCapacity.Location = new System.Drawing.Point(24, 180);
-        this.numCapacity.Size = new System.Drawing.Size(400, 23);
-        this.numCapacity.DecimalPlaces = 0;
-        this.numCapacity.Maximum = new decimal(new int[] { 100000, 0, 0, 0 });
-        this.numCapacity.Increment = new decimal(new int[] { 10, 0, 0, 0 });
-        //
+        // 
+        numCapacity.Dock = System.Windows.Forms.DockStyle.Fill;
+        numCapacity.DecimalPlaces = 0;
+        numCapacity.Increment = new decimal(new int[] { 10, 0, 0, 0 });
+        numCapacity.Maximum = new decimal(new int[] { 100000, 0, 0, 0 });
+        numCapacity.Margin = new System.Windows.Forms.Padding(0, 0, 0, 12);
+        numCapacity.Name = "numCapacity";
+        numCapacity.TabIndex = 7;
+        // 
         // lblLength
-        //
-        this.lblLength.Location = new System.Drawing.Point(24, 220);
-        this.lblLength.Size = new System.Drawing.Size(190, 18);
-        this.lblLength.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
-        this.lblLength.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
-        this.lblLength.Text = "Chiều dài (mét)";
-        //
-        // numLength
-        //
-        this.numLength.Location = new System.Drawing.Point(24, 240);
-        this.numLength.Size = new System.Drawing.Size(190, 23);
-        this.numLength.DecimalPlaces = 1;
-        this.numLength.Maximum = new decimal(new int[] { 1000, 0, 0, 0 });
-        this.numLength.Value = new decimal(new int[] { 30, 0, 0, 0 });
-        //
+        // 
+        lblLength.Anchor = System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
+        lblLength.AutoSize = true;
+        lblLength.Font = new System.Drawing.Font("Segoe UI", 9F);
+        lblLength.ForeColor = System.Drawing.Color.FromArgb(100, 116, 139);
+        lblLength.Margin = new System.Windows.Forms.Padding(0, 0, 8, 4);
+        lblLength.Name = "lblLength";
+        lblLength.TabIndex = 8;
+        lblLength.Text = "Chiều dài (mét)";
+        // 
         // lblWidth
-        //
-        this.lblWidth.Location = new System.Drawing.Point(234, 220);
-        this.lblWidth.Size = new System.Drawing.Size(190, 18);
-        this.lblWidth.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
-        this.lblWidth.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
-        this.lblWidth.Text = "Chiều rộng (mét)";
-        //
+        // 
+        lblWidth.Anchor = System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
+        lblWidth.AutoSize = true;
+        lblWidth.Font = new System.Drawing.Font("Segoe UI", 9F);
+        lblWidth.ForeColor = System.Drawing.Color.FromArgb(100, 116, 139);
+        lblWidth.Margin = new System.Windows.Forms.Padding(8, 0, 0, 4);
+        lblWidth.Name = "lblWidth";
+        lblWidth.TabIndex = 9;
+        lblWidth.Text = "Chiều rộng (mét)";
+        // 
+        // numLength
+        // 
+        numLength.Dock = System.Windows.Forms.DockStyle.Fill;
+        numLength.DecimalPlaces = 1;
+        numLength.Maximum = new decimal(new int[] { 1000, 0, 0, 0 });
+        numLength.Value = new decimal(new int[] { 30, 0, 0, 0 });
+        numLength.Margin = new System.Windows.Forms.Padding(0, 0, 8, 12);
+        numLength.Name = "numLength";
+        numLength.TabIndex = 10;
+        // 
         // numWidth
-        //
-        this.numWidth.Location = new System.Drawing.Point(234, 240);
-        this.numWidth.Size = new System.Drawing.Size(190, 23);
-        this.numWidth.DecimalPlaces = 1;
-        this.numWidth.Maximum = new decimal(new int[] { 1000, 0, 0, 0 });
-        this.numWidth.Value = new decimal(new int[] { 20, 0, 0, 0 });
-        //
+        // 
+        numWidth.Dock = System.Windows.Forms.DockStyle.Fill;
+        numWidth.DecimalPlaces = 1;
+        numWidth.Maximum = new decimal(new int[] { 1000, 0, 0, 0 });
+        numWidth.Value = new decimal(new int[] { 20, 0, 0, 0 });
+        numWidth.Margin = new System.Windows.Forms.Padding(8, 0, 0, 12);
+        numWidth.Name = "numWidth";
+        numWidth.TabIndex = 11;
+        // 
         // lblAreaNote
-        //
-        this.lblAreaNote.Location = new System.Drawing.Point(24, 270);
-        this.lblAreaNote.Size = new System.Drawing.Size(400, 40);
-        this.lblAreaNote.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
-        this.lblAreaNote.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
-        this.lblAreaNote.Text = "💡 Diện tích sàn = Dài × Rộng — dùng để vẽ sơ đồ tổng quan kho đúng tỉ lệ thật ở màn Kho trung chuyển.";
-        //
+        // 
+        lblAreaNote.Anchor = System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
+        lblAreaNote.AutoSize = true;
+        lblAreaNote.Font = new System.Drawing.Font("Segoe UI", 9F);
+        lblAreaNote.ForeColor = System.Drawing.Color.FromArgb(100, 116, 139);
+        lblAreaNote.Margin = new System.Windows.Forms.Padding(0, 0, 0, 12);
+        lblAreaNote.Name = "lblAreaNote";
+        lblAreaNote.TabIndex = 12;
+        lblAreaNote.Text = "💡 Diện tích sàn = Dài × Rộng — dùng để vẽ sơ đồ tổng quan kho đúng tỉ lệ thật ở màn Kho trung chuyển.";
+        // 
         // lblDoorSide
-        //
-        this.lblDoorSide.Location = new System.Drawing.Point(24, 318);
-        this.lblDoorSide.Size = new System.Drawing.Size(190, 18);
-        this.lblDoorSide.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
-        this.lblDoorSide.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
-        this.lblDoorSide.Text = "🚪 Cửa kho nằm ở";
-        //
-        // cboDoorSide
-        //
-        this.cboDoorSide.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-        this.cboDoorSide.Location = new System.Drawing.Point(24, 338);
-        this.cboDoorSide.Size = new System.Drawing.Size(190, 23);
-        //
+        // 
+        lblDoorSide.Anchor = System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
+        lblDoorSide.AutoSize = true;
+        lblDoorSide.Font = new System.Drawing.Font("Segoe UI", 9F);
+        lblDoorSide.ForeColor = System.Drawing.Color.FromArgb(100, 116, 139);
+        lblDoorSide.Margin = new System.Windows.Forms.Padding(0, 0, 8, 4);
+        lblDoorSide.Name = "lblDoorSide";
+        lblDoorSide.TabIndex = 13;
+        lblDoorSide.Text = "🚪 Cửa kho nằm ở";
+        // 
         // lblDoorOffset
-        //
-        this.lblDoorOffset.Location = new System.Drawing.Point(234, 318);
-        this.lblDoorOffset.Size = new System.Drawing.Size(190, 18);
-        this.lblDoorOffset.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
-        this.lblDoorOffset.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
-        this.lblDoorOffset.Text = "Cách góc (mét)";
-        //
+        // 
+        lblDoorOffset.Anchor = System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
+        lblDoorOffset.AutoSize = true;
+        lblDoorOffset.Font = new System.Drawing.Font("Segoe UI", 9F);
+        lblDoorOffset.ForeColor = System.Drawing.Color.FromArgb(100, 116, 139);
+        lblDoorOffset.Margin = new System.Windows.Forms.Padding(8, 0, 0, 4);
+        lblDoorOffset.Name = "lblDoorOffset";
+        lblDoorOffset.TabIndex = 14;
+        lblDoorOffset.Text = "Cách góc (mét)";
+        // 
+        // cboDoorSide
+        // 
+        cboDoorSide.Dock = System.Windows.Forms.DockStyle.Fill;
+        cboDoorSide.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+        cboDoorSide.Margin = new System.Windows.Forms.Padding(0, 0, 8, 12);
+        cboDoorSide.Name = "cboDoorSide";
+        cboDoorSide.TabIndex = 15;
+        // 
         // numDoorOffset
-        //
-        this.numDoorOffset.Location = new System.Drawing.Point(234, 338);
-        this.numDoorOffset.Size = new System.Drawing.Size(190, 23);
-        this.numDoorOffset.DecimalPlaces = 1;
-        this.numDoorOffset.Maximum = new decimal(new int[] { 1000, 0, 0, 0 });
-        this.numDoorOffset.Enabled = false;
-        //
+        // 
+        numDoorOffset.Dock = System.Windows.Forms.DockStyle.Fill;
+        numDoorOffset.DecimalPlaces = 1;
+        numDoorOffset.Enabled = false;
+        numDoorOffset.Maximum = new decimal(new int[] { 1000, 0, 0, 0 });
+        numDoorOffset.Margin = new System.Windows.Forms.Padding(8, 0, 0, 12);
+        numDoorOffset.Name = "numDoorOffset";
+        numDoorOffset.TabIndex = 16;
+        // 
         // lblDoorNote
-        //
-        this.lblDoorNote.Location = new System.Drawing.Point(24, 366);
-        this.lblDoorNote.Size = new System.Drawing.Size(400, 36);
-        this.lblDoorNote.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
-        this.lblDoorNote.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
-        this.lblDoorNote.Text = "Tường trên/dưới: đo từ góc TRÁI · Tường trái/phải: đo từ góc TRÊN. Hệ thống tự tính khoảng cách tới cửa của từng ô.";
-        //
-        // btnSave
-        //
-        this.btnSave.Location = new System.Drawing.Point(120, 440);
-        this.btnSave.Size = new System.Drawing.Size(200, 40);
-        this.btnSave.Text = "Lưu kho mới";
-        this.btnSave.BackColor = TruckingSystem.Desktop.Common.Theme.Primary;
-        this.btnSave.ForeColor = System.Drawing.Color.White;
-        this.btnSave.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-        this.btnSave.Font = TruckingSystem.Desktop.Common.Theme.FontBold;
-        this.btnSave.Cursor = System.Windows.Forms.Cursors.Hand;
-        this.btnSave.FlatAppearance.BorderSize = 0;
-        this.btnSave.FlatAppearance.MouseOverBackColor = TruckingSystem.Desktop.Common.Theme.PrimaryDark;
-        this.btnSave.Click += new System.EventHandler(this.BtnSave_Click);
-        //
+        // 
+        lblDoorNote.Anchor = System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
+        lblDoorNote.AutoSize = true;
+        lblDoorNote.Font = new System.Drawing.Font("Segoe UI", 9F);
+        lblDoorNote.ForeColor = System.Drawing.Color.FromArgb(100, 116, 139);
+        lblDoorNote.Margin = new System.Windows.Forms.Padding(0, 0, 0, 0);
+        lblDoorNote.Name = "lblDoorNote";
+        lblDoorNote.TabIndex = 17;
+        lblDoorNote.Text = "Tường trên/dưới: đo từ góc TRÁI · Tường trái/phải: đo từ góc TRÊN. Hệ thống tự tính khoảng cách tới cửa của từng ô.";
+        // 
         // lblStatus
-        //
-        this.lblStatus.Location = new System.Drawing.Point(24, 408);
-        this.lblStatus.Size = new System.Drawing.Size(400, 25);
-        this.lblStatus.ForeColor = TruckingSystem.Desktop.Common.Theme.Danger;
-        this.lblStatus.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
-        //
+        // 
+        lblStatus.Anchor = System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
+        lblStatus.AutoSize = true;
+        lblStatus.Font = new System.Drawing.Font("Segoe UI", 9F);
+        lblStatus.ForeColor = System.Drawing.Color.FromArgb(220, 38, 38);
+        lblStatus.Margin = new System.Windows.Forms.Padding(0, 8, 0, 8);
+        lblStatus.Name = "lblStatus";
+        lblStatus.TabIndex = 1;
+        // 
+        // buttonBar
+        // 
+        buttonBar.AutoSize = true;
+        buttonBar.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+        buttonBar.Controls.Add(btnSave);
+        buttonBar.Dock = System.Windows.Forms.DockStyle.Fill;
+        buttonBar.FlowDirection = System.Windows.Forms.FlowDirection.RightToLeft;
+        buttonBar.Margin = new System.Windows.Forms.Padding(0);
+        buttonBar.Name = "buttonBar";
+        buttonBar.TabIndex = 2;
+        buttonBar.WrapContents = true;
+        // 
+        // btnSave
+        // 
+        btnSave.AutoSize = true;
+        btnSave.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+        btnSave.BackColor = System.Drawing.Color.FromArgb(37, 99, 235);
+        btnSave.Cursor = System.Windows.Forms.Cursors.Hand;
+        btnSave.FlatAppearance.BorderSize = 0;
+        btnSave.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(29, 78, 216);
+        btnSave.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+        btnSave.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+        btnSave.ForeColor = System.Drawing.Color.White;
+        btnSave.Margin = new System.Windows.Forms.Padding(0);
+        btnSave.MinimumSize = new System.Drawing.Size(0, 38);
+        btnSave.Name = "btnSave";
+        btnSave.Padding = new System.Windows.Forms.Padding(10, 4, 10, 4);
+        btnSave.TabIndex = 0;
+        btnSave.Text = "💾 Lưu thay đổi";
+        btnSave.UseVisualStyleBackColor = false;
+        btnSave.Click += new System.EventHandler(this.BtnSave_Click);
+        // 
         // EditWarehouseForm
-        //
-        this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
-        this.AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
-        this.BackColor = System.Drawing.Color.White;
-        this.ClientSize = new System.Drawing.Size(460, 500);
-        this.Controls.Add(this.lblName);
-        this.Controls.Add(this.txtName);
-        this.Controls.Add(this.lblAddress);
-        this.Controls.Add(this.txtSearch);
-        this.Controls.Add(this.lstSuggestions);
-        this.Controls.Add(this.lblSelectedAddress);
-        this.Controls.Add(this.lblCapacity);
-        this.Controls.Add(this.numCapacity);
-        this.Controls.Add(this.lblLength);
-        this.Controls.Add(this.numLength);
-        this.Controls.Add(this.lblWidth);
-        this.Controls.Add(this.numWidth);
-        this.Controls.Add(this.lblAreaNote);
-        this.Controls.Add(this.lblDoorSide);
-        this.Controls.Add(this.cboDoorSide);
-        this.Controls.Add(this.lblDoorOffset);
-        this.Controls.Add(this.numDoorOffset);
-        this.Controls.Add(this.lblDoorNote);
-        this.Controls.Add(this.lblStatus);
-        this.Controls.Add(this.btnSave);
-        this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
-        this.MaximizeBox = false;
-        this.Name = "EditWarehouseForm";
-        this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
-        this.Text = "Sửa thông tin kho";
-        ((System.ComponentModel.ISupportInitialize)(this.numCapacity)).EndInit();
-        ((System.ComponentModel.ISupportInitialize)(this.numLength)).EndInit();
-        ((System.ComponentModel.ISupportInitialize)(this.numWidth)).EndInit();
-        ((System.ComponentModel.ISupportInitialize)(this.numDoorOffset)).EndInit();
-        this.ResumeLayout(false);
-        this.PerformLayout();
+        // 
+        AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
+        AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
+        BackColor = System.Drawing.Color.White;
+        ClientSize = new System.Drawing.Size(500, 600);
+        Controls.Add(root);
+        MinimumSize = new System.Drawing.Size(440, 440);
+        Name = "EditWarehouseForm";
+        StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
+        Text = "Sửa thông tin kho";
+        ((System.ComponentModel.ISupportInitialize)numCapacity).EndInit();
+        ((System.ComponentModel.ISupportInitialize)numLength).EndInit();
+        ((System.ComponentModel.ISupportInitialize)numWidth).EndInit();
+        ((System.ComponentModel.ISupportInitialize)numDoorOffset).EndInit();
+        buttonBar.ResumeLayout(false);
+        buttonBar.PerformLayout();
+        inputs.ResumeLayout(false);
+        inputs.PerformLayout();
+        scrollPanel.ResumeLayout(false);
+        scrollPanel.PerformLayout();
+        root.ResumeLayout(false);
+        root.PerformLayout();
+        ResumeLayout(false);
+        PerformLayout();
     }
 
     #endregion
 
+    private System.Windows.Forms.TableLayoutPanel root;
+    private System.Windows.Forms.Panel scrollPanel;
+    private System.Windows.Forms.TableLayoutPanel inputs;
     private System.Windows.Forms.Label lblName;
     private System.Windows.Forms.TextBox txtName;
     private System.Windows.Forms.Label lblAddress;
@@ -245,15 +399,16 @@ partial class EditWarehouseForm
     private System.Windows.Forms.Label lblCapacity;
     private System.Windows.Forms.NumericUpDown numCapacity;
     private System.Windows.Forms.Label lblLength;
-    private System.Windows.Forms.NumericUpDown numLength;
     private System.Windows.Forms.Label lblWidth;
+    private System.Windows.Forms.NumericUpDown numLength;
     private System.Windows.Forms.NumericUpDown numWidth;
+    private System.Windows.Forms.Label lblAreaNote;
     private System.Windows.Forms.Label lblDoorSide;
-    private System.Windows.Forms.ComboBox cboDoorSide;
     private System.Windows.Forms.Label lblDoorOffset;
+    private System.Windows.Forms.ComboBox cboDoorSide;
     private System.Windows.Forms.NumericUpDown numDoorOffset;
     private System.Windows.Forms.Label lblDoorNote;
-    private System.Windows.Forms.Label lblAreaNote;
-    private System.Windows.Forms.Button btnSave;
     private System.Windows.Forms.Label lblStatus;
+    private System.Windows.Forms.FlowLayoutPanel buttonBar;
+    private System.Windows.Forms.Button btnSave;
 }
