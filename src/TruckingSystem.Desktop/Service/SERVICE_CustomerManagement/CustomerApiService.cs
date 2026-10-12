@@ -25,6 +25,18 @@ namespace TruckingSystem.Desktop.SERVICE_CustomerManagement
         public Task<CustomerActionResultItem> UpdateCustomerAsync(int id, string name, string? phone, string? taxCode, string customerType, string? address, decimal? creditLimit, string? googleCalendarId)
             => _conn.PutAsync<CustomerActionResultItem>($"/api/customers/{id}", new { name, phone, taxCode, customerType, address, creditLimit, googleCalendarId })!;
 
+        public Task<List<CustomerContactListItem>> GetContactsAsync()
+            => _conn.GetAsync<List<CustomerContactListItem>>("/api/customers/contacts")!;
+
+        public Task<CustomerActionResultItem> CreateContactAsync(int customerId, string name, string? phone, string? position)
+            => _conn.PostAsync<CustomerActionResultItem>("/api/customers/contacts", new { customerId, name, phone, position })!;
+
+        public Task<CustomerActionResultItem> UpdateContactAsync(int id, int customerId, string name, string? phone, string? position)
+            => _conn.PutAsync<CustomerActionResultItem>($"/api/customers/contacts/{id}", new { customerId, name, phone, position })!;
+
+        public Task<CustomerActionResultItem> DeleteContactAsync(int id)
+            => _conn.DeleteAsync<CustomerActionResultItem>($"/api/customers/contacts/{id}")!;
+
         public async Task<CustomerBusinessCardInfoItem> ReadBusinessCardAsync(string filePath, CancellationToken cancellationToken = default)
         {
             var contentType = Path.GetExtension(filePath).ToLowerInvariant() switch

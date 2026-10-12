@@ -100,11 +100,11 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             // grid
             // 
             grid.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-            grid.Location = new Point(0, 57);
+            grid.Location = new Point(0, 69);
             grid.Margin = new Padding(2);
             grid.Name = "grid";
             grid.RowHeadersWidth = 62;
-            grid.Size = new Size(967, 322);
+            grid.Size = new Size(967, 310);
             grid.TabIndex = 5;
             // 
             // EmployeesControl

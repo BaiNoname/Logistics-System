@@ -31,6 +31,7 @@ public interface IApplicationDbContext
     DbSet<AuditLog> AuditLogs { get; }
 
     DbSet<Customer> Customers { get; }
+    DbSet<CustomerContact> CustomerContacts { get; }
     DbSet<Location> Locations { get; }
     DbSet<Contract> Contracts { get; }
     DbSet<PriceList> PriceLists { get; }

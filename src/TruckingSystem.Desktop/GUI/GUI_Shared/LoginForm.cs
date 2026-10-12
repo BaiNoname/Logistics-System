@@ -128,6 +128,10 @@ namespace TruckingSystem.Desktop.GUI_Shared
             btnLogin.Text = "Đang đăng nhập...";
             try
             {
+                if (CheckLengthAccPass(txtUsername.Text.Trim(), txtPassword.Text) != 0)
+                {
+                    return;
+                }
                 var api = new ApiServices(txtServerUrl.Text.Trim());
                 var result = await api.Auth.LoginAsync(txtUsername.Text.Trim(), txtPassword.Text);
 
@@ -181,6 +185,27 @@ namespace TruckingSystem.Desktop.GUI_Shared
                         MessageBoxIcon.Error);
                 }
             }
+        }
+
+        private int CheckLengthAccPass(string acc, string pass)
+        {
+            switch (acc.Length)
+            {
+
+                case > 20:
+                    lblStatus.Text = "❌ Tài khoản không được vượt quá 20 ký tự.";
+                    return -1;
+            }
+
+            switch (pass.Length)
+            {
+
+                case > 20:
+                    lblStatus.Text = "❌ Mật khẩu không được vượt quá 20 ký tự.";
+                    return -2;
+            }
+
+            return 0;
         }
     }
 }

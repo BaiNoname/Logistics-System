@@ -39,6 +39,34 @@ public class CustomersController : ControllerBase
         return result.Success ? Ok(result) : BadRequest(result);
     }
 
+    [HttpGet("contacts")]
+    public async Task<ActionResult<List<CustomerContactListItemDto>>> GetContacts([FromQuery] int? customerId)
+        => Ok(await _service.GetContactsAsync(customerId));
+
+    [HttpPost("contacts")]
+    [Authorize(Roles = "Admin,Dispatcher")]
+    public async Task<ActionResult<CustomerActionResult>> CreateContact(SaveCustomerContactRequest request)
+    {
+        var result = await _service.CreateContactAsync(request);
+        return result.Success ? Ok(result) : BadRequest(result);
+    }
+
+    [HttpPut("contacts/{id:int}")]
+    [Authorize(Roles = "Admin,Dispatcher")]
+    public async Task<ActionResult<CustomerActionResult>> UpdateContact(int id, SaveCustomerContactRequest request)
+    {
+        var result = await _service.UpdateContactAsync(id, request);
+        return result.Success ? Ok(result) : BadRequest(result);
+    }
+
+    [HttpDelete("contacts/{id:int}")]
+    [Authorize(Roles = "Admin,Dispatcher")]
+    public async Task<ActionResult<CustomerActionResult>> DeleteContact(int id)
+    {
+        var result = await _service.DeleteContactAsync(id);
+        return result.Success ? Ok(result) : BadRequest(result);
+    }
+
     [HttpPost("read-business-card")]
     [Authorize(Roles = "Admin,Dispatcher")]
     [Consumes("multipart/form-data")]
