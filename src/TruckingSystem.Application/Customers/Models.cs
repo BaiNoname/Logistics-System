@@ -9,6 +9,10 @@ public record UpdateCustomerRequest(string Name, string? Phone, string? TaxCode,
 
 public record CustomerActionResult(bool Success, string? Message);
 
+public record CustomerContactListItemDto(int Id, int CustomerId, string CustomerName, string Name, string? Phone, string? Position);
+
+public record SaveCustomerContactRequest(int CustomerId, string Name, string? Phone, string? Position);
+
 public record CustomerBusinessCardInfo(
     string? Name,
     string? Phone,

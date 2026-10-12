@@ -64,6 +64,67 @@ public class CustomerService : ICustomerService
         return new CustomerActionResult(true, null);
     }
 
+    public async Task<List<CustomerContactListItemDto>> GetContactsAsync(int? customerId = null)
+    {
+        return await _db.CustomerContacts
+            .AsNoTracking()
+            .Where(c => !customerId.HasValue || c.CustomerId == customerId.Value)
+            .OrderBy(c => c.Customer.Name).ThenBy(c => c.Name).ThenBy(c => c.Id)
+            .Select(c => new CustomerContactListItemDto(c.Id, c.CustomerId, c.Customer.Name, c.Name, c.Phone, c.Position))
+            .ToListAsync();
+    }
+
+    public async Task<CustomerActionResult> CreateContactAsync(SaveCustomerContactRequest request)
+    {
+        var validation = await ValidateContactAsync(request);
+        if (validation is not null) return new CustomerActionResult(false, validation);
+
+        _db.CustomerContacts.Add(new CustomerContact
+        {
+            CustomerId = request.CustomerId,
+            Name = request.Name.Trim(),
+            Phone = NullIfWhiteSpace(request.Phone),
+            Position = NullIfWhiteSpace(request.Position),
+        });
+        await _db.SaveChangesAsync();
+        return new CustomerActionResult(true, null);
+    }
+
+    public async Task<CustomerActionResult> UpdateContactAsync(int id, SaveCustomerContactRequest request)
+    {
+        var contact = await _db.CustomerContacts.FindAsync(id);
+        if (contact is null) return new CustomerActionResult(false, "Không tìm thấy người liên hệ.");
+
+        var validation = await ValidateContactAsync(request);
+        if (validation is not null) return new CustomerActionResult(false, validation);
+
+        contact.CustomerId = request.CustomerId;
+        contact.Name = request.Name.Trim();
+        contact.Phone = NullIfWhiteSpace(request.Phone);
+        contact.Position = NullIfWhiteSpace(request.Position);
+        contact.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        return new CustomerActionResult(true, null);
+    }
+
+    public async Task<CustomerActionResult> DeleteContactAsync(int id)
+    {
+        var contact = await _db.CustomerContacts.FindAsync(id);
+        if (contact is null) return new CustomerActionResult(false, "Không tìm thấy người liên hệ.");
+
+        _db.CustomerContacts.Remove(contact);
+        await _db.SaveChangesAsync();
+        return new CustomerActionResult(true, null);
+    }
+
+    private async Task<string?> ValidateContactAsync(SaveCustomerContactRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Name)) return "Tên người liên hệ không được để trống.";
+        if (request.CustomerId <= 0 || !await _db.Customers.AnyAsync(c => c.Id == request.CustomerId))
+            return "Khách hàng không tồn tại.";
+        return null;
+    }
+
     private async Task<string?> ValidateAsync(string name, string customerType, string? taxCode, decimal? creditLimit, int? excludedId = null)
     {
         if (string.IsNullOrWhiteSpace(name)) return "Tên khách hàng không được để trống.";

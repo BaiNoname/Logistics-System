@@ -22,6 +22,7 @@ appsettings.json
 *.publishsettings
 AGENTS.md
 /tests/
+!/tests/TruckingSystem.UnitTests/
 # ==== Log/cache khác ====
 *.log
 *.tmp

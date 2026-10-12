@@ -82,7 +82,7 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             lblStatus.Text = "Đang tải...";
             try
             {
-                _employees = await _api.Employees.GetEmployeesAsync();
+                _employees = (await _api.Employees.GetEmployeesAsync()).Where(e => !e.IsDriver).ToList();
                 grid.DataSource = _employees.Select(e => new
                 {
                     e.Id,
@@ -94,7 +94,7 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
                     Trạng_thái = e.Status == "Active" ? "Đang làm" : e.Status,
                     //Là_tài_xế = e.IsDriver ? "✅ Có" : "—",
                 }).ToList();
-                lblStatus.Text = $"Tổng {_employees.Count} nhân viên — chọn 1 dòng rồi bấm \"Tạo hồ sơ tài xế\" nếu cần";
+                //lblStatus.Text = $"Tổng {_employees.Count} nhân viên — chọn 1 dòng rồi bấm \"Tạo hồ sơ tài xế\" nếu cần";
             }
             catch (Exception ex)
             {
