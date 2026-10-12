@@ -10,7 +10,6 @@ namespace TruckingSystem.Desktop.GUI_LocationManagement
         {
             InitializeComponent();
             Theme.StyleGrid(grid);
-            Resize += (_, _) => { grid.Width = Width; grid.Height = Height - grid.Top; };
             Load += async (_, _) => await LoadAsync();
         }
 

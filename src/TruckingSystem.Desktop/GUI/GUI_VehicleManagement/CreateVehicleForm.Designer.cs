@@ -17,211 +17,312 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
 
         #region Windows Form Designer generated code
 
-        /// <summary>
-        /// TOÀN BỘ khai báo giao diện nằm ở đây — mở file này bằng Visual Studio,
-        /// chuột phải chọn "View Designer" để kéo-thả chỉnh trực quan. Không cần
-        /// sửa tay từng dòng Top/Left nữa (trừ khi muốn tinh chỉnh thủ công).
-        /// </summary>
+        /// <summary>Bố cục: root (TableLayoutPanel 1 cột) = bảng nhập liệu 2 cột (nhãn tự co | ô nhập giãn hết bề ngang, nằm trong Panel tự cuộn khi màn hình thấp) / trạng thái / thanh nút. Không có tọa độ cứng.</summary>
         private void InitializeComponent()
         {
-            this.lblPlateNumber = new System.Windows.Forms.Label();
-            this.lblVehicleType = new System.Windows.Forms.Label();
-            this.lblCapacityQty = new System.Windows.Forms.Label();
-            this.lblCapacityKg = new System.Windows.Forms.Label();
-            this.lblCapacityM3 = new System.Windows.Forms.Label();
-            this.txtPlateNumber = new System.Windows.Forms.TextBox();
-            this.cboVehicleType = new System.Windows.Forms.ComboBox();
-            this.numCapacityQty = new System.Windows.Forms.NumericUpDown();
-            this.numCapacityKg = new System.Windows.Forms.NumericUpDown();
-            this.numCapacityM3 = new System.Windows.Forms.NumericUpDown();
-            this.lblWarehouse = new System.Windows.Forms.Label();
-            this.cboWarehouse = new System.Windows.Forms.ComboBox();
-            this.btnSave = new System.Windows.Forms.Button();
-            this.lblFuelConsumption = new System.Windows.Forms.Label();
-            this.numFuelConsumption = new System.Windows.Forms.NumericUpDown();
-            this.lblFuelType = new System.Windows.Forms.Label();
-            this.cboFuelType = new System.Windows.Forms.ComboBox();
-            this.lblStatus = new System.Windows.Forms.Label();
-            ((System.ComponentModel.ISupportInitialize)(this.numCapacityQty)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.numCapacityKg)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.numCapacityM3)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.numFuelConsumption)).BeginInit();
-            this.SuspendLayout();
-            //
+            root = new System.Windows.Forms.TableLayoutPanel();
+            scrollFields = new System.Windows.Forms.Panel();
+            fields = new System.Windows.Forms.TableLayoutPanel();
+            lblPlateNumber = new System.Windows.Forms.Label();
+            txtPlateNumber = new System.Windows.Forms.TextBox();
+            lblVehicleType = new System.Windows.Forms.Label();
+            cboVehicleType = new System.Windows.Forms.ComboBox();
+            lblCapacityQty = new System.Windows.Forms.Label();
+            numCapacityQty = new System.Windows.Forms.NumericUpDown();
+            lblCapacityKg = new System.Windows.Forms.Label();
+            numCapacityKg = new System.Windows.Forms.NumericUpDown();
+            lblCapacityM3 = new System.Windows.Forms.Label();
+            numCapacityM3 = new System.Windows.Forms.NumericUpDown();
+            lblFuelConsumption = new System.Windows.Forms.Label();
+            numFuelConsumption = new System.Windows.Forms.NumericUpDown();
+            lblFuelType = new System.Windows.Forms.Label();
+            cboFuelType = new System.Windows.Forms.ComboBox();
+            lblWarehouse = new System.Windows.Forms.Label();
+            cboWarehouse = new System.Windows.Forms.ComboBox();
+            lblStatus = new System.Windows.Forms.Label();
+            buttonBar = new System.Windows.Forms.FlowLayoutPanel();
+            btnSave = new System.Windows.Forms.Button();
+            root.SuspendLayout();
+            scrollFields.SuspendLayout();
+            fields.SuspendLayout();
+            buttonBar.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)numCapacityQty).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)numCapacityKg).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)numCapacityM3).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)numFuelConsumption).BeginInit();
+            SuspendLayout();
+            // 
+            // root
+            // 
+            root.ColumnCount = 1;
+            root.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            root.Controls.Add(scrollFields, 0, 0);
+            root.Controls.Add(lblStatus, 0, 1);
+            root.Controls.Add(buttonBar, 0, 2);
+            root.Dock = System.Windows.Forms.DockStyle.Fill;
+            root.Padding = new System.Windows.Forms.Padding(20, 16, 20, 16);
+            root.Size = new System.Drawing.Size(460, 400);
+            root.Name = "root";
+            root.TabIndex = 0;
+            root.RowCount = 3;
+            root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+            root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+            // 
+            // scrollFields
+            // 
+            scrollFields.Controls.Add(fields);
+            scrollFields.AutoScroll = true;
+            scrollFields.Dock = System.Windows.Forms.DockStyle.Fill;
+            scrollFields.Margin = new System.Windows.Forms.Padding(0);
+            scrollFields.Name = "scrollFields";
+            scrollFields.TabIndex = 0;
+            // 
+            // fields
+            // 
+            fields.ColumnCount = 2;
+            fields.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.AutoSize));
+            fields.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            fields.Controls.Add(lblPlateNumber, 0, 0);
+            fields.Controls.Add(txtPlateNumber, 1, 0);
+            fields.Controls.Add(lblVehicleType, 0, 1);
+            fields.Controls.Add(cboVehicleType, 1, 1);
+            fields.Controls.Add(lblCapacityQty, 0, 2);
+            fields.Controls.Add(numCapacityQty, 1, 2);
+            fields.Controls.Add(lblCapacityKg, 0, 3);
+            fields.Controls.Add(numCapacityKg, 1, 3);
+            fields.Controls.Add(lblCapacityM3, 0, 4);
+            fields.Controls.Add(numCapacityM3, 1, 4);
+            fields.Controls.Add(lblFuelConsumption, 0, 5);
+            fields.Controls.Add(numFuelConsumption, 1, 5);
+            fields.Controls.Add(lblFuelType, 0, 6);
+            fields.Controls.Add(cboFuelType, 1, 6);
+            fields.Controls.Add(lblWarehouse, 0, 7);
+            fields.Controls.Add(cboWarehouse, 1, 7);
+            fields.AutoSize = true;
+            fields.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            fields.Dock = System.Windows.Forms.DockStyle.Top;
+            fields.Margin = new System.Windows.Forms.Padding(0);
+            fields.Name = "fields";
+            fields.TabIndex = 0;
+            fields.RowCount = 8;
+            fields.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+            fields.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+            fields.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+            fields.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+            fields.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+            fields.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+            fields.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+            fields.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+            // 
             // lblPlateNumber
-            //
-            this.lblPlateNumber.Location = new System.Drawing.Point(15, 23);
-            this.lblPlateNumber.Name = "lblPlateNumber";
-            this.lblPlateNumber.Size = new System.Drawing.Size(130, 23);
-            this.lblPlateNumber.Text = "Biển số xe:";
-            //
-            // lblVehicleType
-            //
-            this.lblVehicleType.Location = new System.Drawing.Point(15, 58);
-            this.lblVehicleType.Name = "lblVehicleType";
-            this.lblVehicleType.Size = new System.Drawing.Size(130, 23);
-            this.lblVehicleType.Text = "Loại xe:";
-            //
-            // lblCapacityQty
-            //
-            this.lblCapacityQty.Location = new System.Drawing.Point(15, 93);
-            this.lblCapacityQty.Name = "lblCapacityQty";
-            this.lblCapacityQty.Size = new System.Drawing.Size(130, 23);
-            this.lblCapacityQty.Text = "Sức chứa (đơn vị):";
-            //
-            // lblCapacityKg
-            //
-            this.lblCapacityKg.Location = new System.Drawing.Point(15, 128);
-            this.lblCapacityKg.Name = "lblCapacityKg";
-            this.lblCapacityKg.Size = new System.Drawing.Size(130, 23);
-            this.lblCapacityKg.Text = "Sức chứa (kg):";
-            //
-            // lblCapacityM3
-            //
-            this.lblCapacityM3.Location = new System.Drawing.Point(15, 163);
-            this.lblCapacityM3.Name = "lblCapacityM3";
-            this.lblCapacityM3.Size = new System.Drawing.Size(130, 23);
-            this.lblCapacityM3.Text = "Sức chứa (m³):";
-            //
+            // 
+            lblPlateNumber.AutoSize = true;
+            lblPlateNumber.Anchor = System.Windows.Forms.AnchorStyles.Left;
+            lblPlateNumber.Margin = new System.Windows.Forms.Padding(0, 6, 12, 6);
+            lblPlateNumber.Text = "Biển số xe:";
+            lblPlateNumber.Name = "lblPlateNumber";
+            lblPlateNumber.TabIndex = 0;
+            // 
             // txtPlateNumber
-            //
-            this.txtPlateNumber.Location = new System.Drawing.Point(150, 20);
-            this.txtPlateNumber.Name = "txtPlateNumber";
-            this.txtPlateNumber.Size = new System.Drawing.Size(220, 23);
-            //
+            // 
+            txtPlateNumber.Dock = System.Windows.Forms.DockStyle.Fill;
+            txtPlateNumber.Margin = new System.Windows.Forms.Padding(0, 3, 0, 3);
+            txtPlateNumber.Name = "txtPlateNumber";
+            txtPlateNumber.TabIndex = 1;
+            // 
+            // lblVehicleType
+            // 
+            lblVehicleType.AutoSize = true;
+            lblVehicleType.Anchor = System.Windows.Forms.AnchorStyles.Left;
+            lblVehicleType.Margin = new System.Windows.Forms.Padding(0, 6, 12, 6);
+            lblVehicleType.Text = "Loại xe:";
+            lblVehicleType.Name = "lblVehicleType";
+            lblVehicleType.TabIndex = 2;
+            // 
             // cboVehicleType
-            //
-            this.cboVehicleType.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.cboVehicleType.Location = new System.Drawing.Point(150, 55);
-            this.cboVehicleType.Name = "cboVehicleType";
-            this.cboVehicleType.Size = new System.Drawing.Size(220, 23);
-            //
+            // 
+            cboVehicleType.Dock = System.Windows.Forms.DockStyle.Fill;
+            cboVehicleType.Margin = new System.Windows.Forms.Padding(0, 3, 0, 3);
+            cboVehicleType.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            cboVehicleType.Name = "cboVehicleType";
+            cboVehicleType.TabIndex = 3;
+            // 
+            // lblCapacityQty
+            // 
+            lblCapacityQty.AutoSize = true;
+            lblCapacityQty.Anchor = System.Windows.Forms.AnchorStyles.Left;
+            lblCapacityQty.Margin = new System.Windows.Forms.Padding(0, 6, 12, 6);
+            lblCapacityQty.Text = "Sức chứa (đơn vị):";
+            lblCapacityQty.Name = "lblCapacityQty";
+            lblCapacityQty.TabIndex = 4;
+            // 
             // numCapacityQty
-            //
-            this.numCapacityQty.Location = new System.Drawing.Point(150, 90);
-            this.numCapacityQty.Name = "numCapacityQty";
-            this.numCapacityQty.Size = new System.Drawing.Size(120, 23);
-            this.numCapacityQty.DecimalPlaces = 2;
-            this.numCapacityQty.Maximum = new decimal(new int[] { 1000000, 0, 0, 0 });
-            this.numCapacityQty.Value = new decimal(new int[] { 5000, 0, 0, 0 });
-            //
+            // 
+            numCapacityQty.Dock = System.Windows.Forms.DockStyle.Fill;
+            numCapacityQty.Margin = new System.Windows.Forms.Padding(0, 3, 0, 3);
+            numCapacityQty.DecimalPlaces = 2;
+            numCapacityQty.Maximum = new decimal(new int[] { 1000000, 0, 0, 0 });
+            numCapacityQty.Value = new decimal(new int[] { 5000, 0, 0, 0 });
+            numCapacityQty.Name = "numCapacityQty";
+            numCapacityQty.TabIndex = 5;
+            // 
+            // lblCapacityKg
+            // 
+            lblCapacityKg.AutoSize = true;
+            lblCapacityKg.Anchor = System.Windows.Forms.AnchorStyles.Left;
+            lblCapacityKg.Margin = new System.Windows.Forms.Padding(0, 6, 12, 6);
+            lblCapacityKg.Text = "Sức chứa (kg):";
+            lblCapacityKg.Name = "lblCapacityKg";
+            lblCapacityKg.TabIndex = 6;
+            // 
             // numCapacityKg
-            //
-            this.numCapacityKg.Location = new System.Drawing.Point(150, 125);
-            this.numCapacityKg.Name = "numCapacityKg";
-            this.numCapacityKg.Size = new System.Drawing.Size(120, 23);
-            this.numCapacityKg.DecimalPlaces = 2;
-            this.numCapacityKg.Maximum = new decimal(new int[] { 1000000, 0, 0, 0 });
-            this.numCapacityKg.Value = new decimal(new int[] { 5000, 0, 0, 0 });
-            //
+            // 
+            numCapacityKg.Dock = System.Windows.Forms.DockStyle.Fill;
+            numCapacityKg.Margin = new System.Windows.Forms.Padding(0, 3, 0, 3);
+            numCapacityKg.DecimalPlaces = 2;
+            numCapacityKg.Maximum = new decimal(new int[] { 1000000, 0, 0, 0 });
+            numCapacityKg.Value = new decimal(new int[] { 5000, 0, 0, 0 });
+            numCapacityKg.Name = "numCapacityKg";
+            numCapacityKg.TabIndex = 7;
+            // 
+            // lblCapacityM3
+            // 
+            lblCapacityM3.AutoSize = true;
+            lblCapacityM3.Anchor = System.Windows.Forms.AnchorStyles.Left;
+            lblCapacityM3.Margin = new System.Windows.Forms.Padding(0, 6, 12, 6);
+            lblCapacityM3.Text = "Sức chứa (m³):";
+            lblCapacityM3.Name = "lblCapacityM3";
+            lblCapacityM3.TabIndex = 8;
+            // 
             // numCapacityM3
-            //
-            this.numCapacityM3.Location = new System.Drawing.Point(150, 160);
-            this.numCapacityM3.Name = "numCapacityM3";
-            this.numCapacityM3.Size = new System.Drawing.Size(120, 23);
-            this.numCapacityM3.DecimalPlaces = 2;
-            this.numCapacityM3.Maximum = new decimal(new int[] { 1000000, 0, 0, 0 });
-            this.numCapacityM3.Value = new decimal(new int[] { 25, 0, 0, 0 });
-            //
+            // 
+            numCapacityM3.Dock = System.Windows.Forms.DockStyle.Fill;
+            numCapacityM3.Margin = new System.Windows.Forms.Padding(0, 3, 0, 3);
+            numCapacityM3.DecimalPlaces = 2;
+            numCapacityM3.Maximum = new decimal(new int[] { 1000000, 0, 0, 0 });
+            numCapacityM3.Value = new decimal(new int[] { 25, 0, 0, 0 });
+            numCapacityM3.Name = "numCapacityM3";
+            numCapacityM3.TabIndex = 9;
+            // 
             // lblFuelConsumption
-            //
-            this.lblFuelConsumption.Location = new System.Drawing.Point(15, 198);
-            this.lblFuelConsumption.Name = "lblFuelConsumption";
-            this.lblFuelConsumption.Size = new System.Drawing.Size(130, 23);
-            this.lblFuelConsumption.Text = "Định mức (L/100km):";
-            //
+            // 
+            lblFuelConsumption.AutoSize = true;
+            lblFuelConsumption.Anchor = System.Windows.Forms.AnchorStyles.Left;
+            lblFuelConsumption.Margin = new System.Windows.Forms.Padding(0, 6, 12, 6);
+            lblFuelConsumption.Text = "Định mức (L/100km):";
+            lblFuelConsumption.Name = "lblFuelConsumption";
+            lblFuelConsumption.TabIndex = 10;
+            // 
             // numFuelConsumption
-            //
-            this.numFuelConsumption.Location = new System.Drawing.Point(150, 195);
-            this.numFuelConsumption.Name = "numFuelConsumption";
-            this.numFuelConsumption.Size = new System.Drawing.Size(120, 23);
-            this.numFuelConsumption.DecimalPlaces = 1;
-            this.numFuelConsumption.Maximum = new decimal(new int[] { 200, 0, 0, 0 });
-            //
+            // 
+            numFuelConsumption.Dock = System.Windows.Forms.DockStyle.Fill;
+            numFuelConsumption.Margin = new System.Windows.Forms.Padding(0, 3, 0, 3);
+            numFuelConsumption.DecimalPlaces = 1;
+            numFuelConsumption.Maximum = new decimal(new int[] { 200, 0, 0, 0 });
+            numFuelConsumption.Name = "numFuelConsumption";
+            numFuelConsumption.TabIndex = 11;
+            // 
             // lblFuelType
-            //
-            this.lblFuelType.Location = new System.Drawing.Point(15, 233);
-            this.lblFuelType.Name = "lblFuelType";
-            this.lblFuelType.Size = new System.Drawing.Size(130, 23);
-            this.lblFuelType.Text = "Loại nhiên liệu:";
-            //
+            // 
+            lblFuelType.AutoSize = true;
+            lblFuelType.Anchor = System.Windows.Forms.AnchorStyles.Left;
+            lblFuelType.Margin = new System.Windows.Forms.Padding(0, 6, 12, 6);
+            lblFuelType.Text = "Loại nhiên liệu:";
+            lblFuelType.Name = "lblFuelType";
+            lblFuelType.TabIndex = 12;
+            // 
             // cboFuelType
-            //
-            this.cboFuelType.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.cboFuelType.Location = new System.Drawing.Point(150, 230);
-            this.cboFuelType.Name = "cboFuelType";
-            this.cboFuelType.Size = new System.Drawing.Size(150, 23);
-            //
+            // 
+            cboFuelType.Dock = System.Windows.Forms.DockStyle.Fill;
+            cboFuelType.Margin = new System.Windows.Forms.Padding(0, 3, 0, 3);
+            cboFuelType.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            cboFuelType.Name = "cboFuelType";
+            cboFuelType.TabIndex = 13;
+            // 
             // lblWarehouse
-            //
-            this.lblWarehouse.Location = new System.Drawing.Point(24, 265);
-            this.lblWarehouse.Size = new System.Drawing.Size(350, 18);
-            this.lblWarehouse.Text = "Kho đóng quân (tuỳ chọn)";
-            //
+            // 
+            lblWarehouse.AutoSize = true;
+            lblWarehouse.Anchor = System.Windows.Forms.AnchorStyles.Left;
+            lblWarehouse.Margin = new System.Windows.Forms.Padding(0, 6, 12, 6);
+            lblWarehouse.Text = "Kho đóng quân (tuỳ chọn)";
+            lblWarehouse.Name = "lblWarehouse";
+            lblWarehouse.TabIndex = 14;
+            // 
             // cboWarehouse
-            //
-            this.cboWarehouse.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.cboWarehouse.Location = new System.Drawing.Point(24, 285);
-            this.cboWarehouse.Size = new System.Drawing.Size(350, 23);
-            //
-            // btnSave
-            //
-            this.btnSave.Location = new System.Drawing.Point(150, 340);
-            this.btnSave.Name = "btnSave";
-            this.btnSave.Size = new System.Drawing.Size(150, 38);
-            this.btnSave.Text = "Lưu";
-            this.btnSave.UseVisualStyleBackColor = false;
-            this.btnSave.BackColor = TruckingSystem.Desktop.Common.Theme.Primary;
-            this.btnSave.ForeColor = System.Drawing.Color.White;
-            this.btnSave.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnSave.Font = TruckingSystem.Desktop.Common.Theme.FontBold;
-            this.btnSave.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.btnSave.FlatAppearance.BorderSize = 0;
-            this.btnSave.FlatAppearance.MouseOverBackColor = TruckingSystem.Desktop.Common.Theme.PrimaryDark;
-            this.btnSave.Click += new System.EventHandler(this.BtnSave_Click);
-            //
+            // 
+            cboWarehouse.Dock = System.Windows.Forms.DockStyle.Fill;
+            cboWarehouse.Margin = new System.Windows.Forms.Padding(0, 3, 0, 3);
+            cboWarehouse.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            cboWarehouse.Name = "cboWarehouse";
+            cboWarehouse.TabIndex = 15;
+            // 
             // lblStatus
-            //
-            this.lblStatus.Location = new System.Drawing.Point(150, 385);
-            this.lblStatus.Name = "lblStatus";
-            this.lblStatus.Size = new System.Drawing.Size(250, 40);
-            this.lblStatus.ForeColor = System.Drawing.Color.Red;
-            //
+            // 
+            lblStatus.AutoSize = true;
+            lblStatus.Anchor = System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
+            lblStatus.Margin = new System.Windows.Forms.Padding(0, 8, 0, 4);
+            lblStatus.ForeColor = System.Drawing.Color.Red;
+            lblStatus.Name = "lblStatus";
+            lblStatus.TabIndex = 1;
+            // 
+            // buttonBar
+            // 
+            buttonBar.Controls.Add(btnSave);
+            buttonBar.AutoSize = true;
+            buttonBar.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            buttonBar.Dock = System.Windows.Forms.DockStyle.Fill;
+            buttonBar.FlowDirection = System.Windows.Forms.FlowDirection.RightToLeft;
+            buttonBar.Margin = new System.Windows.Forms.Padding(0, 8, 0, 0);
+            buttonBar.WrapContents = true;
+            buttonBar.Name = "buttonBar";
+            buttonBar.TabIndex = 2;
+            // 
+            // btnSave
+            // 
+            btnSave.AutoSize = true;
+            btnSave.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            btnSave.BackColor = System.Drawing.Color.FromArgb(37, 99, 235);
+            btnSave.Cursor = System.Windows.Forms.Cursors.Hand;
+            btnSave.FlatAppearance.BorderSize = 0;
+            btnSave.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(29, 78, 216);
+            btnSave.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            btnSave.ForeColor = System.Drawing.Color.White;
+            btnSave.UseVisualStyleBackColor = false;
+            btnSave.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            btnSave.MinimumSize = new System.Drawing.Size(0, 36);
+            btnSave.Padding = new System.Windows.Forms.Padding(10, 4, 10, 4);
+            btnSave.Text = "Lưu";
+            btnSave.Margin = new System.Windows.Forms.Padding(8, 0, 0, 0);
+            btnSave.Name = "btnSave";
+            btnSave.TabIndex = 0;
+            btnSave.Click += new System.EventHandler(this.BtnSave_Click);
+            // 
             // CreateVehicleForm
-            //
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
-            this.AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
-            this.BackColor = System.Drawing.Color.White;
-            this.ClientSize = new System.Drawing.Size(400, 460);
-            this.Controls.Add(this.lblPlateNumber);
-            this.Controls.Add(this.lblVehicleType);
-            this.Controls.Add(this.lblCapacityQty);
-            this.Controls.Add(this.lblCapacityKg);
-            this.Controls.Add(this.lblCapacityM3);
-            this.Controls.Add(this.txtPlateNumber);
-            this.Controls.Add(this.cboVehicleType);
-            this.Controls.Add(this.numCapacityQty);
-            this.Controls.Add(this.numCapacityKg);
-            this.Controls.Add(this.numCapacityM3);
-            this.Controls.Add(this.lblFuelConsumption);
-            this.Controls.Add(this.numFuelConsumption);
-            this.Controls.Add(this.lblFuelType);
-            this.Controls.Add(this.cboFuelType);
-            this.Controls.Add(this.lblWarehouse);
-            this.Controls.Add(this.cboWarehouse);
-            this.Controls.Add(this.btnSave);
-            this.Controls.Add(this.lblStatus);
-            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
-            this.MaximizeBox = false;
-            this.Name = "CreateVehicleForm";
-            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
-            this.Text = "Thêm xe mới";
-            ((System.ComponentModel.ISupportInitialize)(this.numCapacityQty)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.numCapacityKg)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.numCapacityM3)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.numFuelConsumption)).EndInit();
-            this.ResumeLayout(false);
-            this.PerformLayout();
+            // 
+            AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
+            AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
+            BackColor = System.Drawing.Color.White;
+            ClientSize = new System.Drawing.Size(460, 400);
+            MaximizeBox = false;
+            MinimumSize = new System.Drawing.Size(420, 360);
+            Name = "CreateVehicleForm";
+            StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
+            Text = "Thêm xe mới";
+            Controls.Add(root);
+            root.ResumeLayout(false);
+            root.PerformLayout();
+            scrollFields.ResumeLayout(false);
+            scrollFields.PerformLayout();
+            fields.ResumeLayout(false);
+            fields.PerformLayout();
+            buttonBar.ResumeLayout(false);
+            buttonBar.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)numCapacityQty).EndInit();
+            ((System.ComponentModel.ISupportInitialize)numCapacityKg).EndInit();
+            ((System.ComponentModel.ISupportInitialize)numCapacityM3).EndInit();
+            ((System.ComponentModel.ISupportInitialize)numFuelConsumption).EndInit();
+            ResumeLayout(false);
         }
 
         #endregion
@@ -244,5 +345,9 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
         private System.Windows.Forms.ComboBox cboWarehouse;
         private System.Windows.Forms.Button btnSave;
         private System.Windows.Forms.Label lblStatus;
+        private System.Windows.Forms.TableLayoutPanel root;
+        private System.Windows.Forms.Panel scrollFields;
+        private System.Windows.Forms.TableLayoutPanel fields;
+        private System.Windows.Forms.FlowLayoutPanel buttonBar;
     }
 }

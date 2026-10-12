@@ -10,129 +10,168 @@ partial class ManageBinsForm
         base.Dispose(disposing);
     }
 
-    #region Component Designer generated code
+    #region Windows Form Designer generated code
 
+    /// <summary>Bố cục: root (TableLayoutPanel 1 cột) = tiêu đề / thanh nút (FlowLayoutPanel tự xuống
+    /// dòng) / trạng thái / lưới (chiếm phần còn lại). Không tọa độ cứng — co giãn theo DPI và cỡ cửa sổ.</summary>
     private void InitializeComponent()
     {
-        lblTitle = new Label();
-        btnAddBin = new Button();
-        btnEditBin = new Button();
-        btnDeleteBin = new Button();
-        lblStatus = new Label();
-        grid = new DataGridView();
+        root = new System.Windows.Forms.TableLayoutPanel();
+        lblTitle = new System.Windows.Forms.Label();
+        toolbar = new System.Windows.Forms.FlowLayoutPanel();
+        btnAddBin = new System.Windows.Forms.Button();
+        btnEditBin = new System.Windows.Forms.Button();
+        btnDeleteBin = new System.Windows.Forms.Button();
+        lblStatus = new System.Windows.Forms.Label();
+        grid = new System.Windows.Forms.DataGridView();
+        root.SuspendLayout();
+        toolbar.SuspendLayout();
         ((System.ComponentModel.ISupportInitialize)grid).BeginInit();
         SuspendLayout();
         // 
+        // root
+        // 
+        root.ColumnCount = 1;
+        root.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
+        root.Controls.Add(lblTitle, 0, 0);
+        root.Controls.Add(toolbar, 0, 1);
+        root.Controls.Add(lblStatus, 0, 2);
+        root.Controls.Add(grid, 0, 3);
+        root.Dock = System.Windows.Forms.DockStyle.Fill;
+        root.Margin = new System.Windows.Forms.Padding(0);
+        root.Name = "root";
+        root.RowCount = 4;
+        root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+        root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+        root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+        root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
+        root.TabIndex = 0;
+        root.Padding = new System.Windows.Forms.Padding(20, 16, 20, 16);
+        root.Size = new System.Drawing.Size(1000, 620);
+        // 
         // lblTitle
         // 
-        lblTitle.Font = new Font("Segoe UI", 18F, FontStyle.Bold);
-        lblTitle.ForeColor = Color.FromArgb(15, 23, 42);
-        lblTitle.Location = new Point(30, 24);
-        lblTitle.Margin = new Padding(4, 0, 4, 0);
+        lblTitle.AutoSize = true;
+        lblTitle.Font = new System.Drawing.Font("Segoe UI", 18F, System.Drawing.FontStyle.Bold);
+        lblTitle.ForeColor = System.Drawing.Color.FromArgb(15, 23, 42);
+        lblTitle.Margin = new System.Windows.Forms.Padding(0, 0, 0, 8);
         lblTitle.Name = "lblTitle";
-        lblTitle.Size = new Size(277, 48);
         lblTitle.TabIndex = 0;
         lblTitle.Text = "Vị trí lưu trữ";
         // 
+        // toolbar
+        // 
+        toolbar.AutoSize = true;
+        toolbar.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+        toolbar.Controls.Add(btnAddBin);
+        toolbar.Controls.Add(btnEditBin);
+        toolbar.Controls.Add(btnDeleteBin);
+        toolbar.Dock = System.Windows.Forms.DockStyle.Fill;
+        toolbar.Margin = new System.Windows.Forms.Padding(0);
+        toolbar.Name = "toolbar";
+        toolbar.TabIndex = 1;
+        toolbar.WrapContents = true;
+        // 
         // btnAddBin
         // 
-        btnAddBin.BackColor = Color.FromArgb(37, 99, 235);
-        btnAddBin.Cursor = Cursors.Hand;
+        btnAddBin.AutoSize = true;
+        btnAddBin.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+        btnAddBin.BackColor = System.Drawing.Color.FromArgb(37, 99, 235);
+        btnAddBin.Cursor = System.Windows.Forms.Cursors.Hand;
         btnAddBin.FlatAppearance.BorderSize = 0;
-        btnAddBin.FlatAppearance.MouseOverBackColor = Color.FromArgb(29, 78, 216);
-        btnAddBin.FlatStyle = FlatStyle.Flat;
-        btnAddBin.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
-        btnAddBin.ForeColor = Color.White;
-        btnAddBin.Location = new Point(503, 24);
-        btnAddBin.Margin = new Padding(4, 4, 4, 4);
+        btnAddBin.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(29, 78, 216);
+        btnAddBin.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+        btnAddBin.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+        btnAddBin.ForeColor = System.Drawing.Color.White;
+        btnAddBin.Margin = new System.Windows.Forms.Padding(0, 0, 8, 8);
+        btnAddBin.MinimumSize = new System.Drawing.Size(0, 38);
         btnAddBin.Name = "btnAddBin";
-        btnAddBin.Size = new Size(240, 57);
-        btnAddBin.TabIndex = 1;
+        btnAddBin.Padding = new System.Windows.Forms.Padding(10, 4, 10, 4);
+        btnAddBin.TabIndex = 0;
         btnAddBin.Text = "➕ Thêm vị trí mới";
         btnAddBin.UseVisualStyleBackColor = false;
-        btnAddBin.Click += BtnAddBin_Click;
+        btnAddBin.Click += new System.EventHandler(this.BtnAddBin_Click);
         // 
         // btnEditBin
         // 
-        btnEditBin.BackColor = Color.White;
-        btnEditBin.Cursor = Cursors.Hand;
-        btnEditBin.FlatStyle = FlatStyle.Flat;
-        btnEditBin.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
-        btnEditBin.ForeColor = Color.FromArgb(15, 23, 42);
-        btnEditBin.Location = new Point(751, 24);
-        btnEditBin.Margin = new Padding(4, 4, 4, 4);
+        btnEditBin.AutoSize = true;
+        btnEditBin.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+        btnEditBin.BackColor = System.Drawing.Color.White;
+        btnEditBin.Cursor = System.Windows.Forms.Cursors.Hand;
+        btnEditBin.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+        btnEditBin.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+        btnEditBin.ForeColor = System.Drawing.Color.FromArgb(15, 23, 42);
+        btnEditBin.Margin = new System.Windows.Forms.Padding(0, 0, 8, 8);
+        btnEditBin.MinimumSize = new System.Drawing.Size(0, 38);
         btnEditBin.Name = "btnEditBin";
-        btnEditBin.Size = new Size(195, 57);
-        btnEditBin.TabIndex = 2;
+        btnEditBin.Padding = new System.Windows.Forms.Padding(10, 4, 10, 4);
+        btnEditBin.TabIndex = 1;
         btnEditBin.Text = "✏️ Sửa vị trí";
         btnEditBin.UseVisualStyleBackColor = false;
-        btnEditBin.Click += BtnEditBin_Click;
+        btnEditBin.Click += new System.EventHandler(this.BtnEditBin_Click);
         // 
         // btnDeleteBin
         // 
-        btnDeleteBin.BackColor = Color.White;
-        btnDeleteBin.Cursor = Cursors.Hand;
-        btnDeleteBin.FlatAppearance.BorderColor = Color.FromArgb(220, 38, 38);
-        btnDeleteBin.FlatStyle = FlatStyle.Flat;
-        btnDeleteBin.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
-        btnDeleteBin.ForeColor = Color.FromArgb(220, 38, 38);
-        btnDeleteBin.Location = new Point(954, 24);
-        btnDeleteBin.Margin = new Padding(4, 4, 4, 4);
+        btnDeleteBin.AutoSize = true;
+        btnDeleteBin.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+        btnDeleteBin.BackColor = System.Drawing.Color.White;
+        btnDeleteBin.Cursor = System.Windows.Forms.Cursors.Hand;
+        btnDeleteBin.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(220, 38, 38);
+        btnDeleteBin.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+        btnDeleteBin.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+        btnDeleteBin.ForeColor = System.Drawing.Color.FromArgb(220, 38, 38);
+        btnDeleteBin.Margin = new System.Windows.Forms.Padding(0, 0, 8, 8);
+        btnDeleteBin.MinimumSize = new System.Drawing.Size(0, 38);
         btnDeleteBin.Name = "btnDeleteBin";
-        btnDeleteBin.Size = new Size(210, 57);
-        btnDeleteBin.TabIndex = 3;
+        btnDeleteBin.Padding = new System.Windows.Forms.Padding(10, 4, 10, 4);
+        btnDeleteBin.TabIndex = 2;
         btnDeleteBin.Text = "🗑️ Xóa vị trí";
         btnDeleteBin.UseVisualStyleBackColor = false;
-        btnDeleteBin.Click += BtnDeleteBin_Click;
+        btnDeleteBin.Click += new System.EventHandler(this.BtnDeleteBin_Click);
         // 
         // lblStatus
         // 
+        lblStatus.Anchor = System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
         lblStatus.AutoSize = true;
-        lblStatus.Font = new Font("Segoe UI", 9F);
-        lblStatus.ForeColor = Color.FromArgb(100, 116, 139);
-        lblStatus.Location = new Point(30, 84);
-        lblStatus.Margin = new Padding(4, 0, 4, 0);
+        lblStatus.Font = new System.Drawing.Font("Segoe UI", 9F);
+        lblStatus.ForeColor = System.Drawing.Color.FromArgb(100, 116, 139);
+        lblStatus.Margin = new System.Windows.Forms.Padding(0, 0, 0, 8);
         lblStatus.Name = "lblStatus";
-        lblStatus.Size = new Size(0, 25);
-        lblStatus.TabIndex = 4;
+        lblStatus.TabIndex = 2;
         // 
         // grid
         // 
-        grid.ColumnHeadersHeight = 34;
-        grid.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
-        grid.Location = new Point(30, 114);
-        grid.Margin = new Padding(4, 4, 4, 4);
+        grid.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+        grid.Dock = System.Windows.Forms.DockStyle.Fill;
+        grid.Margin = new System.Windows.Forms.Padding(0);
         grid.Name = "grid";
-        grid.RowHeadersWidth = 62;
-        grid.Size = new Size(1530, 570);
-        grid.TabIndex = 5;
+        grid.TabIndex = 3;
         // 
         // ManageBinsForm
         // 
-        AutoScaleDimensions = new SizeF(144F, 144F);
-        AutoScaleMode = AutoScaleMode.Dpi;
-        BackColor = Color.White;
-        ClientSize = new Size(1590, 750);
-        Controls.Add(lblTitle);
-        Controls.Add(btnAddBin);
-        Controls.Add(btnEditBin);
-        Controls.Add(btnDeleteBin);
-        Controls.Add(lblStatus);
-        Controls.Add(grid);
-        FormBorderStyle = FormBorderStyle.FixedDialog;
-        Margin = new Padding(6, 6, 6, 6);
-        MaximizeBox = false;
+        AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
+        AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
+        BackColor = System.Drawing.Color.White;
+        ClientSize = new System.Drawing.Size(1000, 620);
+        Controls.Add(root);
+        MinimumSize = new System.Drawing.Size(720, 420);
         Name = "ManageBinsForm";
-        StartPosition = FormStartPosition.CenterParent;
+        StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
         Text = "Vị trí lưu trữ";
         ((System.ComponentModel.ISupportInitialize)grid).EndInit();
+        toolbar.ResumeLayout(false);
+        toolbar.PerformLayout();
+        root.ResumeLayout(false);
+        root.PerformLayout();
         ResumeLayout(false);
         PerformLayout();
     }
 
     #endregion
 
+    private System.Windows.Forms.TableLayoutPanel root;
     private System.Windows.Forms.Label lblTitle;
+    private System.Windows.Forms.FlowLayoutPanel toolbar;
     private System.Windows.Forms.Button btnAddBin;
     private System.Windows.Forms.Button btnEditBin;
     private System.Windows.Forms.Button btnDeleteBin;

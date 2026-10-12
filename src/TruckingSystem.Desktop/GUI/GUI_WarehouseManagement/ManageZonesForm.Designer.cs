@@ -10,129 +10,168 @@ partial class ManageZonesForm
         base.Dispose(disposing);
     }
 
-    #region Component Designer generated code
+    #region Windows Form Designer generated code
 
+    /// <summary>Bố cục: root (TableLayoutPanel 1 cột) = tiêu đề / thanh nút (FlowLayoutPanel tự xuống
+    /// dòng) / trạng thái / lưới (chiếm phần còn lại). Không tọa độ cứng — co giãn theo DPI và cỡ cửa sổ.</summary>
     private void InitializeComponent()
     {
-        lblTitle = new Label();
-        btnAddZone = new Button();
-        btnEditZone = new Button();
-        btnDeleteZone = new Button();
-        lblStatus = new Label();
-        grid = new DataGridView();
+        root = new System.Windows.Forms.TableLayoutPanel();
+        lblTitle = new System.Windows.Forms.Label();
+        toolbar = new System.Windows.Forms.FlowLayoutPanel();
+        btnAddZone = new System.Windows.Forms.Button();
+        btnEditZone = new System.Windows.Forms.Button();
+        btnDeleteZone = new System.Windows.Forms.Button();
+        lblStatus = new System.Windows.Forms.Label();
+        grid = new System.Windows.Forms.DataGridView();
+        root.SuspendLayout();
+        toolbar.SuspendLayout();
         ((System.ComponentModel.ISupportInitialize)grid).BeginInit();
         SuspendLayout();
         // 
+        // root
+        // 
+        root.ColumnCount = 1;
+        root.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
+        root.Controls.Add(lblTitle, 0, 0);
+        root.Controls.Add(toolbar, 0, 1);
+        root.Controls.Add(lblStatus, 0, 2);
+        root.Controls.Add(grid, 0, 3);
+        root.Dock = System.Windows.Forms.DockStyle.Fill;
+        root.Margin = new System.Windows.Forms.Padding(0);
+        root.Name = "root";
+        root.RowCount = 4;
+        root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+        root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+        root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+        root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
+        root.TabIndex = 0;
+        root.Padding = new System.Windows.Forms.Padding(20, 16, 20, 16);
+        root.Size = new System.Drawing.Size(1000, 620);
+        // 
         // lblTitle
         // 
-        lblTitle.Font = new Font("Segoe UI", 18F, FontStyle.Bold);
-        lblTitle.ForeColor = Color.FromArgb(15, 23, 42);
-        lblTitle.Location = new Point(30, 24);
-        lblTitle.Margin = new Padding(4, 0, 4, 0);
+        lblTitle.AutoSize = true;
+        lblTitle.Font = new System.Drawing.Font("Segoe UI", 18F, System.Drawing.FontStyle.Bold);
+        lblTitle.ForeColor = System.Drawing.Color.FromArgb(15, 23, 42);
+        lblTitle.Margin = new System.Windows.Forms.Padding(0, 0, 0, 8);
         lblTitle.Name = "lblTitle";
-        lblTitle.Size = new Size(600, 48);
         lblTitle.TabIndex = 0;
         lblTitle.Text = "Quản lý khu vực trong kho";
         // 
+        // toolbar
+        // 
+        toolbar.AutoSize = true;
+        toolbar.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+        toolbar.Controls.Add(btnAddZone);
+        toolbar.Controls.Add(btnEditZone);
+        toolbar.Controls.Add(btnDeleteZone);
+        toolbar.Dock = System.Windows.Forms.DockStyle.Fill;
+        toolbar.Margin = new System.Windows.Forms.Padding(0);
+        toolbar.Name = "toolbar";
+        toolbar.TabIndex = 1;
+        toolbar.WrapContents = true;
+        // 
         // btnAddZone
         // 
-        btnAddZone.BackColor = Color.FromArgb(37, 99, 235);
-        btnAddZone.Cursor = Cursors.Hand;
+        btnAddZone.AutoSize = true;
+        btnAddZone.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+        btnAddZone.BackColor = System.Drawing.Color.FromArgb(37, 99, 235);
+        btnAddZone.Cursor = System.Windows.Forms.Cursors.Hand;
         btnAddZone.FlatAppearance.BorderSize = 0;
-        btnAddZone.FlatAppearance.MouseOverBackColor = Color.FromArgb(29, 78, 216);
-        btnAddZone.FlatStyle = FlatStyle.Flat;
-        btnAddZone.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
-        btnAddZone.ForeColor = Color.White;
-        btnAddZone.Location = new Point(886, 24);
-        btnAddZone.Margin = new Padding(4, 4, 4, 4);
+        btnAddZone.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(29, 78, 216);
+        btnAddZone.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+        btnAddZone.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+        btnAddZone.ForeColor = System.Drawing.Color.White;
+        btnAddZone.Margin = new System.Windows.Forms.Padding(0, 0, 8, 8);
+        btnAddZone.MinimumSize = new System.Drawing.Size(0, 38);
         btnAddZone.Name = "btnAddZone";
-        btnAddZone.Size = new Size(240, 57);
-        btnAddZone.TabIndex = 1;
+        btnAddZone.Padding = new System.Windows.Forms.Padding(10, 4, 10, 4);
+        btnAddZone.TabIndex = 0;
         btnAddZone.Text = "➕ Thêm khu vực mới";
         btnAddZone.UseVisualStyleBackColor = false;
-        btnAddZone.Click += BtnAddZone_Click;
+        btnAddZone.Click += new System.EventHandler(this.BtnAddZone_Click);
         // 
         // btnEditZone
         // 
-        btnEditZone.BackColor = Color.White;
-        btnEditZone.Cursor = Cursors.Hand;
-        btnEditZone.FlatStyle = FlatStyle.Flat;
-        btnEditZone.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
-        btnEditZone.ForeColor = Color.FromArgb(15, 23, 42);
-        btnEditZone.Location = new Point(676, 24);
-        btnEditZone.Margin = new Padding(4, 4, 4, 4);
+        btnEditZone.AutoSize = true;
+        btnEditZone.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+        btnEditZone.BackColor = System.Drawing.Color.White;
+        btnEditZone.Cursor = System.Windows.Forms.Cursors.Hand;
+        btnEditZone.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+        btnEditZone.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+        btnEditZone.ForeColor = System.Drawing.Color.FromArgb(15, 23, 42);
+        btnEditZone.Margin = new System.Windows.Forms.Padding(0, 0, 8, 8);
+        btnEditZone.MinimumSize = new System.Drawing.Size(0, 38);
         btnEditZone.Name = "btnEditZone";
-        btnEditZone.Size = new Size(195, 57);
-        btnEditZone.TabIndex = 2;
+        btnEditZone.Padding = new System.Windows.Forms.Padding(10, 4, 10, 4);
+        btnEditZone.TabIndex = 1;
         btnEditZone.Text = "✏️ Sửa khu vực";
         btnEditZone.UseVisualStyleBackColor = false;
-        btnEditZone.Click += BtnEditZone_Click;
+        btnEditZone.Click += new System.EventHandler(this.BtnEditZone_Click);
         // 
         // btnDeleteZone
         // 
-        btnDeleteZone.BackColor = Color.White;
-        btnDeleteZone.Cursor = Cursors.Hand;
-        btnDeleteZone.FlatAppearance.BorderColor = Color.FromArgb(220, 38, 38);
-        btnDeleteZone.FlatStyle = FlatStyle.Flat;
-        btnDeleteZone.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
-        btnDeleteZone.ForeColor = Color.FromArgb(220, 38, 38);
-        btnDeleteZone.Location = new Point(1141, 24);
-        btnDeleteZone.Margin = new Padding(4, 4, 4, 4);
+        btnDeleteZone.AutoSize = true;
+        btnDeleteZone.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+        btnDeleteZone.BackColor = System.Drawing.Color.White;
+        btnDeleteZone.Cursor = System.Windows.Forms.Cursors.Hand;
+        btnDeleteZone.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(220, 38, 38);
+        btnDeleteZone.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+        btnDeleteZone.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+        btnDeleteZone.ForeColor = System.Drawing.Color.FromArgb(220, 38, 38);
+        btnDeleteZone.Margin = new System.Windows.Forms.Padding(0, 0, 8, 8);
+        btnDeleteZone.MinimumSize = new System.Drawing.Size(0, 38);
         btnDeleteZone.Name = "btnDeleteZone";
-        btnDeleteZone.Size = new Size(210, 57);
-        btnDeleteZone.TabIndex = 3;
+        btnDeleteZone.Padding = new System.Windows.Forms.Padding(10, 4, 10, 4);
+        btnDeleteZone.TabIndex = 2;
         btnDeleteZone.Text = "🗑️ Xóa khu vực";
         btnDeleteZone.UseVisualStyleBackColor = false;
-        btnDeleteZone.Click += BtnDeleteZone_Click;
+        btnDeleteZone.Click += new System.EventHandler(this.BtnDeleteZone_Click);
         // 
         // lblStatus
         // 
+        lblStatus.Anchor = System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
         lblStatus.AutoSize = true;
-        lblStatus.Font = new Font("Segoe UI", 9F);
-        lblStatus.ForeColor = Color.FromArgb(100, 116, 139);
-        lblStatus.Location = new Point(30, 84);
-        lblStatus.Margin = new Padding(4, 0, 4, 0);
+        lblStatus.Font = new System.Drawing.Font("Segoe UI", 9F);
+        lblStatus.ForeColor = System.Drawing.Color.FromArgb(100, 116, 139);
+        lblStatus.Margin = new System.Windows.Forms.Padding(0, 0, 0, 8);
         lblStatus.Name = "lblStatus";
-        lblStatus.Size = new Size(0, 25);
-        lblStatus.TabIndex = 4;
+        lblStatus.TabIndex = 2;
         // 
         // grid
         // 
-        grid.ColumnHeadersHeight = 34;
-        grid.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
-        grid.Location = new Point(30, 114);
-        grid.Margin = new Padding(4, 4, 4, 4);
+        grid.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+        grid.Dock = System.Windows.Forms.DockStyle.Fill;
+        grid.Margin = new System.Windows.Forms.Padding(0);
         grid.Name = "grid";
-        grid.RowHeadersWidth = 62;
-        grid.Size = new Size(1530, 570);
-        grid.TabIndex = 5;
+        grid.TabIndex = 3;
         // 
         // ManageZonesForm
         // 
-        AutoScaleDimensions = new SizeF(144F, 144F);
-        AutoScaleMode = AutoScaleMode.Dpi;
-        BackColor = Color.White;
-        ClientSize = new Size(1590, 750);
-        Controls.Add(lblTitle);
-        Controls.Add(btnAddZone);
-        Controls.Add(btnEditZone);
-        Controls.Add(btnDeleteZone);
-        Controls.Add(lblStatus);
-        Controls.Add(grid);
-        FormBorderStyle = FormBorderStyle.FixedDialog;
-        Margin = new Padding(6, 6, 6, 6);
-        MaximizeBox = false;
+        AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
+        AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
+        BackColor = System.Drawing.Color.White;
+        ClientSize = new System.Drawing.Size(1000, 620);
+        Controls.Add(root);
+        MinimumSize = new System.Drawing.Size(720, 420);
         Name = "ManageZonesForm";
-        StartPosition = FormStartPosition.CenterParent;
+        StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
         Text = "Quản lý khu vực trong kho";
         ((System.ComponentModel.ISupportInitialize)grid).EndInit();
+        toolbar.ResumeLayout(false);
+        toolbar.PerformLayout();
+        root.ResumeLayout(false);
+        root.PerformLayout();
         ResumeLayout(false);
         PerformLayout();
     }
 
     #endregion
 
+    private System.Windows.Forms.TableLayoutPanel root;
     private System.Windows.Forms.Label lblTitle;
+    private System.Windows.Forms.FlowLayoutPanel toolbar;
     private System.Windows.Forms.Button btnAddZone;
     private System.Windows.Forms.Button btnEditZone;
     private System.Windows.Forms.Button btnDeleteZone;
