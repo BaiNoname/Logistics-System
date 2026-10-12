@@ -39,8 +39,10 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
                 MessageBox.Show(this, lblStatus.Text, "Thiếu thông tin khách hàng", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
-            if (_api is null) return;
+            if (_api is null || !btnSave.Enabled) return;
 
+            // Khóa nút Lưu trong lúc chờ server — bấm 2 lần trước đây tạo 2 khách hàng trùng.
+            btnSave.Enabled = false;
             try
             {
                 var result = await _api.Customers.CreateCustomerAsync(
@@ -65,6 +67,10 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
                 if (IsDisposed || Disposing) return;
                 lblStatus.Text = "Lỗi: " + ex.Message;
                 MessageBox.Show(this, ex.Message, "Lỗi lưu khách hàng", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                if (!IsDisposed) btnSave.Enabled = true;
             }
         }
 

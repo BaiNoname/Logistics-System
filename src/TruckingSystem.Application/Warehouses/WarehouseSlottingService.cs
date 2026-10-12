@@ -399,6 +399,21 @@ public class WarehouseSlottingService : IWarehouseSlottingService
         var doorError = ValidateDoor(request.DoorSide, request.DoorOffsetMeters, request.LengthMeters, request.WidthMeters, out var doorSide);
         if (doorError is not null) return new WarehouseActionResult(false, doorError);
 
+        // DỜI TỌA ĐỘ kho khi đang có chuyến CHẠY qua kho: xe đang trên đường sẽ bị điều hướng về
+        // chỗ mới, số kế hoạch (km, số ngày) của chuyến lệch hẳn -> chặn. Chuyến CHƯA CHẠY thì
+        // được — controller tính lại ước tính cho các chuyến đó sau khi lưu.
+        var coordsChanged = warehouse.Lat != request.Lat || warehouse.Lng != request.Lng;
+        if (coordsChanged)
+        {
+            var runningIds = await _db.Trips
+                .Where(t => t.WarehouseId == warehouseId && (t.Status == TripStatus.InProgress || t.Status == TripStatus.PendingConfirmation))
+                .OrderBy(t => t.Id).Select(t => t.Id).Take(5).ToListAsync();
+            if (runningIds.Count > 0)
+                return new WarehouseActionResult(false,
+                    $"Không thể dời tọa độ kho — đang có chuyến chạy qua kho này (#{string.Join(", #", runningIds)}). " +
+                    "Chờ các chuyến đó hoàn tất rồi đổi địa chỉ / tọa độ kho.");
+        }
+
         warehouse.Name = request.Name;
         warehouse.Address = request.Address;
         warehouse.CapacityM3 = request.CapacityM3;

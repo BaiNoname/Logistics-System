@@ -1416,6 +1416,15 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.Property<int?>("EstimatedDurationMinutes")
                         .HasColumnType("integer");
 
+                    b.Property<decimal?>("FuelConsumptionPer100KmAtStart")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("FuelTypeAtStart")
+                        .HasColumnType("text");
+
+                    b.Property<decimal?>("FuelUnitPriceAtStart")
+                        .HasColumnType("numeric(18,2)");
+
                     b.Property<int>("LegType")
                         .HasColumnType("integer");
 

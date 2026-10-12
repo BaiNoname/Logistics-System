@@ -11,10 +11,12 @@ namespace TruckingSystem.API.Controllers;
 public class WarehousesController : ControllerBase
 {
     private readonly IWarehouseSlottingService _slottingService;
+    private readonly TruckingSystem.Application.Trips.ITripService _tripService;
 
-    public WarehousesController(IWarehouseSlottingService slottingService)
+    public WarehousesController(IWarehouseSlottingService slottingService, TruckingSystem.Application.Trips.ITripService tripService)
     {
         _slottingService = slottingService;
+        _tripService = tripService;
     }
 
     // Endpoint chính thể hiện thuật toán Best-Fit — gọi khi hàng chuẩn bị nhập kho,
@@ -48,7 +50,20 @@ public class WarehousesController : ControllerBase
     [HttpPut("{warehouseId:int}")]
     public async Task<ActionResult<WarehouseActionResult>> UpdateWarehouse(int warehouseId, UpdateWarehouseRequest request)
     {
+        var old = (await _slottingService.GetWarehousesAsync()).FirstOrDefault(w => w.Id == warehouseId);
         var result = await _slottingService.UpdateWarehouseAsync(warehouseId, request);
+        // Dời tọa độ kho -> các chuyến CHƯA CHẠY qua kho có ước tính km / số ngày theo vị trí CŨ
+        // (dùng cho kiểm tra giấy tờ, ngày làm, cờ lệch km) -> tính lại ngay.
+        if (result.Success && old is not null && (old.Lat != request.Lat || old.Lng != request.Lng))
+        {
+            var (updated, failed) = await _tripService.RecalculatePlannedEstimatesForWarehouseAsync(warehouseId);
+            if (updated + failed > 0)
+                result = result with
+                {
+                    Message = $"Đã lưu. Tính lại ước tính lộ trình cho {updated} chuyến chưa chạy qua kho" +
+                              (failed > 0 ? $"; {failed} chuyến chưa tính lại được (VietMap lỗi / thiếu tọa độ) — bấm Ước tính trên màn Chuyến." : "."),
+                };
+        }
         return Ok(result); // luôn 200 OK — Desktop tự đọc result.Success/Message, tránh PostAsync throw exception khi 400 làm mất thông báo rõ ràng
     }
 

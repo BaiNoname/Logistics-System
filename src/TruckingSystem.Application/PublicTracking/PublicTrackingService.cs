@@ -28,11 +28,13 @@ public class PublicTrackingService : IPublicTrackingService
         // đang lấy hàng — trước đây lấy đại 1 chuyến bất kỳ.
         // Không hiện xe chặng TRẢ HÀNG (đơn đã hủy, xe chở hàng về người gửi — khách nhận
         // không liên quan) và không hiện GPS gì khi đơn đã hủy.
+        // CHỈ hiện GPS của xe đang GIAO (đang tới chỗ người nhận). Xe đang LẤY HÀNG chạy về phía
+        // người gửi — trước đây vẫn hiện xe đó khi chưa có xe giao nào chạy, người nhận tưởng xe
+        // đang tới mình. Giai đoạn lấy hàng chỉ hiện dòng trạng thái (DetermineStage).
         var activeTrip = order.Status == TransportOrderStatus.Cancelled ? null : order.Trips
-            .Where(t => t.LegType != TripLegType.Return)
+            .Where(t => t.LegType == TripLegType.Delivery)
             .Where(t => t.Status == TripStatus.InProgress || t.Status == TripStatus.PendingConfirmation)
-            .OrderBy(t => t.LegType == TripLegType.Delivery ? 0 : 1)
-            .ThenBy(t => t.Status == TripStatus.InProgress ? 0 : 1)
+            .OrderBy(t => t.Status == TripStatus.InProgress ? 0 : 1)
             .ThenBy(t => t.Id)
             .FirstOrDefault();
 
