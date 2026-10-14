@@ -174,12 +174,11 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
             // 
             // lblStatus
             // 
-            lblStatus.AutoSize = false;
             lblStatus.Font = new Font("Segoe UI", 9F);
             lblStatus.ForeColor = Color.FromArgb(220, 38, 38);
-            lblStatus.Location = new Point(24, 470);
+            lblStatus.Location = new Point(24, 458);
             lblStatus.Name = "lblStatus";
-            lblStatus.Size = new Size(400, 34);
+            lblStatus.Size = new Size(400, 17);
             lblStatus.TabIndex = 15;
             // 
             // btnReadWithAi

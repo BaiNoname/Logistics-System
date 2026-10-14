@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using TruckingSystem.Desktop.Common;
 using TruckingSystem.Desktop.DTO_EmployeeManagement;
 
@@ -78,6 +79,16 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
                 lblStatus.Text = "Vui lòng nhập đủ mã nhân viên và họ tên.";
                 return;
             }
+            if (!IsValidPhoneNumber(txtPhone.Text))
+            {
+                lblStatus.Text = $"Số điện thoại không hợp lệ.";
+                return;
+            }
+            if (cboDept.SelectedIndex == 0 || cboPos.SelectedIndex == 0)
+            {
+                lblStatus.Text = "Vui lòng chọn ít nhất 1 phòng ban hoặc chức danh.";
+                return;
+            }
             if (_api is null) return;
 
             btnSave.Enabled = false;
@@ -107,6 +118,17 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             {
                 btnSave.Enabled = true;
             }
+        }
+
+        public static bool IsValidPhoneNumber(string? phone)
+        {
+            if (string.IsNullOrWhiteSpace(phone))
+                return false;
+
+            return Regex.IsMatch(
+                phone,
+                @"^(?:0[35789][0-9]{8}|\+[1-9][0-9]{0,2} [0-9]{4,14})$"
+            );
         }
     }
 }

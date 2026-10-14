@@ -7,7 +7,6 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
     public partial class CustomersControl : BaseUserControl
     {
         private ApiServices? _api;
-        private CustomerContactsControl? _contactsControl;
         private List<CustomerListItem> _customers = new();
 
         public CustomersControl()
@@ -22,8 +21,7 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
         {
             _api = api;
             btnCreate.Visible = btnEdit.Visible = api.Connection.IsInRole("Admin", "Dispatcher");
-            _contactsControl = new CustomerContactsControl(api) { Dock = DockStyle.Fill };
-            contactsTab.Controls.Add(_contactsControl);
+            _contactsControl.SetApi(api);
             tabs.SelectedIndexChanged += async (_, _) =>
             {
                 if (tabs.SelectedTab == contactsTab) await _contactsControl.LoadAsync();

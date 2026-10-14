@@ -23,6 +23,7 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
             tabs = new TabControl();
             customersTab = new TabPage("Khách hàng");
             contactsTab = new TabPage("Người liên hệ khách hàng");
+            _contactsControl = new CustomerContactsControl();
             var customerLayout = new TableLayoutPanel();
             var toolbar = new FlowLayoutPanel();
             ((System.ComponentModel.ISupportInitialize)grid).BeginInit();
@@ -148,6 +149,10 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
             customersTab.Controls.Add(customerLayout);
             contactsTab.BackColor = Color.White;
             contactsTab.Padding = new Padding(8);
+            _contactsControl.Dock = DockStyle.Fill;
+            _contactsControl.Name = "_contactsControl";
+            _contactsControl.TabIndex = 0;
+            contactsTab.Controls.Add(_contactsControl);
             tabs.Dock = DockStyle.Fill;
             tabs.AccessibleName = "Quản lý khách hàng và người liên hệ";
             tabs.TabPages.AddRange(new[] { customersTab, contactsTab });
@@ -172,5 +177,6 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
         private System.Windows.Forms.TabControl tabs;
         private System.Windows.Forms.TabPage customersTab;
         private System.Windows.Forms.TabPage contactsTab;
+        private CustomerContactsControl _contactsControl = null!;
     }
 }
