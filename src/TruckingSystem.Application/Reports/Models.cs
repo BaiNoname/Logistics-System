@@ -1,4 +1,4 @@
-namespace TruckingSystem.Application.Reports;
+﻿namespace TruckingSystem.Application.Reports;
 
 /// <summary>Báo cáo lãi/lỗ theo kỳ. Mọi doanh thu và chi phí được GẮN THEO ĐƠN
 /// HÀNG, lọc theo NGÀY TẠO ĐƠN — nhờ vậy lãi/lỗ của mỗi đơn luôn khớp (doanh thu
@@ -26,7 +26,11 @@ public record ProfitReportDto(
     List<FuelControlRowDto>? FuelControl = null,
     decimal FuelPlannedCostCompared = 0,  // dự toán — chỉ các chuyến hoàn tất có đủ cả dự toán lẫn định mức
     decimal FuelNormCostCompared = 0,     // định mức — cùng tập chuyến trên (để tính "Lệch dự toán")
-    int FuelComparedTripCount = 0);
+    int FuelComparedTripCount = 0,
+    // ---- Giao đúng hạn (đơn HOÀN TẤT có hạn giao): ngày xong chặng Giao cuối ≤ hạn giao ----
+    int OnTimeOrders = 0,
+    int LateOrders = 0,
+    int OrdersWithoutDeadline = 0);
 
 /// <summary>1 dòng bảng "Kiểm soát nhiên liệu" — 1 chuyến đã chạy.
 /// Flagged = lệch km (GPS so với VietMap) hoặc lệch tiền (thực đổ so với định mức) quá 15%.</summary>
@@ -46,7 +50,9 @@ public record MonthlyProfitDto(string Month, decimal Revenue, decimal Cost);
 public record OrderProfitDto(
     int OrderId, string OrderCode, string CustomerName, string Status, DateTime CreatedAt,
     bool HasInvoice, decimal Revenue,
-    decimal FuelCost, decimal ExpenseCost, decimal IncidentCost, decimal TotalCost, decimal Profit);
+    decimal FuelCost, decimal ExpenseCost, decimal IncidentCost, decimal TotalCost, decimal Profit,
+    // Kết quả giao so với hạn (đơn hoàn tất): "Đúng hạn" / "Trễ N ngày" / null (chưa xong / không có hạn).
+    string? DeliveryResult = null);
 
 /// <summary>Chi tiết TỪNG khoản chi của 1 đơn — để nhìn rõ tiền đi đâu.</summary>
 public record OrderCostDetailDto(

@@ -43,7 +43,8 @@ namespace TruckingSystem.Desktop.GUI_Shared
         public MainForm(ApiServices api, string username) : this()
         {
             _api = api;
-            lblUser.Text = $"👤  {username}";
+            lblUser.Text = username;
+            lblRole.Text = RoleText(api.Connection.Roles);
             BuildNavButtons();
             NavigateTo(_navButtons[0], () => new DashboardControl(_api));
         }
@@ -152,6 +153,22 @@ namespace TruckingSystem.Desktop.GUI_Shared
 
         /// <summary>Nút chuông thông báo — quét cảnh báo tự động (giấy tờ xe sắp/đã
         /// hết hạn, tài xế chưa đăng ký lịch làm ngày mai...) mỗi lần mở.</summary>
+        /// <summary>Tên vai trò tiếng Việt hiển thị dưới tên đăng nhập (mã role trong hệ thống
+        /// vẫn là tiếng Anh: Admin, Dispatcher...). Nhiều role thì nối bằng dấu phẩy.</summary>
+        private static string RoleText(IEnumerable<string> roles)
+        {
+            var names = roles.Select(r => r switch
+            {
+                "Admin" => "Quản trị viên",
+                "Dispatcher" => "Điều phối viên",
+                "Accountant" => "Kế toán",
+                "WarehouseStaff" => "Nhân viên kho",
+                "Driver" => "Tài xế",
+                _ => r,
+            }).ToList();
+            return names.Count == 0 ? "" : string.Join(", ", names);
+        }
+
         private void BtnNotifications_Click(object? sender, EventArgs e)
         {
             if (_api is null) return;

@@ -1,6 +1,8 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using TruckingSystem.Application.Common;
 using TruckingSystem.Application.Common.Interfaces;
+using TruckingSystem.Application.Drivers;
+using TruckingSystem.Application.Trips;
 using TruckingSystem.Application.Vehicles;
 using TruckingSystem.Domain.Entities;
 using TruckingSystem.Domain.Enums;
@@ -16,10 +18,14 @@ public class NotificationService : INotificationService
     private const string PrefixDocSoon = "🟡 ";
     private const string PrefixSchedule = "📅 ";
     private const string PrefixTripPending = "🟢 ";
+    private const string PrefixDriverDoc = "🪪 ";
+    private const string PrefixDeadline = "⏰ ";
 
     public const string CategoryTrip = "Chuyến chờ duyệt";
     public const string CategoryVehicleDoc = "Giấy tờ xe";
     public const string CategorySchedule = "Lịch tài xế";
+    public const string CategoryDriverDoc = "Giấy tờ tài xế";
+    public const string CategoryDeadline = "Hạn giao";
     public const string CategoryOther = "Khác";
 
     private readonly IApplicationDbContext _db;
@@ -35,11 +41,14 @@ public class NotificationService : INotificationService
         if (title.StartsWith(PrefixTripPending)) return CategoryTrip;
         if (title.StartsWith(PrefixDocExpired) || title.StartsWith(PrefixDocSoon)) return CategoryVehicleDoc;
         if (title.StartsWith(PrefixSchedule)) return CategorySchedule;
+        if (title.StartsWith(PrefixDriverDoc)) return CategoryDriverDoc;
+        if (title.StartsWith(PrefixDeadline)) return CategoryDeadline;
         return CategoryOther;
     }
 
     private static bool IsSystemAlert(string title)
-        => title.StartsWith(PrefixDocExpired) || title.StartsWith(PrefixDocSoon) || title.StartsWith(PrefixSchedule);
+        => title.StartsWith(PrefixDocExpired) || title.StartsWith(PrefixDocSoon) || title.StartsWith(PrefixSchedule)
+           || title.StartsWith(PrefixDriverDoc) || title.StartsWith(PrefixDeadline);
 
     public async Task<List<NotificationDto>> CheckAndGetNotificationsAsync(string userId)
     {
@@ -136,6 +145,8 @@ public class NotificationService : INotificationService
         var expected = new List<(string Title, string Message)>();
         expected.AddRange(await BuildVehicleDocumentAlertsAsync());
         expected.AddRange(await BuildDriverScheduleAlertsAsync());
+        expected.AddRange(await BuildDriverDocumentAlertsAsync());
+        expected.AddRange(await BuildDeadlineAlertsAsync());
 
         var existing = (await _db.Notifications
                 .Where(n => n.UserId == userId)
@@ -204,6 +215,109 @@ public class NotificationService : INotificationService
         return result;
     }
 
+    /// <summary>HẠN GIAO (DeliveryDeadlineRules) — nhắc TRƯỚC khi quá muộn, vì chuyến "Đã lên kế
+    /// hoạch" để đó bao lâu hệ thống cũng không tự chạy:
+    ///   • Đơn đã xác nhận, CHƯA chia xe, hạn giao còn ≤ 2 ngày.
+    ///   • Chuyến chưa chạy tới MỐC XUẤT PHÁT MUỘN NHẤT (hôm nay / ngày mai).
+    ///   • Chuyến chưa chạy đã QUA mốc đó -> không còn kịp hạn (cần xử lý / báo khách).
+    ///   • Đơn chưa xong mà đã QUÁ hạn giao (thay cho các nhắc theo chuyến của đơn đó).
+    /// Nội dung CỐ ĐỊNH theo từng tình trạng (không chứa "còn N ngày") — chuyển tình trạng thì
+    /// cảnh báo cũ tự biến mất, cảnh báo mới hiện ra (cơ chế đồng bộ ở SyncSystemAlertsAsync).</summary>
+    private async Task<List<(string Title, string Message)>> BuildDeadlineAlertsAsync()
+    {
+        var today = VnClock.Today;
+        var orders = await _db.TransportOrders
+            .Where(o => o.CommittedDeliveryDate != null
+                        && (o.Status == TransportOrderStatus.Confirmed || o.Status == TransportOrderStatus.InProgress))
+            .Select(o => new { o.Id, o.Code, Due = o.CommittedDeliveryDate!.Value })
+            .ToListAsync();
+        if (orders.Count == 0) return new List<(string Title, string Message)>();
+
+        var orderIds = orders.Select(o => o.Id).ToList();
+        var tripsByOrder = (await _db.Trips.Where(t => orderIds.Contains(t.TransportOrderId)).ToListAsync())
+            .GroupBy(t => t.TransportOrderId).ToDictionary(g => g.Key, g => g.ToList());
+
+        var result = new List<(string Title, string Message)>();
+        foreach (var o in orders)
+        {
+            var due = o.Due.Date;
+            var trips = tripsByOrder.TryGetValue(o.Id, out var list) ? list : new List<Trip>();
+            var active = trips.Where(t => t.Status != TripStatus.Cancelled).ToList();
+
+            if (today > due)
+            {
+                result.Add(($"{PrefixDeadline}Đơn {o.Code} ĐÃ QUÁ HẠN giao {due:dd/MM}",
+                    $"Đơn {o.Code} có hạn giao {due:dd/MM/yyyy} nhưng chưa giao xong — kiểm tra các chuyến của đơn và báo khách thời gian giao mới."));
+                continue;
+            }
+            if (active.Count == 0)
+            {
+                if ((due - today).Days <= 2)
+                    result.Add(($"{PrefixDeadline}Đơn {o.Code} chưa chia xe — hạn giao {due:dd/MM}",
+                        $"Đơn {o.Code} đã xác nhận nhưng CHƯA chia xe, trong khi hạn giao là {due:dd/MM/yyyy} — Chia xe ngay để kịp hạn."));
+                continue;
+            }
+
+            foreach (var t in active.Where(t => t.Status == TripStatus.Planned && t.LegType != TripLegType.Return))
+            {
+                var info = DeliveryDeadlineRules.Evaluate(t, trips, o.Due, today);
+                if (info.LatestStart is not { } latest) continue;
+                var leg = t.LegType == TripLegType.Pickup ? "Lấy hàng" : "Giao hàng";
+                if (info.Level == DeliveryDeadlineRules.Level.Warning)
+                    result.Add(($"{PrefixDeadline}Chuyến #{t.Id} ({leg}, đơn {o.Code}) phải xuất phát trước hết {latest:dd/MM}",
+                        $"Chuyến #{t.Id} ({leg}) của đơn {o.Code} chưa chạy. Hạn giao {due:dd/MM/yyyy} — để kịp hạn phải xuất phát chậm nhất hết ngày {latest:dd/MM/yyyy}."));
+                else if (info.Level == DeliveryDeadlineRules.Level.Late)
+                    result.Add(($"{PrefixDeadline}Chuyến #{t.Id} ({leg}, đơn {o.Code}) KHÔNG CÒN KỊP hạn giao {due:dd/MM}",
+                        $"Chuyến #{t.Id} ({leg}) của đơn {o.Code} chưa chạy và đã qua mốc xuất phát muộn nhất ({latest:dd/MM/yyyy}) — dự kiến giao trễ so với hạn {due:dd/MM/yyyy}. Cho xe xuất phát ngay / đổi xe-tài xế và báo trước cho khách."));
+            }
+        }
+        return result;
+    }
+
+    /// <summary>Giấy tờ TÀI XẾ (bằng lái, giấy khám sức khỏe) SẮP hết hạn (trong 30 ngày) hoặc
+    /// ĐÃ hết hạn — tương tự giấy tờ xe. Trước đây chỉ có cảnh báo giấy tờ xe: bằng lái hết hạn
+    /// thì tài xế tự nhiên bị loại khỏi Chia xe / không xuất phát được mà không ai được báo trước.
+    /// Chỉ xét người ĐANG LÀM có chức danh Tài xế (cùng quy tắc màn Tài xế).</summary>
+    private async Task<List<(string Title, string Message)>> BuildDriverDocumentAlertsAsync()
+    {
+        var today = VnClock.Today;
+        var warningThreshold = today.AddDays(30);
+        var driverPositionIds = await DriverPositionRules.DriverPositionIdsAsync(_db);
+
+        var drivers = await _db.DriverProfiles
+            .Where(dp => dp.Employee.Status == EmployeeStatus.Active
+                         && dp.Employee.PositionId != null && driverPositionIds.Contains(dp.Employee.PositionId.Value)
+                         && (dp.LicenseExpiryDate <= warningThreshold
+                             || (dp.HealthCertExpiryDate != null && dp.HealthCertExpiryDate <= warningThreshold)))
+            .Select(dp => new { dp.Employee.FullName, dp.Employee.Code, dp.LicenseExpiryDate, dp.HealthCertExpiryDate })
+            .ToListAsync();
+
+        var result = new List<(string Title, string Message)>();
+        foreach (var d in drivers)
+        {
+            var who = $"{d.FullName} ({d.Code})";
+            if (d.LicenseExpiryDate.Date <= warningThreshold)
+            {
+                var expired = d.LicenseExpiryDate.Date < today; // ngày hết hạn vẫn tính còn hạn (giống Chia xe)
+                result.Add(expired
+                    ? ($"{PrefixDriverDoc}Bằng lái tài xế {who} ĐÃ HẾT HẠN",
+                       $"Bằng lái của tài xế {who} đã hết hạn từ {d.LicenseExpiryDate:dd/MM/yyyy} — tài xế này sẽ KHÔNG được Chia xe và các chuyến đã chia chưa chạy cũng KHÔNG xuất phát được. Cập nhật hồ sơ (màn Tài xế) hoặc Đổi xe / tài xế.")
+                    : ($"{PrefixDriverDoc}Bằng lái tài xế {who} sắp hết hạn",
+                       $"Bằng lái của tài xế {who} sẽ hết hạn vào {d.LicenseExpiryDate:dd/MM/yyyy} — nhắc tài xế gia hạn sớm, sau ngày đó sẽ không được Chia xe."));
+            }
+            if (d.HealthCertExpiryDate is { } health && health.Date <= warningThreshold)
+            {
+                var expired = health.Date < today;
+                result.Add(expired
+                    ? ($"{PrefixDriverDoc}Giấy khám sức khỏe tài xế {who} ĐÃ HẾT HẠN",
+                       $"Giấy khám sức khỏe của tài xế {who} đã hết hạn từ {health:dd/MM/yyyy} — nhắc tài xế khám lại và cập nhật hồ sơ (màn Tài xế).")
+                    : ($"{PrefixDriverDoc}Giấy khám sức khỏe tài xế {who} sắp hết hạn",
+                       $"Giấy khám sức khỏe của tài xế {who} sẽ hết hạn vào {health:dd/MM/yyyy} — nhắc tài xế khám lại sớm."));
+            }
+        }
+        return result;
+    }
+
     /// <summary>Tài xế (đang Active, bằng lái còn hạn) CHƯA đăng ký ca làm việc
     /// cho NGÀY MAI — cảnh báo sớm 1 ngày để Dispatcher nhắc tài xế.</summary>
     private async Task<List<(string Title, string Message)>> BuildDriverScheduleAlertsAsync()
@@ -211,9 +325,12 @@ public class NotificationService : INotificationService
         // "Ngày mai" theo GIỜ VIỆT NAM (UTC+7) — cùng quy ước với Chia xe.
         var tomorrow = VnClock.Today.AddDays(1);
 
+        // Chỉ người có chức danh Tài xế (cùng quy tắc màn Tài xế / Chia xe).
+        var driverPositionIds = await DriverPositionRules.DriverPositionIdsAsync(_db);
         var activeDrivers = await _db.DriverProfiles
             .Include(dp => dp.Employee)
-            .Where(dp => dp.Employee.Status == EmployeeStatus.Active && dp.LicenseExpiryDate >= tomorrow)
+            .Where(dp => dp.Employee.Status == EmployeeStatus.Active && dp.LicenseExpiryDate >= tomorrow
+                         && dp.Employee.PositionId != null && driverPositionIds.Contains(dp.Employee.PositionId.Value))
             .ToListAsync();
 
         var driverIdsScheduledTomorrow = await _db.DriverSchedules

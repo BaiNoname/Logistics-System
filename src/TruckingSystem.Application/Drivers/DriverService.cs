@@ -41,32 +41,61 @@ public class DriverService : IDriverService
             .Select(w => new { w.Id, w.Name })
             .ToDictionaryAsync(w => w.Id, w => w.Name);
 
-        // Bắt đầu từ Employee (không phải DriverProfile) vì CHẮC CHẮN có
-        // navigation Employee.DriverProfile (đã dùng ở nhiều chỗ khác trong
-        // hệ thống, ví dụ TripService khi đồng bộ Calendar).
+        // AI LÀ TÀI XẾ = theo CHỨC DANH (danh mục nhỏ, so khớp mềm trong bộ nhớ).
+        var driverPositionIds = await DriverPositionRules.DriverPositionIdsAsync(_db);
+
+        // Danh sách: (1) nhân viên ĐANG LÀM có chức danh Tài xế (có hay chưa có hồ sơ);
+        // (2) người ĐÃ có hồ sơ tài xế nhưng chức danh khác (dữ liệu cũ — vẫn Chia xe được nên
+        //     phải hiện ra để Vận hành thấy & sửa), hoặc không còn đang làm mà vẫn còn chuyến
+        //     chưa xong. Người đã nghỉ, không còn chuyến thì ẩn (hồ sơ vẫn giữ để tra lịch sử).
         var employees = await _db.Employees
-            .Where(e => e.DriverProfile != null)
+            .Where(e => (e.Status == EmployeeStatus.Active && e.PositionId != null && driverPositionIds.Contains(e.PositionId.Value))
+                        || (e.DriverProfile != null && (e.Status == EmployeeStatus.Active || busyDriverIds.Contains(e.Id))))
             .Include(e => e.DriverProfile)
+            .Include(e => e.Position)
             .OrderBy(e => e.FullName)
             .ToListAsync();
 
         return employees.Select(e =>
         {
-            var dp = e.DriverProfile!;
-            // "Sẵn sàng" = đang làm việc + bằng lái còn hạn (theo ngày VN, ngày hết hạn vẫn
-            // tính còn hạn) + có ngày làm HÔM NAY. Lưu ý: khi Chia xe còn xét thêm kho đóng
-            // quân của tài xế và số ngày chuyến cần (chuyến dài phải đăng ký đủ các ngày).
-            var eligible = e.Status == EmployeeStatus.Active && dp.LicenseExpiryDate.Date >= today;
-            var availability = busyDriverIds.Contains(e.Id) ? "Đang làm"
+            var dp = e.DriverProfile;
+            var isBusy = busyDriverIds.Contains(e.Id);
+            var isDriverPosition = e.PositionId.HasValue && driverPositionIds.Contains(e.PositionId.Value);
+
+            // Trạng thái hồ sơ (giấy tờ)
+            string profileStatus;
+            if (dp is null) profileStatus = "Chưa có hồ sơ";
+            else if (dp.LicenseExpiryDate.Date < today) profileStatus = "Bằng lái hết hạn";
+            else if (dp.LicenseExpiryDate.Date <= today.AddDays(30)) profileStatus = "Bằng lái sắp hết hạn";
+            else profileStatus = "Đủ";
+
+            // Cảnh báo cần Vận hành xử lý
+            var warnings = new List<string>();
+            if (!isDriverPosition)
+                warnings.Add($"Chức danh \"{e.Position?.Name ?? "(trống)"}\" không phải Tài xế — sửa ở màn Nhân viên");
+            if (e.Status != EmployeeStatus.Active)
+                warnings.Add("Không còn đang làm nhưng còn chuyến chưa xong — cần đổi tài xế");
+            if (dp?.HealthCertExpiryDate is { } health && health.Date < today)
+                warnings.Add($"Giấy khám sức khỏe hết hạn {health:dd/MM/yyyy}");
+
+            // "Sẵn sàng" = đang làm việc + có hồ sơ + bằng lái còn hạn (theo ngày VN, ngày hết
+            // hạn vẫn tính còn hạn) + có ngày làm HÔM NAY. Lưu ý: khi Chia xe còn xét thêm kho
+            // đóng quân của tài xế và số ngày chuyến cần (chuyến dài phải đăng ký đủ các ngày).
+            var eligible = e.Status == EmployeeStatus.Active && dp is not null && dp.LicenseExpiryDate.Date >= today;
+            var availability = isBusy ? "Đang làm"
                 : !eligible ? "Không sẵn sàng"
                 : scheduledTodayIds.Contains(e.Id) ? "Sẵn sàng"
                 : "Không sẵn sàng";
 
             return new DriverListItemDto(
                 e.Id, e.Code, e.FullName, e.Phone,
-                dp.LicenseNumber, dp.LicenseClass, dp.LicenseExpiryDate,
-                dp.YearsOfExperience, dp.WarehouseId,
-                dp.WarehouseId.HasValue && warehouseNames.TryGetValue(dp.WarehouseId.Value, out var name) ? name : null,
+                e.Position?.Name, e.Status.ToString(),
+                dp is not null,
+                dp?.LicenseNumber, dp?.LicenseClass, dp?.LicenseExpiryDate, dp?.HealthCertExpiryDate,
+                dp?.YearsOfExperience, dp?.WarehouseId,
+                dp?.WarehouseId is int wid && warehouseNames.TryGetValue(wid, out var name) ? name : null,
+                profileStatus,
+                warnings.Count == 0 ? null : string.Join("; ", warnings),
                 availability);
         }).ToList();
     }
@@ -156,7 +185,7 @@ public class DriverService : IDriverService
     {
         var employee = await _db.Employees
             .Where(e => e.Id == employeeId)
-            .Select(e => new { e.Status, IsDriver = e.DriverProfile != null })
+            .Select(e => new { e.Status, IsDriver = e.DriverProfile != null, PositionName = e.Position != null ? e.Position.Name : null })
             .FirstOrDefaultAsync();
         if (employee is null)
             return new DriverWorkDayResult(false, "Không tìm thấy tài xế.");
@@ -164,6 +193,8 @@ public class DriverService : IDriverService
             return new DriverWorkDayResult(false, "Nhân viên này chưa có hồ sơ tài xế — không đăng ký ngày làm được.");
         if (employee.Status != EmployeeStatus.Active)
             return new DriverWorkDayResult(false, "Tài xế không ở trạng thái Đang làm việc (nghỉ phép / đã nghỉ) — không đăng ký ngày làm được.");
+        if (!DriverPositionRules.IsDriverPosition(employee.PositionName))
+            return new DriverWorkDayResult(false, $"Chức danh hiện tại \"{employee.PositionName ?? "(trống)"}\" không phải Tài xế — không đăng ký ngày làm được (sửa chức danh ở màn Nhân viên).");
 
         var from = request.FromDate.ToDateTime(TimeOnly.MinValue);
         var to = request.ToDate.ToDateTime(TimeOnly.MinValue);

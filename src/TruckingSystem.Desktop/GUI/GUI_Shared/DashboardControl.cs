@@ -1,4 +1,3 @@
-using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
@@ -178,6 +177,14 @@ namespace TruckingSystem.Desktop.GUI_Shared
             _kpiOps.Controls.Add(MakeCard("🧾", "Đơn xong chưa xuất HĐ", r.UninvoicedDoneOrders.ToString(), Theme.Warning,
                 r.UninvoicedDoneOrders > 0 ? Theme.Warning : Theme.TextPrimary,
                 r.UninvoicedDoneOrders > 0 ? "Doanh thu chưa được ghi nhận" : "Đã xuất đủ hóa đơn", null));
+            // Tỉ lệ giao ĐÚNG HẠN: đơn hoàn tất có hạn giao, ngày xong chặng Giao cuối ≤ hạn giao.
+            var judged = r.OnTimeOrders + r.LateOrders;
+            _kpiOps.Controls.Add(MakeCard("⏱️", "Giao đúng hạn",
+                judged > 0 ? ReportFormat.Percent(r.OnTimeOrders, judged) : "—",
+                Theme.Success, r.LateOrders > 0 ? Theme.Warning : Theme.TextPrimary,
+                judged > 0 ? $"Đúng hạn {r.OnTimeOrders} · Trễ {r.LateOrders} đơn" : "Chưa có đơn hoàn tất có hạn giao",
+                "Đơn hoàn tất trong kỳ có hạn giao cam kết: so ngày xong chặng Giao cuối cùng với hạn giao" +
+                (r.OrdersWithoutDeadline > 0 ? $" ({r.OrdersWithoutDeadline} đơn cũ không có hạn giao — không tính)" : "")));
             _kpiOps.Controls.Add(MakeCard("🚛", "Xe sẵn sàng (hiện tại)",
                 totalVehicles > 0 ? $"{availableVehicles}/{totalVehicles}" : "—", Theme.Success, Theme.TextPrimary,
                 totalVehicles > 0 ? "Rảnh + giấy tờ còn hạn (không phụ thuộc kỳ)" : "Không có quyền xem danh sách xe", null));
@@ -260,6 +267,7 @@ namespace TruckingSystem.Desktop.GUI_Shared
                 Sự_cố = o.IncidentCost,
                 Tổng_chi_phí = o.TotalCost,
                 Lãi_Lỗ = o.Profit,
+                Giao_hàng = o.DeliveryResult ?? "—",
                 Ghi_chú = NoteFor(o),
             }).ToList();
         }
@@ -292,6 +300,11 @@ namespace TruckingSystem.Desktop.GUI_Shared
             {
                 e.CellStyle!.ForeColor = profit < 0 ? Theme.Danger : profit > 0 ? Theme.Success : Theme.TextSecondary;
                 e.CellStyle.Font = Theme.FontBold;
+            }
+            else if (name == "Giao_hàng" && e.Value is string delivery)
+            {
+                e.CellStyle!.ForeColor = delivery == "Đúng hạn" ? Theme.Success : delivery.StartsWith("Trễ") ? Theme.Danger : Theme.TextSecondary;
+                if (delivery.StartsWith("Trễ")) e.CellStyle.Font = Theme.FontBold;
             }
             else if (name == "Ghi_chú" && e.Value is string note && note.Length > 0)
             {

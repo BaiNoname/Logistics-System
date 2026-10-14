@@ -18,7 +18,6 @@ namespace TruckingSystem.Desktop.GUI_NotificationManagement
         private void InitializeComponent()
         {
             root = new System.Windows.Forms.TableLayoutPanel();
-            header = new System.Windows.Forms.TableLayoutPanel();
             lblTitle = new System.Windows.Forms.Label();
             buttonBar = new System.Windows.Forms.FlowLayoutPanel();
             btnRefresh = new System.Windows.Forms.Button();
@@ -32,7 +31,6 @@ namespace TruckingSystem.Desktop.GUI_NotificationManagement
             lblStatus = new System.Windows.Forms.Label();
             grid = new System.Windows.Forms.DataGridView();
             root.SuspendLayout();
-            header.SuspendLayout();
             buttonBar.SuspendLayout();
             filters.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)grid).BeginInit();
@@ -40,12 +38,17 @@ namespace TruckingSystem.Desktop.GUI_NotificationManagement
             //
             // root
             //
-            root.ColumnCount = 1;
+            root.ColumnCount = 2;
             root.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            root.Controls.Add(header, 0, 0);
+            root.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.AutoSize));
+            root.Controls.Add(lblTitle, 0, 0);
+            root.Controls.Add(buttonBar, 1, 0);
             root.Controls.Add(filters, 0, 1);
             root.Controls.Add(lblStatus, 0, 2);
             root.Controls.Add(grid, 0, 3);
+            root.SetColumnSpan(filters, 2);
+            root.SetColumnSpan(lblStatus, 2);
+            root.SetColumnSpan(grid, 2);
             root.Dock = System.Windows.Forms.DockStyle.Fill;
             root.Name = "root";
             root.Padding = new System.Windows.Forms.Padding(20, 16, 20, 16);
@@ -57,29 +60,13 @@ namespace TruckingSystem.Desktop.GUI_NotificationManagement
             root.Size = new System.Drawing.Size(1000, 620);
             root.TabIndex = 0;
             //
-            // header
-            //
-            header.AutoSize = true;
-            header.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
-            header.ColumnCount = 2;
-            header.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            header.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.AutoSize));
-            header.Controls.Add(lblTitle, 0, 0);
-            header.Controls.Add(buttonBar, 1, 0);
-            header.Dock = System.Windows.Forms.DockStyle.Fill;
-            header.Margin = new System.Windows.Forms.Padding(0, 0, 0, 8);
-            header.Name = "header";
-            header.RowCount = 1;
-            header.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
-            header.TabIndex = 0;
-            //
             // lblTitle
             //
             lblTitle.Anchor = System.Windows.Forms.AnchorStyles.Left;
             lblTitle.AutoSize = true;
             lblTitle.Font = new System.Drawing.Font("Segoe UI", 13F, System.Drawing.FontStyle.Bold);
             lblTitle.ForeColor = System.Drawing.Color.FromArgb(15, 23, 42);
-            lblTitle.Margin = new System.Windows.Forms.Padding(0, 0, 12, 0);
+            lblTitle.Margin = new System.Windows.Forms.Padding(0, 0, 12, 10);
             lblTitle.Name = "lblTitle";
             lblTitle.TabIndex = 0;
             lblTitle.Text = "🔔 Thông báo";
@@ -91,10 +78,10 @@ namespace TruckingSystem.Desktop.GUI_NotificationManagement
             buttonBar.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
             buttonBar.Controls.Add(btnRefresh);
             buttonBar.Controls.Add(btnMarkAllRead);
-            buttonBar.Margin = new System.Windows.Forms.Padding(0);
+            buttonBar.Margin = new System.Windows.Forms.Padding(0, 0, 0, 10);
             buttonBar.Name = "buttonBar";
             buttonBar.TabIndex = 1;
-            buttonBar.WrapContents = true;
+            buttonBar.WrapContents = false;
             //
             // btnRefresh
             //
@@ -103,7 +90,7 @@ namespace TruckingSystem.Desktop.GUI_NotificationManagement
             btnRefresh.BackColor = System.Drawing.Color.White;
             btnRefresh.Cursor = System.Windows.Forms.Cursors.Hand;
             btnRefresh.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            btnRefresh.Font = new System.Drawing.Font("Segoe UI", 9F);
+            btnRefresh.Font = new System.Drawing.Font("Segoe UI", 9.75F);
             btnRefresh.ForeColor = System.Drawing.Color.FromArgb(15, 23, 42);
             btnRefresh.Margin = new System.Windows.Forms.Padding(0, 0, 8, 0);
             btnRefresh.MinimumSize = new System.Drawing.Size(0, 34);
@@ -121,7 +108,7 @@ namespace TruckingSystem.Desktop.GUI_NotificationManagement
             btnMarkAllRead.BackColor = System.Drawing.Color.White;
             btnMarkAllRead.Cursor = System.Windows.Forms.Cursors.Hand;
             btnMarkAllRead.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            btnMarkAllRead.Font = new System.Drawing.Font("Segoe UI", 9F);
+            btnMarkAllRead.Font = new System.Drawing.Font("Segoe UI", 9.75F);
             btnMarkAllRead.ForeColor = System.Drawing.Color.FromArgb(15, 23, 42);
             btnMarkAllRead.Margin = new System.Windows.Forms.Padding(0);
             btnMarkAllRead.MinimumSize = new System.Drawing.Size(0, 34);
@@ -233,8 +220,6 @@ namespace TruckingSystem.Desktop.GUI_NotificationManagement
             Name = "NotificationsForm";
             StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
             Text = "Thông báo";
-            header.ResumeLayout(false);
-            header.PerformLayout();
             buttonBar.ResumeLayout(false);
             buttonBar.PerformLayout();
             filters.ResumeLayout(false);
@@ -248,7 +233,6 @@ namespace TruckingSystem.Desktop.GUI_NotificationManagement
         #endregion
 
         private System.Windows.Forms.TableLayoutPanel root;
-        private System.Windows.Forms.TableLayoutPanel header;
         private System.Windows.Forms.FlowLayoutPanel buttonBar;
         private System.Windows.Forms.TableLayoutPanel filters;
         private System.Windows.Forms.Label lblTitle;

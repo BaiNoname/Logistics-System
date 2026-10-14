@@ -21,7 +21,6 @@
             lblTitle = new System.Windows.Forms.Label();
             toolbar = new System.Windows.Forms.FlowLayoutPanel();
             btnRefresh = new System.Windows.Forms.Button();
-            btnAddDriver = new System.Windows.Forms.Button();
             btnEditProfile = new System.Windows.Forms.Button();
             btnSchedule = new System.Windows.Forms.Button();
             lblStatus = new System.Windows.Forms.Label();
@@ -66,7 +65,6 @@
             toolbar.AutoSize = true;
             toolbar.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
             toolbar.Controls.Add(btnRefresh);
-            toolbar.Controls.Add(btnAddDriver);
             toolbar.Controls.Add(btnEditProfile);
             toolbar.Controls.Add(btnSchedule);
             toolbar.Dock = System.Windows.Forms.DockStyle.Fill;
@@ -96,26 +94,6 @@
             btnRefresh.UseVisualStyleBackColor = false;
             btnRefresh.Click += new System.EventHandler(this.BtnRefresh_Click);
             // 
-            // btnAddDriver
-            // 
-            btnAddDriver.AutoSize = true;
-            btnAddDriver.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
-            btnAddDriver.BackColor = System.Drawing.Color.FromArgb(37, 99, 235);
-            btnAddDriver.Cursor = System.Windows.Forms.Cursors.Hand;
-            btnAddDriver.FlatAppearance.BorderSize = 0;
-            btnAddDriver.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(29, 78, 216);
-            btnAddDriver.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            btnAddDriver.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
-            btnAddDriver.ForeColor = System.Drawing.Color.White;
-            btnAddDriver.Margin = new System.Windows.Forms.Padding(0, 0, 8, 8);
-            btnAddDriver.MinimumSize = new System.Drawing.Size(0, 38);
-            btnAddDriver.Name = "btnAddDriver";
-            btnAddDriver.Padding = new System.Windows.Forms.Padding(10, 4, 10, 4);
-            btnAddDriver.TabIndex = 1;
-            btnAddDriver.Text = "➕ Thêm tài xế";
-            btnAddDriver.UseVisualStyleBackColor = false;
-            btnAddDriver.Click += new System.EventHandler(this.BtnAddDriver_Click);
-            // 
             // btnEditProfile
             // 
             btnEditProfile.AutoSize = true;
@@ -132,8 +110,8 @@
             btnEditProfile.MinimumSize = new System.Drawing.Size(0, 38);
             btnEditProfile.Name = "btnEditProfile";
             btnEditProfile.Padding = new System.Windows.Forms.Padding(10, 4, 10, 4);
-            btnEditProfile.TabIndex = 2;
-            btnEditProfile.Text = "✏️ Sửa hồ sơ";
+            btnEditProfile.TabIndex = 1;
+            btnEditProfile.Text = "📝 Hồ sơ tài xế";
             btnEditProfile.UseVisualStyleBackColor = false;
             btnEditProfile.Click += new System.EventHandler(this.BtnEditProfile_Click);
             // 
@@ -153,7 +131,7 @@
             btnSchedule.MinimumSize = new System.Drawing.Size(0, 38);
             btnSchedule.Name = "btnSchedule";
             btnSchedule.Padding = new System.Windows.Forms.Padding(10, 4, 10, 4);
-            btnSchedule.TabIndex = 3;
+            btnSchedule.TabIndex = 2;
             btnSchedule.Text = "📅 Ngày làm";
             btnSchedule.UseVisualStyleBackColor = false;
             btnSchedule.Click += new System.EventHandler(this.BtnSchedule_Click);
@@ -175,6 +153,7 @@
             grid.Margin = new System.Windows.Forms.Padding(0);
             grid.Name = "grid";
             grid.TabIndex = 3;
+            grid.CellDoubleClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.Grid_CellDoubleClick);
             // 
             // DriversControl
             // 
@@ -198,7 +177,6 @@
         private System.Windows.Forms.Label lblTitle;
         private System.Windows.Forms.FlowLayoutPanel toolbar;
         private System.Windows.Forms.Button btnRefresh;
-        private System.Windows.Forms.Button btnAddDriver;
         private System.Windows.Forms.Button btnEditProfile;
         private System.Windows.Forms.Button btnSchedule;
         private System.Windows.Forms.Label lblStatus;

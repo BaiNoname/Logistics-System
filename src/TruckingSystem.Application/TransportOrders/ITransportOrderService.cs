@@ -18,4 +18,8 @@ public interface ITransportOrderService
     /// <summary>-> Cancelled. CHỈ cho phép khi đơn còn Draft hoặc Confirmed
     /// (chưa có xe chạy) — không cho hủy khi đã InProgress/Done.</summary>
     Task<OrderActionResult> CancelAsync(int id);
+
+    /// <summary>Đổi / bổ sung hạn giao cho đơn Đã xác nhận hoặc Đang chạy (đơn Nháp sửa qua
+    /// Sửa đơn). Bắt buộc lý do, không chọn ngày đã qua, ghi nhật ký người đổi.</summary>
+    Task<OrderActionResult> ChangeDeadlineAsync(int id, ChangeDeadlineRequest request, string? userId, string? userName);
 }

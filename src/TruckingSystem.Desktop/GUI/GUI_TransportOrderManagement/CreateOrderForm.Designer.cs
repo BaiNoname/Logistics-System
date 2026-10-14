@@ -34,7 +34,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             btnAddDropoffLocation = new System.Windows.Forms.Button();
             lblCommitted = new System.Windows.Forms.Label();
             dtCommitted = new System.Windows.Forms.DateTimePicker();
-            chkHasCommittedDate = new System.Windows.Forms.CheckBox();
+            lblDeadlineHint = new System.Windows.Forms.Label();
             lblPickupMethod = new System.Windows.Forms.Label();
             pickupMethodBar = new System.Windows.Forms.FlowLayoutPanel();
             rbCompanyPickup = new System.Windows.Forms.RadioButton();
@@ -116,15 +116,16 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             fields.Controls.Add(btnAddDropoffLocation, 2, 4);
             fields.Controls.Add(lblCommitted, 0, 5);
             fields.Controls.Add(dtCommitted, 1, 5);
-            fields.Controls.Add(chkHasCommittedDate, 2, 5);
-            fields.Controls.Add(lblPickupMethod, 0, 6);
-            fields.Controls.Add(pickupMethodBar, 1, 6);
-            fields.Controls.Add(lblWarehouse, 0, 7);
-            fields.Controls.Add(cboWarehouse, 1, 7);
+            fields.Controls.Add(lblDeadlineHint, 1, 6);
+            fields.Controls.Add(lblPickupMethod, 0, 7);
+            fields.Controls.Add(pickupMethodBar, 1, 7);
+            fields.Controls.Add(lblWarehouse, 0, 8);
+            fields.Controls.Add(cboWarehouse, 1, 8);
             fields.Dock = System.Windows.Forms.DockStyle.Top;
             fields.Margin = new System.Windows.Forms.Padding(0);
             fields.Name = "fields";
-            fields.RowCount = 8;
+            fields.RowCount = 9;
+            fields.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
             fields.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
             fields.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
             fields.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
@@ -261,7 +262,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             lblCommitted.Margin = new System.Windows.Forms.Padding(0, 4, 12, 4);
             lblCommitted.Name = "lblCommitted";
             lblCommitted.TabIndex = 12;
-            lblCommitted.Text = "Ngày hẹn giao:";
+            lblCommitted.Text = "Hạn giao cam kết: *";
             //
             // dtCommitted
             //
@@ -270,15 +271,17 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             dtCommitted.Name = "dtCommitted";
             dtCommitted.TabIndex = 13;
             //
-            // chkHasCommittedDate
+            // lblDeadlineHint — ước tính số ngày chạy của tuyến + gợi ý hạn giao (điền ở CreateOrderForm.cs)
             //
-            chkHasCommittedDate.Anchor = System.Windows.Forms.AnchorStyles.Left;
-            chkHasCommittedDate.AutoSize = true;
-            chkHasCommittedDate.Margin = new System.Windows.Forms.Padding(0, 4, 0, 4);
-            chkHasCommittedDate.Name = "chkHasCommittedDate";
-            chkHasCommittedDate.TabIndex = 14;
-            chkHasCommittedDate.Text = "Có hẹn giao";
-            chkHasCommittedDate.UseVisualStyleBackColor = true;
+            lblDeadlineHint.Anchor = System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
+            lblDeadlineHint.AutoSize = true;
+            fields.SetColumnSpan(lblDeadlineHint, 2);
+            lblDeadlineHint.Font = new System.Drawing.Font("Segoe UI", 9F);
+            lblDeadlineHint.ForeColor = System.Drawing.Color.FromArgb(100, 116, 139);
+            lblDeadlineHint.Margin = new System.Windows.Forms.Padding(0, 0, 0, 6);
+            lblDeadlineHint.Name = "lblDeadlineHint";
+            lblDeadlineHint.TabIndex = 14;
+            lblDeadlineHint.Text = "Chọn địa điểm lấy / giao và kho để hệ thống ước tính số ngày chạy và gợi ý hạn giao.";
             //
             // lblPickupMethod
             //
@@ -530,7 +533,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
         private System.Windows.Forms.ComboBox cboDropoffLocation;
         private System.Windows.Forms.Label lblCommitted;
         private System.Windows.Forms.DateTimePicker dtCommitted;
-        private System.Windows.Forms.CheckBox chkHasCommittedDate;
+        private System.Windows.Forms.Label lblDeadlineHint;
         private System.Windows.Forms.Label lblPickupMethod;
         private System.Windows.Forms.RadioButton rbCompanyPickup;
         private System.Windows.Forms.RadioButton rbSelfDelivery;
