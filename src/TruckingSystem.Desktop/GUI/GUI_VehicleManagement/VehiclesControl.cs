@@ -13,7 +13,6 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
             InitializeComponent();
             Theme.StyleGrid(grid);
             grid.DataBindingComplete += (_, _) => { if (grid.Columns["Id"] != null) grid.Columns["Id"]!.Visible = false; };
-            Resize += (_, _) => { grid.Width = Width; grid.Height = Height - grid.Top; };
             // Sửa xe / Giấy tờ xe chỉ bấm được khi đã chọn 1 xe
             grid.SelectionChanged += (_, _) => btnEdit.Enabled = btnDocuments.Enabled = grid.CurrentRow is not null;
             grid.DataBindingComplete += (_, _) => btnEdit.Enabled = btnDocuments.Enabled = grid.CurrentRow is not null;

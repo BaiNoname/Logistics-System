@@ -76,7 +76,8 @@ public static class DbSeeder
         {
             EmployeeId = driverEmployee.Id,
             LicenseNumber = "B2-000000",
-            LicenseClass = "B2",
+            // Hạng C: tài xế mẫu này chạy xe tải 5 tấn (51C-123.45) — B2 chỉ được lái xe đến 3,5 tấn.
+            LicenseClass = "C",
             LicenseExpiryDate = DateTime.UtcNow.AddYears(3),
             YearsOfExperience = 5,
         });

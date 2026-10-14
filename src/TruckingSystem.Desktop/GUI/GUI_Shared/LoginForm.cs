@@ -5,7 +5,8 @@ namespace TruckingSystem.Desktop.GUI_Shared
     /// <summary>Logic — đăng nhập + animation xe tải chạy trên banner. Khung tĩnh
     /// (banner, form đăng nhập) nằm ở LoginForm.Designer.cs. Riêng xe tải (vẽ tay
     /// bằng GDI+) và animation (Timer) vẫn ở code vì bản chất là nội dung ĐỘNG,
-    /// Designer không vẽ hoạt ảnh được.</summary>
+    /// Designer không vẽ hoạt ảnh được — xe chạy trong truckCanvas (khai báo ở Designer),
+    /// tọa độ tính theo kích thước thật của truckCanvas và nhân theo DPI.</summary>
     public partial class LoginForm : BaseForm
     {
         /// <summary>Phát ra khi đăng nhập thành công — TruckingAppContext lắng nghe để
@@ -16,8 +17,6 @@ namespace TruckingSystem.Desktop.GUI_Shared
         public event EventHandler? ExitRequested;
 
         // ---- Animation xe tải chạy + quăng thùng hàng ----
-        private const int BannerWidth = 460;
-        private const int RoadY = 460;
         private const int LoopTotalTicks = 150;
         private const int TossTicks = 40;
         private const int ArcHeight = 55;
@@ -41,12 +40,11 @@ namespace TruckingSystem.Desktop.GUI_Shared
         /// báo giao diện tĩnh.</summary>
         private void SetupTruckAnimation()
         {
-            _picTruck = CreateTruckPictureBox(Theme.SidebarBg, 70, 40);
-            _picTruck.Top = RoadY;
+            _picTruck = CreateTruckPictureBox(Theme.SidebarBg, 70, 40, DeviceDpi / 96f);
             _lblBox = new Label { Text = "📦", Font = new Font("Segoe UI Emoji", 20), ForeColor = Color.White, AutoSize = true, BackColor = Color.Transparent, Visible = false };
 
-            bannerPanel.Controls.Add(_lblBox); // thêm thùng hàng TRƯỚC xe để xe "đè" lên khi cần
-            bannerPanel.Controls.Add(_picTruck);
+            truckCanvas.Controls.Add(_lblBox); // thêm thùng hàng TRƯỚC xe để xe "đè" lên khi cần
+            truckCanvas.Controls.Add(_picTruck);
 
             _animTimer.Tick += AnimTimer_Tick;
             _animTimer.Start();
@@ -54,14 +52,18 @@ namespace TruckingSystem.Desktop.GUI_Shared
         }
 
         /// <summary>Vẽ 1 chiếc xe tải đơn giản (thùng hàng + cabin + 2 bánh xe) quay
-        /// đầu sang PHẢI — khớp đúng hướng chạy trái→phải, không phụ thuộc font/emoji.</summary>
-        private static PictureBox CreateTruckPictureBox(Color bgColor, int width, int height)
+        /// đầu sang PHẢI — khớp đúng hướng chạy trái→phải, không phụ thuộc font/emoji.
+        /// width/height là kích thước ở 96 DPI; scale = DPI hiện tại / 96 -> xe to đúng tỉ lệ
+        /// trên màn hình phóng to 125% / 150%.</summary>
+        private static PictureBox CreateTruckPictureBox(Color bgColor, int width, int height, float scale)
         {
-            var bmp = new Bitmap(width, height);
+            if (scale <= 0) scale = 1f;
+            var bmp = new Bitmap((int)Math.Ceiling(width * scale), (int)Math.Ceiling(height * scale));
             using (var g = Graphics.FromImage(bmp))
             {
                 g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
                 g.Clear(bgColor);
+                g.ScaleTransform(scale, scale);
 
                 using var bodyBrush = new SolidBrush(Color.White);
                 using var wheelBrush = new SolidBrush(ColorTranslator.FromHtml("#94A3B8"));
@@ -77,8 +79,6 @@ namespace TruckingSystem.Desktop.GUI_Shared
             return new PictureBox
             {
                 Image = bmp,
-                Width = width,
-                Height = height,
                 SizeMode = PictureBoxSizeMode.AutoSize,
                 BackColor = bgColor,
             };
@@ -92,17 +92,21 @@ namespace TruckingSystem.Desktop.GUI_Shared
 
             _tick = (_tick + 1) % LoopTotalTicks;
 
+            // Tọa độ trong truckCanvas (vùng vẽ hoạt ảnh): xe chạy sát mép dưới (ngay trên
+            // vạch đường), bề ngang theo truckCanvas thật -> đúng ở mọi kích thước / DPI.
+            var canvas = truckCanvas.ClientSize;
             double truckProgress = (double)_tick / LoopTotalTicks;
-            int truckX = (int)(-90 + truckProgress * (BannerWidth + 110));
-            _picTruck.Left = truckX;
+            int truckX = (int)(-LogicalToDeviceUnits(90) + truckProgress * (canvas.Width + LogicalToDeviceUnits(110)));
+            int truckY = Math.Max(0, canvas.Height - _picTruck.Height - LogicalToDeviceUnits(4));
+            _picTruck.Location = new Point(truckX, truckY);
 
             if (_tick < TossTicks)
             {
                 double t = (double)_tick / TossTicks;
-                int liftOffset = (int)(ArcHeight * 4 * t * (1 - t));
+                int liftOffset = (int)(LogicalToDeviceUnits(ArcHeight) * 4 * t * (1 - t));
 
-                _lblBox.Left = truckX + 4;
-                _lblBox.Top = RoadY - liftOffset - 6;
+                _lblBox.Left = truckX + LogicalToDeviceUnits(4);
+                _lblBox.Top = truckY - liftOffset - LogicalToDeviceUnits(6);
                 _lblBox.Visible = true;
             }
             else
@@ -128,10 +132,6 @@ namespace TruckingSystem.Desktop.GUI_Shared
             btnLogin.Text = "Đang đăng nhập...";
             try
             {
-                if (CheckLengthAccPass(txtUsername.Text.Trim(), txtPassword.Text) != 0)
-                {
-                    return;
-                }
                 var api = new ApiServices(txtServerUrl.Text.Trim());
                 var result = await api.Auth.LoginAsync(txtUsername.Text.Trim(), txtPassword.Text);
 
@@ -185,27 +185,6 @@ namespace TruckingSystem.Desktop.GUI_Shared
                         MessageBoxIcon.Error);
                 }
             }
-        }
-
-        private int CheckLengthAccPass(string acc, string pass)
-        {
-            switch (acc.Length)
-            {
-
-                case > 20:
-                    lblStatus.Text = "❌ Tài khoản không được vượt quá 20 ký tự.";
-                    return -1;
-            }
-
-            switch (pass.Length)
-            {
-
-                case > 20:
-                    lblStatus.Text = "❌ Mật khẩu không được vượt quá 20 ký tự.";
-                    return -2;
-            }
-
-            return 0;
         }
     }
 }

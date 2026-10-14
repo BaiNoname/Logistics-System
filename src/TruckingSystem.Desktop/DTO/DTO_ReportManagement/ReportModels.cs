@@ -32,6 +32,11 @@
         public decimal FuelNormCostCompared { get; set; }
         public int FuelComparedTripCount { get; set; }
         public List<FuelControlRowItem>? FuelControl { get; set; }
+
+        // ---- Giao đúng hạn (đơn hoàn tất có hạn giao) ----
+        public int OnTimeOrders { get; set; }
+        public int LateOrders { get; set; }
+        public int OrdersWithoutDeadline { get; set; }
     }
 
     /// <summary>1 chuyến đã chạy trong bảng "Kiểm soát nhiên liệu".</summary>
@@ -86,6 +91,8 @@
         public decimal IncidentCost { get; set; }
         public decimal TotalCost { get; set; }
         public decimal Profit { get; set; }
+        /// <summary>"Đúng hạn" / "Trễ N ngày" / null (chưa xong hoặc không có hạn giao).</summary>
+        public string? DeliveryResult { get; set; }
     }
 
     public class OrderCostDetail

@@ -29,55 +29,15 @@ namespace TruckingSystem.Desktop.GUI_Shared
             ColorTranslator.FromHtml("#DB2777"), ColorTranslator.FromHtml("#65A30D"), ColorTranslator.FromHtml("#64748B"),
         };
 
-        private readonly Panel _root = new() { Dock = DockStyle.Fill, AutoScroll = true };
-        private readonly Label _lblTitle = new() { Text = "📊 Tổng quan & Lãi / Lỗ", Font = Theme.FontTitle, ForeColor = Theme.TextPrimary, AutoSize = true, Top = 0 };
-        private readonly FlowLayoutPanel _filterBar = new() { Top = 46, Height = 40, WrapContents = false };
-        private readonly ComboBox _cboPeriod = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 160, Margin = new Padding(0, 4, 12, 0) };
-        private readonly DateTimePicker _dtpFrom = new() { Format = DateTimePickerFormat.Custom, CustomFormat = "dd/MM/yyyy", Width = 120, Margin = new Padding(0, 4, 6, 0) };
-        private readonly DateTimePicker _dtpTo = new() { Format = DateTimePickerFormat.Custom, CustomFormat = "dd/MM/yyyy", Width = 120, Margin = new Padding(0, 4, 12, 0) };
-        private readonly Button _btnRefresh = Theme.MakePrimaryButton("🔄 Xem báo cáo", 150, 32);
-        private readonly Label _lblStatus = new() { AutoSize = true, Font = Theme.FontSmall, ForeColor = Theme.TextSecondary, Margin = new Padding(12, 10, 0, 0) };
-        private readonly FlowLayoutPanel _kpiFinance = new() { Top = 94, Height = 120, WrapContents = false };
-        private readonly FlowLayoutPanel _kpiOps = new() { Top = 222, Height = 120, WrapContents = false };
-        private readonly ChartPanel _chartMonthly = new() { Top = 354, Height = 290 };
-        private readonly ChartPanel _chartCosts = new() { Top = 354, Height = 290 };
-        private readonly Label _lblGridTitle = new()
-        {
-            Text = "📋 Lãi / Lỗ từng đơn (lỗ nặng nhất lên đầu) — double-click 1 đơn để xem chi tiết từng khoản chi",
-            Font = Theme.FontSectionTitle,
-            ForeColor = Theme.TextPrimary,
-            AutoSize = true,
-            Top = 660,
-        };
-        private readonly DataGridView _grid = new() { Top = 694, Height = 420 };
-
-        // ---- Kiểm soát nhiên liệu: Dự toán (VietMap) · Định mức (GPS) · Thực đổ (hóa đơn) ----
-        private readonly Label _lblFuelTitle = new()
-        {
-            Text = "⛽ Kiểm soát nhiên liệu — so sánh Dự toán (VietMap) · Định mức theo GPS thực tế · Thực đổ (hóa đơn)",
-            Font = Theme.FontSectionTitle,
-            ForeColor = Theme.TextPrimary,
-            AutoSize = true,
-            Top = 1134,
-        };
-        private readonly FlowLayoutPanel _kpiFuel = new() { Top = 1168, Height = 120, WrapContents = false };
-        private readonly Label _lblFuelNote = new()
-        {
-            AutoSize = false,
-            Height = 40,
-            Top = 1294,
-            Font = Theme.FontSmall,
-            ForeColor = Theme.TextSecondary,
-            Text = "Định mức = km GPS × L/100km của xe × giá nhiên liệu ngày chạy (bảng giá ở màn Nhiên liệu). " +
-                   "Dòng tô đỏ: lệch quá 15% (km GPS so với km VietMap — có thể chạy vòng/lệch tuyến; hoặc tiền thực đổ so với định mức — có thể hao hụt). " +
-                   "Chuyến chưa nhập hóa đơn xăng thì lãi/lỗ tạm tính theo định mức.",
-        };
-        private readonly DataGridView _gridFuel = new() { Top = 1338, Height = 360 };
-
         public DashboardControl()
         {
+            // Khung tĩnh (tiêu đề, thanh lọc, hàng thẻ, biểu đồ, bảng) nằm ở DashboardControl.Designer.cs
+            // — bố cục TableLayoutPanel/FlowLayoutPanel tự co giãn, không còn tính tọa độ bằng code.
             InitializeComponent();
-            BuildLayout();
+            _cboPeriod.SelectedIndex = 1;
+            ApplyPeriod();
+            Theme.StyleGrid(_grid);
+            Theme.StyleGrid(_gridFuel);
             Load += async (_, _) => await LoadAsync();
         }
 
@@ -86,72 +46,15 @@ namespace TruckingSystem.Desktop.GUI_Shared
             _api = api;
         }
 
-        // ================= Dựng bố cục =================
+        // ================= Thanh lọc =================
 
-        private void BuildLayout()
+        private async void CboPeriod_SelectedIndexChanged(object? sender, EventArgs e)
         {
-            _btnRefresh.Margin = new Padding(0, 0, 0, 0);
-            _cboPeriod.Items.AddRange(new object[] { "Tháng này", "3 tháng gần nhất", "Năm nay", "Tất cả", "Tùy chọn" });
-            _cboPeriod.SelectedIndex = 1;
             ApplyPeriod();
-            _cboPeriod.SelectedIndexChanged += async (_, _) =>
-            {
-                ApplyPeriod();
-                if (_cboPeriod.SelectedIndex != 4) await LoadAsync(); // "Tùy chọn": chọn ngày xong mới bấm Xem báo cáo
-            };
-            _btnRefresh.Click += async (_, _) => await LoadAsync();
-
-            _filterBar.Controls.AddRange(new Control[]
-            {
-                FilterLabel("Kỳ báo cáo:"), _cboPeriod, FilterLabel("Từ"), _dtpFrom, FilterLabel("đến"), _dtpTo, _btnRefresh, _lblStatus,
-            });
-
-            Theme.StyleGrid(_grid);
-            _grid.DataBindingComplete += Grid_DataBindingComplete;
-            _grid.CellFormatting += Grid_CellFormatting;
-            _grid.CellDoubleClick += Grid_CellDoubleClick;
-
-            _chartMonthly.Paint += (_, e) => PaintMonthlyChart(e.Graphics, _chartMonthly.ClientRectangle);
-            _chartCosts.Paint += (_, e) => PaintCostChart(e.Graphics, _chartCosts.ClientRectangle);
-
-            Theme.StyleGrid(_gridFuel);
-            _gridFuel.DataBindingComplete += GridFuel_DataBindingComplete;
-            _gridFuel.CellFormatting += GridFuel_CellFormatting;
-
-            _root.Controls.AddRange(new Control[] { _lblTitle, _filterBar, _kpiFinance, _kpiOps, _chartMonthly, _chartCosts, _lblGridTitle, _grid,
-                _lblFuelTitle, _kpiFuel, _lblFuelNote, _gridFuel });
-            Controls.Add(_root);
-
-            _root.Resize += (_, _) => LayoutChildren();
-            LayoutChildren();
+            if (_cboPeriod.SelectedIndex != 4) await LoadAsync(); // "Tùy chọn": chọn ngày xong mới bấm Xem báo cáo
         }
 
-        private static Label FilterLabel(string text) => new()
-        {
-            Text = text,
-            AutoSize = true,
-            Font = Theme.FontNormal,
-            ForeColor = Theme.TextSecondary,
-            Margin = new Padding(0, 8, 6, 0),
-        };
-
-        /// <summary>Co giãn theo chiều ngang khung nhìn: 2 biểu đồ chia đôi, bảng
-        /// và các hàng thẻ trải hết chiều rộng. Cộng AutoScrollPosition để đặt đúng
-        /// vị trí cả khi đang cuộn.</summary>
-        private void LayoutChildren()
-        {
-            var x = _root.AutoScrollPosition.X;
-            var w = Math.Max(900, _root.ClientSize.Width - 24);
-            foreach (var c in new Control[] { _lblTitle, _filterBar, _kpiFinance, _kpiOps, _lblGridTitle, _grid, _lblFuelTitle, _kpiFuel, _lblFuelNote, _gridFuel }) c.Left = x;
-            _filterBar.Width = _kpiFinance.Width = _kpiOps.Width = _grid.Width = w;
-            _kpiFuel.Width = _lblFuelNote.Width = _gridFuel.Width = w;
-
-            var half = (w - 16) / 2;
-            _chartMonthly.Left = x;
-            _chartMonthly.Width = half;
-            _chartCosts.Left = x + half + 16;
-            _chartCosts.Width = half;
-        }
+        private async void BtnRefresh_Click(object? sender, EventArgs e) => await LoadAsync();
 
         private void ApplyPeriod()
         {
@@ -274,37 +177,67 @@ namespace TruckingSystem.Desktop.GUI_Shared
             _kpiOps.Controls.Add(MakeCard("🧾", "Đơn xong chưa xuất HĐ", r.UninvoicedDoneOrders.ToString(), Theme.Warning,
                 r.UninvoicedDoneOrders > 0 ? Theme.Warning : Theme.TextPrimary,
                 r.UninvoicedDoneOrders > 0 ? "Doanh thu chưa được ghi nhận" : "Đã xuất đủ hóa đơn", null));
+            // Tỉ lệ giao ĐÚNG HẠN: đơn hoàn tất có hạn giao, ngày xong chặng Giao cuối ≤ hạn giao.
+            var judged = r.OnTimeOrders + r.LateOrders;
+            _kpiOps.Controls.Add(MakeCard("⏱️", "Giao đúng hạn",
+                judged > 0 ? ReportFormat.Percent(r.OnTimeOrders, judged) : "—",
+                Theme.Success, r.LateOrders > 0 ? Theme.Warning : Theme.TextPrimary,
+                judged > 0 ? $"Đúng hạn {r.OnTimeOrders} · Trễ {r.LateOrders} đơn" : "Chưa có đơn hoàn tất có hạn giao",
+                "Đơn hoàn tất trong kỳ có hạn giao cam kết: so ngày xong chặng Giao cuối cùng với hạn giao" +
+                (r.OrdersWithoutDeadline > 0 ? $" ({r.OrdersWithoutDeadline} đơn cũ không có hạn giao — không tính)" : "")));
             _kpiOps.Controls.Add(MakeCard("🚛", "Xe sẵn sàng (hiện tại)",
                 totalVehicles > 0 ? $"{availableVehicles}/{totalVehicles}" : "—", Theme.Success, Theme.TextPrimary,
                 totalVehicles > 0 ? "Rảnh + giấy tờ còn hạn (không phụ thuộc kỳ)" : "Không có quyền xem danh sách xe", null));
         }
 
-        private static Panel MakeCard(string icon, string label, string value, Color accent, Color valueColor, string sub, string? tooltip)
+        /// <summary>Thẻ số liệu (sinh theo dữ liệu nên tạo bằng code). Bên trong là TableLayoutPanel
+        /// (biểu tượng + nhãn / giá trị / dòng phụ) — không tọa độ cứng; bề ngang/cao thẻ nhân theo
+        /// DPI (LogicalToDeviceUnits) và FlowLayoutPanel chứa thẻ tự xuống dòng khi hẹp.</summary>
+        private Panel MakeCard(string icon, string label, string value, Color accent, Color valueColor, string sub, string? tooltip)
         {
-            var card = new Panel { Width = 220, Height = 110, Margin = new Padding(0, 0, 14, 0), BackColor = Theme.CardBg };
+            int S(int v) => LogicalToDeviceUnits(v);
+
+            var card = new TableLayoutPanel
+            {
+                Size = new Size(S(220), S(110)),
+                Margin = new Padding(0, 0, S(14), S(10)),
+                Padding = new Padding(S(14), S(8), S(8), S(6)),
+                BackColor = Theme.CardBg,
+                ColumnCount = 2,
+                RowCount = 3,
+            };
+            card.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            card.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            card.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            card.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            card.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             card.Paint += (_, e) =>
             {
                 using var pen = new Pen(Theme.BorderColor);
                 e.Graphics.DrawRectangle(pen, 0, 0, card.Width - 1, card.Height - 1);
                 using var brush = new SolidBrush(accent);
-                e.Graphics.FillRectangle(brush, 0, 0, 4, card.Height);
+                e.Graphics.FillRectangle(brush, 0, 0, S(4), card.Height);
             };
 
-            var lblIcon = new Label { Text = icon, Font = KpiIconFont, AutoSize = true, Left = 14, Top = 8 };
-            var lblLabel = new Label { Text = label, Font = Theme.FontSmall, ForeColor = Theme.TextSecondary, AutoSize = true, Left = 46, Top = 14 };
-            var lblValue = new Label { Text = value, Font = KpiValueFont, ForeColor = valueColor, AutoSize = true, Left = 14, Top = 38 };
+            var lblIcon = new Label { Text = icon, Font = KpiIconFont, AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, 0, S(6), 0) };
+            var lblLabel = new Label { Text = label, Font = Theme.FontSmall, ForeColor = Theme.TextSecondary, AutoSize = true, Anchor = AnchorStyles.Left, Margin = Padding.Empty };
+            var lblValue = new Label { Text = value, Font = KpiValueFont, ForeColor = valueColor, AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, S(2), 0, 0) };
             var lblSub = new Label
             {
                 Text = sub,
                 Font = Theme.FontSmall,
                 ForeColor = Theme.TextSecondary,
-                Left = 14,
-                Top = 80,
-                Width = card.Width - 22,
-                Height = 20,
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.BottomLeft,
                 AutoEllipsis = true,
+                Margin = Padding.Empty,
             };
-            card.Controls.AddRange(new Control[] { lblIcon, lblLabel, lblValue, lblSub });
+            card.Controls.Add(lblIcon, 0, 0);
+            card.Controls.Add(lblLabel, 1, 0);
+            card.Controls.Add(lblValue, 0, 1);
+            card.SetColumnSpan(lblValue, 2);
+            card.Controls.Add(lblSub, 0, 2);
+            card.SetColumnSpan(lblSub, 2);
 
             if (tooltip is not null)
             {
@@ -334,6 +267,7 @@ namespace TruckingSystem.Desktop.GUI_Shared
                 Sự_cố = o.IncidentCost,
                 Tổng_chi_phí = o.TotalCost,
                 Lãi_Lỗ = o.Profit,
+                Giao_hàng = o.DeliveryResult ?? "—",
                 Ghi_chú = NoteFor(o),
             }).ToList();
         }
@@ -366,6 +300,11 @@ namespace TruckingSystem.Desktop.GUI_Shared
             {
                 e.CellStyle!.ForeColor = profit < 0 ? Theme.Danger : profit > 0 ? Theme.Success : Theme.TextSecondary;
                 e.CellStyle.Font = Theme.FontBold;
+            }
+            else if (name == "Giao_hàng" && e.Value is string delivery)
+            {
+                e.CellStyle!.ForeColor = delivery == "Đúng hạn" ? Theme.Success : delivery.StartsWith("Trễ") ? Theme.Danger : Theme.TextSecondary;
+                if (delivery.StartsWith("Trễ")) e.CellStyle.Font = Theme.FontBold;
             }
             else if (name == "Ghi_chú" && e.Value is string note && note.Length > 0)
             {
@@ -481,15 +420,9 @@ namespace TruckingSystem.Desktop.GUI_Shared
 
         // ================= Biểu đồ (vẽ tay, không cần thư viện ngoài) =================
 
-        private sealed class ChartPanel : Panel
-        {
-            public ChartPanel()
-            {
-                DoubleBuffered = true;
-                ResizeRedraw = true;
-                BackColor = Theme.CardBg;
-            }
-        }
+        private void ChartMonthly_Paint(object? sender, PaintEventArgs e) => PaintMonthlyChart(e.Graphics, _chartMonthly.ClientRectangle);
+
+        private void ChartCosts_Paint(object? sender, PaintEventArgs e) => PaintCostChart(e.Graphics, _chartCosts.ClientRectangle);
 
         private static void DrawFrame(Graphics g, Rectangle rect, string title)
         {
@@ -610,6 +543,19 @@ namespace TruckingSystem.Desktop.GUI_Shared
             {
                 g.DrawString($"… và {data.Count - rows} loại chi phí khác", Theme.FontSmall, subBrush, 14, top + rows * rowH);
             }
+        }
+    }
+
+    /// <summary>Khung biểu đồ vẽ tay (nền trắng, chống nháy, vẽ lại khi đổi cỡ). Khai báo ở
+    /// DashboardControl.Designer.cs; phần vẽ nằm ở DashboardControl (PaintMonthlyChart /
+    /// PaintCostChart).</summary>
+    public sealed class DashboardChartPanel : Panel
+    {
+        public DashboardChartPanel()
+        {
+            DoubleBuffered = true;
+            ResizeRedraw = true;
+            BackColor = Theme.CardBg;
         }
     }
 }

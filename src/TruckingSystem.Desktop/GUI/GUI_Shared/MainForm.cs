@@ -43,26 +43,18 @@ namespace TruckingSystem.Desktop.GUI_Shared
         public MainForm(ApiServices api, string username) : this()
         {
             _api = api;
-            BuildSidebar();
-            BuildTopBar(username);
+            lblUser.Text = username;
+            lblRole.Text = RoleText(api.Connection.Roles);
+            BuildNavButtons();
             NavigateTo(_navButtons[0], () => new DashboardControl(_api));
         }
 
-        private void BuildSidebar()
+        /// <summary>Sinh các nút điều hướng theo quyền (role) vào navPanel (khai báo ở Designer).
+        /// Không dùng tọa độ: navPanel là FlowLayoutPanel xếp dọc; bề ngang nút bám theo bề
+        /// ngang navPanel (xem NavPanel_ClientSizeChanged), chiều cao nhân theo DPI.</summary>
+        private void BuildNavButtons()
         {
             if (_api is null) return;
-
-            var logoPanel = new Panel { Dock = DockStyle.Top, Height = 70 };
-            var logo = new Label
-            {
-                Text = "🚚 TruckingSystem",
-                ForeColor = Color.White,
-                Font = new Font("Segoe UI", 13, FontStyle.Bold),
-                Dock = DockStyle.Fill,
-                TextAlign = ContentAlignment.MiddleLeft,
-                Padding = new Padding(20, 0, 0, 0),
-            };
-            logoPanel.Controls.Add(logo);
 
             var navItems = new (string Icon, string Text, string[] Roles, Func<Control> Build)[]
             {
@@ -84,8 +76,7 @@ namespace TruckingSystem.Desktop.GUI_Shared
                 ("⚙️", "Hệ Thống", new[] { "Admin" }, () => new SystemControl(_api)),
             };
 
-            var navPanel = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoScroll = true, Padding = new Padding(10, 10, 10, 0) };
-
+            navPanel.SuspendLayout();
             foreach (var item in navItems)
             {
                 if (!_api.Connection.IsInRole(item.Roles)) continue;
@@ -95,27 +86,8 @@ namespace TruckingSystem.Desktop.GUI_Shared
                 navPanel.Controls.Add(btn);
                 _navButtons.Add(btn);
             }
-
-            var bottomPanel = new Panel { Dock = DockStyle.Bottom, Height = 60 };
-            var logoutBtn = MakeNavButton("🚪", "Đăng xuất");
-            logoutBtn.Click += (_, _) =>
-            {
-                var confirm = MessageBox.Show(FindForm(),
-                    "Bạn có chắc chắn muốn đăng xuất không?",
-                    "Xác nhận đăng xuất",
-                    MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-
-                if (confirm != DialogResult.Yes) return;
-
-                _api.Connection.ClearToken();
-                IsLoggingOut = true;
-                LogoutRequested?.Invoke(this, EventArgs.Empty);
-            };
-            bottomPanel.Controls.Add(logoutBtn);
-
-            sidebar.Controls.Add(navPanel);
-            sidebar.Controls.Add(bottomPanel);
-            sidebar.Controls.Add(logoPanel);
+            navPanel.ResumeLayout(true);
+            ResizeNavButtons();
         }
 
         private Button MakeNavButton(string icon, string text)
@@ -123,8 +95,8 @@ namespace TruckingSystem.Desktop.GUI_Shared
             var btn = new Button
             {
                 Text = $"  {icon}   {text}",
-                Width = 238,
-                Height = 44,
+                Width = NavButtonWidth(),
+                Height = LogicalToDeviceUnits(44),
                 TextAlign = ContentAlignment.MiddleLeft,
                 AutoEllipsis = false,
                 UseCompatibleTextRendering = false,
@@ -140,34 +112,68 @@ namespace TruckingSystem.Desktop.GUI_Shared
             return btn;
         }
 
-        private void BuildTopBar(string username)
+        /// <summary>Bề ngang nút = bề ngang vùng trong của navPanel (đã trừ thanh cuộn nếu có)
+        /// trừ padding — nút luôn kín sidebar ở mọi mức DPI, không phát sinh cuộn ngang.</summary>
+        private int NavButtonWidth() => Math.Max(0, navPanel.ClientSize.Width - navPanel.Padding.Horizontal);
+
+        private void ResizeNavButtons()
         {
-            var lblUser = new Label { Text = $"👤  {username}", Dock = DockStyle.Right, Width = 200, TextAlign = ContentAlignment.MiddleRight, Font = Theme.FontNormal, ForeColor = Theme.TextSecondary };
-
-            // Nút chuông thông báo — quét cảnh báo tự động (giấy tờ xe sắp/đã
-            // hết hạn, tài xế chưa đăng ký lịch làm ngày mai...) mỗi lần mở.
-            var btnNotifications = new Button
+            var width = NavButtonWidth();
+            var height = LogicalToDeviceUnits(44);
+            foreach (var btn in _navButtons)
             {
-                Text = "🔔",
-                Dock = DockStyle.Right,
-                Width = 60,
-                Font = new Font("Segoe UI", 14F),
-                FlatStyle = FlatStyle.Flat,
-                BackColor = Color.White,
-                Cursor = Cursors.Hand,
-            };
-            btnNotifications.FlatAppearance.BorderSize = 0;
-            btnNotifications.Click += (_, _) =>
-            {
-                if (_api is null) return;
-                using var f = new TruckingSystem.Desktop.GUI_NotificationManagement.NotificationsForm(_api);
-                f.ShowDialog(this);
-            };
+                btn.Width = width;
+                btn.Height = height;
+            }
+        }
 
-            var bottomBorder = new Panel { Dock = DockStyle.Bottom, Height = 1, BackColor = Theme.BorderColor };
-            topBar.Controls.Add(lblUser);
-            topBar.Controls.Add(btnNotifications);
-            topBar.Controls.Add(bottomBorder);
+        private void NavPanel_ClientSizeChanged(object? sender, EventArgs e) => ResizeNavButtons();
+
+        protected override void OnDpiChanged(DpiChangedEventArgs e)
+        {
+            base.OnDpiChanged(e);
+            ResizeNavButtons();
+        }
+
+        private void BtnLogout_Click(object? sender, EventArgs e)
+        {
+            if (_api is null) return;
+
+            var confirm = MessageBox.Show(FindForm(),
+                "Bạn có chắc chắn muốn đăng xuất không?",
+                "Xác nhận đăng xuất",
+                MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+
+            if (confirm != DialogResult.Yes) return;
+
+            _api.Connection.ClearToken();
+            IsLoggingOut = true;
+            LogoutRequested?.Invoke(this, EventArgs.Empty);
+        }
+
+        /// <summary>Nút chuông thông báo — quét cảnh báo tự động (giấy tờ xe sắp/đã
+        /// hết hạn, tài xế chưa đăng ký lịch làm ngày mai...) mỗi lần mở.</summary>
+        /// <summary>Tên vai trò tiếng Việt hiển thị dưới tên đăng nhập (mã role trong hệ thống
+        /// vẫn là tiếng Anh: Admin, Dispatcher...). Nhiều role thì nối bằng dấu phẩy.</summary>
+        private static string RoleText(IEnumerable<string> roles)
+        {
+            var names = roles.Select(r => r switch
+            {
+                "Admin" => "Quản trị viên",
+                "Dispatcher" => "Điều phối viên",
+                "Accountant" => "Kế toán",
+                "WarehouseStaff" => "Nhân viên kho",
+                "Driver" => "Tài xế",
+                _ => r,
+            }).ToList();
+            return names.Count == 0 ? "" : string.Join(", ", names);
+        }
+
+        private void BtnNotifications_Click(object? sender, EventArgs e)
+        {
+            if (_api is null) return;
+            using var f = new TruckingSystem.Desktop.GUI_NotificationManagement.NotificationsForm(_api);
+            f.ShowDialog(this);
         }
 
         private void NavigateTo(Button navButton, Func<Control> buildControl)

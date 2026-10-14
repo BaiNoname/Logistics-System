@@ -90,4 +90,6 @@ public class AllocateVehiclesResult
     public List<AllocationResultItemDto> Trips { get; set; } = new();
     public string? Message { get; set; }
     public int EstimatedTripDays { get; set; } = 1;
+    /// <summary>Chưa chia vì không kịp hạn giao — hỏi người dùng rồi gọi lại với acceptLate.</summary>
+    public bool NeedsLateConfirmation { get; set; }
 }

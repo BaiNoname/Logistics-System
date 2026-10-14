@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using TruckingSystem.Application.Common;
 using TruckingSystem.Application.Calendar;
 using TruckingSystem.Application.Common.Interfaces;
@@ -74,6 +74,10 @@ public class TransportOrderService : ITransportOrderService
         if (locationError is not null)
             throw new InvalidOperationException(locationError);
 
+        // HẠN GIAO BẮT BUỘC với đơn mới — cả hệ thống nhắc hạn (Chia xe cảnh báo trễ, mốc xuất
+        // phát muộn nhất, thông báo, tỉ lệ giao đúng hạn) dựa vào ngày này.
+        if (request.CommittedDeliveryDate is null)
+            throw new InvalidOperationException(MissingCommittedDateMessage);
         var committedError = ValidateCommittedDate(request.CommittedDeliveryDate);
         if (committedError is not null)
             throw new InvalidOperationException(committedError);
@@ -154,6 +158,8 @@ public class TransportOrderService : ITransportOrderService
 
         // Chỉ kiểm tra "không phải ngày đã qua" khi NGÀY hạn giao bị đổi — đơn nháp cũ
         // giữ nguyên hạn giao (đã qua) vẫn sửa được các thông tin khác.
+        if (request.CommittedDeliveryDate is null)
+            return new OrderActionResult(false, MissingCommittedDateMessage);
         var committedChanged = VnClock.ToVnWallClock(request.CommittedDeliveryDate)?.Date != order.CommittedDeliveryDate?.Date;
         var committedError = committedChanged ? ValidateCommittedDate(request.CommittedDeliveryDate) : null;
         if (committedError is not null)
@@ -211,6 +217,51 @@ public class TransportOrderService : ITransportOrderService
     ///     Hoàn tất (tái dùng cơ chế Complete có sẵn, xem HandleArrivalAsync).
     ///   Mức 3 — Giao hàng đã InProgress (hàng đã xuất kho thật): CHẶN,
     ///     không cho hủy nữa.</summary>
+    /// <summary>ĐỔI HẠN GIAO cho đơn đã xác nhận / đang chạy — nghiệp vụ thật: khách xin dời ngày,
+    /// hoặc hai bên thỏa thuận lùi hạn (kẹt đường, thời tiết...). Cũng dùng để BỔ SUNG hạn cho
+    /// đơn cũ chưa có hạn. Không mở sửa cả đơn (địa điểm/hàng đã gắn với chuyến, tồn kho, chi phí).
+    /// Quy tắc: bắt buộc lý do; không chọn ngày đã qua; đơn Hoàn tất / Hủy thì KHÔNG đổi (tránh
+    /// sửa lùi cho đẹp tỉ lệ giao đúng hạn); ghi nhật ký người đổi + hạn cũ -> hạn mới + lý do.
+    /// Tình trạng hạn / mốc xuất phát muộn nhất / thông báo tự tính lại theo hạn mới.</summary>
+    public async Task<OrderActionResult> ChangeDeadlineAsync(int id, ChangeDeadlineRequest request, string? userId, string? userName)
+    {
+        var order = await _db.TransportOrders.FirstOrDefaultAsync(o => o.Id == id);
+        if (order is null) return new OrderActionResult(false, "Không tìm thấy đơn.");
+        if (order.Status == TransportOrderStatus.Draft)
+            return new OrderActionResult(false, "Đơn còn Nháp — đổi hạn giao bằng nút Sửa đơn.");
+        if (order.Status is TransportOrderStatus.Done or TransportOrderStatus.Cancelled)
+            return new OrderActionResult(false, "Đơn đã Hoàn tất / Đã hủy — không đổi hạn giao được nữa.");
+
+        var reason = (request.Reason ?? "").Trim();
+        if (reason.Length < 5)
+            return new OrderActionResult(false, "Phải ghi lý do đổi hạn giao (ít nhất 5 ký tự) — VD \"Khách đề nghị dời ngày nhận\".");
+        if (reason.Length > 500) reason = reason[..500];
+
+        var newDate = VnClock.ToVnWallClock(request.NewDeliveryDate)!.Value.Date;
+        var dateError = ValidateCommittedDate(newDate);
+        if (dateError is not null) return new OrderActionResult(false, dateError);
+
+        var oldDate = order.CommittedDeliveryDate?.Date;
+        if (oldDate == newDate) return new OrderActionResult(false, "Hạn giao mới trùng hạn hiện tại — không có gì thay đổi.");
+
+        order.CommittedDeliveryDate = newDate;
+        order.UpdatedAt = DateTime.UtcNow; // kích hoạt kiểm tra cập nhật đồng thời (xmin)
+        _db.AuditLogs.Add(new AuditLog
+        {
+            UserId = userId,
+            Action = "ChangeDeliveryDeadline",
+            EntityName = nameof(TransportOrder),
+            EntityId = order.Id,
+            Detail = $"Đổi hạn giao đơn {order.Code}: {(oldDate is { } o ? o.ToString("dd/MM/yyyy") : "(chưa có hạn)")} -> {newDate:dd/MM/yyyy}. " +
+                     $"Lý do: {reason}. Người đổi: {userName ?? "(không rõ)"}.",
+        });
+        await _db.SaveChangesAsync();
+
+        return new OrderActionResult(true, oldDate is null
+            ? $"Đã bổ sung hạn giao {newDate:dd/MM/yyyy}."
+            : $"Đã đổi hạn giao từ {oldDate:dd/MM/yyyy} sang {newDate:dd/MM/yyyy} (đã ghi nhật ký).");
+    }
+
     public async Task<OrderActionResult> CancelAsync(int id)
     {
         // KHÓA đơn + mọi chuyến của đơn NGAY ĐẦU (SELECT ... FOR UPDATE) rồi mới đọc
@@ -510,6 +561,9 @@ public class TransportOrderService : ITransportOrderService
     }
 
     /// <summary>Hạn giao cam kết (nếu có) không được là ngày đã qua (theo ngày Việt Nam).</summary>
+    private const string MissingCommittedDateMessage =
+        "Phải nhập Hạn giao cam kết với khách — hệ thống dùng ngày này để cảnh báo chia xe trễ hạn, nhắc mốc xuất phát và tính tỉ lệ giao đúng hạn.";
+
     private static string? ValidateCommittedDate(DateTime? committed)
     {
         var vn = VnClock.ToVnWallClock(committed);

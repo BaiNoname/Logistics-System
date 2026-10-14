@@ -4,7 +4,7 @@ using TruckingSystem.Desktop.DTO_NotificationManagement;
 namespace TruckingSystem.Desktop.GUI_NotificationManagement
 {
     /// <summary>Danh sách thông báo: chuyến chờ duyệt (tài xế báo xong), giấy tờ
-    /// xe sắp/đã hết hạn, tài xế chưa đăng ký ca ngày mai.
+    /// xe / giấy tờ tài xế (bằng lái, khám sức khỏe) sắp/đã hết hạn, tài xế chưa đăng ký ca ngày mai.
     /// - Mở form / bấm "Làm mới" -> server quét lại cảnh báo. Cảnh báo đã có thì
     ///   KHÔNG tạo thêm (dù đã đọc), cảnh báo hết hiệu lực tự biến mất.
     /// - Bấm vào 1 dòng -> chỉ đánh dấu đã đọc dòng đó, KHÔNG quét lại.
@@ -12,7 +12,7 @@ namespace TruckingSystem.Desktop.GUI_NotificationManagement
     public partial class NotificationsForm : BaseForm
     {
         private const string AllText = "Tất cả";
-        private static readonly string[] Categories = { "Chuyến chờ duyệt", "Giấy tờ xe", "Lịch tài xế", "Khác" };
+        private static readonly string[] Categories = { "Chuyến chờ duyệt", "Hạn giao", "Giấy tờ xe", "Giấy tờ tài xế", "Lịch tài xế", "Khác" };
 
         private ApiServices? _api;
         private List<NotificationItem> _notifications = new();
@@ -141,7 +141,7 @@ namespace TruckingSystem.Desktop.GUI_NotificationManagement
             lblStatus.Text =
                 $"Hiển thị {shownCount}/{_notifications.Count} • " +
                 (unreadTotal > 0 ? $"🔵 {unreadTotal} chưa đọc" : "Không có thông báo chưa đọc") +
-                $"   (Chuyến chờ duyệt: {Unread("Chuyến chờ duyệt")} • Giấy tờ xe: {Unread("Giấy tờ xe")} • Lịch tài xế: {Unread("Lịch tài xế")})";
+                $"   (Chuyến chờ duyệt: {Unread("Chuyến chờ duyệt")} • Hạn giao: {Unread("Hạn giao")} • Giấy tờ xe: {Unread("Giấy tờ xe")} • Giấy tờ tài xế: {Unread("Giấy tờ tài xế")} • Lịch tài xế: {Unread("Lịch tài xế")})";
             btnMarkAllRead.Enabled = unreadTotal > 0;
         }
 
@@ -149,6 +149,8 @@ namespace TruckingSystem.Desktop.GUI_NotificationManagement
         {
             "Chuyến chờ duyệt" => Theme.Success,
             "Giấy tờ xe" => Theme.Danger,
+            "Giấy tờ tài xế" => Theme.Danger,
+            "Hạn giao" => Theme.Danger,
             "Lịch tài xế" => Theme.Warning,
             _ => Theme.TextSecondary,
         };

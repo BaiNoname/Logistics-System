@@ -55,7 +55,6 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
         {
             if (_api is null) return;
             lblStatus.Text = "Đang tải...";
-            lblStatus.ForeColor = Theme.TextSecondary;
             try
             {
                 _customers = await _api.Customers.GetCustomersAsync();

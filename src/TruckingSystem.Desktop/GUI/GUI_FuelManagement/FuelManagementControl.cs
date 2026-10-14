@@ -18,7 +18,6 @@ namespace TruckingSystem.Desktop.GUI_FuelManagement
             Theme.StyleGrid(gridProviders);
             gridProviders.DataBindingComplete += (_, _) => { if (gridProviders.Columns["Id"] != null) gridProviders.Columns["Id"]!.Visible = false; };
             gridProviders.CellDoubleClick += GridProviders_CellDoubleClick;
-            Resize += (_, _) => { gridProviders.Width = Width; gridProviders.Height = Height - gridProviders.Top; };
             Load += async (_, _) => await LoadProvidersAsync();
         }
 

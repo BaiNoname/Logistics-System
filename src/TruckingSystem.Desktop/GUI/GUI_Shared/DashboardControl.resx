@@ -117,4 +117,7 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
+  <data name="_lblFuelNote.Text" xml:space="preserve">
+    <value>Định mức = km GPS × L/100km của xe × giá nhiên liệu ngày chạy (bảng giá ở màn Nhiên liệu). Dòng tô đỏ: lệch quá 15% (km GPS so với km VietMap — có thể chạy vòng/lệch tuyến; hoặc tiền thực đổ so với định mức — có thể hao hụt). Chuyến chưa nhập hóa đơn xăng thì lãi/lỗ tạm tính theo định mức.</value>
+  </data>
 </root>

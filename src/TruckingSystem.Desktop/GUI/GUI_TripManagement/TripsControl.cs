@@ -15,25 +15,15 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
         private List<TripListItem> _trips = new();
         private Dictionary<int, TripWarehouseProgressItem> _progress = new();
 
-        // 2 nút gỡ chuyến bị kẹt — tạo bằng code (không sửa file Designer).
-        private readonly Button btnReassign;
-        private readonly Button btnReturnAtWarehouse;
-        private readonly Button btnCargoPhotos;
         // Đang chờ server (Bắt đầu / Ước tính...) -> khóa nút, chống bấm 2 lần gửi 2 yêu cầu.
         private bool _busy;
 
         public TripsControl()
         {
+            // Giao diện (vị trí, cỡ chữ, nút) nằm hết trong TripsControl.Designer.cs — bố cục tự co
+            // giãn (TableLayoutPanel + FlowLayoutPanel), không còn tính tọa độ bằng code.
             InitializeComponent();
-            // Đặt THEO VỊ TRÍ nút "Từ chối" (đã được co giãn theo DPI màn hình) — không dùng
-            // tọa độ cứng, tránh lệch/đè lên lưới ở màn hình 100% / 125%.
-            var w = btnReject.Width * 190 / 160;
-            btnReassign = MakeActionButton("🔁 Đổi xe / tài xế", new Point(btnReject.Right + 10, btnReject.Top), w, BtnReassign_Click);
-            btnReturnAtWarehouse = MakeActionButton("🏬 Trả khách tại kho", new Point(btnReassign.Right + 10, btnReject.Top), w, BtnReturnAtWarehouse_Click);
-            btnCargoPhotos = MakeActionButton("📷 Ảnh hàng", new Point(btnReturnAtWarehouse.Right + 10, btnReject.Top), btnReject.Width, BtnCargoPhotos_Click);
-            lblStatus.Left = btnCargoPhotos.Right + 10;
             Theme.StyleGrid(grid);
-            Resize += (_, _) => { grid.Width = Width; grid.Height = Height - grid.Top; };
             grid.DataBindingComplete += (_, _) => { if (grid.Columns["Id"] != null) grid.Columns["Id"]!.Visible = false; };
             grid.CellFormatting += Grid_CellFormatting;
             grid.SelectionChanged += (_, _) => UpdateActionButtons();
@@ -50,6 +40,21 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
                     : kho.Contains("chờ nhập", StringComparison.OrdinalIgnoreCase) ? Theme.Warning
                     : kho.StartsWith("📥") || kho.StartsWith("📤") ? Theme.Primary
                     : Theme.TextSecondary;
+                return;
+            }
+            if (grid.Columns[e.ColumnIndex].Name == "Tình_trạng_hạn" && e.RowIndex >= 0 && e.RowIndex < grid.Rows.Count)
+            {
+                // Màu theo MỨC server trả về (không đoán theo chữ).
+                var level = grid.Rows[e.RowIndex].Cells["Id"].Value is int tripId
+                    ? _trips.FirstOrDefault(t => t.Id == tripId)?.DeadlineLevel : null;
+                e.CellStyle!.ForeColor = level switch
+                {
+                    "Ok" or "DoneOnTime" => Theme.Success,
+                    "Warning" => Theme.Warning,
+                    "Late" or "DoneLate" => Theme.Danger,
+                    _ => Theme.TextSecondary,
+                };
+                if (level is "Warning" or "Late") e.CellStyle.Font = new Font(grid.Font, FontStyle.Bold);
                 return;
             }
             if (grid.Columns[e.ColumnIndex].Name != "Trạng_thái" || e.Value is null) return;
@@ -147,26 +152,6 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
             {
                 MessageBox.Show(FindForm(), "Lỗi: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
-        }
-
-        private Button MakeActionButton(string text, Point location, int width, EventHandler onClick)
-        {
-            var b = new Button
-            {
-                Text = text,
-                Location = location,
-                Size = new Size(width, btnReject.Height),
-                BackColor = Color.White,
-                ForeColor = Color.FromArgb(15, 23, 42),
-                FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
-                Cursor = Cursors.Hand,
-                Enabled = false,
-            };
-            b.Click += onClick;
-            Controls.Add(b);
-            b.BringToFront();
-            return b;
         }
 
         /// <summary>Xem danh sách hàng + ảnh hàng tài xế đã gửi (không duyệt).</summary>
@@ -521,8 +506,14 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
                     Trạng_thái = StatusText(t),
                     Số_lượng = t.TotalQtyPlanned,
                     Kho = WarehouseText(t),
+                    Hạn_giao = t.CommittedDeliveryDate?.ToString("dd/MM/yyyy") ?? "— (chưa có hạn)",
+                    Xuất_phát_muộn_nhất = t.LatestStartDate?.ToString("dd/MM/yyyy") ?? "—",
+                    Tình_trạng_hạn = t.DeadlineStatus,
                 }).ToList();
-                lblStatus.Text = $"Tổng {_trips.Count} chuyến — chọn 1 dòng rồi bấm Bắt đầu/Hoàn tất để đổi trạng thái";
+                var late = _trips.Count(t => t.DeadlineLevel == "Late");
+                var warn = _trips.Count(t => t.DeadlineLevel == "Warning");
+                lblStatus.Text = $"Tổng {_trips.Count} chuyến — chọn 1 dòng rồi bấm Bắt đầu/Hoàn tất để đổi trạng thái" +
+                                 (late + warn > 0 ? $"   ⏰ Hạn giao: {late} chuyến trễ / không còn kịp, {warn} chuyến phải xuất phát trong hôm nay–ngày mai" : "");
                 UpdateActionButtons();
             }
             catch (Exception ex)

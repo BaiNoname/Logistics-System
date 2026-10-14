@@ -24,12 +24,33 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
         private readonly AutoCompleteStringCollection _cargoTypeSuggestions = new();
         private List<string> _cargoTypes = new();
 
+        // ---- HẠN GIAO (bắt buộc) + gợi ý theo ước tính số ngày chạy của tuyến ----
+        private int? _estimatedDays;          // số ngày chạy ước tính (VietMap, 8 giờ lái/ngày)
+        private bool _deadlineTouched;        // người dùng đã tự chọn hạn giao -> không tự ghi đè nữa
+        private bool _settingDeadline;        // đang gán bằng code (không tính là người dùng chọn)
+        private int _estimateVersion;         // bỏ kết quả ước tính cũ khi người dùng đổi tiếp
+        private readonly System.Windows.Forms.Timer _estimateTimer = new() { Interval = 700 };
+        /// <summary>Hạn giao gợi ý = ngày giao sớm nhất + 1 ngày dự phòng (nhập kho, chờ xe, kẹt đường).</summary>
+        private const int DeadlineBufferDays = 1;
+
         public CreateOrderForm()
         {
             InitializeComponent();
 
-            dtCommitted.Enabled = false;
-            chkHasCommittedDate.CheckedChanged += (_, _) => dtCommitted.Enabled = chkHasCommittedDate.Checked;
+            // Hạn giao BẮT BUỘC (server cũng kiểm tra). Khi chọn xong địa điểm + kho, hệ thống ước
+            // tính số ngày chạy và GỢI Ý hạn giao (người dùng vẫn chỉnh theo yêu cầu của khách).
+            SetDeadline(DateTime.Today.AddDays(1));
+            dtCommitted.ValueChanged += (_, _) =>
+            {
+                if (!_settingDeadline) _deadlineTouched = true;
+                UpdateDeadlineHint();
+            };
+            _estimateTimer.Tick += async (_, _) => { _estimateTimer.Stop(); await SuggestDeadlineAsync(); };
+            cboPickupLocation.SelectedIndexChanged += (_, _) => RequestEstimate();
+            cboDropoffLocation.SelectedIndexChanged += (_, _) => RequestEstimate();
+            cboWarehouse.SelectedIndexChanged += (_, _) => RequestEstimate();
+            rbSelfDelivery.CheckedChanged += (_, _) => RequestEstimate();
+            FormClosed += (_, _) => _estimateTimer.Dispose();
 
             // Điểm lấy/giao BẮT BUỘC chọn từ danh mục Địa điểm (có tọa độ) — ô địa
             // chỉ chỉ để hiển thị, không gõ tay nữa (địa chỉ gõ tay không có tọa độ ->
@@ -181,6 +202,82 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
         }
 
         /// <summary>Khách tự mang hàng tới kho -> không cần điểm lấy hàng.</summary>
+        private void SetDeadline(DateTime date)
+        {
+            _settingDeadline = true;
+            try { dtCommitted.Value = date; }
+            finally { _settingDeadline = false; }
+        }
+
+        /// <summary>Gom các lần đổi liên tiếp (đổ dữ liệu, chọn nhanh) thành 1 lần gọi ước tính.</summary>
+        private void RequestEstimate()
+        {
+            _estimateTimer.Stop();
+            _estimateTimer.Start();
+        }
+
+        /// <summary>Gọi server ước tính số ngày chạy của tuyến (cùng cách tính với Chia xe) rồi gợi ý
+        /// hạn giao = ngày giao sớm nhất + 1 ngày dự phòng. Người dùng đã tự chọn hạn thì chỉ cập
+        /// nhật dòng gợi ý / cảnh báo, không ghi đè.</summary>
+        private async Task SuggestDeadlineAsync()
+        {
+            if (_api is null) return;
+            var dropoff = cboDropoffLocation.SelectedItem as LocationItem;
+            var pickup = cboPickupLocation.SelectedItem as LocationItem;
+            if (dropoff is null || dropoff.Id == 0 || cboWarehouse.SelectedValue is not int warehouseId
+                || (!rbSelfDelivery.Checked && (pickup is null || pickup.Id == 0)))
+            {
+                _estimatedDays = null;
+                UpdateDeadlineHint();
+                return;
+            }
+
+            var version = ++_estimateVersion;
+            lblDeadlineHint.Text = "🕒 Đang ước tính số ngày chạy của tuyến...";
+            try
+            {
+                var days = await _api.TransportOrders.EstimateRouteDaysAsync(
+                    rbSelfDelivery.Checked ? null : pickup!.Id, dropoff.Id, warehouseId,
+                    rbSelfDelivery.Checked ? "SelfDelivery" : "CompanyPickup");
+                if (version != _estimateVersion || IsDisposed) return; // đã đổi tiếp -> bỏ kết quả cũ
+                _estimatedDays = days;
+                if (!_deadlineTouched) // đơn mới, hoặc đơn cũ chưa có hạn giao
+                    SetDeadline(EarliestDelivery(days).AddDays(DeadlineBufferDays));
+            }
+            catch
+            {
+                if (version != _estimateVersion || IsDisposed) return;
+                _estimatedDays = null; // lỗi ước tính không chặn tạo đơn
+            }
+            UpdateDeadlineHint();
+        }
+
+        private static DateTime EarliestDelivery(int days) => DateTime.Today.AddDays(Math.Max(1, days) - 1);
+
+        private void UpdateDeadlineHint()
+        {
+            if (_estimatedDays is not int days)
+            {
+                lblDeadlineHint.Text = "Chọn địa điểm lấy / giao và kho để hệ thống ước tính số ngày chạy và gợi ý hạn giao.";
+                lblDeadlineHint.ForeColor = Theme.TextSecondary;
+                return;
+            }
+            var earliest = EarliestDelivery(days);
+            var suggested = earliest.AddDays(DeadlineBufferDays);
+            var text = $"🕒 Tuyến ước tính ~{days} ngày chạy — nếu chia xe hôm nay, giao sớm nhất {earliest:dd/MM/yyyy}. " +
+                       $"Gợi ý hạn giao: {suggested:dd/MM/yyyy} (đã cộng {DeadlineBufferDays} ngày dự phòng).";
+            if (dtCommitted.Value.Date < earliest)
+            {
+                lblDeadlineHint.Text = text + "\n⚠️ Hạn giao đang chọn SỚM HƠN thời gian chạy ước tính — khi Chia xe sẽ bị cảnh báo trễ hạn.";
+                lblDeadlineHint.ForeColor = Theme.Warning;
+            }
+            else
+            {
+                lblDeadlineHint.Text = text;
+                lblDeadlineHint.ForeColor = Theme.TextSecondary;
+            }
+        }
+
         private void UpdatePickupForMethod()
         {
             var self = rbSelfDelivery.Checked;
@@ -251,8 +348,12 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                 cboWarehouse.SelectedValue = order.WarehouseId;
                 if (order.CommittedDeliveryDate.HasValue)
                 {
-                    chkHasCommittedDate.Checked = true;
-                    dtCommitted.Value = order.CommittedDeliveryDate.Value;
+                    SetDeadline(order.CommittedDeliveryDate.Value.Date);
+                    _deadlineTouched = true; // giữ đúng hạn đã hẹn, không tự gợi ý đè
+                }
+                else
+                {
+                    lblStatus.Text = "⚠️ Đơn này chưa có Hạn giao cam kết — giờ bắt buộc, hãy chọn hạn giao trước khi lưu.";
                 }
 
                 _cargoLines.Clear();
@@ -329,8 +430,8 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             int? dropoffLocId = dropoffLoc.Id;
             // Chỉ lấy NGÀY (ô chọn chỉ hiện ngày; trước đây gửi kèm giờ lúc mở form -> lệch
             // quy tắc "hàng gấp trong 3 ngày" và giờ trên lịch).
-            var committedDate = chkHasCommittedDate.Checked ? dtCommitted.Value.Date : (DateTime?)null;
-            if (committedDate.HasValue && committedDate.Value < DateTime.Today && !_editOrderId.HasValue)
+            DateTime? committedDate = dtCommitted.Value.Date; // bắt buộc
+            if (committedDate.Value < DateTime.Today && !_editOrderId.HasValue)
             {
                 lblStatus.Text = "Hạn giao cam kết không được là ngày đã qua.";
                 return;

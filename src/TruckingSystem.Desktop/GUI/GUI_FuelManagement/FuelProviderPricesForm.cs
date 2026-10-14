@@ -16,6 +16,7 @@ namespace TruckingSystem.Desktop.GUI_FuelManagement
         public FuelProviderPricesForm()
         {
             InitializeComponent();
+            Theme.StyleGrid(grid); // bảng chỉ xem: giãn kín bề ngang, chọn nguyên dòng
             dtEffectiveDate.Value = DateTime.Today;
             grid.DataBindingComplete += (_, _) => { if (grid.Columns["Id"] != null) grid.Columns["Id"]!.Visible = false; };
         }

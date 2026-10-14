@@ -49,16 +49,8 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
 
         private void SetupGrid()
         {
+            // Các cột (colId..colCost, độ rộng tương đối, căn phải số) khai báo trong Designer.
             gridLogs.AutoGenerateColumns = false;
-            gridLogs.Columns.Clear();
-            gridLogs.Columns.Add(new DataGridViewTextBoxColumn { Name = "colId", Visible = false });
-            gridLogs.Columns.Add(new DataGridViewTextBoxColumn { Name = "colTime", HeaderText = "Thời gian", FillWeight = 18 });
-            gridLogs.Columns.Add(new DataGridViewTextBoxColumn { Name = "colStation", HeaderText = "Hãng / cửa hàng", FillWeight = 36 });
-            gridLogs.Columns.Add(new DataGridViewTextBoxColumn { Name = "colLiters", HeaderText = "Số lít", FillWeight = 12 });
-            gridLogs.Columns.Add(new DataGridViewTextBoxColumn { Name = "colPrice", HeaderText = "Đơn giá", FillWeight = 15 });
-            gridLogs.Columns.Add(new DataGridViewTextBoxColumn { Name = "colCost", HeaderText = "Thành tiền", FillWeight = 17 });
-            foreach (var name in new[] { "colLiters", "colPrice", "colCost" })
-                gridLogs.Columns[name]!.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
         }
 
         private async Task InitAsync()

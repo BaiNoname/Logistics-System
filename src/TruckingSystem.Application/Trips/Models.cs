@@ -12,7 +12,13 @@ public record TripListItemDto(
     bool HasRun = false, bool HasEstimate = false,
     // Chặng Giao chưa chạy, kho CHƯA đủ hàng cho chuyến vì hàng lấy về còn "Chờ nhập kho" —
     // CÙNG quy tắc server chặn Bắt đầu (Desktop dùng cờ này, không tự đoán).
-    bool AwaitingReceipt = false
+    bool AwaitingReceipt = false,
+    // HẠN GIAO (DeliveryDeadlineRules): hạn giao của đơn, ngày XUẤT PHÁT MUỘN NHẤT để kịp hạn
+    // (chuyến chưa chạy), câu tình trạng + mức (None/Ok/Warning/Late/DoneOnTime/DoneLate) để tô màu.
+    DateTime? CommittedDeliveryDate = null,
+    DateTime? LatestStartDate = null,
+    string DeadlineStatus = "—",
+    string DeadlineLevel = "None"
 );
 
 public record TripActionResult(bool Success, string? Message);

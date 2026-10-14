@@ -1,7 +1,8 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using TruckingSystem.Application.Calendar;
 using TruckingSystem.Application.Common;
 using TruckingSystem.Application.Common.Interfaces;
+using TruckingSystem.Application.Drivers;
 using TruckingSystem.Application.Routing;
 using TruckingSystem.Application.Notifications;
 using TruckingSystem.Application.Vehicles;
@@ -80,6 +81,10 @@ public class TripService : ITripService
             && ordersAwaiting.Contains(t.TransportOrderId)
             && t.TripLines.Any(l => (stockByKey.TryGetValue((t.WarehouseId.Value, l.CargoLineId), out var q) ? q : 0) < l.QtyPlanned);
 
+        // Tình trạng HẠN GIAO của từng chuyến (cùng quy tắc Thông báo / Chia xe).
+        var todayVn = VnClock.Today;
+        var tripsByOrder = trips.GroupBy(t => t.TransportOrderId).ToDictionary(g => g.Key, g => g.ToList());
+
         // Tính ĐÚNG tọa độ đầu-cuối theo từng chặng — dùng tọa độ KHO làm điểm
         // giữa thay vì vẽ thẳng Khách gửi → Khách nhận (sai với đơn đi qua kho):
         //   Chặng Pickup:   Khách gửi (PickupLocation) → Kho
@@ -111,13 +116,16 @@ public class TripService : ITripService
                 toLng = t.TransportOrder.DropoffLocation?.Lng;
             }
 
+            var deadline = DeliveryDeadlineRules.Evaluate(t, tripsByOrder[t.TransportOrderId], t.TransportOrder.CommittedDeliveryDate, todayVn);
+
             return new TripListItemDto(
                 t.Id, t.TransportOrder.Code, t.Vehicle.PlateNumber, t.DriverEmployee.FullName,
                 t.Status.ToString(), t.LegType.ToString(), t.TripLines.Sum(tl => tl.QtyPlanned),
                 fromLat, fromLng, toLat, toLng,
                 HasRun(t.Status, t.StartTime),
                 t.EstimatedDistanceKm.HasValue && t.EstimatedDurationMinutes.HasValue,
-                AwaitingReceipt(t));
+                AwaitingReceipt(t),
+                deadline.Deadline, deadline.LatestStart, deadline.Text, deadline.Level.ToString());
         }).ToList();
     }
 
@@ -731,7 +739,7 @@ public class TripService : ITripService
 
         var vehicle = await _db.Vehicles
             .Where(v => v.Id == trip.VehicleId)
-            .Select(v => new { v.PlateNumber, v.Status })
+            .Select(v => new { v.PlateNumber, v.Status, v.CapacityKg, v.VehicleType })
             .FirstOrDefaultAsync();
         if (vehicle is null) return "Không tìm thấy xe của chuyến này.";
         if (vehicle.Status == VehicleStatus.UnderMaintenance)
@@ -747,11 +755,17 @@ public class TripService : ITripService
 
         var driver = await _db.DriverProfiles
             .Where(dp => dp.EmployeeId == trip.DriverEmployeeId)
-            .Select(dp => new { dp.LicenseExpiryDate, EmpStatus = dp.Employee.Status, dp.Employee.FullName })
+            .Select(dp => new { dp.LicenseExpiryDate, dp.LicenseClass, EmpStatus = dp.Employee.Status, dp.Employee.FullName,
+                                PositionName = dp.Employee.Position != null ? dp.Employee.Position.Name : null })
             .FirstOrDefaultAsync();
         if (driver is null) return "Tài xế của chuyến này chưa có hồ sơ tài xế.";
         if (driver.EmpStatus != EmployeeStatus.Active)
             return $"Tài xế {driver.FullName} hiện không ở trạng thái Đang làm việc — chưa thể xuất phát.";
+        if (!DriverPositionRules.IsDriverPosition(driver.PositionName))
+            return $"Tài xế {driver.FullName} hiện có chức danh \"{driver.PositionName ?? "(trống)"}\" — không phải Tài xế, chưa thể xuất phát. Đổi tài xế khác cho chuyến (nút Đổi xe/tài xế).";
+        var licenseBlock = DriverLicenseRules.BlockReason(driver.LicenseClass, vehicle.CapacityKg, vehicle.VehicleType);
+        if (licenseBlock is not null)
+            return $"Tài xế {driver.FullName} không lái được xe {vehicle.PlateNumber}: {licenseBlock} — đổi tài xế / xe trước khi xuất phát.";
         if (driver.LicenseExpiryDate.Date < lastDay)
             return $"Bằng lái của tài xế {driver.FullName} hết hạn ({driver.LicenseExpiryDate:dd/MM/yyyy}) trước khi chặng này xong{daysText} — chưa thể xuất phát.";
 
@@ -1524,9 +1538,11 @@ public class TripService : ITripService
                 .ToListAsync())
             .GroupBy(s => s.DriverEmployeeId)
             .ToDictionary(g => g.Key, g => g.Select(x => x.ShiftDate.Date).ToHashSet());
+        var driverPositionIds = await DriverPositionRules.DriverPositionIdsAsync(_db);
         var drivers = await _db.DriverProfiles
             .OrderBy(dp => dp.Employee.FullName)
-            .Select(dp => new { dp.EmployeeId, dp.Employee.FullName, dp.Employee.Code, EmpStatus = dp.Employee.Status, dp.LicenseExpiryDate, dp.WarehouseId })
+            .Select(dp => new { dp.EmployeeId, dp.Employee.FullName, dp.Employee.Code, EmpStatus = dp.Employee.Status, dp.Employee.PositionId,
+                                dp.LicenseExpiryDate, dp.LicenseClass, dp.WarehouseId })
             .ToListAsync();
         var driverOptions = new List<ReassignOptionDto>();
         foreach (var d in drivers)
@@ -1535,6 +1551,7 @@ public class TripService : ITripService
             var eligible = false;
             var isCurrent = d.EmployeeId == currentDriverId;
             if (d.EmpStatus != EmployeeStatus.Active) reason = "không ở trạng thái Đang làm việc";
+            else if (d.PositionId is null || !driverPositionIds.Contains(d.PositionId.Value)) reason = "chức danh không phải Tài xế";
             else if (d.LicenseExpiryDate.Date < lastDay) reason = $"bằng lái hết hạn trước khi chuyến xong ({d.LicenseExpiryDate:dd/MM/yyyy})";
             else if (!isCurrent && busyDriverIds.Contains(d.EmployeeId)) reason = "đang có chuyến khác";
             else if (d.WarehouseId.HasValue && d.WarehouseId.Value != ctx.OrderWarehouseId) reason = "đóng quân ở kho khác";
@@ -1543,7 +1560,8 @@ public class TripService : ITripService
                     ? $"chưa đăng ký đủ ngày làm từ {today:dd/MM} tới {lastDay:dd/MM}"
                     : $"chưa đăng ký ngày làm hôm nay ({today:dd/MM})";
             else eligible = true;
-            var text = $"{d.FullName} ({d.Code})" + (isCurrent ? " (tài xế hiện tại)" : "");
+            // Hạng bằng hiện kèm tên — hạng bằng phải hợp với XE được chọn (kiểm tra khi bấm Lưu).
+            var text = $"{d.FullName} ({d.Code}) — bằng {d.LicenseClass}" + (isCurrent ? " (tài xế hiện tại)" : "");
             driverOptions.Add(new ReassignOptionDto(d.EmployeeId, text, eligible, reason));
         }
 
@@ -1586,6 +1604,15 @@ public class TripService : ITripService
         var driver = drivers.FirstOrDefault(d => d.Id == request.DriverEmployeeId);
         if (driver is null) return new TripActionResult(false, "Không tìm thấy tài xế đã chọn.");
         if (!driver.Eligible) return new TripActionResult(false, $"Không dùng được tài xế này: {driver.Reason}.");
+
+        // Hạng bằng lái của tài xế phải lái được XE đã chọn (tải trọng / đầu kéo).
+        var pairVehicle = await _db.Vehicles.Where(v => v.Id == request.VehicleId)
+            .Select(v => new { v.PlateNumber, v.CapacityKg, v.VehicleType }).FirstAsync();
+        var pairLicense = await _db.DriverProfiles.Where(dp => dp.EmployeeId == request.DriverEmployeeId)
+            .Select(dp => dp.LicenseClass).FirstAsync();
+        var licenseReason = DriverLicenseRules.BlockReason(pairLicense, pairVehicle.CapacityKg, pairVehicle.VehicleType);
+        if (licenseReason is not null)
+            return new TripActionResult(false, $"Tài xế đã chọn không lái được xe {pairVehicle.PlateNumber}: {licenseReason}.");
 
         var oldVehicleId = ctx.Trip.VehicleId;
         var affectedIds = ctx.Affected.Select(t => t.Id).ToList();
