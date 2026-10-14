@@ -42,6 +42,21 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
                     : Theme.TextSecondary;
                 return;
             }
+            if (grid.Columns[e.ColumnIndex].Name == "Tình_trạng_hạn" && e.RowIndex >= 0 && e.RowIndex < grid.Rows.Count)
+            {
+                // Màu theo MỨC server trả về (không đoán theo chữ).
+                var level = grid.Rows[e.RowIndex].Cells["Id"].Value is int tripId
+                    ? _trips.FirstOrDefault(t => t.Id == tripId)?.DeadlineLevel : null;
+                e.CellStyle!.ForeColor = level switch
+                {
+                    "Ok" or "DoneOnTime" => Theme.Success,
+                    "Warning" => Theme.Warning,
+                    "Late" or "DoneLate" => Theme.Danger,
+                    _ => Theme.TextSecondary,
+                };
+                if (level is "Warning" or "Late") e.CellStyle.Font = new Font(grid.Font, FontStyle.Bold);
+                return;
+            }
             if (grid.Columns[e.ColumnIndex].Name != "Trạng_thái" || e.Value is null) return;
             if (e.Value.ToString() == "🟡 Chờ xác nhận")
             {
@@ -491,8 +506,14 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
                     Trạng_thái = StatusText(t),
                     Số_lượng = t.TotalQtyPlanned,
                     Kho = WarehouseText(t),
+                    Hạn_giao = t.CommittedDeliveryDate?.ToString("dd/MM/yyyy") ?? "— (chưa có hạn)",
+                    Xuất_phát_muộn_nhất = t.LatestStartDate?.ToString("dd/MM/yyyy") ?? "—",
+                    Tình_trạng_hạn = t.DeadlineStatus,
                 }).ToList();
-                lblStatus.Text = $"Tổng {_trips.Count} chuyến — chọn 1 dòng rồi bấm Bắt đầu/Hoàn tất để đổi trạng thái";
+                var late = _trips.Count(t => t.DeadlineLevel == "Late");
+                var warn = _trips.Count(t => t.DeadlineLevel == "Warning");
+                lblStatus.Text = $"Tổng {_trips.Count} chuyến — chọn 1 dòng rồi bấm Bắt đầu/Hoàn tất để đổi trạng thái" +
+                                 (late + warn > 0 ? $"   ⏰ Hạn giao: {late} chuyến trễ / không còn kịp, {warn} chuyến phải xuất phát trong hôm nay–ngày mai" : "");
                 UpdateActionButtons();
             }
             catch (Exception ex)

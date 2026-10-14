@@ -2,9 +2,9 @@
 
 public interface IDriverService
 {
-    /// <summary>Danh sách TẤT CẢ tài xế (nhân viên đã có DriverProfile),
-    /// kèm trạng thái Availability tính động theo đúng logic thật dùng khi
-    /// Chia xe — xem chi tiết trong DriverService.GetAllAsync().</summary>
+    /// <summary>Danh sách tài xế = nhân viên Đang làm có chức danh Tài xế (+ người đã có hồ sơ
+    /// tài xế cần lưu ý), kèm trạng thái hồ sơ và Availability tính theo đúng logic Chia xe
+    /// — xem chi tiết trong DriverService.GetAllAsync().</summary>
     Task<List<DriverListItemDto>> GetAllAsync();
 
     // ---- Ngày làm việc (bảng DriverSchedules) — đăng ký theo NGÀY, không chia ca ----

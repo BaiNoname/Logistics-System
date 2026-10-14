@@ -14,8 +14,8 @@
 
         /// <summary>Bố cục khung chính: sidebar (Dock=Left, rộng 260 ở 96 DPI -> tự nhân theo
         /// mức phóng to màn hình) gồm logo (trên) / danh sách nút điều hướng navPanel (giữa,
-        /// cuộn được) / nút Đăng xuất (dưới); topBar (Dock=Top) gồm tên người dùng + chuông
-        /// thông báo + đường viền dưới; content (Dock=Fill) chứa màn hình đang mở.
+        /// cuộn được) / nút Đăng xuất (dưới); topBar (Dock=Top) gồm chuông thông báo + avatar +
+        /// tên người dùng / vai trò (căn giữa dọc, thẳng hàng) + đường viền dưới; content (Dock=Fill) chứa màn hình đang mở.
         /// Các nút điều hướng phụ thuộc quyền nên vẫn sinh bằng code (MainForm.cs) vào navPanel.</summary>
         private void InitializeComponent()
         {
@@ -27,13 +27,19 @@
             this.lblLogo = new System.Windows.Forms.Label();
             this.content = new System.Windows.Forms.Panel();
             this.topBar = new System.Windows.Forms.Panel();
+            this.topBarLayout = new System.Windows.Forms.TableLayoutPanel();
+            this.lblAvatar = new System.Windows.Forms.Label();
+            this.userInfo = new System.Windows.Forms.TableLayoutPanel();
             this.lblUser = new System.Windows.Forms.Label();
+            this.lblRole = new System.Windows.Forms.Label();
             this.btnNotifications = new System.Windows.Forms.Button();
             this.topBarBorder = new System.Windows.Forms.Panel();
             this.sidebar.SuspendLayout();
             this.sidebarBottom.SuspendLayout();
             this.logoPanel.SuspendLayout();
             this.topBar.SuspendLayout();
+            this.topBarLayout.SuspendLayout();
+            this.userInfo.SuspendLayout();
             this.SuspendLayout();
             //
             // sidebar
@@ -110,47 +116,104 @@
             this.content.Padding = new System.Windows.Forms.Padding(24);
             this.content.TabIndex = 0;
             //
-            // topBar
+            // topBar — 1 TableLayoutPanel: [khoảng trống co giãn] [chuông] [avatar] [tên + vai trò].
+            // Mọi phần tử Anchor=None -> luôn CĂN GIỮA theo chiều dọc, thẳng hàng với nhau ở mọi
+            // mức phóng to màn hình (trước đây Label Dock=Right + AutoSize bị lệch so với nút chuông).
             //
             this.topBar.BackColor = System.Drawing.Color.White;
-            this.topBar.Controls.Add(this.lblUser);
-            this.topBar.Controls.Add(this.btnNotifications);
+            this.topBar.Controls.Add(this.topBarLayout);
             this.topBar.Controls.Add(this.topBarBorder);
             this.topBar.Dock = System.Windows.Forms.DockStyle.Top;
             this.topBar.Name = "topBar";
             this.topBar.Padding = new System.Windows.Forms.Padding(24, 0, 24, 0);
-            this.topBar.Size = new System.Drawing.Size(1020, 60);
+            this.topBar.Size = new System.Drawing.Size(1020, 64);
             this.topBar.TabIndex = 1;
             //
-            // lblUser
+            // topBarLayout
             //
-            this.lblUser.AutoSize = true;
-            this.lblUser.Dock = System.Windows.Forms.DockStyle.Right;
-            this.lblUser.Font = new System.Drawing.Font("Segoe UI", 10F);
-            this.lblUser.ForeColor = System.Drawing.Color.FromArgb(100, 116, 139);
-            this.lblUser.Name = "lblUser";
-            this.lblUser.Padding = new System.Windows.Forms.Padding(8, 0, 8, 0);
-            this.lblUser.TabIndex = 1;
-            this.lblUser.Text = "👤";
-            this.lblUser.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+            this.topBarLayout.ColumnCount = 4;
+            this.topBarLayout.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            this.topBarLayout.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.AutoSize));
+            this.topBarLayout.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.AutoSize));
+            this.topBarLayout.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.AutoSize));
+            this.topBarLayout.Controls.Add(this.btnNotifications, 1, 0);
+            this.topBarLayout.Controls.Add(this.lblAvatar, 2, 0);
+            this.topBarLayout.Controls.Add(this.userInfo, 3, 0);
+            this.topBarLayout.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.topBarLayout.Margin = new System.Windows.Forms.Padding(0);
+            this.topBarLayout.Name = "topBarLayout";
+            this.topBarLayout.RowCount = 1;
+            this.topBarLayout.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            this.topBarLayout.TabIndex = 0;
             //
             // btnNotifications
             //
-            this.btnNotifications.AutoSize = true;
-            this.btnNotifications.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            this.btnNotifications.Anchor = System.Windows.Forms.AnchorStyles.None;
             this.btnNotifications.BackColor = System.Drawing.Color.White;
             this.btnNotifications.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.btnNotifications.Dock = System.Windows.Forms.DockStyle.Right;
             this.btnNotifications.FlatAppearance.BorderSize = 0;
+            this.btnNotifications.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(241, 245, 249);
             this.btnNotifications.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnNotifications.Font = new System.Drawing.Font("Segoe UI", 14F);
-            this.btnNotifications.MinimumSize = new System.Drawing.Size(48, 0);
+            this.btnNotifications.Font = new System.Drawing.Font("Segoe UI Emoji", 14F);
+            this.btnNotifications.Margin = new System.Windows.Forms.Padding(0, 0, 16, 0);
             this.btnNotifications.Name = "btnNotifications";
-            this.btnNotifications.Padding = new System.Windows.Forms.Padding(8, 0, 8, 0);
+            this.btnNotifications.Padding = new System.Windows.Forms.Padding(0);
+            this.btnNotifications.Size = new System.Drawing.Size(44, 44);
             this.btnNotifications.TabIndex = 0;
             this.btnNotifications.Text = "🔔";
+            this.btnNotifications.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this.btnNotifications.UseVisualStyleBackColor = false;
             this.btnNotifications.Click += new System.EventHandler(this.BtnNotifications_Click);
+            //
+            // lblAvatar
+            //
+            this.lblAvatar.Anchor = System.Windows.Forms.AnchorStyles.None;
+            this.lblAvatar.BackColor = System.Drawing.Color.FromArgb(219, 234, 254);
+            this.lblAvatar.Font = new System.Drawing.Font("Segoe UI Emoji", 14F);
+            this.lblAvatar.Margin = new System.Windows.Forms.Padding(0, 0, 10, 0);
+            this.lblAvatar.Name = "lblAvatar";
+            this.lblAvatar.Size = new System.Drawing.Size(40, 40);
+            this.lblAvatar.TabIndex = 1;
+            this.lblAvatar.Text = "👤";
+            this.lblAvatar.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            //
+            // userInfo — tên đăng nhập (đậm) + vai trò (chữ nhỏ) xếp 2 dòng
+            //
+            this.userInfo.Anchor = System.Windows.Forms.AnchorStyles.None;
+            this.userInfo.AutoSize = true;
+            this.userInfo.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            this.userInfo.ColumnCount = 1;
+            this.userInfo.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.AutoSize));
+            this.userInfo.Controls.Add(this.lblUser, 0, 0);
+            this.userInfo.Controls.Add(this.lblRole, 0, 1);
+            this.userInfo.Margin = new System.Windows.Forms.Padding(0);
+            this.userInfo.Name = "userInfo";
+            this.userInfo.RowCount = 2;
+            this.userInfo.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+            this.userInfo.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+            this.userInfo.TabIndex = 2;
+            //
+            // lblUser
+            //
+            this.lblUser.Anchor = System.Windows.Forms.AnchorStyles.Left;
+            this.lblUser.AutoSize = true;
+            this.lblUser.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            this.lblUser.ForeColor = System.Drawing.Color.FromArgb(15, 23, 42);
+            this.lblUser.Margin = new System.Windows.Forms.Padding(0);
+            this.lblUser.Name = "lblUser";
+            this.lblUser.TabIndex = 0;
+            this.lblUser.Text = "Người dùng";
+            //
+            // lblRole
+            //
+            this.lblRole.Anchor = System.Windows.Forms.AnchorStyles.Left;
+            this.lblRole.AutoSize = true;
+            this.lblRole.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.lblRole.ForeColor = System.Drawing.Color.FromArgb(100, 116, 139);
+            this.lblRole.Margin = new System.Windows.Forms.Padding(0);
+            this.lblRole.Name = "lblRole";
+            this.lblRole.TabIndex = 1;
+            this.lblRole.Text = "Vai trò";
             //
             // topBarBorder
             //
@@ -176,6 +239,10 @@
             this.sidebar.ResumeLayout(false);
             this.sidebarBottom.ResumeLayout(false);
             this.logoPanel.ResumeLayout(false);
+            this.userInfo.ResumeLayout(false);
+            this.userInfo.PerformLayout();
+            this.topBarLayout.ResumeLayout(false);
+            this.topBarLayout.PerformLayout();
             this.topBar.ResumeLayout(false);
             this.topBar.PerformLayout();
             this.ResumeLayout(false);
@@ -191,7 +258,11 @@
         private System.Windows.Forms.FlowLayoutPanel navPanel;
         private System.Windows.Forms.Panel sidebarBottom;
         private System.Windows.Forms.Button btnLogout;
+        private System.Windows.Forms.TableLayoutPanel topBarLayout;
+        private System.Windows.Forms.Label lblAvatar;
+        private System.Windows.Forms.TableLayoutPanel userInfo;
         private System.Windows.Forms.Label lblUser;
+        private System.Windows.Forms.Label lblRole;
         private System.Windows.Forms.Button btnNotifications;
         private System.Windows.Forms.Panel topBarBorder;
     }

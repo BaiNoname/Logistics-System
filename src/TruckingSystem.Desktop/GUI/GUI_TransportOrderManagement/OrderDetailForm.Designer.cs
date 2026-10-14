@@ -29,6 +29,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             this.btnEdit = new System.Windows.Forms.Button();
             this.btnConfirm = new System.Windows.Forms.Button();
             this.btnCancel = new System.Windows.Forms.Button();
+            this.btnChangeDeadline = new System.Windows.Forms.Button();
             this.btnAllocate = new System.Windows.Forms.Button();
             this.btnViewRoute = new System.Windows.Forms.Button();
             this.lblResult = new System.Windows.Forms.Label();
@@ -139,6 +140,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             this.actionBar.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
             this.actionBar.Controls.Add(this.btnEdit);
             this.actionBar.Controls.Add(this.btnConfirm);
+            this.actionBar.Controls.Add(this.btnChangeDeadline);
             this.actionBar.Controls.Add(this.btnCancel);
             this.actionBar.Controls.Add(this.btnAllocate);
             this.actionBar.Controls.Add(this.btnViewRoute);
@@ -186,6 +188,26 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             this.btnConfirm.Text = "✅ Xác nhận đơn";
             this.btnConfirm.UseVisualStyleBackColor = false;
             this.btnConfirm.Click += new System.EventHandler(this.BtnConfirm_Click);
+            //
+            // btnChangeDeadline — đổi / bổ sung hạn giao (đơn Đã xác nhận / Đang chạy)
+            //
+            this.btnChangeDeadline.AutoSize = true;
+            this.btnChangeDeadline.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            this.btnChangeDeadline.BackColor = System.Drawing.Color.White;
+            this.btnChangeDeadline.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.btnChangeDeadline.FlatAppearance.BorderSize = 1;
+            this.btnChangeDeadline.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(248, 250, 252);
+            this.btnChangeDeadline.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnChangeDeadline.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            this.btnChangeDeadline.ForeColor = System.Drawing.Color.FromArgb(15, 23, 42);
+            this.btnChangeDeadline.Margin = new System.Windows.Forms.Padding(0, 0, 8, 8);
+            this.btnChangeDeadline.MinimumSize = new System.Drawing.Size(0, 36);
+            this.btnChangeDeadline.Name = "btnChangeDeadline";
+            this.btnChangeDeadline.Padding = new System.Windows.Forms.Padding(10, 2, 10, 2);
+            this.btnChangeDeadline.TabIndex = 2;
+            this.btnChangeDeadline.Text = "📅 Đổi hạn giao";
+            this.btnChangeDeadline.UseVisualStyleBackColor = false;
+            this.btnChangeDeadline.Click += new System.EventHandler(this.BtnChangeDeadline_Click);
             //
             // btnCancel
             //
@@ -289,6 +311,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
         private System.Windows.Forms.Button btnEdit;
         private System.Windows.Forms.Button btnConfirm;
         private System.Windows.Forms.Button btnCancel;
+        private System.Windows.Forms.Button btnChangeDeadline;
         private System.Windows.Forms.Button btnAllocate;
         private System.Windows.Forms.Button btnViewRoute;
         private System.Windows.Forms.Label lblResult;

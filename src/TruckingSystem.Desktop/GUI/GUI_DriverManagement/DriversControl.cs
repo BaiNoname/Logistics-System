@@ -1,17 +1,16 @@
 ﻿using TruckingSystem.Desktop.Common;
 using TruckingSystem.Desktop.DTO_DriverManagement;
-using TruckingSystem.Desktop.DTO_EmployeeManagement;
 using TruckingSystem.Desktop.GUI_EmployeeManagement;
 
 namespace TruckingSystem.Desktop.GUI_DriverManagement
 {
-    /// <summary>Danh sách TÀI XẾ RIÊNG (tách khỏi màn Nhân viên) — mục đích
-    /// chính: xem nhanh ai đang "Đang làm / Sẵn sàng / Không sẵn sàng" để
-    /// đối chiếu TRƯỚC khi bấm "Chia xe" cho 1 đơn, vì cột Trạng thái ở đây
-    /// tính ĐÚNG Y HỆT điều kiện thật mà thuật toán Greedy dùng.
-    /// Tái dùng form hồ sơ tài xế có sẵn từ màn Nhân viên
-    /// CreateDriverProfileForm; ngày làm việc dùng DriverWorkDaysForm (đăng ký
-    /// theo ngày, không chọn ca) — chỉ gọi đúng employeeId đang chọn trong lưới này.</summary>
+    /// <summary>Danh sách TÀI XẾ — lấy từ nhân viên ĐANG LÀM có CHỨC DANH Tài xế (khai báo ở
+    /// màn Nhân viên), không còn nút "Thêm tài xế" chọn nhân viên bất kỳ. Muốn có tài xế mới:
+    /// tạo nhân viên với chức danh Tài xế bên màn Nhân viên, người đó tự xuất hiện ở đây.
+    /// Chọn 1 người -> "Hồ sơ tài xế": chưa có hồ sơ thì Tạo, có rồi thì Sửa giấy tờ (dùng lại
+    /// CreateDriverProfileForm — form tự nhận chế độ Tạo/Sửa). Chưa có hồ sơ = chưa Chia xe được.
+    /// Cột Trạng thái tính ĐÚNG Y HỆT điều kiện thật mà thuật toán Chia xe (Greedy) dùng.
+    /// Ngày làm việc dùng DriverWorkDaysForm (đăng ký theo ngày, chỉ khi đã có hồ sơ).</summary>
     public partial class DriversControl : BaseUserControl
     {
         private ApiServices? _api;
@@ -21,11 +20,13 @@ namespace TruckingSystem.Desktop.GUI_DriverManagement
         {
             InitializeComponent();
             Theme.StyleGrid(grid);
-            grid.DataBindingComplete += (_, _) => { if (grid.Columns["EmployeeId"] != null) grid.Columns["EmployeeId"]!.Visible = false; };
+            grid.DataBindingComplete += (_, _) =>
+            {
+                if (grid.Columns["EmployeeId"] != null) grid.Columns["EmployeeId"]!.Visible = false;
+                UpdateButtons();
+            };
             grid.CellFormatting += Grid_CellFormatting;
-            // Hồ sơ / Lịch làm việc chỉ bấm được khi đã chọn 1 tài xế
-            grid.SelectionChanged += (_, _) => btnEditProfile.Enabled = btnSchedule.Enabled = grid.CurrentRow is not null;
-            grid.DataBindingComplete += (_, _) => btnEditProfile.Enabled = btnSchedule.Enabled = grid.CurrentRow is not null;
+            grid.SelectionChanged += (_, _) => UpdateButtons();
             Load += async (_, _) => await LoadAsync();
         }
 
@@ -36,54 +37,35 @@ namespace TruckingSystem.Desktop.GUI_DriverManagement
 
         private void BtnRefresh_Click(object? sender, EventArgs e) => _ = LoadAsync();
 
-        /// <summary>Thêm tài xế MỚI = chọn 1 nhân viên CHƯA phải tài xế, rồi
-        /// mở đúng form tạo hồ sơ tài xế đã có sẵn (CreateDriverProfileForm)
-        /// — form đó tự lo phần tạo DriverProfile, ở đây chỉ cần chọn ĐÚNG
-        /// nhân viên để truyền employeeId vào.</summary>
-        private async void BtnAddDriver_Click(object? sender, EventArgs e)
+        /// <summary>Nút hồ sơ đổi chữ theo dòng đang chọn: chưa có hồ sơ -> "Tạo hồ sơ",
+        /// có rồi -> "Sửa hồ sơ". Ngày làm chỉ bấm được khi đã có hồ sơ (API cũng chặn).</summary>
+        private void UpdateButtons()
         {
-            if (_api is null) return;
-
-            List<EmployeeListItem> allEmployees;
-            try
-            {
-                allEmployees = await _api.Employees.GetEmployeesAsync();
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(FindForm(), "Lỗi tải danh sách nhân viên: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return;
-            }
-
-            // Nhân viên ĐÃ NGHỈ VIỆC không được làm tài xế mới (Chia xe cũng chỉ chọn nhân viên đang làm).
-            var candidates = allEmployees.Where(x => !x.IsDriver && x.Status != "Terminated").ToList();
-            if (candidates.Count == 0)
-            {
-                MessageBox.Show(FindForm(),
-                    "Không còn nhân viên nào (đang làm việc) chưa là tài xế.\nCần vào màn Nhân viên tạo nhân viên mới trước, rồi quay lại đây thêm hồ sơ tài xế cho người đó.",
-                    "Không còn ai để thêm", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                return;
-            }
-
-            using var picker = new PickEmployeeForDriverForm(candidates);
-            if (picker.ShowDialog(FindForm()) != DialogResult.OK || picker.SelectedEmployeeId is null) return;
-
-            var employeeId = picker.SelectedEmployeeId.Value;
-            var fullName = candidates.First(x => x.Id == employeeId).FullName;
-
-            using var f = new CreateDriverProfileForm(_api, employeeId, fullName);
-            if (f.ShowDialog(FindForm()) == DialogResult.OK) await LoadAsync();
+            var d = Selected();
+            btnEditProfile.Enabled = d is not null;
+            btnEditProfile.Text = d is null ? "📝 Hồ sơ tài xế"
+                : d.HasProfile ? "✏️ Sửa hồ sơ" : "📝 Tạo hồ sơ";
+            btnSchedule.Enabled = d is { HasProfile: true };
         }
 
-        /// <summary>Sửa hồ sơ tài xế ĐANG CHỌN — dùng lại ĐÚNG form cũ,
-        /// form này tự nhận ra đã có hồ sơ nên tự chuyển sang chế độ Sửa.</summary>
-        private async void BtnEditProfile_Click(object? sender, EventArgs e)
+        /// <summary>Tạo / Sửa hồ sơ tài xế cho người ĐANG CHỌN — dùng lại đúng form cũ,
+        /// form tự nhận ra đã có hồ sơ hay chưa để chuyển chế độ.</summary>
+        private async void BtnEditProfile_Click(object? sender, EventArgs e) => await OpenProfileAsync();
+
+        private async void Grid_CellDoubleClick(object? sender, DataGridViewCellEventArgs e)
+        {
+            if (e.RowIndex < 0) return;
+            await OpenProfileAsync();
+        }
+
+        private async Task OpenProfileAsync()
         {
             if (_api is null) return;
-            if (!TryGetSelected(out var employeeId, out var fullName)) return;
+            var d = SelectedOrWarn();
+            if (d is null) return;
 
-            using var f = new CreateDriverProfileForm(_api, employeeId, fullName);
-            if (f.ShowDialog(FindForm()) == DialogResult.OK) await LoadAsync();
+            using var f = new CreateDriverProfileForm(_api, d.EmployeeId, d.FullName);
+            if (f.ShowDialog(FindForm()) == DialogResult.OK) await LoadAsync(d.EmployeeId);
         }
 
         /// <summary>Ngày làm việc của tài xế — đăng ký THEO NGÀY (không chọn ca),
@@ -91,32 +73,41 @@ namespace TruckingSystem.Desktop.GUI_DriverManagement
         private void BtnSchedule_Click(object? sender, EventArgs e)
         {
             if (_api is null) return;
-            if (!TryGetSelected(out var employeeId, out var fullName)) return;
-
-            using var f = new DriverWorkDaysForm(_api, employeeId, fullName);
-            f.ShowDialog(FindForm());
-            if (f.Changed) _ = LoadAsync(); // Availability có thể đổi (Sẵn sàng/Không sẵn sàng) sau khi thêm/xóa ngày
-        }
-
-        private bool TryGetSelected(out int employeeId, out string fullName)
-        {
-            employeeId = 0;
-            fullName = "";
-            if (grid.CurrentRow is null)
+            var d = SelectedOrWarn();
+            if (d is null) return;
+            if (!d.HasProfile)
             {
-                MessageBox.Show(FindForm(), "Vui lòng chọn 1 tài xế trong danh sách trước.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                return false;
+                MessageBox.Show(FindForm(), $"{d.FullName} chưa có hồ sơ tài xế — bấm \"Tạo hồ sơ\" trước rồi mới đăng ký ngày làm.",
+                    "Chưa có hồ sơ", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
             }
-            var id = (int)grid.CurrentRow.Cells["EmployeeId"].Value;
-            employeeId = id;
-            fullName = _drivers.First(d => d.EmployeeId == id).FullName;
-            return true;
+
+            using var f = new DriverWorkDaysForm(_api, d.EmployeeId, d.FullName);
+            f.ShowDialog(FindForm());
+            if (f.Changed) _ = LoadAsync(d.EmployeeId); // Availability có thể đổi (Sẵn sàng/Không sẵn sàng) sau khi thêm/xóa ngày
         }
 
-        private async Task LoadAsync()
+        private DriverListItem? Selected()
+        {
+            if (grid.CurrentRow?.Cells["EmployeeId"].Value is not int id) return null;
+            return _drivers.FirstOrDefault(d => d.EmployeeId == id);
+        }
+
+        private DriverListItem? SelectedOrWarn()
+        {
+            var d = Selected();
+            if (d is null)
+                MessageBox.Show(FindForm(), "Vui lòng chọn 1 tài xế trong danh sách trước.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return d;
+        }
+
+        /// <param name="selectEmployeeId">Chọn lại đúng người vừa thao tác sau khi tải lại.</param>
+        private async Task LoadAsync(int? selectEmployeeId = null)
         {
             if (_api is null) return;
+            selectEmployeeId ??= Selected()?.EmployeeId;
             lblStatus.Text = "Đang tải...";
+            lblStatus.ForeColor = Theme.TextSecondary;
             try
             {
                 _drivers = await _api.Drivers.GetDriversAsync();
@@ -126,15 +117,38 @@ namespace TruckingSystem.Desktop.GUI_DriverManagement
                     Mã_NV = d.Code,
                     Họ_tên = d.FullName,
                     Điện_thoại = d.Phone ?? "—",
-                    Số_bằng_lái = d.LicenseNumber,
-                    Hạng = d.LicenseClass,
-                    Hạn_bằng_lái = d.LicenseExpiryDate.ToString("dd/MM/yyyy"),
-                    Kinh_nghiệm = $"{d.YearsOfExperience} năm",
-                    Kho_đóng_quân = d.WarehouseName ?? "— (mọi kho)",
+                    Chức_danh = d.PositionName ?? "—",
+                    Hồ_sơ = d.ProfileStatus,
+                    Số_bằng_lái = d.LicenseNumber ?? "—",
+                    Hạng = d.LicenseClass ?? "—",
+                    Hạn_bằng_lái = d.LicenseExpiryDate?.ToString("dd/MM/yyyy") ?? "—",
+                    Kinh_nghiệm = d.YearsOfExperience is int y ? $"{y} năm" : "—",
+                    Kho_đóng_quân = !d.HasProfile ? "—" : d.WarehouseName ?? "— (mọi kho)",
                     Trạng_thái = d.Availability,
+                    Cảnh_báo = d.Warning ?? "",
                 }).ToList();
-                lblStatus.Text = $"Tổng {_drivers.Count} tài xế — \"Sẵn sàng\" = đang làm việc, bằng lái còn hạn, có ngày làm hôm nay. " +
-                                 "Khi Chia xe còn xét kho đóng quân và chuyến dài nhiều ngày phải đăng ký đủ các ngày.";
+
+                if (selectEmployeeId is int sel)
+                {
+                    foreach (DataGridViewRow row in grid.Rows)
+                    {
+                        if (row.Cells["EmployeeId"].Value is int id && id == sel)
+                        {
+                            grid.CurrentCell = row.Cells["Mã_NV"];
+                            break;
+                        }
+                    }
+                }
+                UpdateButtons();
+
+                var noProfile = _drivers.Count(d => !d.HasProfile);
+                var warned = _drivers.Count(d => !string.IsNullOrEmpty(d.Warning));
+                lblStatus.Text = $"Tổng {_drivers.Count} tài xế (nhân viên Đang làm có chức danh Tài xế)" +
+                                 (noProfile > 0 ? $" — {noProfile} người chưa có hồ sơ (chưa Chia xe được)" : "") +
+                                 (warned > 0 ? $" — {warned} người cần lưu ý (xem cột Cảnh báo)" : "") +
+                                 ". Thêm tài xế mới: tạo nhân viên với chức danh Tài xế ở màn Nhân viên. " +
+                                 "\"Sẵn sàng\" = có hồ sơ, bằng lái còn hạn, có ngày làm hôm nay; khi Chia xe còn xét kho đóng quân " +
+                                 "và chuyến dài nhiều ngày phải đăng ký đủ các ngày.";
                 lblStatus.ForeColor = Theme.TextSecondary;
             }
             catch (Exception ex)
@@ -146,16 +160,35 @@ namespace TruckingSystem.Desktop.GUI_DriverManagement
 
         private void Grid_CellFormatting(object? sender, DataGridViewCellFormattingEventArgs e)
         {
-            if (grid.Columns[e.ColumnIndex].Name != "Trạng_thái" || e.Value is null) return;
+            if (e.Value is null || e.CellStyle is null) return;
+            var col = grid.Columns[e.ColumnIndex].Name;
+            var text = e.Value.ToString();
 
-            e.CellStyle!.ForeColor = e.Value.ToString() switch
+            if (col == "Trạng_thái")
             {
-                "Sẵn sàng" => Theme.Success,
-                "Đang làm" => Theme.Warning,
-                "Không sẵn sàng" => Theme.Danger,
-                _ => Theme.TextSecondary,
-            };
-            e.CellStyle.Font = new Font(grid.Font, FontStyle.Bold);
+                e.CellStyle.ForeColor = text switch
+                {
+                    "Sẵn sàng" => Theme.Success,
+                    "Đang làm" => Theme.Warning,
+                    "Không sẵn sàng" => Theme.Danger,
+                    _ => Theme.TextSecondary,
+                };
+                e.CellStyle.Font = new Font(grid.Font, FontStyle.Bold);
+            }
+            else if (col == "Hồ_sơ")
+            {
+                e.CellStyle.ForeColor = text switch
+                {
+                    "Đủ" => Theme.Success,
+                    "Bằng lái sắp hết hạn" => Theme.Warning,
+                    _ => Theme.Danger, // Chưa có hồ sơ / Bằng lái hết hạn
+                };
+                e.CellStyle.Font = new Font(grid.Font, FontStyle.Bold);
+            }
+            else if (col == "Cảnh_báo" && !string.IsNullOrEmpty(text))
+            {
+                e.CellStyle.ForeColor = Theme.Warning;
+            }
         }
     }
 }

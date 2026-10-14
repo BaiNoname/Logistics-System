@@ -19,6 +19,14 @@ public class TripListItem
     public bool HasEstimate { get; set; }
     /// <summary>Chặng Giao chưa chạy, chờ hàng lấy về được NHẬP KHO (server tính, cùng quy tắc chặn Bắt đầu).</summary>
     public bool AwaitingReceipt { get; set; }
+    /// <summary>Hạn giao của đơn (giờ VN) — null = đơn chưa có hạn.</summary>
+    public DateTime? CommittedDeliveryDate { get; set; }
+    /// <summary>Ngày xuất phát MUỘN NHẤT để kịp hạn (chuyến chưa chạy) — server tính.</summary>
+    public DateTime? LatestStartDate { get; set; }
+    /// <summary>Câu tình trạng hạn: "🟢 Kịp — xuất phát trước hết 15/10", "🔴 Không còn kịp hạn"...</summary>
+    public string DeadlineStatus { get; set; } = "—";
+    /// <summary>None / Ok / Warning / Late / DoneOnTime / DoneLate — để tô màu.</summary>
+    public string DeadlineLevel { get; set; } = "None";
 }
 
 public class TripActionResultItem

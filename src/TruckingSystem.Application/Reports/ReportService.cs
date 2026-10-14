@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using TruckingSystem.Application.Common.Interfaces;
 using TruckingSystem.Domain.Enums;
 
@@ -25,9 +25,22 @@ public class ReportService : IReportService
 
         var orders = await _db.TransportOrders
             .Where(o => o.CreatedAt >= fromUtc && o.CreatedAt < toUtcExclusive)
-            .Select(o => new { o.Id, o.Code, CustomerName = o.Customer.Name, o.Status, o.CreatedAt })
+            .Select(o => new { o.Id, o.Code, CustomerName = o.Customer.Name, o.Status, o.CreatedAt, o.CommittedDeliveryDate })
             .ToListAsync();
         var orderIds = orders.Select(o => o.Id).ToList();
+
+        // GIAO ĐÚNG HẠN (cùng quy tắc DeliveryDeadlineRules): đơn hoàn tất — ngày xong chặng Giao
+        // CUỐI CÙNG (giờ VN) so với hạn giao cam kết.
+        var lastDeliveryEnd = (await _db.Trips
+                .Where(t => orderIds.Contains(t.TransportOrderId) && t.LegType == TripLegType.Delivery
+                            && t.Status == TripStatus.Completed && t.EndTime != null)
+                .Select(t => new { t.TransportOrderId, End = t.EndTime!.Value })
+                .ToListAsync())
+            .GroupBy(t => t.TransportOrderId)
+            .ToDictionary(g => g.Key, g => TruckingSystem.Application.Trips.DeliveryDeadlineRules.UtcToVnDate(g.Max(x => x.End)));
+        int? LateDays(int orderId, TransportOrderStatus status, DateTime? dueVn)
+            => status == TransportOrderStatus.Done && dueVn is { } due && lastDeliveryEnd.TryGetValue(orderId, out var done)
+                ? (done - due.Date).Days : null;
 
         // Doanh thu: hóa đơn của các đơn này, BỎ QUA hóa đơn đã hủy.
         var invoices = await _db.Invoices
@@ -50,8 +63,10 @@ public class ReportService : IReportService
             var incident = lines.Where(x => x.Kind == CostKind.Incident).Sum(x => x.Amount);
             var hasInvoice = revenueByOrder.TryGetValue(o.Id, out var revenue);
             var total = fuel + expense + incident;
+            var late = LateDays(o.Id, o.Status, o.CommittedDeliveryDate);
             return new OrderProfitDto(o.Id, o.Code, o.CustomerName, o.Status.ToString(), o.CreatedAt + VnOffset,
-                hasInvoice, revenue, fuel, expense, incident, total, revenue - total);
+                hasInvoice, revenue, fuel, expense, incident, total, revenue - total,
+                late is null ? null : late <= 0 ? "Đúng hạn" : $"Trễ {late} ngày");
         })
         .OrderBy(r => r.Profit) // đơn lỗ nặng nhất lên đầu — cần chú ý trước
         .ToList();
@@ -98,7 +113,10 @@ public class ReportService : IReportService
             // (km VietMap) lẫn định mức (km GPS) — trước đây 2 tổng lấy từ 2 tập chuyến khác nhau.
             fuelStats.Where(IsComparable).Sum(s => s.PlannedCost!.Value),
             fuelStats.Where(IsComparable).Sum(s => s.NormCost!.Value),
-            fuelStats.Count(IsComparable));
+            fuelStats.Count(IsComparable),
+            rows.Count(r => r.DeliveryResult == "Đúng hạn"),
+            rows.Count(r => r.DeliveryResult is not null && r.DeliveryResult != "Đúng hạn"),
+            orders.Count(o => o.Status == TransportOrderStatus.Done && o.CommittedDeliveryDate is null));
     }
 
     private static bool IsComparable(TripFuelStats s)

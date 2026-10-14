@@ -12,6 +12,26 @@ namespace TruckingSystem.Desktop.SERVICE_TransportOrderManagement
             _conn = conn;
         }
 
+        /// <summary>Đổi / bổ sung hạn giao cho đơn Đã xác nhận / Đang chạy (bắt buộc lý do).</summary>
+        public Task<OrderActionResultItem> ChangeDeadlineAsync(int orderId, DateTime newDate, string reason)
+            => _conn.PostAsync<OrderActionResultItem>($"/api/transport-orders/{orderId}/deadline",
+                new { newDeliveryDate = newDate.Date, reason })!;
+
+        /// <summary>Ước tính số ngày chạy của tuyến (Lấy hàng + Giao) — để gợi ý hạn giao khi tạo đơn.</summary>
+        public async Task<int> EstimateRouteDaysAsync(int? pickupLocationId, int? dropoffLocationId, int warehouseId, string pickupMethod)
+        {
+            var result = await _conn.GetAsync<RouteDaysEstimate>(
+                $"/api/transport-orders/estimate-days?warehouseId={warehouseId}&pickupMethod={pickupMethod}" +
+                (pickupLocationId is int p ? $"&pickupLocationId={p}" : "") +
+                (dropoffLocationId is int d ? $"&dropoffLocationId={d}" : ""));
+            return Math.Max(1, result?.Days ?? 1);
+        }
+
+        private class RouteDaysEstimate
+        {
+            public int Days { get; set; }
+        }
+
         public Task<List<TransportOrderListItem>> GetTransportOrdersAsync()
             => _conn.GetAsync<List<TransportOrderListItem>>("/api/transport-orders")!;
 
@@ -48,8 +68,10 @@ namespace TruckingSystem.Desktop.SERVICE_TransportOrderManagement
         public Task<TransportOrderDetailItem> GetOrderDetailAsync(int id)
             => _conn.GetAsync<TransportOrderDetailItem>($"/api/transport-orders/{id}")!;
 
-        public Task<AllocateVehiclesResult> AllocateVehiclesAsync(int transportOrderId)
-            => _conn.PostAsync<AllocateVehiclesResult>($"/api/transport-orders/{transportOrderId}/allocate-vehicles", new { })!;
+        /// <param name="acceptLate">Đã xác nhận vẫn chia dù không kịp hạn giao.</param>
+        public Task<AllocateVehiclesResult> AllocateVehiclesAsync(int transportOrderId, bool acceptLate = false)
+            => _conn.PostAsync<AllocateVehiclesResult>(
+                $"/api/transport-orders/{transportOrderId}/allocate-vehicles" + (acceptLate ? "?acceptLate=true" : ""), new { })!;
 
         /// <summary>Draft -> Confirmed.</summary>
         public Task<OrderActionResultItem> ConfirmOrderAsync(int id)

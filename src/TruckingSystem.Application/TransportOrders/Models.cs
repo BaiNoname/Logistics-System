@@ -42,6 +42,10 @@ public record TripSummaryDto(int Id, string VehiclePlate, string DriverName, str
 /// không và lý do nếu thất bại, rồi tự gọi lại GetByIdAsync để load lại mới nhất.</summary>
 public record OrderActionResult(bool Success, string? Message);
 
+/// <summary>Đổi hạn giao cam kết của đơn ĐÃ XÁC NHẬN / ĐANG CHẠY (khách xin dời, thỏa thuận lùi
+/// hạn...) — bắt buộc ghi lý do, hệ thống ghi nhật ký hạn cũ -> hạn mới.</summary>
+public record ChangeDeadlineRequest(DateTime NewDeliveryDate, string Reason);
+
 public record TransportOrderDetailDto(
     int Id, string Code, string CustomerName, string Status, decimal ProgressPercent,
     string PickupPoint, string DropoffPoint, DateTime? CommittedDeliveryDate,
