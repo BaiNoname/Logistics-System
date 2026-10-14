@@ -28,29 +28,9 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
             contactsTab = new TabPage("Người liên hệ khách hàng");
             _contactsControl = new CustomerContactsControl();
             var customerLayout = new TableLayoutPanel();
-            var toolbar = new FlowLayoutPanel();
+            toolbar = new FlowLayoutPanel();
             ((System.ComponentModel.ISupportInitialize)grid).BeginInit();
             SuspendLayout();
-            // 
-            // root
-            // 
-            root.ColumnCount = 1;
-            root.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            root.Controls.Add(lblTitle, 0, 0);
-            root.Controls.Add(toolbar, 0, 1);
-            root.Controls.Add(lblStatus, 0, 2);
-            root.Controls.Add(grid, 0, 3);
-            root.Dock = System.Windows.Forms.DockStyle.Fill;
-            root.Location = new System.Drawing.Point(0, 0);
-            root.Name = "root";
-            root.Padding = new System.Windows.Forms.Padding(0);
-            root.RowCount = 4;
-            root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
-            root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
-            root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
-            root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            root.Size = new System.Drawing.Size(1200, 700);
-            root.TabIndex = 0;
             // 
             // lblTitle
             // 
@@ -66,9 +46,9 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
             // 
             toolbar.AutoSize = true;
             toolbar.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
-            toolbar.Controls.Add(btnRefresh);
             toolbar.Controls.Add(btnCreate);
             toolbar.Controls.Add(btnEdit);
+            toolbar.Controls.Add(btnRefresh);
             toolbar.Dock = System.Windows.Forms.DockStyle.Fill;
             toolbar.Margin = new System.Windows.Forms.Padding(0);
             toolbar.Name = "toolbar";
@@ -168,7 +148,6 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
             btnRefresh.Size = new Size(120, 38);
             btnCreate.Size = new Size(190, 38);
             btnEdit.Size = new Size(100, 38);
-            toolbar.Controls.AddRange(new Control[] { btnCreate, btnEdit, btnRefresh });
             lblStatus.AutoSize = false;
             lblStatus.Dock = DockStyle.Fill;
             lblStatus.AutoEllipsis = true;
@@ -205,14 +184,11 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
             ((System.ComponentModel.ISupportInitialize)grid).EndInit();
             toolbar.ResumeLayout(false);
             toolbar.PerformLayout();
-            root.ResumeLayout(false);
-            root.PerformLayout();
             ResumeLayout(false);
         }
 
         #endregion
 
-        private System.Windows.Forms.TableLayoutPanel root;
         private System.Windows.Forms.Label lblTitle;
         private System.Windows.Forms.FlowLayoutPanel toolbar;
         private System.Windows.Forms.Button btnRefresh;

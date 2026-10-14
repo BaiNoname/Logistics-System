@@ -61,6 +61,7 @@ namespace TruckingSystem.Desktop.SERVICE_CustomerManagement
                     403 => "Tài khoản không có quyền quét danh thiếp.",
                     404 => "Không tìm thấy API quét danh thiếp. Vui lòng khởi động lại API đã cập nhật.",
                     413 => "Ảnh danh thiếp quá lớn. Vui lòng chọn ảnh tối đa 10 MB.",
+                    502 => $"Máy chủ {_conn.BaseUrl} trả về 502 (Bad Gateway) nhưng không cung cấp thông báo lỗi đọc được. Cần kiểm tra dịch vụ API hoặc cổng kết nối của máy chủ.",
                     504 => "Dịch vụ AI phản hồi quá lâu. Vui lòng thử lại sau.",
                     _ => "Không thể quét danh thiếp. Vui lòng thử lại sau."
                 };

@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using TruckingSystem.Desktop.Common;
 using TruckingSystem.Desktop.DTO_CustomerManagement;
 
@@ -45,6 +46,12 @@ public partial class CustomerContactForm : BaseForm
             _name.Focus();
             return;
         }
+        if (!IsValidPhoneNumber(_phone.Text))
+        {
+            _status.Text = "Vui lòng nhập số điện thoại hợp lệ (ví dụ: +84 123456789).";
+            _phone.Focus();
+            return;
+        }
         _saving = true;
         _fields.Enabled = _save.Enabled = false;
         _status.Text = "Đang lưu...";
@@ -64,5 +71,16 @@ public partial class CustomerContactForm : BaseForm
             _saving = false;
             if (!IsDisposed) _fields.Enabled = _save.Enabled = true;
         }
+
+    }
+    public static bool IsValidPhoneNumber(string? phone)
+    {
+        if (string.IsNullOrWhiteSpace(phone))
+            return false;
+
+        return Regex.IsMatch(
+            phone,
+            @"^(?:0[35789][0-9]{8}|\+[1-9][0-9]{0,2} [0-9]{4,14})$"
+        );
     }
 }

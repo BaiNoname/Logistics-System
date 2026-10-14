@@ -1,6 +1,5 @@
 using System.Text.RegularExpressions;
 using TruckingSystem.Desktop.Common;
-using System.Text.RegularExpressions;
 namespace TruckingSystem.Desktop.GUI_CustomerManagement
 {
     /// <summary>Logic xử lý — giao diện nằm ở CreateCustomerForm.Designer.cs.</summary>
@@ -40,10 +39,12 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
                 MessageBox.Show(this, lblStatus.Text, "Thiếu thông tin khách hàng", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
-            if (IsValidPhoneNumber(txtPhone.Text) is false)
+            if (!IsValidPhoneNumber(txtPhone.Text))
             {
+                lblStatus.ForeColor = Theme.Danger;
                 lblStatus.Text = "Vui lòng nhập số điện thoại hợp lệ (ví dụ: +84 123456789).";
-                //MessageBox.Show(this, lblStatus.Text, "Thiếu thông tin khách hàng", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+               // MessageBox.Show(this, lblStatus.Text, "Số điện thoại không hợp lệ", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                txtPhone.Focus();
                 return;
             }
             if (_api is null || !btnSave.Enabled) return;
