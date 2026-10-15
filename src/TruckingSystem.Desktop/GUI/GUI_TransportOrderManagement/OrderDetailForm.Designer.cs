@@ -30,6 +30,8 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             this.btnConfirm = new System.Windows.Forms.Button();
             this.btnCancel = new System.Windows.Forms.Button();
             this.btnChangeDeadline = new System.Windows.Forms.Button();
+            this.lblPlannedStart = new System.Windows.Forms.Label();
+            this.dtPlannedStart = new System.Windows.Forms.DateTimePicker();
             this.btnAllocate = new System.Windows.Forms.Button();
             this.btnViewRoute = new System.Windows.Forms.Button();
             this.lblResult = new System.Windows.Forms.Label();
@@ -142,6 +144,8 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             this.actionBar.Controls.Add(this.btnConfirm);
             this.actionBar.Controls.Add(this.btnChangeDeadline);
             this.actionBar.Controls.Add(this.btnCancel);
+            this.actionBar.Controls.Add(this.lblPlannedStart);
+            this.actionBar.Controls.Add(this.dtPlannedStart);
             this.actionBar.Controls.Add(this.btnAllocate);
             this.actionBar.Controls.Add(this.btnViewRoute);
             this.actionBar.Dock = System.Windows.Forms.DockStyle.Fill;
@@ -229,6 +233,23 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             this.btnCancel.UseVisualStyleBackColor = false;
             this.btnCancel.Click += new System.EventHandler(this.BtnCancel_Click);
             //
+            // lblPlannedStart / dtPlannedStart — ngày xuất phát dự kiến dùng khi Chia xe
+            //
+            this.lblPlannedStart.AutoSize = true;
+            this.lblPlannedStart.Font = new System.Drawing.Font("Segoe UI", 9.5F);
+            this.lblPlannedStart.ForeColor = System.Drawing.Color.FromArgb(100, 116, 139);
+            this.lblPlannedStart.Margin = new System.Windows.Forms.Padding(8, 9, 4, 8);
+            this.lblPlannedStart.Name = "lblPlannedStart";
+            this.lblPlannedStart.TabIndex = 4;
+            this.lblPlannedStart.Text = "Xuất phát dự kiến:";
+            this.dtPlannedStart.CustomFormat = "dd/MM/yyyy";
+            this.dtPlannedStart.Font = new System.Drawing.Font("Segoe UI", 10F);
+            this.dtPlannedStart.Format = System.Windows.Forms.DateTimePickerFormat.Custom;
+            this.dtPlannedStart.Margin = new System.Windows.Forms.Padding(0, 4, 8, 8);
+            this.dtPlannedStart.MinimumSize = new System.Drawing.Size(130, 0);
+            this.dtPlannedStart.Name = "dtPlannedStart";
+            this.dtPlannedStart.TabIndex = 5;
+            //
             // btnAllocate
             //
             this.btnAllocate.AutoSize = true;
@@ -312,6 +333,8 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
         private System.Windows.Forms.Button btnConfirm;
         private System.Windows.Forms.Button btnCancel;
         private System.Windows.Forms.Button btnChangeDeadline;
+        private System.Windows.Forms.Label lblPlannedStart;
+        private System.Windows.Forms.DateTimePicker dtPlannedStart;
         private System.Windows.Forms.Button btnAllocate;
         private System.Windows.Forms.Button btnViewRoute;
         private System.Windows.Forms.Label lblResult;

@@ -80,7 +80,7 @@
             lblTitle.Margin = new System.Windows.Forms.Padding(0, 0, 0, 4);
             lblTitle.Name = "lblTitle";
             lblTitle.TabIndex = 0;
-            lblTitle.Text = "📦 Hàng chờ nhập kho";
+            lblTitle.Text = "📦 Nhập hàng từ chuyến";
             // 
             // lblInfo
             // 
@@ -300,7 +300,7 @@
             MinimizeBox = false;
             Name = "PendingReceiptsForm";
             StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
-            Text = "Hàng chờ nhập kho";
+            Text = "Nhập hàng từ chuyến (hàng xe công ty chở về)";
             ((System.ComponentModel.ISupportInitialize)gridPending).EndInit();
             ((System.ComponentModel.ISupportInitialize)numQty).EndInit();
             ((System.ComponentModel.ISupportInitialize)gridBins).EndInit();

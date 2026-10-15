@@ -30,7 +30,9 @@ public record UpdateTransportOrderRequest(
 public record TransportOrderListItemDto(
     int Id, string Code, string CustomerName, string Status,
     decimal ProgressPercent, string PickupPoint, string DropoffPoint, string PublicTrackingToken,
-    int ActiveTripCount = 0 // số chuyến chưa hủy — Desktop dùng để khóa nút "Chia xe" khi đơn đã chia rồi
+    int ActiveTripCount = 0, // số chuyến chưa hủy — Desktop dùng để khóa nút "Chia xe" khi đơn đã chia rồi
+    DateTime? CommittedDeliveryDate = null, // hạn giao (giờ VN) — để lọc "quá hạn / sắp tới hạn"
+    string? WarehouseName = null            // kho trung chuyển — để lọc theo kho
 );
 
 /// <summary>LegType: Pickup / Delivery / Return — cùng 1 lô hàng đi qua nhiều chặng, nên

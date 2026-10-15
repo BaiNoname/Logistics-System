@@ -69,9 +69,11 @@ namespace TruckingSystem.Desktop.SERVICE_TransportOrderManagement
             => _conn.GetAsync<TransportOrderDetailItem>($"/api/transport-orders/{id}")!;
 
         /// <param name="acceptLate">Đã xác nhận vẫn chia dù không kịp hạn giao.</param>
-        public Task<AllocateVehiclesResult> AllocateVehiclesAsync(int transportOrderId, bool acceptLate = false)
+        /// <param name="plannedStart">Ngày xuất phát dự kiến (null = hôm nay).</param>
+        public Task<AllocateVehiclesResult> AllocateVehiclesAsync(int transportOrderId, bool acceptLate = false, DateTime? plannedStart = null)
             => _conn.PostAsync<AllocateVehiclesResult>(
-                $"/api/transport-orders/{transportOrderId}/allocate-vehicles" + (acceptLate ? "?acceptLate=true" : ""), new { })!;
+                $"/api/transport-orders/{transportOrderId}/allocate-vehicles?acceptLate={(acceptLate ? "true" : "false")}" +
+                (plannedStart is DateTime d ? $"&plannedStart={d:yyyy-MM-dd}" : ""), new { })!;
 
         /// <summary>Draft -> Confirmed.</summary>
         public Task<OrderActionResultItem> ConfirmOrderAsync(int id)

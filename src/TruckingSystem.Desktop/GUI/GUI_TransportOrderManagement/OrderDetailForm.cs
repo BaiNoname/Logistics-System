@@ -19,6 +19,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             InitializeComponent();
             Theme.StyleGrid(gridCargo);
             Theme.StyleGrid(gridTrips);
+            dtPlannedStart.Value = DateTime.Today; // mặc định xuất phát hôm nay
         }
 
         /// <summary>Bấm link theo dõi -> copy vào Clipboard (gắn sự kiện trong Designer).</summary>
@@ -76,6 +77,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                 }).ToList();
 
                 btnAllocate.Enabled = order.Trips.Count == 0 && order.Status == "Confirmed";
+                lblPlannedStart.Visible = dtPlannedStart.Visible = btnAllocate.Enabled;
                 btnViewRoute.Enabled = BuildRouteStops(order).Count >= 2;
 
                 // Chỉ cho Sửa/Xác nhận khi đơn còn Draft; chỉ cho Hủy khi Draft hoặc Confirmed
@@ -231,7 +233,17 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             lblResult.ForeColor = Theme.TextSecondary;
             try
             {
-                var result = await _api.TransportOrders.AllocateVehiclesAsync(_orderId);
+                // Ngày xuất phát dự kiến: giấy tờ xe, bằng lái, khám sức khỏe, ngày làm tài xế được
+                // kiểm tra trên đúng khoảng [ngày này .. ngày cuối chuyến].
+                var plannedStart = dtPlannedStart.Value.Date;
+                if (plannedStart < DateTime.Today)
+                {
+                    lblResult.Text = "⚠️ Ngày xuất phát dự kiến đã qua — chọn từ hôm nay trở đi.";
+                    lblResult.ForeColor = Theme.Warning;
+                    btnAllocate.Enabled = true;
+                    return;
+                }
+                var result = await _api.TransportOrders.AllocateVehiclesAsync(_orderId, plannedStart: plannedStart);
 
                 // Không kịp hạn giao -> KHÔNG chặn hẳn: hỏi người điều phối (có thể đã thỏa thuận lại
                 // với khách). Đồng ý thì chia, hệ thống ghi nhật ký người đã chấp nhận trễ hạn.
@@ -249,7 +261,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                         return;
                     }
                     lblResult.Text = "Đang chia xe (đã xác nhận trễ hạn)...";
-                    result = await _api.TransportOrders.AllocateVehiclesAsync(_orderId, acceptLate: true);
+                    result = await _api.TransportOrders.AllocateVehiclesAsync(_orderId, acceptLate: true, plannedStart: plannedStart);
                 }
 
                 if (result.Success)

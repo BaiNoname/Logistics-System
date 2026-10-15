@@ -130,13 +130,15 @@ public class DriverService : IDriverService
 
         var legs = await _db.Trips
             .Where(t => t.DriverEmployeeId == driverEmployeeId && activeOrderIds.Contains(t.TransportOrderId) && t.Status != TripStatus.Cancelled)
-            .Select(t => new { t.Id, t.TransportOrderId, t.Status, t.StartTime, t.EstimatedDurationMinutes })
+            .Select(t => new { t.Id, t.TransportOrderId, t.Status, t.StartTime, t.EstimatedDurationMinutes, t.PlannedStartDate })
             .ToListAsync();
 
         foreach (var order in legs.GroupBy(l => l.TransportOrderId))
         {
             var started = order.Where(l => l.StartTime.HasValue).Select(l => l.StartTime!.Value.AddHours(7).Date).ToList();
-            var start = started.Count > 0 ? started.Min() : today;
+            // Chưa chặng nào chạy: tính từ NGÀY XUẤT PHÁT DỰ KIẾN (chọn lúc Chia xe), quá rồi thì từ hôm nay.
+            var planned = order.Where(l => l.PlannedStartDate.HasValue).Select(l => l.PlannedStartDate!.Value.Date).DefaultIfEmpty(today).Min();
+            var start = started.Count > 0 ? started.Min() : (planned > today ? planned : today);
 
             var knownMinutes = order.Sum(l => l.EstimatedDurationMinutes ?? 0);
             var unknownOpenLegs = order.Count(l => l.EstimatedDurationMinutes is null && l.Status != TripStatus.Completed);
@@ -153,7 +155,8 @@ public class DriverService : IDriverService
                 var plannedDays = Math.Max(1,
                     (int)Math.Ceiling(plannedLegs.Sum(l => l.EstimatedDurationMinutes ?? 0) / (double)maxDrivingMinutesPerDay)
                     + plannedLegs.Count(l => l.EstimatedDurationMinutes is null));
-                var plannedEnd = today.AddDays(plannedDays);
+                var plannedFrom = planned > today ? planned : today;
+                var plannedEnd = plannedFrom.AddDays(plannedDays);
                 if (plannedEnd > end) end = plannedEnd;
             }
 

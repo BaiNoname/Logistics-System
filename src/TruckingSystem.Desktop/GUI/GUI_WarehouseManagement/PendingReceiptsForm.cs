@@ -52,7 +52,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             _api = api;
             _service = new PendingReceiptApiService(api.Connection);
             _warehouseId = warehouseId;
-            lblTitle.Text = $"📦 Hàng chờ nhập kho — {warehouseName}";
+            lblTitle.Text = $"📦 Nhập hàng từ chuyến — {warehouseName}";
             Load += async (_, _) => await LoadPendingAsync(null);
         }
 

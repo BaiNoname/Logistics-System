@@ -21,6 +21,8 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
         private int? _editOrderId; // null = đang Tạo mới; có giá trị = đang Sửa đơn
         private readonly BindingList<CargoLineItem> _cargoLines = new();
         private List<LocationItem> _locations = new();
+        private List<LocationItem> _usableLocations = new(); // có tọa độ + đúng khách
+        private bool _rebindingLocations;                    // đang đổ lại dropdown bằng code
         private readonly AutoCompleteStringCollection _cargoTypeSuggestions = new();
         private List<string> _cargoTypes = new();
 
@@ -55,12 +57,20 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             // Điểm lấy/giao BẮT BUỘC chọn từ danh mục Địa điểm (có tọa độ) — ô địa
             // chỉ chỉ để hiển thị, không gõ tay nữa (địa chỉ gõ tay không có tọa độ ->
             // bản đồ, ước tính quãng đường/số ngày/nhiên liệu đều không tính được).
+            // Điểm lấy và điểm giao KHÔNG được trùng: chọn bên này thì bên kia tự ẨN địa điểm đó
+            // (cả địa điểm khác tên nhưng cùng vị trí) — không thể chọn nhầm. Server cũng chặn.
             cboPickupLocation.SelectedIndexChanged += (_, _) =>
+            {
                 txtPickup.Text = cboPickupLocation.SelectedItem is LocationItem loc && loc.Id != 0 ? loc.Address
                     : rbSelfDelivery.Checked ? SelfDeliveryPickupText : "";
+                RebindOtherLocationList(cboDropoffLocation);
+            };
             cboDropoffLocation.SelectedIndexChanged += (_, _) =>
+            {
                 txtDropoff.Text = cboDropoffLocation.SelectedItem is LocationItem loc && loc.Id != 0 ? loc.Address : "";
-            rbSelfDelivery.CheckedChanged += (_, _) => UpdatePickupForMethod();
+                RebindOtherLocationList(cboPickupLocation);
+            };
+            rbSelfDelivery.CheckedChanged += (_, _) => { UpdatePickupForMethod(); RebindOtherLocationList(cboDropoffLocation); };
             // Đổi khách hàng -> lọc lại địa điểm (địa chỉ riêng của khách khác không được dùng).
             // (Chế độ Sửa đơn: không đổi được khách; danh sách được lọc 1 lần trong LoadExistingOrderAsync.)
             cboCustomer.SelectedIndexChanged += async (_, _) => { if (_locations.Count > 0 && !_editOrderId.HasValue) await LoadLocationsAsync(); };
@@ -177,21 +187,67 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                     .Where(l => l.CustomerId is null || l.CustomerId == customerId)
                     .ToList();
 
-                var pickupSource = new List<LocationItem> { new() { Id = 0, Name = "-- Chọn địa điểm lấy hàng --", Address = "" } };
-                pickupSource.AddRange(usable);
-                var dropoffSource = new List<LocationItem> { new() { Id = 0, Name = "-- Chọn địa điểm giao hàng --", Address = "" } };
-                dropoffSource.AddRange(usable);
-
-                cboPickupLocation.DataSource = pickupSource;
-                cboDropoffLocation.DataSource = dropoffSource;
-                SelectLocation(cboPickupLocation, keepPickup);
-                SelectLocation(cboDropoffLocation, keepDropoff);
+                _usableLocations = usable;
+                _rebindingLocations = true;
+                try
+                {
+                    cboPickupLocation.DataSource = LocationSource(cboPickupLocation, keepDropoff);
+                    SelectLocation(cboPickupLocation, keepPickup);
+                    cboDropoffLocation.DataSource = LocationSource(cboDropoffLocation, keepPickup);
+                    SelectLocation(cboDropoffLocation, keepDropoff);
+                }
+                finally { _rebindingLocations = false; }
+                RebindOtherLocationList(cboDropoffLocation);
+                RebindOtherLocationList(cboPickupLocation);
                 UpdatePickupForMethod();
             }
             catch (Exception ex)
             {
                 lblStatus.Text = "Không tải được danh sách địa điểm đã lưu: " + ex.Message;
             }
+        }
+
+        /// <summary>Danh sách cho 1 dropdown: dòng "-- Chọn --" + địa điểm dùng được, BỎ địa điểm đang
+        /// chọn ở dropdown kia (và địa điểm cùng vị trí với nó). Đơn khách tự mang tới thì không có
+        /// điểm lấy -> điểm giao không bị loại gì.</summary>
+        private List<LocationItem> LocationSource(ComboBox combo, int? excludeId)
+        {
+            var isPickup = combo == cboPickupLocation;
+            var header = new LocationItem { Id = 0, Name = isPickup ? "-- Chọn địa điểm lấy hàng --" : "-- Chọn địa điểm giao hàng --", Address = "" };
+            var exclude = excludeId is int id && id != 0 && !rbSelfDelivery.Checked
+                ? _usableLocations.FirstOrDefault(l => l.Id == id) : null;
+            var list = new List<LocationItem> { header };
+            list.AddRange(_usableLocations.Where(l => exclude is null || !SamePlace(l, exclude)));
+            return list;
+        }
+
+        /// <summary>Cùng địa điểm, hoặc 2 địa điểm khác tên nhưng lệch nhau dưới ~11 m.</summary>
+        private static bool SamePlace(LocationItem a, LocationItem b)
+            => a.Id == b.Id || (a.Lat is double alat && b.Lat is double blat && a.Lng is double alng && b.Lng is double blng
+                                && Math.Abs(alat - blat) < 0.0001 && Math.Abs(alng - blng) < 0.0001);
+
+        /// <summary>Đổ lại dropdown <paramref name="target"/> theo lựa chọn hiện tại của dropdown kia —
+        /// giữ nguyên lựa chọn của target nếu vẫn hợp lệ.</summary>
+        private void RebindOtherLocationList(ComboBox target)
+        {
+            if (_rebindingLocations || _usableLocations.Count == 0) return;
+            var other = target == cboPickupLocation ? cboDropoffLocation : cboPickupLocation;
+            var otherId = (other.SelectedItem as LocationItem)?.Id;
+            var keep = (target.SelectedItem as LocationItem)?.Id;
+            var source = LocationSource(target, otherId);
+            if (target.DataSource is List<LocationItem> current && current.Select(l => l.Id).SequenceEqual(source.Select(l => l.Id))) return;
+            _rebindingLocations = true;
+            try
+            {
+                target.DataSource = source;
+                SelectLocation(target, keep);
+            }
+            finally { _rebindingLocations = false; }
+            // Lựa chọn cũ bị loại (trùng điểm bên kia) -> target về "-- Chọn --": cập nhật ô địa chỉ.
+            if (target == cboDropoffLocation)
+                txtDropoff.Text = cboDropoffLocation.SelectedItem is LocationItem d && d.Id != 0 ? d.Address : "";
+            else if (!rbSelfDelivery.Checked)
+                txtPickup.Text = cboPickupLocation.SelectedItem is LocationItem p && p.Id != 0 ? p.Address : "";
         }
 
         private static void SelectLocation(ComboBox combo, int? locationId)
@@ -201,7 +257,6 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             combo.SelectedIndex = index >= 0 ? index : 0;
         }
 
-        /// <summary>Khách tự mang hàng tới kho -> không cần điểm lấy hàng.</summary>
         private void SetDeadline(DateTime date)
         {
             _settingDeadline = true;
@@ -278,6 +333,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             }
         }
 
+        /// <summary>Khách tự mang hàng tới kho -> không cần điểm lấy hàng.</summary>
         private void UpdatePickupForMethod()
         {
             var self = rbSelfDelivery.Checked;
@@ -300,7 +356,10 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             await LoadLocationsAsync(keepPickup, keepDropoff);
 
             var created = _locations.Where(l => !oldIds.Contains(l.Id)).OrderByDescending(l => l.Id).FirstOrDefault();
-            if (created != null) SelectLocation(target, created.Id);
+            if (created == null) return;
+            SelectLocation(target, created.Id);
+            if ((target.SelectedItem as LocationItem)?.Id != created.Id)
+                lblStatus.Text = $"Địa điểm vừa tạo \"{created.Name}\" trùng vị trí với điểm đã chọn ở ô còn lại — không dùng được cho ô này.";
         }
 
         private async Task LoadCargoTypesAsync()

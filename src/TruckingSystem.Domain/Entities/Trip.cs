@@ -1,4 +1,4 @@
-using TruckingSystem.Domain.Common;
+﻿using TruckingSystem.Domain.Common;
 using TruckingSystem.Domain.Enums;
 
 namespace TruckingSystem.Domain.Entities;
@@ -19,6 +19,11 @@ public class Trip : BaseEntity
     public Employee DriverEmployee { get; set; } = null!;
 
     public DateTime? StartTime { get; set; }
+
+    /// <summary>NGÀY XUẤT PHÁT DỰ KIẾN (lịch Việt Nam) chọn lúc Chia xe — mọi kiểm tra giấy tờ xe,
+    /// bằng lái, giấy khám sức khỏe, ngày làm của tài xế tính trên KHOẢNG [ngày này .. ngày cuối
+    /// chuyến dự kiến], không mặc định "từ hôm nay" nữa. null = dữ liệu cũ (coi như từ hôm nay).</summary>
+    public DateTime? PlannedStartDate { get; set; }
     public DateTime? EndTime { get; set; }
     public TripStatus Status { get; set; } = TripStatus.Planned;
 
