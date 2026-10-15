@@ -39,7 +39,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                 System.Reflection.BindingFlags.SetProperty | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic,
                 null, zonesPanel, new object[] { true });
 
-            cboWarehouse.SelectedIndexChanged += async (_, _) => { await LoadZonesAsync(); await LoadOrdersForSuggestAsync(); };
+            cboWarehouse.SelectedIndexChanged += async (_, _) => { await LoadZonesAsync(); await LoadOrdersForSuggestAsync(); await UpdatePendingCountAsync(); };
             cboOrderSuggest.SelectedIndexChanged += async (_, _) => await LoadCargoLinesForSuggestAsync();
             cboCargoLineSuggest.SelectedIndexChanged += CboCargoLineSuggest_SelectedIndexChanged;
 
@@ -54,14 +54,20 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             _api = api;
         }
 
-        private void BtnManualStock_Click(object? sender, EventArgs e)
+        /// <summary>🙋 Nhận hàng KHÁCH TỰ MANG TỚI kho (đơn "Khách tự mang tới").</summary>
+        private void BtnManualStock_Click(object? sender, EventArgs e) => OpenManualStock(ManualStockMode.Receive);
+
+        /// <summary>📤 Xuất hàng tồn của đơn đã Hoàn tất / Đã hủy + hoàn tác + lịch sử nhập/xuất.</summary>
+        private void BtnIssueStock_Click(object? sender, EventArgs e) => OpenManualStock(ManualStockMode.Issue);
+
+        private void OpenManualStock(ManualStockMode mode)
         {
             if (_api is null || cboWarehouse.SelectedValue is not int warehouseId)
             {
                 MessageBox.Show(FindForm(), "Vui lòng chọn 1 kho trước.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
-            using var f = new ManualStockForm(_api, warehouseId);
+            using var f = new ManualStockForm(_api, warehouseId, mode);
             f.ShowDialog(FindForm());
             _ = LoadZonesAsync(); // vẽ lại sơ đồ ngay — có thể vừa nhập/xuất làm đổi % các ô
             _ = LoadCargoLinesForSuggestAsync(); // panel thử Best-Fit: số còn lại / giới hạn ô nhập mới
@@ -81,6 +87,28 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             {
                 _ = LoadZonesAsync(); // vẽ lại % các ô vừa xếp hàng vào
                 _ = LoadCargoLinesForSuggestAsync();
+            }
+            _ = UpdatePendingCountAsync();
+        }
+
+        private int _pendingCountLoadId;
+
+        /// <summary>Nút "📦 Nhập hàng từ chuyến" hiện luôn SỐ DÒNG đang chờ nhập của kho đang chọn —
+        /// biết ngay có việc cần làm, không phải mở ra mới thấy.</summary>
+        private async Task UpdatePendingCountAsync()
+        {
+            const string baseText = "📦 Nhập hàng từ chuyến";
+            if (_api is null || cboWarehouse.SelectedValue is not int warehouseId) { btnPendingReceipts.Text = baseText; return; }
+            var loadId = ++_pendingCountLoadId;
+            try
+            {
+                var lines = await new TruckingSystem.Desktop.SERVICE_WarehouseManagement.PendingReceiptApiService(_api.Connection).GetPendingAsync(warehouseId);
+                if (IsDisposed || loadId != _pendingCountLoadId) return;
+                btnPendingReceipts.Text = lines.Count > 0 ? $"{baseText} ({lines.Count} chờ)" : baseText;
+            }
+            catch
+            {
+                if (!IsDisposed && loadId == _pendingCountLoadId) btnPendingReceipts.Text = baseText; // lỗi đếm không chặn màn Kho
             }
         }
 
@@ -459,7 +487,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                 }
                 else
                 {
-                    lblResult.Text = "ℹ️ Đây CHỈ LÀ GỢI Ý vị trí theo Best-Fit — không nhập gì vào kho. Hàng của chuyến Lấy hàng nhập ở \"📦 Hàng chờ nhập\"; hàng khách tự mang tới nhập ở \"Nhập/Xuất kho\".";
+                    lblResult.Text = "ℹ️ Đây CHỈ LÀ GỢI Ý vị trí theo Best-Fit — không nhập gì vào kho. Hàng xe công ty chở về nhập ở \"📦 Nhập hàng từ chuyến\"; hàng khách tự mang tới nhập ở \"🙋 Nhận hàng khách mang tới\".";
                     lblResult.ForeColor = Theme.TextSecondary;
                 }
                 cboOrderSuggest.DataSource = orders;
@@ -552,7 +580,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                         ? $"✅ Phải chia ra {result.Allocations.Count} vị trí:"
                         : "✅ Đề xuất vị trí:";
                     lblResult.Text = header + "\n" + string.Join("\n", lines) + (result.Message is null ? "" : "\n" + result.Message)
-                        + "\n(Chỉ là gợi ý — sơ đồ kho không thay đổi. Nhập thật ở \"📦 Hàng chờ nhập\" (hàng chuyến Lấy hàng) hoặc \"Nhập/Xuất kho\".)";
+                        + "\n(Chỉ là gợi ý — sơ đồ kho không thay đổi. Nhập thật ở \"📦 Nhập hàng từ chuyến\" (hàng xe công ty chở về) hoặc \"🙋 Nhận hàng khách mang tới\".)";
                     lblResult.ForeColor = Theme.Success;
                 }
                 else

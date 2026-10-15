@@ -23,6 +23,16 @@ public class Vehicle : BaseEntity
     /// đúng giá mới nhất khi tính chi phí ước tính.</summary>
     public string? FuelType { get; set; }
 
+    /// <summary>Dung tích bình nhiên liệu (lít) — null = chưa khai báo.</summary>
+    public decimal? FuelTankCapacityLiters { get; set; }
+
+    /// <summary>MỨC NHIÊN LIỆU ĐO / KHAI BÁO gần nhất (lít) và thời điểm đo (UTC). Mức hiện có
+    /// TÍNH ĐỘNG = mức đo + các lần đổ xăng sau mốc đo − tiêu hao ước tính (km GPS × định mức)
+    /// sau mốc đo (VehicleFuelLevelRules) — không cộng/trừ vào cột này, nên xóa / sửa 1 lần
+    /// đổ xăng là mức hiện có tự đúng lại, không lệch dần.</summary>
+    public decimal? FuelLevelLiters { get; set; }
+    public DateTime? FuelLevelMeasuredAt { get; set; }
+
 
 
     /// <summary>Kho/bãi mà xe này ĐÓNG QUÂN (xuất phát + quay về sau mỗi

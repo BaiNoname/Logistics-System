@@ -15,6 +15,26 @@
         public string? WarehouseName { get; set; }
         /// <summary>Lý do giấy tờ khiến xe không Chia xe được hôm nay (null = ổn).</summary>
         public string? DocumentBlockReason { get; set; }
+        /// <summary>Dung tích bình (lít) — null = chưa khai báo.</summary>
+        public decimal? FuelTankCapacityLiters { get; set; }
+        /// <summary>Nhiên liệu HIỆN CÓ (ước tính: mức đo + đổ thêm − tiêu hao theo GPS) — null = chưa khai mức đo.</summary>
+        public decimal? FuelCurrentLiters { get; set; }
+        public DateTime? FuelLevelMeasuredAt { get; set; }
+    }
+
+    /// <summary>Chi tiết mức nhiên liệu: mức đo gần nhất + đổ thêm − tiêu hao ước tính = hiện có.</summary>
+    public class VehicleFuelLevelItem
+    {
+        public int VehicleId { get; set; }
+        public string PlateNumber { get; set; } = "";
+        public decimal? TankCapacityLiters { get; set; }
+        public decimal? MeasuredLiters { get; set; }
+        public DateTime? MeasuredAt { get; set; }
+        public decimal RefueledLiters { get; set; }
+        public decimal ConsumedLiters { get; set; }
+        public decimal ConsumedKm { get; set; }
+        public decimal? CurrentLiters { get; set; }
+        public decimal? FuelConsumptionPer100Km { get; set; }
     }
 
     public class VehicleActionResultItem

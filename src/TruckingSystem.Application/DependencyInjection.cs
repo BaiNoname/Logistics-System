@@ -17,6 +17,7 @@ using TruckingSystem.Application.Warehouses;
 using TruckingSystem.Application.Reports;
 using TruckingSystem.Application.TripVideos;
 using TruckingSystem.Application.SystemManagement;
+using TruckingSystem.Application.Resources;
 
 namespace TruckingSystem.Application;
 
@@ -50,6 +51,7 @@ public static class DependencyInjection
         services.AddScoped<IReportService, ReportService>();
         services.AddScoped<ITripVideoService, TripVideoService>();
         services.AddScoped<ITripPhotoService, TripPhotoService>();
+        services.AddScoped<IResourceOverviewService, ResourceOverviewService>();
         return services;
     }
 }

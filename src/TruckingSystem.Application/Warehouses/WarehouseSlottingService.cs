@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using TruckingSystem.Application.Common.Interfaces;
 using TruckingSystem.Domain.Entities;
 using TruckingSystem.Domain.Enums;
@@ -1261,7 +1261,7 @@ public class WarehouseSlottingService : IWarehouseSlottingService
         var max = Math.Max(0, cargoLine.QtyTotal - alreadyReceived - pendingPickups);
         if (max > 0) return (max, null);
         return (0, pendingPickups > 0
-            ? $"Dòng hàng \"{cargoLine.CargoType}\": khai {cargoLine.QtyTotal:0.##}, đã nhập {alreadyReceived:0.##}, còn {pendingPickups:0.##} thuộc các chuyến Lấy hàng (đang chạy, hoặc đã về kho chờ nhập) — hàng của chuyến nhập ở màn 📦 Hàng chờ nhập, không nhập tay ở đây."
+            ? $"Dòng hàng \"{cargoLine.CargoType}\": khai {cargoLine.QtyTotal:0.##}, đã nhập {alreadyReceived:0.##}, còn {pendingPickups:0.##} thuộc các chuyến Lấy hàng (đang chạy, hoặc đã về kho chờ nhập) — hàng của chuyến nhập ở nút 📦 Nhập hàng từ chuyến, không nhập tay ở đây."
             : $"Dòng hàng \"{cargoLine.CargoType}\" đã nhập đủ số lượng khai báo ({cargoLine.QtyTotal:0.##}).");
     }
 
@@ -1390,10 +1390,17 @@ public class WarehouseSlottingService : IWarehouseSlottingService
                 || _db.GoodsReceipts.Any(r => r.TransportOrderId == o.Id && r.WarehouseId == warehouseId)
                 || _db.GoodsIssues.Any(i => i.TransportOrderId == o.Id && i.WarehouseId == warehouseId))
             .OrderByDescending(o => o.Id)
-            .Select(o => new { o.Id, o.Code, CustomerName = o.Customer.Name, o.Status })
+            .Select(o => new
+            {
+                o.Id, o.Code, CustomerName = o.Customer.Name, o.Status, o.PickupMethod,
+                OnHand = _db.WarehouseStocks
+                    .Where(s => s.WarehouseId == warehouseId && s.CargoLine.TransportOrderId == o.Id)
+                    .Sum(s => (decimal?)s.QtyOnHand) ?? 0m,
+            })
             .ToListAsync();
 
-        return orders.Select(o => new WarehouseOrderDto(o.Id, o.Code, o.CustomerName, o.Status.ToString())).ToList();
+        return orders.Select(o => new WarehouseOrderDto(o.Id, o.Code, o.CustomerName, o.Status.ToString(),
+            o.PickupMethod.ToString(), o.OnHand)).ToList();
     }
 
     public async Task<OrderStockFlowDto?> GetOrderStockFlowAsync(int transportOrderId, int warehouseId)
@@ -1480,7 +1487,7 @@ public class WarehouseSlottingService : IWarehouseSlottingService
                 progress = done >= t.Planned && t.Planned > 0 ? $"✅ Đã nhập kho {done:0.##}/{t.Planned:0.##}"
                          : done > 0 ? $"📥 Đã nhập {done:0.##}/{t.Planned:0.##}" + (t.Status == TripStatus.Completed ? $" — còn chờ nhập {t.Planned - done:0.##}" : "")
                          : t.Status == TripStatus.PendingConfirmation ? "⏳ Chờ duyệt — duyệt xong chuyển sang Chờ nhập kho"
-                         : t.Status == TripStatus.Completed ? $"📦 Đã về kho — CHỜ NHẬP {t.Planned:0.##} (màn Hàng chờ nhập)"
+                         : t.Status == TripStatus.Completed ? $"📦 Đã về kho — CHỜ NHẬP {t.Planned:0.##} (màn Kho → 📦 Nhập hàng từ chuyến)"
                          : "⏳ Chưa về kho";
             else
                 progress = done >= t.Planned && t.Planned > 0 ? $"✅ Đã xuất kho {done:0.##}/{t.Planned:0.##}"

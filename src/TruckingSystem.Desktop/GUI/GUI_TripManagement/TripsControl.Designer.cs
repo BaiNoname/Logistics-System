@@ -37,6 +37,7 @@ partial class TripsControl
         btnSyncCalendar = new System.Windows.Forms.Button();
         btnDriverInfo = new System.Windows.Forms.Button();
         lblStatus = new System.Windows.Forms.Label();
+        filterBar = new TruckingSystem.Desktop.Common.FilterBar();
         grid = new System.Windows.Forms.DataGridView();
         root.SuspendLayout();
         toolbar.SuspendLayout();
@@ -49,13 +50,15 @@ partial class TripsControl
         root.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
         root.Controls.Add(lblTitle, 0, 0);
         root.Controls.Add(toolbar, 0, 1);
-        root.Controls.Add(lblStatus, 0, 2);
-        root.Controls.Add(grid, 0, 3);
+        root.Controls.Add(filterBar, 0, 2);
+        root.Controls.Add(lblStatus, 0, 3);
+        root.Controls.Add(grid, 0, 4);
         root.Dock = System.Windows.Forms.DockStyle.Fill;
         root.Location = new System.Drawing.Point(0, 0);
         root.Name = "root";
         root.Padding = new System.Windows.Forms.Padding(0);
-        root.RowCount = 4;
+        root.RowCount = 5;
+        root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
         root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
         root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
         root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
@@ -433,6 +436,13 @@ partial class TripsControl
         btnDriverInfo.UseVisualStyleBackColor = false;
         btnDriverInfo.Click += new System.EventHandler(this.BtnDriverInfo_Click);
         // 
+        // filterBar — tìm nhanh + lọc (Common/FilterBar); các ô chọn thêm ở .cs
+        // 
+        filterBar.Dock = System.Windows.Forms.DockStyle.Fill;
+        filterBar.Name = "filterBar";
+        filterBar.SearchPlaceholder = "Mã đơn, biển số, tài xế, mã chuyến...";
+        filterBar.TabIndex = 2;
+        // 
         // lblStatus
         // 
         lblStatus.AutoSize = true;
@@ -489,5 +499,6 @@ partial class TripsControl
     private System.Windows.Forms.Button btnSyncCalendar;
     private System.Windows.Forms.Button btnDriverInfo;
     private System.Windows.Forms.Label lblStatus;
+    private TruckingSystem.Desktop.Common.FilterBar filterBar;
     private System.Windows.Forms.DataGridView grid;
 }

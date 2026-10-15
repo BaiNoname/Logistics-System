@@ -27,6 +27,10 @@ public class TripListItem
     public string DeadlineStatus { get; set; } = "—";
     /// <summary>None / Ok / Warning / Late / DoneOnTime / DoneLate — để tô màu.</summary>
     public string DeadlineLevel { get; set; } = "None";
+    /// <summary>Ngày xuất phát dự kiến chọn lúc Chia xe (null = dữ liệu cũ).</summary>
+    public DateTime? PlannedStartDate { get; set; }
+    /// <summary>Kho trung chuyển của chuyến.</summary>
+    public string? WarehouseName { get; set; }
 }
 
 public class TripActionResultItem

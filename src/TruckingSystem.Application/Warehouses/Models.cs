@@ -91,4 +91,8 @@ public record StockPerformer(int? EmployeeId, string? UserName);
 
 /// <summary>Đơn có liên quan tới 1 kho: đơn chọn kho này, có chuyến đi qua kho
 /// này, hoặc đã từng nhập/xuất hàng tại kho này.</summary>
-public record WarehouseOrderDto(int Id, string Code, string CustomerName, string Status);
+/// <summary>PickupMethod + QtyOnHand (hàng của đơn đang nằm trong kho này) — để màn Kho lọc đúng
+/// đơn cho từng việc: "Nhận hàng khách mang tới" (đơn khách tự mang tới, đang xử lý) và
+/// "Xuất hàng tồn" (đơn đã Hoàn tất / Hủy còn hàng trong kho).</summary>
+public record WarehouseOrderDto(int Id, string Code, string CustomerName, string Status,
+    string PickupMethod = "CompanyPickup", decimal QtyOnHand = 0);

@@ -106,10 +106,11 @@ public class TransportOrdersController : ControllerBase
     // Endpoint thể hiện thuật toán Greedy — chia xe tự động cho 1 đơn vận chuyển
     [HttpPost("{id:int}/allocate-vehicles")]
     // acceptLate=true: người dùng đã xác nhận vẫn chia dù ước tính không kịp hạn giao.
-    public async Task<ActionResult<AllocateVehiclesResponse>> AllocateVehicles(int id, [FromQuery] bool acceptLate = false)
+    // plannedStart (yyyy-MM-dd): ngày xuất phát dự kiến — null = hôm nay.
+    public async Task<ActionResult<AllocateVehiclesResponse>> AllocateVehicles(int id, [FromQuery] bool acceptLate = false, [FromQuery] DateTime? plannedStart = null)
     {
         var result = await _allocationService.AllocateAsync(id, acceptLate,
-            User.FindFirstValue(ClaimTypes.NameIdentifier), User.FindFirstValue(ClaimTypes.Name));
+            User.FindFirstValue(ClaimTypes.NameIdentifier), User.FindFirstValue(ClaimTypes.Name), plannedStart);
         return result.Success ? Ok(result) : BadRequest(result);
     }
 }

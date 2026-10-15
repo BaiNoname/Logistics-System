@@ -21,7 +21,7 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
             {
                 new DocTypeOption("Registration", "Đăng kiểm"),
                 new DocTypeOption("Insurance", "Bảo hiểm"),
-                new DocTypeOption("TransportPermit", "Giấy phép vận tải"),
+                new DocTypeOption("TransportPermit", "Phù hiệu xe (GP vận tải)"),
                 new DocTypeOption("Other", "Khác"),
             });
             cboDocType.SelectedIndex = 0;

@@ -24,6 +24,7 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
             btnCreate = new System.Windows.Forms.Button();
             btnEdit = new System.Windows.Forms.Button();
             lblStatus = new System.Windows.Forms.Label();
+            filterBar = new TruckingSystem.Desktop.Common.FilterBar();
             grid = new System.Windows.Forms.DataGridView();
             root.SuspendLayout();
             toolbar.SuspendLayout();
@@ -36,13 +37,15 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
             root.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
             root.Controls.Add(lblTitle, 0, 0);
             root.Controls.Add(toolbar, 0, 1);
-            root.Controls.Add(lblStatus, 0, 2);
-            root.Controls.Add(grid, 0, 3);
+            root.Controls.Add(filterBar, 0, 2);
+            root.Controls.Add(lblStatus, 0, 3);
+            root.Controls.Add(grid, 0, 4);
             root.Dock = System.Windows.Forms.DockStyle.Fill;
             root.Location = new System.Drawing.Point(0, 0);
             root.Name = "root";
             root.Padding = new System.Windows.Forms.Padding(0);
-            root.RowCount = 4;
+            root.RowCount = 5;
+            root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
             root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
             root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
             root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
@@ -135,6 +138,13 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
             btnEdit.UseVisualStyleBackColor = false;
             btnEdit.Click += new System.EventHandler(this.BtnEdit_Click);
             // 
+            // filterBar — tìm nhanh + lọc (Common/FilterBar); các ô chọn thêm ở .cs
+            // 
+            filterBar.Dock = System.Windows.Forms.DockStyle.Fill;
+            filterBar.Name = "filterBar";
+            filterBar.SearchPlaceholder = "Tên khách, số điện thoại, mã số thuế, địa chỉ...";
+            filterBar.TabIndex = 2;
+            // 
             // lblStatus
             // 
             lblStatus.AutoSize = true;
@@ -178,6 +188,7 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
         private System.Windows.Forms.Button btnCreate;
         private System.Windows.Forms.Button btnEdit;
         private System.Windows.Forms.Label lblStatus;
+        private TruckingSystem.Desktop.Common.FilterBar filterBar;
         private System.Windows.Forms.DataGridView grid;
     }
 }

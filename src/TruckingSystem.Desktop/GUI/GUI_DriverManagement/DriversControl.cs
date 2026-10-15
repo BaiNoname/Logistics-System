@@ -27,7 +27,61 @@ namespace TruckingSystem.Desktop.GUI_DriverManagement
             };
             grid.CellFormatting += Grid_CellFormatting;
             grid.SelectionChanged += (_, _) => UpdateButtons();
+            filterBar.AddChoice("availability", "Trạng thái", new[] { "Sẵn sàng", "Đang làm", "Không sẵn sàng" });
+            filterBar.AddChoice("profile", "Hồ sơ", new[] { "Đủ", "Bằng lái sắp hết hạn", "Bằng lái hết hạn", "Chưa có hồ sơ" });
+            filterBar.AddChoice("warning", "Cảnh báo", new[] { WarnYes, WarnNo });
+            filterBar.AddChoice("warehouse", "Kho", Array.Empty<string>());
+            filterBar.FilterChanged += (_, _) => BindGrid();
             Load += async (_, _) => await LoadAsync();
+        }
+
+        private const string WarnYes = "Có cảnh báo";
+        private const string WarnNo = "Không";
+        private const string AnyWarehouse = "— (mọi kho)";
+
+        private static string WarehouseText(DriverListItem d) => !d.HasProfile ? "—" : d.WarehouseName ?? AnyWarehouse;
+
+        /// <summary>Đổ lưới theo bộ lọc, giữ dòng đang chọn.</summary>
+        private void BindGrid(int? selectEmployeeId = null)
+        {
+            selectEmployeeId ??= Selected()?.EmployeeId;
+            var rows = _drivers.Where(d =>
+                    filterBar.Is("availability", d.Availability) &&
+                    filterBar.Is("profile", d.ProfileStatus) &&
+                    filterBar.Is("warning", string.IsNullOrEmpty(d.Warning) ? WarnNo : WarnYes) &&
+                    filterBar.Is("warehouse", WarehouseText(d)) &&
+                    filterBar.MatchesSearch(d.Code, d.FullName, d.Phone, d.LicenseNumber, d.LicenseClass, d.PositionName, d.WarehouseName))
+                .ToList();
+            grid.DataSource = rows.Select(d => new
+            {
+                d.EmployeeId,
+                Mã_NV = d.Code,
+                Họ_tên = d.FullName,
+                Điện_thoại = d.Phone ?? "—",
+                Chức_danh = d.PositionName ?? "—",
+                Hồ_sơ = d.ProfileStatus,
+                Số_bằng_lái = d.LicenseNumber ?? "—",
+                Hạng = d.LicenseClass ?? "—",
+                Hạn_bằng_lái = d.LicenseExpiryDate?.ToString("dd/MM/yyyy") ?? "—",
+                Kinh_nghiệm = d.YearsOfExperience is int y ? $"{y} năm" : "—",
+                Kho_đóng_quân = WarehouseText(d),
+                Trạng_thái = d.Availability,
+                Cảnh_báo = d.Warning ?? "",
+            }).ToList();
+            filterBar.SetCount(rows.Count, _drivers.Count);
+
+            if (selectEmployeeId is int sel)
+            {
+                foreach (DataGridViewRow row in grid.Rows)
+                {
+                    if (row.Cells["EmployeeId"].Value is int id && id == sel)
+                    {
+                        grid.CurrentCell = row.Cells["Mã_NV"];
+                        break;
+                    }
+                }
+            }
+            UpdateButtons();
         }
 
         public DriversControl(ApiServices api) : this()
@@ -111,35 +165,8 @@ namespace TruckingSystem.Desktop.GUI_DriverManagement
             try
             {
                 _drivers = await _api.Drivers.GetDriversAsync();
-                grid.DataSource = _drivers.Select(d => new
-                {
-                    d.EmployeeId,
-                    Mã_NV = d.Code,
-                    Họ_tên = d.FullName,
-                    Điện_thoại = d.Phone ?? "—",
-                    Chức_danh = d.PositionName ?? "—",
-                    Hồ_sơ = d.ProfileStatus,
-                    Số_bằng_lái = d.LicenseNumber ?? "—",
-                    Hạng = d.LicenseClass ?? "—",
-                    Hạn_bằng_lái = d.LicenseExpiryDate?.ToString("dd/MM/yyyy") ?? "—",
-                    Kinh_nghiệm = d.YearsOfExperience is int y ? $"{y} năm" : "—",
-                    Kho_đóng_quân = !d.HasProfile ? "—" : d.WarehouseName ?? "— (mọi kho)",
-                    Trạng_thái = d.Availability,
-                    Cảnh_báo = d.Warning ?? "",
-                }).ToList();
-
-                if (selectEmployeeId is int sel)
-                {
-                    foreach (DataGridViewRow row in grid.Rows)
-                    {
-                        if (row.Cells["EmployeeId"].Value is int id && id == sel)
-                        {
-                            grid.CurrentCell = row.Cells["Mã_NV"];
-                            break;
-                        }
-                    }
-                }
-                UpdateButtons();
+                filterBar.SetChoiceOptions("warehouse", _drivers.Select(WarehouseText));
+                BindGrid(selectEmployeeId);
 
                 var noProfile = _drivers.Count(d => !d.HasProfile);
                 var warned = _drivers.Count(d => !string.IsNullOrEmpty(d.Warning));

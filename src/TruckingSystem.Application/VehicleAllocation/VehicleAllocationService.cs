@@ -56,7 +56,8 @@ public class VehicleAllocationService : IVehicleAllocationService
         _tripService = tripService;
     }
 
-    public async Task<AllocateVehiclesResponse> AllocateAsync(int transportOrderId, bool acceptLate = false, string? userId = null, string? userName = null)
+    public async Task<AllocateVehiclesResponse> AllocateAsync(int transportOrderId, bool acceptLate = false, string? userId = null, string? userName = null,
+        DateTime? plannedStartDate = null)
     {
         var order = await _db.TransportOrders
             .Include(o => o.CargoLines)
@@ -122,7 +123,7 @@ public class VehicleAllocationService : IVehicleAllocationService
             if (missing.Count > 0)
                 return new AllocateVehiclesResponse(false, totalQtyToShip, 0, new(),
                     "Đơn khách tự mang hàng tới kho: hàng CHƯA nhập kho đủ — " + string.Join("; ", missing) +
-                    ". Khi khách mang hàng tới, vào màn Kho → Nhập/Xuất thủ công để nhập (tự chọn vị trí hoặc Tự động Best-Fit) đủ số lượng rồi mới Chia xe.");
+                    ". Khi khách mang hàng tới, vào màn Kho → 🙋 Nhận hàng khách mang tới để nhập (tự chọn vị trí hoặc Tự động Best-Fit) đủ số lượng rồi mới Chia xe.");
         }
 
         // BỌC TOÀN BỘ phần còn lại trong 1 TRANSACTION DUY NHẤT — Chia xe cho
@@ -159,7 +160,14 @@ public class VehicleAllocationService : IVehicleAllocationService
         // ngày bắt tài xế đăng ký ngày làm bên dưới) — trước đây chỉ xét hôm nay: đăng
         // kiểm hết hạn ngày mai vẫn chia được, tới ngày 2 chuyến bị chặn không chạy được.
         var estimatedTripDays = await EstimateTripDurationDaysAsync(order);
-        var lastTripDay = today.AddDays(estimatedTripDays - 1);
+        // KHOẢNG THỜI GIAN CHUYẾN = [ngày xuất phát dự kiến .. ngày cuối dự kiến]. Mọi giấy tờ / ngày
+        // làm đều xét đúng khoảng này (trước đây luôn tính từ HÔM NAY dù xe chạy ngày khác).
+        var startDay = plannedStartDate?.Date ?? today;
+        if (startDay < today)
+            return new AllocateVehiclesResponse(false, totalQtyToShip, 0, new(), $"Ngày xuất phát dự kiến ({startDay:dd/MM/yyyy}) đã qua — chọn từ hôm nay trở đi.");
+        if (startDay > today.AddDays(60))
+            return new AllocateVehiclesResponse(false, totalQtyToShip, 0, new(), "Ngày xuất phát dự kiến quá xa (tối đa 60 ngày tới).");
+        var lastTripDay = startDay.AddDays(estimatedTripDays - 1);
 
         // HẠN GIAO (DeliveryDeadlineRules): chia xe hôm nay thì giao sớm nhất ngày nào — trễ hạn
         // thì KHÔNG chặn hẳn (ước tính có thể lệch, Vận hành có thể đã thỏa thuận lại với khách)
@@ -167,40 +175,30 @@ public class VehicleAllocationService : IVehicleAllocationService
         string? lateNote = null;
         if (order.CommittedDeliveryDate is { } dueVn)
         {
-            var earliest = TruckingSystem.Application.Trips.DeliveryDeadlineRules.EarliestDelivery(today, estimatedTripDays);
+            var earliest = TruckingSystem.Application.Trips.DeliveryDeadlineRules.EarliestDelivery(startDay, estimatedTripDays);
             var lateDays = (earliest - dueVn.Date).Days;
             if (lateDays > 0)
             {
-                lateNote = $"Ước tính chuyến cần ~{estimatedTripDays} ngày: chia xe hôm nay thì giao sớm nhất {earliest:dd/MM/yyyy}, " +
+                lateNote = $"Ước tính chuyến cần ~{estimatedTripDays} ngày: xuất phát {startDay:dd/MM/yyyy} thì giao sớm nhất {earliest:dd/MM/yyyy}, " +
                            $"TRỄ {lateDays} ngày so với hạn giao {dueVn:dd/MM/yyyy}.";
                 if (!acceptLate)
                     return new AllocateVehiclesResponse(false, totalQtyToShip, 0, new(),
                         "⏰ KHÔNG KỊP HẠN GIAO — " + lateNote, estimatedTripDays, NeedsLateConfirmation: true);
             }
         }
-        var latestDocs = await VehicleDocumentRules.GetLatestAsync(_db);
-        var vehicleIdsWithValidRegistration = latestDocs
-            .Where(d => d.DocType == VehicleDocumentType.Registration && VehicleDocumentRules.IsValidOn(d.ExpiryDate, lastTripDay))
-            .Select(d => d.VehicleId)
-            .Distinct()
-            .ToList();
-
-        var vehicleIdsWithExpiredOtherDocs = latestDocs
-            .Where(d => d.DocType != VehicleDocumentType.Registration && !VehicleDocumentRules.IsValidOn(d.ExpiryDate, lastTripDay))
-            .Select(d => d.VehicleId)
-            .Distinct()
-            .ToList();
-
-        var availableVehicles = await _db.Vehicles
+        // Giấy tờ xe: CÙNG quy tắc VehicleDocumentRules với Đổi xe / Bắt đầu chuyến — đủ 3 loại bắt
+        // buộc và còn hạn tới HẾT NGÀY CUỐI chuyến dự kiến.
+        var docsByVehicle = (await VehicleDocumentRules.GetLatestAsync(_db)).ToLookup(d => d.VehicleId);
+        var availableVehicles = (await _db.Vehicles
             .Where(v => v.Status == VehicleStatus.Available
-                     && vehicleIdsWithValidRegistration.Contains(v.Id)
-                     && !vehicleIdsWithExpiredOtherDocs.Contains(v.Id)
                      && (v.WarehouseId == null || v.WarehouseId == order.WarehouseId))
             .OrderByDescending(v => v.CapacityQty)
-            .ToListAsync();
+            .ToListAsync())
+            .Where(v => VehicleDocumentRules.BlockReason(docsByVehicle[v.Id], v.PlateNumber, lastTripDay) is null)
+            .ToList();
 
         if (!availableVehicles.Any())
-            return new AllocateVehiclesResponse(false, totalQtyToShip, 0, new(), $"Không còn xe nào đang rảnh VÀ đang đóng quân đúng kho của đơn này VÀ có giấy tờ (Đăng kiểm, Bảo hiểm, Giấy phép vận tải) còn hạn tới hết ngày {lastTripDay:dd/MM} (xe chưa nhập Đăng kiểm hoặc giấy tờ hết hạn trong thời gian chuyến đều bị loại).");
+            return new AllocateVehiclesResponse(false, totalQtyToShip, 0, new(), $"Không còn xe nào đang rảnh VÀ đang đóng quân đúng kho của đơn này VÀ có ĐỦ giấy tờ (Đăng kiểm, Bảo hiểm, Phù hiệu xe) còn hạn từ {startDay:dd/MM} tới hết ngày {lastTripDay:dd/MM} (thời gian chuyến dự kiến).");
 
         // Danh sách tài xế hợp lệ (có DriverProfile thật + đang Active + bằng
         // lái CÒN HẠN) — xoay vòng nếu cần nhiều xe hơn số tài xế rảnh (đơn
@@ -218,7 +216,9 @@ public class VehicleAllocationService : IVehicleAllocationService
         var driverPositionIds = await DriverPositionRules.DriverPositionIdsAsync(_db);
         var driverCandidates = await _db.DriverProfiles
             .Include(dp => dp.Employee)
+            // Bằng lái + giấy khám sức khỏe (nếu đã nhập) phải còn hạn tới hết ngày cuối chuyến.
             .Where(dp => dp.Employee.Status == EmployeeStatus.Active && dp.LicenseExpiryDate >= lastTripDay
+                      && (dp.HealthCertExpiryDate == null || dp.HealthCertExpiryDate >= lastTripDay)
                       && dp.Employee.PositionId != null && driverPositionIds.Contains(dp.Employee.PositionId.Value)
                       && (dp.WarehouseId == null || dp.WarehouseId == order.WarehouseId))
             .Select(dp => new { dp.EmployeeId, dp.LicenseClass })
@@ -238,8 +238,7 @@ public class VehicleAllocationService : IVehicleAllocationService
         // thống không hề biết.
         // Ngày làm tính theo GIỜ VIỆT NAM (UTC+7). Dùng UtcNow.Date sẽ
         // lệch 1 ngày khi chia xe trong khoảng 0h–7h sáng (giờ VN).
-        var todayVn = today;
-        var neededDates = Enumerable.Range(0, estimatedTripDays).Select(offset => todayVn.AddDays(offset)).ToList();
+        var neededDates = Enumerable.Range(0, estimatedTripDays).Select(offset => startDay.AddDays(offset)).ToList();
 
         var scheduleDatesByDriver = await _db.DriverSchedules
             .Where(s => driverIds.Contains(s.DriverEmployeeId))
@@ -259,7 +258,7 @@ public class VehicleAllocationService : IVehicleAllocationService
                 ? $" từ {neededDates.First():dd/MM} tới {neededDates.Last():dd/MM} (ước tính chuyến kéo dài {estimatedTripDays} ngày do quãng đường xa)"
                 : $" ngày {neededDates.First():dd/MM}";
             return new AllocateVehiclesResponse(false, totalQtyToShip, 0, new(),
-                $"Không có tài xế nào khả dụng (không có chức danh Tài xế / chưa có hồ sơ, đã hết hạn bằng lái, đang bận chuyến khác, không đóng quân đúng kho của đơn này, hoặc CHƯA đăng ký ĐỦ ngày làm{dayRangeText} — bắt buộc phải đăng ký ngày làm trước, màn Tài xế → Ngày làm).");
+                $"Không có tài xế nào khả dụng (không có chức danh Tài xế / chưa có hồ sơ, bằng lái hoặc giấy khám sức khỏe hết hạn trước khi chuyến xong, đang bận chuyến khác, không đóng quân đúng kho của đơn này, hoặc CHƯA đăng ký ĐỦ ngày làm{dayRangeText} — bắt buộc phải đăng ký ngày làm trước, màn Tài xế → Ngày làm).");
         }
 
         // Dùng ĐÚNG kho trung chuyển Dispatcher đã CHỌN khi tạo đơn (order.WarehouseId)
@@ -333,6 +332,7 @@ public class VehicleAllocationService : IVehicleAllocationService
                         VehicleId = vehicle.Id,
                         DriverEmployeeId = driverEmployeeId,
                         Status = TripStatus.Planned,
+                        PlannedStartDate = startDay,
                         LegType = TripLegType.Pickup,
                         WarehouseId = defaultWarehouseId,
                     };
@@ -345,6 +345,7 @@ public class VehicleAllocationService : IVehicleAllocationService
                     VehicleId = vehicle.Id,
                     DriverEmployeeId = driverEmployeeId,
                     Status = TripStatus.Planned,
+                    PlannedStartDate = startDay,
                     LegType = TripLegType.Delivery,
                     WarehouseId = defaultWarehouseId,
                 };

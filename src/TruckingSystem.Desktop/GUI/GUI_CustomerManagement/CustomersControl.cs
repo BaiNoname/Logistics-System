@@ -14,6 +14,8 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
             InitializeComponent();
             Theme.StyleGrid(grid);
             grid.DataBindingComplete += (_, _) => { if (grid.Columns["Id"] != null) grid.Columns["Id"]!.Visible = false; };
+            filterBar.AddChoice("type", "Loại", new[] { "Doanh nghiệp", "Cá nhân" });
+            filterBar.FilterChanged += (_, _) => BindGrid();
             Load += async (_, _) => await LoadAsync();
         }
 
@@ -46,6 +48,24 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
             if (f.ShowDialog(FindForm()) == DialogResult.OK) await LoadAsync();
         }
 
+        private static string TypeText(CustomerListItem c) => c.CustomerType == "Company" ? "Doanh nghiệp" : "Cá nhân";
+
+        /// <summary>Đổ lưới theo bộ lọc (tìm theo tên, SĐT, mã số thuế, địa chỉ; lọc loại khách).</summary>
+        private void BindGrid()
+        {
+            var rows = _customers.Where(c => filterBar.Is("type", TypeText(c))
+                                             && filterBar.MatchesSearch(c.Name, c.Phone, c.TaxCode, c.Address)).ToList();
+            grid.DataSource = rows.Select(c => new
+            {
+                c.Id,
+                Tên_khách_hàng = c.Name,
+                Số_điện_thoại = c.Phone ?? "—",
+                Loại = TypeText(c),
+                Địa_chỉ = c.Address ?? "—",
+            }).ToList();
+            filterBar.SetCount(rows.Count, _customers.Count);
+        }
+
         private async Task LoadAsync()
         {
             if (_api is null) return;
@@ -53,14 +73,7 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
             try
             {
                 _customers = await _api.Customers.GetCustomersAsync();
-                grid.DataSource = _customers.Select(c => new
-                {
-                    c.Id,
-                    Tên_khách_hàng = c.Name,
-                    Số_điện_thoại = c.Phone ?? "—",
-                    Loại = c.CustomerType == "Company" ? "Doanh nghiệp" : "Cá nhân",
-                    Địa_chỉ = c.Address ?? "—",
-                }).ToList();
+                BindGrid();
                 lblStatus.Text = $"Tổng {_customers.Count} khách hàng — chọn 1 dòng rồi bấm Sửa để chỉnh sửa";
             }
             catch (Exception ex)
