@@ -16,34 +16,34 @@
         /// (Xe trên, Tài xế dưới — mỗi khung: thanh nút + bảng) chia đôi chiều cao / dòng trạng thái.</summary>
         private void InitializeComponent()
         {
-            root = new TableLayoutPanel();
-            lblTitle = new Label();
-            topBar = new FlowLayoutPanel();
-            lblWarehouse = new Label();
-            cboWarehouse = new ComboBox();
-            btnRefresh = new Button();
-            summaryBar = new FlowLayoutPanel();
-            lblSumVehicles = new Label();
-            lblSumDrivers = new Label();
-            lblSumDocs = new Label();
-            lblSumTrips = new Label();
-            lblHint = new Label();
-            split = new TableLayoutPanel();
-            grpVehicles = new GroupBox();
-            vehicleLayout = new TableLayoutPanel();
-            vehicleBar = new FlowLayoutPanel();
-            btnVehicleDocs = new Button();
-            btnVehicleFuel = new Button();
-            chkVehicleProblems = new CheckBox();
-            gridVehicles = new DataGridView();
-            grpDrivers = new GroupBox();
-            driverLayout = new TableLayoutPanel();
-            driverBar = new FlowLayoutPanel();
-            btnDriverProfile = new Button();
-            btnDriverWorkDays = new Button();
-            chkDriverProblems = new CheckBox();
-            gridDrivers = new DataGridView();
-            lblStatus = new Label();
+            root = new System.Windows.Forms.TableLayoutPanel();
+            lblTitle = new System.Windows.Forms.Label();
+            topBar = new System.Windows.Forms.FlowLayoutPanel();
+            lblWarehouse = new System.Windows.Forms.Label();
+            cboWarehouse = new System.Windows.Forms.ComboBox();
+            btnRefresh = new System.Windows.Forms.Button();
+            summaryBar = new System.Windows.Forms.FlowLayoutPanel();
+            lblSumVehicles = new System.Windows.Forms.Label();
+            lblSumDrivers = new System.Windows.Forms.Label();
+            lblSumDocs = new System.Windows.Forms.Label();
+            lblSumTrips = new System.Windows.Forms.Label();
+            lblHint = new System.Windows.Forms.Label();
+            split = new System.Windows.Forms.TableLayoutPanel();
+            grpVehicles = new System.Windows.Forms.GroupBox();
+            vehicleLayout = new System.Windows.Forms.TableLayoutPanel();
+            vehicleBar = new System.Windows.Forms.FlowLayoutPanel();
+            btnVehicleDocs = new System.Windows.Forms.Button();
+            btnVehicleFuel = new System.Windows.Forms.Button();
+            vehicleFilter = new TruckingSystem.Desktop.Common.FilterBar();
+            gridVehicles = new System.Windows.Forms.DataGridView();
+            grpDrivers = new System.Windows.Forms.GroupBox();
+            driverLayout = new System.Windows.Forms.TableLayoutPanel();
+            driverBar = new System.Windows.Forms.FlowLayoutPanel();
+            btnDriverProfile = new System.Windows.Forms.Button();
+            btnDriverWorkDays = new System.Windows.Forms.Button();
+            driverFilter = new TruckingSystem.Desktop.Common.FilterBar();
+            gridDrivers = new System.Windows.Forms.DataGridView();
+            lblStatus = new System.Windows.Forms.Label();
             root.SuspendLayout();
             topBar.SuspendLayout();
             summaryBar.SuspendLayout();
@@ -51,478 +51,441 @@
             grpVehicles.SuspendLayout();
             vehicleLayout.SuspendLayout();
             vehicleBar.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)gridVehicles).BeginInit();
             grpDrivers.SuspendLayout();
             driverLayout.SuspendLayout();
             driverBar.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)gridVehicles).BeginInit();
             ((System.ComponentModel.ISupportInitialize)gridDrivers).BeginInit();
             SuspendLayout();
-            // 
+            //
             // root
-            // 
+            //
             root.ColumnCount = 1;
-            root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            root.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
             root.Controls.Add(lblTitle, 0, 0);
             root.Controls.Add(topBar, 0, 1);
             root.Controls.Add(summaryBar, 0, 2);
             root.Controls.Add(lblHint, 0, 3);
             root.Controls.Add(split, 0, 4);
             root.Controls.Add(lblStatus, 0, 5);
-            root.Dock = DockStyle.Fill;
-            root.Location = new Point(0, 0);
-            root.Margin = new Padding(0);
+            root.AutoSize = true;
+            root.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            root.Dock = System.Windows.Forms.DockStyle.Top;
+            root.Margin = new System.Windows.Forms.Padding(0);
             root.Name = "root";
             root.RowCount = 6;
-            root.RowStyles.Add(new RowStyle());
-            root.RowStyles.Add(new RowStyle());
-            root.RowStyles.Add(new RowStyle());
-            root.RowStyles.Add(new RowStyle());
-            root.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            root.RowStyles.Add(new RowStyle());
-            root.Size = new Size(1200, 760);
+            root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+            root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+            root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+            root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+            root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+            root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+            root.Size = new System.Drawing.Size(1200, 760);
             root.TabIndex = 0;
-            // 
+            //
             // lblTitle
-            // 
+            //
             lblTitle.AutoSize = true;
-            lblTitle.Font = new Font("Segoe UI", 18F, FontStyle.Bold);
-            lblTitle.ForeColor = Color.FromArgb(15, 23, 42);
-            lblTitle.Location = new Point(0, 0);
-            lblTitle.Margin = new Padding(0, 0, 0, 6);
+            lblTitle.Font = new System.Drawing.Font("Segoe UI", 18F, System.Drawing.FontStyle.Bold);
+            lblTitle.ForeColor = System.Drawing.Color.FromArgb(15, 23, 42);
+            lblTitle.Margin = new System.Windows.Forms.Padding(0, 0, 0, 6);
             lblTitle.Name = "lblTitle";
-            lblTitle.Size = new Size(283, 32);
             lblTitle.TabIndex = 0;
-            lblTitle.Text = "\U0001f9ed Nguồn lực theo kho";
-            // 
+            lblTitle.Text = "🧭 Nguồn lực theo kho";
+            //
             // topBar
-            // 
+            //
             topBar.AutoSize = true;
-            topBar.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+            topBar.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
             topBar.Controls.Add(lblWarehouse);
             topBar.Controls.Add(cboWarehouse);
             topBar.Controls.Add(btnRefresh);
-            topBar.Dock = DockStyle.Fill;
-            topBar.Location = new Point(0, 38);
-            topBar.Margin = new Padding(0);
+            topBar.Dock = System.Windows.Forms.DockStyle.Fill;
+            topBar.Margin = new System.Windows.Forms.Padding(0);
             topBar.Name = "topBar";
-            topBar.Size = new Size(1200, 40);
             topBar.TabIndex = 1;
-            // 
+            topBar.WrapContents = true;
+            //
             // lblWarehouse
-            // 
+            //
             lblWarehouse.AutoSize = true;
-            lblWarehouse.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
-            lblWarehouse.Location = new Point(0, 8);
-            lblWarehouse.Margin = new Padding(0, 8, 6, 0);
+            lblWarehouse.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            lblWarehouse.Anchor = System.Windows.Forms.AnchorStyles.Left;
+            lblWarehouse.Margin = new System.Windows.Forms.Padding(0, 0, 6, 8);
             lblWarehouse.Name = "lblWarehouse";
-            lblWarehouse.Size = new Size(39, 19);
             lblWarehouse.TabIndex = 0;
             lblWarehouse.Text = "Kho:";
-            // 
+            //
             // cboWarehouse
-            // 
-            cboWarehouse.DropDownStyle = ComboBoxStyle.DropDownList;
-            cboWarehouse.Font = new Font("Segoe UI", 10F);
-            cboWarehouse.Location = new Point(45, 4);
-            cboWarehouse.Margin = new Padding(0, 4, 10, 6);
-            cboWarehouse.MinimumSize = new Size(240, 0);
+            //
+            cboWarehouse.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            cboWarehouse.Font = new System.Drawing.Font("Segoe UI", 10F);
+            cboWarehouse.Anchor = System.Windows.Forms.AnchorStyles.Left;
+            cboWarehouse.Margin = new System.Windows.Forms.Padding(0, 0, 10, 8);
+            cboWarehouse.MinimumSize = new System.Drawing.Size(240, 0);
             cboWarehouse.Name = "cboWarehouse";
-            cboWarehouse.Size = new Size(240, 25);
             cboWarehouse.TabIndex = 1;
-            cboWarehouse.SelectedIndexChanged += CboWarehouse_SelectedIndexChanged;
-            // 
+            cboWarehouse.SelectedIndexChanged += new System.EventHandler(this.CboWarehouse_SelectedIndexChanged);
+            //
             // btnRefresh
-            // 
+            //
             btnRefresh.AutoSize = true;
-            btnRefresh.AutoSizeMode = AutoSizeMode.GrowAndShrink;
-            btnRefresh.BackColor = Color.White;
-            btnRefresh.Cursor = Cursors.Hand;
-            btnRefresh.FlatAppearance.BorderColor = Color.FromArgb(203, 213, 225);
-            btnRefresh.FlatStyle = FlatStyle.Flat;
-            btnRefresh.Font = new Font("Segoe UI", 9.5F, FontStyle.Bold);
-            btnRefresh.ForeColor = Color.FromArgb(15, 23, 42);
-            btnRefresh.Location = new Point(295, 0);
-            btnRefresh.Margin = new Padding(0, 0, 8, 6);
-            btnRefresh.MinimumSize = new Size(0, 34);
+            btnRefresh.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            btnRefresh.BackColor = System.Drawing.Color.White;
+            btnRefresh.Cursor = System.Windows.Forms.Cursors.Hand;
+            btnRefresh.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(203, 213, 225);
+            btnRefresh.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            btnRefresh.Anchor = System.Windows.Forms.AnchorStyles.Left;
+            btnRefresh.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            btnRefresh.ForeColor = System.Drawing.Color.FromArgb(15, 23, 42);
+            btnRefresh.Margin = new System.Windows.Forms.Padding(0, 0, 8, 8);
+            btnRefresh.MinimumSize = new System.Drawing.Size(130, 38);
             btnRefresh.Name = "btnRefresh";
-            btnRefresh.Padding = new Padding(8, 2, 8, 2);
-            btnRefresh.Size = new Size(113, 34);
+            btnRefresh.Padding = new System.Windows.Forms.Padding(10, 4, 10, 4);
             btnRefresh.TabIndex = 2;
             btnRefresh.Text = "🔄 Làm mới";
             btnRefresh.UseVisualStyleBackColor = false;
-            btnRefresh.Click += BtnRefresh_Click;
-            // 
+            btnRefresh.Click += new System.EventHandler(this.BtnRefresh_Click);
+            //
             // summaryBar
-            // 
+            //
             summaryBar.AutoSize = true;
-            summaryBar.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+            summaryBar.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
             summaryBar.Controls.Add(lblSumVehicles);
             summaryBar.Controls.Add(lblSumDrivers);
             summaryBar.Controls.Add(lblSumDocs);
             summaryBar.Controls.Add(lblSumTrips);
-            summaryBar.Dock = DockStyle.Fill;
-            summaryBar.Location = new Point(0, 78);
-            summaryBar.Margin = new Padding(0);
+            summaryBar.Dock = System.Windows.Forms.DockStyle.Fill;
+            summaryBar.Margin = new System.Windows.Forms.Padding(0);
             summaryBar.Name = "summaryBar";
-            summaryBar.Size = new Size(1200, 45);
             summaryBar.TabIndex = 2;
-            // 
-            // lblSumVehicles
-            // 
+            summaryBar.WrapContents = true;
+            //
+            // lblSumVehicles — ô tổng hợp
+            //
             lblSumVehicles.AutoSize = true;
-            lblSumVehicles.BackColor = Color.White;
-            lblSumVehicles.BorderStyle = BorderStyle.FixedSingle;
-            lblSumVehicles.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
-            lblSumVehicles.ForeColor = Color.FromArgb(15, 23, 42);
-            lblSumVehicles.Location = new Point(0, 0);
-            lblSumVehicles.Margin = new Padding(0, 0, 10, 8);
-            lblSumVehicles.MinimumSize = new Size(170, 0);
+            lblSumVehicles.BackColor = System.Drawing.Color.White;
+            lblSumVehicles.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            lblSumVehicles.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            lblSumVehicles.ForeColor = System.Drawing.Color.FromArgb(15, 23, 42);
+            lblSumVehicles.Margin = new System.Windows.Forms.Padding(0, 0, 12, 10);
+            lblSumVehicles.MinimumSize = new System.Drawing.Size(250, 64);
             lblSumVehicles.Name = "lblSumVehicles";
-            lblSumVehicles.Padding = new Padding(10, 8, 10, 8);
-            lblSumVehicles.Size = new Size(170, 37);
+            lblSumVehicles.Padding = new System.Windows.Forms.Padding(10, 8, 10, 8);
             lblSumVehicles.TabIndex = 0;
             lblSumVehicles.Text = "—";
-            // 
-            // lblSumDrivers
-            // 
+            //
+            // lblSumDrivers — ô tổng hợp
+            //
             lblSumDrivers.AutoSize = true;
-            lblSumDrivers.BackColor = Color.White;
-            lblSumDrivers.BorderStyle = BorderStyle.FixedSingle;
-            lblSumDrivers.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
-            lblSumDrivers.ForeColor = Color.FromArgb(15, 23, 42);
-            lblSumDrivers.Location = new Point(180, 0);
-            lblSumDrivers.Margin = new Padding(0, 0, 10, 8);
-            lblSumDrivers.MinimumSize = new Size(170, 0);
+            lblSumDrivers.BackColor = System.Drawing.Color.White;
+            lblSumDrivers.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            lblSumDrivers.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            lblSumDrivers.ForeColor = System.Drawing.Color.FromArgb(15, 23, 42);
+            lblSumDrivers.Margin = new System.Windows.Forms.Padding(0, 0, 12, 10);
+            lblSumDrivers.MinimumSize = new System.Drawing.Size(250, 64);
             lblSumDrivers.Name = "lblSumDrivers";
-            lblSumDrivers.Padding = new Padding(10, 8, 10, 8);
-            lblSumDrivers.Size = new Size(170, 37);
+            lblSumDrivers.Padding = new System.Windows.Forms.Padding(10, 8, 10, 8);
             lblSumDrivers.TabIndex = 1;
             lblSumDrivers.Text = "—";
-            // 
-            // lblSumDocs
-            // 
+            //
+            // lblSumDocs — ô tổng hợp
+            //
             lblSumDocs.AutoSize = true;
-            lblSumDocs.BackColor = Color.White;
-            lblSumDocs.BorderStyle = BorderStyle.FixedSingle;
-            lblSumDocs.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
-            lblSumDocs.ForeColor = Color.FromArgb(15, 23, 42);
-            lblSumDocs.Location = new Point(360, 0);
-            lblSumDocs.Margin = new Padding(0, 0, 10, 8);
-            lblSumDocs.MinimumSize = new Size(170, 0);
+            lblSumDocs.BackColor = System.Drawing.Color.White;
+            lblSumDocs.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            lblSumDocs.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            lblSumDocs.ForeColor = System.Drawing.Color.FromArgb(15, 23, 42);
+            lblSumDocs.Margin = new System.Windows.Forms.Padding(0, 0, 12, 10);
+            lblSumDocs.MinimumSize = new System.Drawing.Size(250, 64);
             lblSumDocs.Name = "lblSumDocs";
-            lblSumDocs.Padding = new Padding(10, 8, 10, 8);
-            lblSumDocs.Size = new Size(170, 37);
+            lblSumDocs.Padding = new System.Windows.Forms.Padding(10, 8, 10, 8);
             lblSumDocs.TabIndex = 2;
             lblSumDocs.Text = "—";
-            // 
-            // lblSumTrips
-            // 
+            //
+            // lblSumTrips — ô tổng hợp
+            //
             lblSumTrips.AutoSize = true;
-            lblSumTrips.BackColor = Color.White;
-            lblSumTrips.BorderStyle = BorderStyle.FixedSingle;
-            lblSumTrips.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
-            lblSumTrips.ForeColor = Color.FromArgb(15, 23, 42);
-            lblSumTrips.Location = new Point(540, 0);
-            lblSumTrips.Margin = new Padding(0, 0, 10, 8);
-            lblSumTrips.MinimumSize = new Size(170, 0);
+            lblSumTrips.BackColor = System.Drawing.Color.White;
+            lblSumTrips.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            lblSumTrips.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            lblSumTrips.ForeColor = System.Drawing.Color.FromArgb(15, 23, 42);
+            lblSumTrips.Margin = new System.Windows.Forms.Padding(0, 0, 12, 10);
+            lblSumTrips.MinimumSize = new System.Drawing.Size(250, 64);
             lblSumTrips.Name = "lblSumTrips";
-            lblSumTrips.Padding = new Padding(10, 8, 10, 8);
-            lblSumTrips.Size = new Size(170, 37);
+            lblSumTrips.Padding = new System.Windows.Forms.Padding(10, 8, 10, 8);
             lblSumTrips.TabIndex = 3;
             lblSumTrips.Text = "—";
-            // 
+            //
             // lblHint
-            // 
-            lblHint.Anchor = AnchorStyles.Left | AnchorStyles.Right;
+            //
+            lblHint.Anchor = System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
             lblHint.AutoSize = true;
-            lblHint.Font = new Font("Segoe UI", 9F);
-            lblHint.ForeColor = Color.FromArgb(100, 116, 139);
-            lblHint.Location = new Point(0, 123);
-            lblHint.Margin = new Padding(0, 0, 0, 6);
+            lblHint.Font = new System.Drawing.Font("Segoe UI", 9F);
+            lblHint.ForeColor = System.Drawing.Color.FromArgb(100, 116, 139);
+            lblHint.Margin = new System.Windows.Forms.Padding(0, 0, 0, 6);
             lblHint.Name = "lblHint";
-            lblHint.Size = new Size(1200, 15);
             lblHint.TabIndex = 3;
             lblHint.Text = "Bấm 1 xe -> bảng Tài xế cho biết ai đủ hạng bằng lái xe đó; bấm 1 tài xế -> bảng Xe cho biết xe nào người đó lái được.";
-            // 
-            // split
-            // 
+            //
+            // split — Xe (trên) / Tài xế (dưới); mỗi bảng cao theo số dòng, cả màn cuộn như 1 trang
+            //
             split.ColumnCount = 1;
-            split.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            split.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
             split.Controls.Add(grpVehicles, 0, 0);
             split.Controls.Add(grpDrivers, 0, 1);
-            split.Dock = DockStyle.Fill;
-            split.Location = new Point(0, 144);
-            split.Margin = new Padding(0);
+            split.AutoSize = true;
+            split.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            split.Dock = System.Windows.Forms.DockStyle.Fill;
+            split.Margin = new System.Windows.Forms.Padding(0);
             split.Name = "split";
             split.RowCount = 2;
-            split.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
-            split.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
-            split.Size = new Size(1200, 597);
+            split.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+            split.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
             split.TabIndex = 4;
-            // 
+            //
             // grpVehicles
-            // 
+            //
             grpVehicles.Controls.Add(vehicleLayout);
-            grpVehicles.Dock = DockStyle.Fill;
-            grpVehicles.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
-            grpVehicles.ForeColor = Color.FromArgb(15, 23, 42);
-            grpVehicles.Location = new Point(0, 0);
-            grpVehicles.Margin = new Padding(0, 0, 0, 8);
+            grpVehicles.AutoSize = true;
+            grpVehicles.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            grpVehicles.Dock = System.Windows.Forms.DockStyle.Fill;
+            grpVehicles.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            grpVehicles.ForeColor = System.Drawing.Color.FromArgb(15, 23, 42);
+            grpVehicles.Margin = new System.Windows.Forms.Padding(0, 0, 0, 12);
             grpVehicles.Name = "grpVehicles";
-            grpVehicles.Padding = new Padding(8, 4, 8, 8);
-            grpVehicles.Size = new Size(1200, 290);
+            grpVehicles.Padding = new System.Windows.Forms.Padding(10, 6, 10, 10);
             grpVehicles.TabIndex = 0;
-            grpVehicles.TabStop = false;
             grpVehicles.Text = "🚚 Xe";
-            // 
+            //
             // vehicleLayout
-            // 
+            //
             vehicleLayout.ColumnCount = 1;
-            vehicleLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            vehicleLayout.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
             vehicleLayout.Controls.Add(vehicleBar, 0, 0);
-            vehicleLayout.Controls.Add(gridVehicles, 0, 1);
-            vehicleLayout.Dock = DockStyle.Fill;
-            vehicleLayout.Font = new Font("Segoe UI", 9F);
-            vehicleLayout.Location = new Point(8, 22);
-            vehicleLayout.Margin = new Padding(0);
+            vehicleLayout.Controls.Add(vehicleFilter, 0, 1);
+            vehicleLayout.Controls.Add(gridVehicles, 0, 2);
+            vehicleLayout.AutoSize = true;
+            vehicleLayout.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            vehicleLayout.Dock = System.Windows.Forms.DockStyle.Fill;
+            vehicleLayout.Font = new System.Drawing.Font("Segoe UI", 9F);
+            vehicleLayout.Margin = new System.Windows.Forms.Padding(0);
             vehicleLayout.Name = "vehicleLayout";
-            vehicleLayout.RowCount = 2;
-            vehicleLayout.RowStyles.Add(new RowStyle());
-            vehicleLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            vehicleLayout.Size = new Size(1184, 260);
+            vehicleLayout.RowCount = 3;
+            vehicleLayout.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+            vehicleLayout.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+            vehicleLayout.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
             vehicleLayout.TabIndex = 0;
-            // 
+            //
             // vehicleBar
-            // 
+            //
             vehicleBar.AutoSize = true;
-            vehicleBar.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+            vehicleBar.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
             vehicleBar.Controls.Add(btnVehicleDocs);
             vehicleBar.Controls.Add(btnVehicleFuel);
-            vehicleBar.Controls.Add(chkVehicleProblems);
-            vehicleBar.Dock = DockStyle.Fill;
-            vehicleBar.Location = new Point(0, 0);
-            vehicleBar.Margin = new Padding(0);
+            vehicleBar.Dock = System.Windows.Forms.DockStyle.Fill;
+            vehicleBar.Margin = new System.Windows.Forms.Padding(0);
             vehicleBar.Name = "vehicleBar";
-            vehicleBar.Size = new Size(1184, 40);
             vehicleBar.TabIndex = 0;
-            // 
+            vehicleBar.WrapContents = true;
+            //
             // btnVehicleDocs
-            // 
+            //
             btnVehicleDocs.AutoSize = true;
-            btnVehicleDocs.AutoSizeMode = AutoSizeMode.GrowAndShrink;
-            btnVehicleDocs.BackColor = Color.White;
-            btnVehicleDocs.Cursor = Cursors.Hand;
-            btnVehicleDocs.FlatAppearance.BorderColor = Color.FromArgb(203, 213, 225);
-            btnVehicleDocs.FlatStyle = FlatStyle.Flat;
-            btnVehicleDocs.Font = new Font("Segoe UI", 9.5F, FontStyle.Bold);
-            btnVehicleDocs.ForeColor = Color.FromArgb(15, 23, 42);
-            btnVehicleDocs.Location = new Point(0, 0);
-            btnVehicleDocs.Margin = new Padding(0, 0, 8, 6);
-            btnVehicleDocs.MinimumSize = new Size(0, 34);
+            btnVehicleDocs.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            btnVehicleDocs.BackColor = System.Drawing.Color.White;
+            btnVehicleDocs.Cursor = System.Windows.Forms.Cursors.Hand;
+            btnVehicleDocs.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(203, 213, 225);
+            btnVehicleDocs.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            btnVehicleDocs.Anchor = System.Windows.Forms.AnchorStyles.Left;
+            btnVehicleDocs.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            btnVehicleDocs.ForeColor = System.Drawing.Color.FromArgb(15, 23, 42);
+            btnVehicleDocs.Margin = new System.Windows.Forms.Padding(0, 0, 8, 8);
+            btnVehicleDocs.MinimumSize = new System.Drawing.Size(130, 38);
             btnVehicleDocs.Name = "btnVehicleDocs";
-            btnVehicleDocs.Padding = new Padding(8, 2, 8, 2);
-            btnVehicleDocs.Size = new Size(121, 34);
+            btnVehicleDocs.Padding = new System.Windows.Forms.Padding(10, 4, 10, 4);
             btnVehicleDocs.TabIndex = 0;
             btnVehicleDocs.Text = "📄 Giấy tờ xe";
             btnVehicleDocs.UseVisualStyleBackColor = false;
-            btnVehicleDocs.Click += BtnVehicleDocs_Click;
-            // 
+            btnVehicleDocs.Click += new System.EventHandler(this.BtnVehicleDocs_Click);
+            //
             // btnVehicleFuel
-            // 
+            //
             btnVehicleFuel.AutoSize = true;
-            btnVehicleFuel.AutoSizeMode = AutoSizeMode.GrowAndShrink;
-            btnVehicleFuel.BackColor = Color.White;
-            btnVehicleFuel.Cursor = Cursors.Hand;
-            btnVehicleFuel.FlatAppearance.BorderColor = Color.FromArgb(203, 213, 225);
-            btnVehicleFuel.FlatStyle = FlatStyle.Flat;
-            btnVehicleFuel.Font = new Font("Segoe UI", 9.5F, FontStyle.Bold);
-            btnVehicleFuel.ForeColor = Color.FromArgb(15, 23, 42);
-            btnVehicleFuel.Location = new Point(129, 0);
-            btnVehicleFuel.Margin = new Padding(0, 0, 8, 6);
-            btnVehicleFuel.MinimumSize = new Size(0, 34);
+            btnVehicleFuel.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            btnVehicleFuel.BackColor = System.Drawing.Color.White;
+            btnVehicleFuel.Cursor = System.Windows.Forms.Cursors.Hand;
+            btnVehicleFuel.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(203, 213, 225);
+            btnVehicleFuel.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            btnVehicleFuel.Anchor = System.Windows.Forms.AnchorStyles.Left;
+            btnVehicleFuel.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            btnVehicleFuel.ForeColor = System.Drawing.Color.FromArgb(15, 23, 42);
+            btnVehicleFuel.Margin = new System.Windows.Forms.Padding(0, 0, 8, 8);
+            btnVehicleFuel.MinimumSize = new System.Drawing.Size(130, 38);
             btnVehicleFuel.Name = "btnVehicleFuel";
-            btnVehicleFuel.Padding = new Padding(8, 2, 8, 2);
-            btnVehicleFuel.Size = new Size(123, 34);
+            btnVehicleFuel.Padding = new System.Windows.Forms.Padding(10, 4, 10, 4);
             btnVehicleFuel.TabIndex = 1;
             btnVehicleFuel.Text = "⛽ Nhiên liệu";
             btnVehicleFuel.UseVisualStyleBackColor = false;
-            btnVehicleFuel.Click += BtnVehicleFuel_Click;
-            // 
-            // chkVehicleProblems
-            // 
-            chkVehicleProblems.AutoSize = true;
-            chkVehicleProblems.Font = new Font("Segoe UI", 9F);
-            chkVehicleProblems.Location = new Point(268, 8);
-            chkVehicleProblems.Margin = new Padding(8, 8, 0, 0);
-            chkVehicleProblems.Name = "chkVehicleProblems";
-            chkVehicleProblems.Size = new Size(298, 19);
-            chkVehicleProblems.TabIndex = 2;
-            chkVehicleProblems.Text = "Chỉ hiện xe KHÔNG chạy được / giấy tờ sắp hết hạn";
-            chkVehicleProblems.UseVisualStyleBackColor = true;
-            chkVehicleProblems.CheckedChanged += ProblemsOnly_CheckedChanged;
-            // 
+            btnVehicleFuel.Click += new System.EventHandler(this.BtnVehicleFuel_Click);
+            //
+            // vehicleFilter — tìm nhanh + lọc theo tình trạng (xe chạy được / không / giấy tờ sắp hết hạn...)
+            //
+            vehicleFilter.Dock = System.Windows.Forms.DockStyle.Fill;
+            vehicleFilter.Name = "vehicleFilter";
+            vehicleFilter.SearchPlaceholder = "Biển số, loại xe, lý do...";
+            vehicleFilter.TabIndex = 1;
+            //
             // gridVehicles
-            // 
-            gridVehicles.Dock = DockStyle.Fill;
-            gridVehicles.Location = new Point(0, 40);
-            gridVehicles.Margin = new Padding(0);
+            //
+            gridVehicles.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
+            gridVehicles.Size = new System.Drawing.Size(1100, 120);
+            gridVehicles.Margin = new System.Windows.Forms.Padding(0);
             gridVehicles.Name = "gridVehicles";
-            gridVehicles.Size = new Size(1184, 220);
             gridVehicles.TabIndex = 1;
-            gridVehicles.CellFormatting += GridVehicles_CellFormatting;
-            gridVehicles.SelectionChanged += GridVehicles_SelectionChanged;
-            // 
+            gridVehicles.SelectionChanged += new System.EventHandler(this.GridVehicles_SelectionChanged);
+            gridVehicles.CellFormatting += new System.Windows.Forms.DataGridViewCellFormattingEventHandler(this.GridVehicles_CellFormatting);
+            //
             // grpDrivers
-            // 
+            //
             grpDrivers.Controls.Add(driverLayout);
-            grpDrivers.Dock = DockStyle.Fill;
-            grpDrivers.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
-            grpDrivers.ForeColor = Color.FromArgb(15, 23, 42);
-            grpDrivers.Location = new Point(0, 298);
-            grpDrivers.Margin = new Padding(0, 0, 0, 8);
+            grpDrivers.AutoSize = true;
+            grpDrivers.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            grpDrivers.Dock = System.Windows.Forms.DockStyle.Fill;
+            grpDrivers.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            grpDrivers.ForeColor = System.Drawing.Color.FromArgb(15, 23, 42);
+            grpDrivers.Margin = new System.Windows.Forms.Padding(0, 0, 0, 12);
             grpDrivers.Name = "grpDrivers";
-            grpDrivers.Padding = new Padding(8, 4, 8, 8);
-            grpDrivers.Size = new Size(1200, 291);
+            grpDrivers.Padding = new System.Windows.Forms.Padding(10, 6, 10, 10);
             grpDrivers.TabIndex = 1;
-            grpDrivers.TabStop = false;
             grpDrivers.Text = "👷 Tài xế";
-            // 
+            //
             // driverLayout
-            // 
+            //
             driverLayout.ColumnCount = 1;
-            driverLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            driverLayout.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
             driverLayout.Controls.Add(driverBar, 0, 0);
-            driverLayout.Controls.Add(gridDrivers, 0, 1);
-            driverLayout.Dock = DockStyle.Fill;
-            driverLayout.Font = new Font("Segoe UI", 9F);
-            driverLayout.Location = new Point(8, 22);
-            driverLayout.Margin = new Padding(0);
+            driverLayout.Controls.Add(driverFilter, 0, 1);
+            driverLayout.Controls.Add(gridDrivers, 0, 2);
+            driverLayout.AutoSize = true;
+            driverLayout.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            driverLayout.Dock = System.Windows.Forms.DockStyle.Fill;
+            driverLayout.Font = new System.Drawing.Font("Segoe UI", 9F);
+            driverLayout.Margin = new System.Windows.Forms.Padding(0);
             driverLayout.Name = "driverLayout";
-            driverLayout.RowCount = 2;
-            driverLayout.RowStyles.Add(new RowStyle());
-            driverLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            driverLayout.Size = new Size(1184, 261);
+            driverLayout.RowCount = 3;
+            driverLayout.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+            driverLayout.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+            driverLayout.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
             driverLayout.TabIndex = 0;
-            // 
+            //
             // driverBar
-            // 
+            //
             driverBar.AutoSize = true;
-            driverBar.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+            driverBar.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
             driverBar.Controls.Add(btnDriverProfile);
             driverBar.Controls.Add(btnDriverWorkDays);
-            driverBar.Controls.Add(chkDriverProblems);
-            driverBar.Dock = DockStyle.Fill;
-            driverBar.Location = new Point(0, 0);
-            driverBar.Margin = new Padding(0);
+            driverBar.Dock = System.Windows.Forms.DockStyle.Fill;
+            driverBar.Margin = new System.Windows.Forms.Padding(0);
             driverBar.Name = "driverBar";
-            driverBar.Size = new Size(1184, 40);
             driverBar.TabIndex = 0;
-            // 
+            driverBar.WrapContents = true;
+            //
             // btnDriverProfile
-            // 
+            //
             btnDriverProfile.AutoSize = true;
-            btnDriverProfile.AutoSizeMode = AutoSizeMode.GrowAndShrink;
-            btnDriverProfile.BackColor = Color.White;
-            btnDriverProfile.Cursor = Cursors.Hand;
-            btnDriverProfile.FlatAppearance.BorderColor = Color.FromArgb(203, 213, 225);
-            btnDriverProfile.FlatStyle = FlatStyle.Flat;
-            btnDriverProfile.Font = new Font("Segoe UI", 9.5F, FontStyle.Bold);
-            btnDriverProfile.ForeColor = Color.FromArgb(15, 23, 42);
-            btnDriverProfile.Location = new Point(0, 0);
-            btnDriverProfile.Margin = new Padding(0, 0, 8, 6);
-            btnDriverProfile.MinimumSize = new Size(0, 34);
+            btnDriverProfile.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            btnDriverProfile.BackColor = System.Drawing.Color.White;
+            btnDriverProfile.Cursor = System.Windows.Forms.Cursors.Hand;
+            btnDriverProfile.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(203, 213, 225);
+            btnDriverProfile.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            btnDriverProfile.Anchor = System.Windows.Forms.AnchorStyles.Left;
+            btnDriverProfile.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            btnDriverProfile.ForeColor = System.Drawing.Color.FromArgb(15, 23, 42);
+            btnDriverProfile.Margin = new System.Windows.Forms.Padding(0, 0, 8, 8);
+            btnDriverProfile.MinimumSize = new System.Drawing.Size(130, 38);
             btnDriverProfile.Name = "btnDriverProfile";
-            btnDriverProfile.Padding = new Padding(8, 2, 8, 2);
-            btnDriverProfile.Size = new Size(133, 34);
+            btnDriverProfile.Padding = new System.Windows.Forms.Padding(10, 4, 10, 4);
             btnDriverProfile.TabIndex = 0;
             btnDriverProfile.Text = "📝 Hồ sơ tài xế";
             btnDriverProfile.UseVisualStyleBackColor = false;
-            btnDriverProfile.Click += BtnDriverProfile_Click;
-            // 
+            btnDriverProfile.Click += new System.EventHandler(this.BtnDriverProfile_Click);
+            //
             // btnDriverWorkDays
-            // 
+            //
             btnDriverWorkDays.AutoSize = true;
-            btnDriverWorkDays.AutoSizeMode = AutoSizeMode.GrowAndShrink;
-            btnDriverWorkDays.BackColor = Color.White;
-            btnDriverWorkDays.Cursor = Cursors.Hand;
-            btnDriverWorkDays.FlatAppearance.BorderColor = Color.FromArgb(203, 213, 225);
-            btnDriverWorkDays.FlatStyle = FlatStyle.Flat;
-            btnDriverWorkDays.Font = new Font("Segoe UI", 9.5F, FontStyle.Bold);
-            btnDriverWorkDays.ForeColor = Color.FromArgb(15, 23, 42);
-            btnDriverWorkDays.Location = new Point(141, 0);
-            btnDriverWorkDays.Margin = new Padding(0, 0, 8, 6);
-            btnDriverWorkDays.MinimumSize = new Size(0, 34);
+            btnDriverWorkDays.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            btnDriverWorkDays.BackColor = System.Drawing.Color.White;
+            btnDriverWorkDays.Cursor = System.Windows.Forms.Cursors.Hand;
+            btnDriverWorkDays.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(203, 213, 225);
+            btnDriverWorkDays.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            btnDriverWorkDays.Anchor = System.Windows.Forms.AnchorStyles.Left;
+            btnDriverWorkDays.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            btnDriverWorkDays.ForeColor = System.Drawing.Color.FromArgb(15, 23, 42);
+            btnDriverWorkDays.Margin = new System.Windows.Forms.Padding(0, 0, 8, 8);
+            btnDriverWorkDays.MinimumSize = new System.Drawing.Size(130, 38);
             btnDriverWorkDays.Name = "btnDriverWorkDays";
-            btnDriverWorkDays.Padding = new Padding(8, 2, 8, 2);
-            btnDriverWorkDays.Size = new Size(118, 34);
+            btnDriverWorkDays.Padding = new System.Windows.Forms.Padding(10, 4, 10, 4);
             btnDriverWorkDays.TabIndex = 1;
             btnDriverWorkDays.Text = "📅 Ngày làm";
             btnDriverWorkDays.UseVisualStyleBackColor = false;
-            btnDriverWorkDays.Click += BtnDriverWorkDays_Click;
-            // 
-            // chkDriverProblems
-            // 
-            chkDriverProblems.AutoSize = true;
-            chkDriverProblems.Font = new Font("Segoe UI", 9F);
-            chkDriverProblems.Location = new Point(275, 8);
-            chkDriverProblems.Margin = new Padding(8, 8, 0, 0);
-            chkDriverProblems.Name = "chkDriverProblems";
-            chkDriverProblems.Size = new Size(314, 19);
-            chkDriverProblems.TabIndex = 2;
-            chkDriverProblems.Text = "Chỉ hiện tài xế KHÔNG chạy được / giấy tờ sắp hết hạn";
-            chkDriverProblems.UseVisualStyleBackColor = true;
-            chkDriverProblems.CheckedChanged += ProblemsOnly_CheckedChanged;
-            // 
+            btnDriverWorkDays.Click += new System.EventHandler(this.BtnDriverWorkDays_Click);
+            //
+            // driverFilter — tìm nhanh + lọc theo tình trạng (tài xế chạy được / không / giấy tờ sắp hết hạn...)
+            //
+            driverFilter.Dock = System.Windows.Forms.DockStyle.Fill;
+            driverFilter.Name = "driverFilter";
+            driverFilter.SearchPlaceholder = "Mã NV, họ tên, SĐT, lý do...";
+            driverFilter.TabIndex = 1;
+            //
             // gridDrivers
-            // 
-            gridDrivers.Dock = DockStyle.Fill;
-            gridDrivers.Location = new Point(0, 40);
-            gridDrivers.Margin = new Padding(0);
+            //
+            gridDrivers.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
+            gridDrivers.Size = new System.Drawing.Size(1100, 120);
+            gridDrivers.Margin = new System.Windows.Forms.Padding(0);
             gridDrivers.Name = "gridDrivers";
-            gridDrivers.Size = new Size(1184, 221);
             gridDrivers.TabIndex = 1;
-            gridDrivers.CellFormatting += GridDrivers_CellFormatting;
-            gridDrivers.SelectionChanged += GridDrivers_SelectionChanged;
-            // 
+            gridDrivers.SelectionChanged += new System.EventHandler(this.GridDrivers_SelectionChanged);
+            gridDrivers.CellFormatting += new System.Windows.Forms.DataGridViewCellFormattingEventHandler(this.GridDrivers_CellFormatting);
+            //
             // lblStatus
-            // 
-            lblStatus.Anchor = AnchorStyles.Left | AnchorStyles.Right;
+            //
+            lblStatus.Anchor = System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
             lblStatus.AutoSize = true;
-            lblStatus.Font = new Font("Segoe UI", 9F);
-            lblStatus.ForeColor = Color.FromArgb(100, 116, 139);
-            lblStatus.Location = new Point(0, 745);
-            lblStatus.Margin = new Padding(0, 4, 0, 0);
+            lblStatus.Font = new System.Drawing.Font("Segoe UI", 9F);
+            lblStatus.ForeColor = System.Drawing.Color.FromArgb(100, 116, 139);
+            lblStatus.Margin = new System.Windows.Forms.Padding(0, 4, 0, 0);
             lblStatus.Name = "lblStatus";
-            lblStatus.Size = new Size(1200, 15);
             lblStatus.TabIndex = 5;
-            // 
+            //
             // ResourcesControl
-            // 
-            AutoScaleDimensions = new SizeF(96F, 96F);
-            AutoScaleMode = AutoScaleMode.Dpi;
-            BackColor = Color.FromArgb(241, 245, 249);
+            //
+            AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
+            AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
+            AutoScroll = true;
+            BackColor = System.Drawing.Color.FromArgb(241, 245, 249);
             Controls.Add(root);
             Name = "ResourcesControl";
-            Size = new Size(1200, 760);
-            root.ResumeLayout(false);
-            root.PerformLayout();
-            topBar.ResumeLayout(false);
-            topBar.PerformLayout();
-            summaryBar.ResumeLayout(false);
-            summaryBar.PerformLayout();
-            split.ResumeLayout(false);
-            grpVehicles.ResumeLayout(false);
-            vehicleLayout.ResumeLayout(false);
-            vehicleLayout.PerformLayout();
-            vehicleBar.ResumeLayout(false);
-            vehicleBar.PerformLayout();
+            Size = new System.Drawing.Size(1200, 760);
             ((System.ComponentModel.ISupportInitialize)gridVehicles).EndInit();
-            grpDrivers.ResumeLayout(false);
-            driverLayout.ResumeLayout(false);
-            driverLayout.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)gridDrivers).EndInit();
             driverBar.ResumeLayout(false);
             driverBar.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)gridDrivers).EndInit();
+            driverLayout.ResumeLayout(false);
+            driverLayout.PerformLayout();
+            grpDrivers.ResumeLayout(false);
+            vehicleBar.ResumeLayout(false);
+            vehicleBar.PerformLayout();
+            vehicleLayout.ResumeLayout(false);
+            vehicleLayout.PerformLayout();
+            grpVehicles.ResumeLayout(false);
+            split.ResumeLayout(false);
+            summaryBar.ResumeLayout(false);
+            summaryBar.PerformLayout();
+            topBar.ResumeLayout(false);
+            topBar.PerformLayout();
+            root.ResumeLayout(false);
+            root.PerformLayout();
             ResumeLayout(false);
         }
 
@@ -546,14 +509,14 @@
         private System.Windows.Forms.FlowLayoutPanel vehicleBar;
         private System.Windows.Forms.Button btnVehicleDocs;
         private System.Windows.Forms.Button btnVehicleFuel;
-        private System.Windows.Forms.CheckBox chkVehicleProblems;
+        private TruckingSystem.Desktop.Common.FilterBar vehicleFilter;
         private System.Windows.Forms.DataGridView gridVehicles;
         private System.Windows.Forms.GroupBox grpDrivers;
         private System.Windows.Forms.TableLayoutPanel driverLayout;
         private System.Windows.Forms.FlowLayoutPanel driverBar;
         private System.Windows.Forms.Button btnDriverProfile;
         private System.Windows.Forms.Button btnDriverWorkDays;
-        private System.Windows.Forms.CheckBox chkDriverProblems;
+        private TruckingSystem.Desktop.Common.FilterBar driverFilter;
         private System.Windows.Forms.DataGridView gridDrivers;
         private System.Windows.Forms.Label lblStatus;
     }

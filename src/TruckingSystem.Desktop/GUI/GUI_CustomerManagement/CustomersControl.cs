@@ -13,6 +13,8 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
         {
             InitializeComponent();
             Theme.StyleGrid(grid);
+            GridLayout.FitColumns(grid); // cột vừa nội dung, nhiều cột thì cuộn ngang thay vì cắt chữ
+            Load += (_, _) => Theme.UniformButtons(toolbar); // nút đều nhau, xuống dòng vẫn thẳng cột
             grid.DataBindingComplete += (_, _) => { if (grid.Columns["Id"] != null) grid.Columns["Id"]!.Visible = false; };
             filterBar.AddChoice("type", "Loại", new[] { "Doanh nghiệp", "Cá nhân" });
             filterBar.FilterChanged += (_, _) => BindGrid();

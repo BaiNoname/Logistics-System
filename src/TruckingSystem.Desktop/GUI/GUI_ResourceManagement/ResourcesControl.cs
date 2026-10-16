@@ -24,8 +24,35 @@ namespace TruckingSystem.Desktop.GUI_ResourceManagement
             InitializeComponent();
             Theme.StyleGrid(gridVehicles);
             Theme.StyleGrid(gridDrivers);
-            gridVehicles.DataBindingComplete += (_, _) => { if (gridVehicles.Columns["Id"] is { } c) c.Visible = false; UpdateButtons(); };
-            gridDrivers.DataBindingComplete += (_, _) => { if (gridDrivers.Columns["EmployeeId"] is { } c) c.Visible = false; UpdateButtons(); };
+            gridVehicles.DataBindingComplete += (_, _) =>
+            {
+                if (gridVehicles.Columns["Id"] is { } c) c.Visible = false;
+                // Cột chữ đổi theo dòng chọn ở bảng kia ("✖ Không đủ hạng bằng") -> chừa sẵn chỗ.
+                if (gridVehicles.Columns["Tài_xế_đang_chọn"] is { } pick) pick.MinimumWidth = MatchColumnWidth(gridVehicles);
+                UpdateButtons();
+            };
+            gridDrivers.DataBindingComplete += (_, _) =>
+            {
+                if (gridDrivers.Columns["EmployeeId"] is { } c) c.Visible = false;
+                if (gridDrivers.Columns["Xe_đang_chọn"] is { } pick) pick.MinimumWidth = MatchColumnWidth(gridDrivers);
+                UpdateButtons();
+            };
+            // Cột vừa nội dung (không cắt chữ), bảng cao theo số dòng — cả màn cuộn như 1 trang.
+            GridLayout.FitColumns(gridVehicles);
+            GridLayout.FitColumns(gridDrivers);
+            GridLayout.GrowWithRows(gridVehicles);
+            GridLayout.GrowWithRows(gridDrivers);
+            Load += (_, _) => Theme.UniformButtons(vehicleBar, driverBar);
+
+            // Bộ lọc cho 2 bảng (lọc trên dữ liệu đã tải, không gọi lại API).
+            vehicleFilter.AddChoice("state", "Tình trạng", new[] { StateReady, StateBlocked, StateExpiring });
+            vehicleFilter.AddChoice("status", "Trạng thái", new[] { "Rảnh", "Đang chạy", "Bảo trì", "Ngưng hoạt động" });
+            vehicleFilter.AddChoice("license", "Cần bằng", Array.Empty<string>());
+            vehicleFilter.FilterChanged += (_, _) => BindVehicles();
+            driverFilter.AddChoice("state", "Tình trạng", new[] { StateReady, StateBlocked, StateExpiring });
+            driverFilter.AddChoice("workday", "Ngày làm", new[] { WorkToday, WorkNotToday });
+            driverFilter.AddChoice("license", "Hạng bằng", Array.Empty<string>());
+            driverFilter.FilterChanged += (_, _) => BindDrivers();
             Load += async (_, _) => await LoadAsync();
         }
 
@@ -34,6 +61,13 @@ namespace TruckingSystem.Desktop.GUI_ResourceManagement
             _api = api;
             _service = new ResourceApiService(api.Connection);
         }
+
+        private static int MatchColumnWidth(DataGridView grid)
+            => TextRenderer.MeasureText("✖ Không đủ hạng bằng", Theme.FontBold).Width + grid.Font.Height * 2;
+
+        /// <summary>Bấm vào 1 bảng cao hơn khung nhìn: WinForms mặc định cuộn trang về ĐẦU bảng (nhảy
+        /// màn hình). Giữ nguyên vị trí cuộn hiện tại.</summary>
+        protected override Point ScrollToControl(Control activeControl) => DisplayRectangle.Location;
 
         // ================= Tải dữ liệu =================
 
@@ -52,6 +86,8 @@ namespace TruckingSystem.Desktop.GUI_ResourceManagement
                 _data = data;
                 BindWarehouses();
                 BindSummary();
+                vehicleFilter.SetChoiceOptions("license", _data.Vehicles.Select(v => v.RequiredLicense));
+                driverFilter.SetChoiceOptions("license", _data.Drivers.Select(d => d.LicenseClass ?? "—"));
                 BindVehicles();
                 BindDrivers();
                 lblStatus.Text = $"Cập nhật lúc {DateTime.Now:HH:mm} — \"Chạy được hôm nay\" tính đúng như Chia xe: xe Rảnh + đủ 3 giấy tờ còn hạn; " +
@@ -117,13 +153,31 @@ namespace TruckingSystem.Desktop.GUI_ResourceManagement
             => v.FuelCurrentLiters is not decimal cur ? "— chưa khai"
              : v.FuelTankCapacityLiters is decimal cap && cap > 0 ? $"{(cur / cap <= 0.15m ? "⚠️ " : "")}~{cur:0} / {cap:0} L" : $"~{cur:0} L";
 
-        private static bool VehicleHasProblem(VehicleResource v) => !v.CanRunToday || v.ExpiringSoonCount > 0;
-        private static bool DriverHasProblem(DriverResource d) => !d.CanRunToday || d.ExpiringSoonCount > 0;
+        private const string StateReady = "✅ Chạy được hôm nay";
+        private const string StateBlocked = "⛔ Không chạy được";
+        private const string StateExpiring = "🟡 Giấy tờ sắp hết hạn";
+        private const string WorkToday = "✅ Có làm hôm nay";
+        private const string WorkNotToday = "❌ Chưa ĐK hôm nay";
+
+        /// <summary>Ô "Tình trạng": "sắp hết hạn" có thể trùng với "chạy được" nên xét riêng.</summary>
+        private static bool MatchState(string? state, bool canRun, int expiringSoon) => state switch
+        {
+            StateReady => canRun,
+            StateBlocked => !canRun,
+            StateExpiring => expiringSoon > 0,
+            _ => true,
+        };
 
         private void BindVehicles()
         {
             var keep = SelectedVehicle()?.Id;
-            var rows = _data.Vehicles.Where(v => !chkVehicleProblems.Checked || VehicleHasProblem(v)).ToList();
+            var rows = _data.Vehicles.Where(v =>
+                    MatchState(vehicleFilter.Choice("state"), v.CanRunToday, v.ExpiringSoonCount) &&
+                    vehicleFilter.Is("status", VehicleStatusText(v.Status)) &&
+                    vehicleFilter.Is("license", v.RequiredLicense) &&
+                    vehicleFilter.MatchesSearch(v.PlateNumber, v.VehicleType, v.WarehouseName, v.CurrentTrip, v.BlockReason))
+                .ToList();
+            vehicleFilter.SetCount(rows.Count, _data.Vehicles.Count);
             gridVehicles.DataSource = rows.Select(v => new
             {
                 v.Id,
@@ -147,7 +201,13 @@ namespace TruckingSystem.Desktop.GUI_ResourceManagement
         private void BindDrivers()
         {
             var keep = SelectedDriver()?.EmployeeId;
-            var rows = _data.Drivers.Where(d => !chkDriverProblems.Checked || DriverHasProblem(d)).ToList();
+            var rows = _data.Drivers.Where(d =>
+                    MatchState(driverFilter.Choice("state"), d.CanRunToday, d.ExpiringSoonCount) &&
+                    driverFilter.Is("workday", d.WorksToday ? WorkToday : WorkNotToday) &&
+                    driverFilter.Is("license", d.LicenseClass ?? "—") &&
+                    driverFilter.MatchesSearch(d.Code, d.FullName, d.Phone, d.WarehouseName, d.CurrentTrip, d.CurrentVehiclePlate, d.BlockReason))
+                .ToList();
+            driverFilter.SetCount(rows.Count, _data.Drivers.Count);
             gridDrivers.DataSource = rows.Select(d => new
             {
                 d.EmployeeId,
@@ -273,11 +333,6 @@ namespace TruckingSystem.Desktop.GUI_ResourceManagement
         }
 
         private void BtnRefresh_Click(object? sender, EventArgs e) => _ = LoadAsync();
-
-        private void ProblemsOnly_CheckedChanged(object? sender, EventArgs e)
-        {
-            if (sender == chkVehicleProblems) BindVehicles(); else BindDrivers();
-        }
 
         private async void BtnVehicleDocs_Click(object? sender, EventArgs e)
         {

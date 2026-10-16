@@ -15,6 +15,8 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
         {
             InitializeComponent();
             Theme.StyleGrid(grid);
+            GridLayout.FitColumns(grid); // cột vừa nội dung, nhiều cột thì cuộn ngang thay vì cắt chữ
+            Load += (_, _) => Theme.UniformButtons(toolbar); // nút đều nhau, xuống dòng vẫn thẳng cột
 
             grid.DataBindingComplete += (_, _) =>
             {

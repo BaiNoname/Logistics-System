@@ -10,6 +10,8 @@ namespace TruckingSystem.Desktop.GUI_LocationManagement
         {
             InitializeComponent();
             Theme.StyleGrid(grid);
+            GridLayout.FitColumns(grid); // cột vừa nội dung, nhiều cột thì cuộn ngang thay vì cắt chữ
+            Load += (_, _) => Theme.UniformButtons(toolbar); // nút đều nhau, xuống dòng vẫn thẳng cột
             filterBar.AddChoice("scope", "Loại", new[] { ScopeShared, ScopeCustomer });
             filterBar.FilterChanged += (_, _) => BindGrid();
             Load += async (_, _) => await LoadAsync();

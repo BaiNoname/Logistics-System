@@ -10,6 +10,8 @@ namespace TruckingSystem.Desktop.Common
     ///
     /// Là 1 FlowLayoutPanel (tự xuống dòng khi màn hình hẹp) — kéo thả được trong Designer như
     /// mọi control khác; đặt vào 1 hàng AutoSize của TableLayoutPanel, Dock = Fill.
+    /// Mỗi cặp "nhãn + ô" nằm chung 1 khối không tách được — màn hẹp (laptop 14") thì cả khối
+    /// xuống dòng, không còn cảnh chữ "Khách hàng:" ở cuối dòng trên còn ô chọn rơi xuống dòng dưới.
     /// Cách dùng ở màn danh sách:
     ///   filterBar.AddChoice("status", "Trạng thái", new[] { "Nháp", "Đã xác nhận" });
     ///   filterBar.FilterChanged += (_, _) => BindGrid();
@@ -26,6 +28,7 @@ namespace TruckingSystem.Desktop.Common
         private readonly TextBox _txtSearch;
         private readonly Button _btnClear;
         private readonly Label _lblCount;
+        private readonly FlowLayoutPanel _tailGroup;
         private readonly Dictionary<string, ComboBox> _choices = new();
         private readonly System.Windows.Forms.Timer _searchTimer = new() { Interval = 250 };
         private bool _suppress;
@@ -40,12 +43,13 @@ namespace TruckingSystem.Desktop.Common
             WrapContents = true;
             Margin = new Padding(0, 0, 0, 6);
 
-            var lblSearch = new Label { Text = "🔎", AutoSize = true, Margin = new Padding(0, 7, 4, 0) };
+            var lblSearch = new Label { Text = "🔎", AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, 0, 4, 0) };
             _txtSearch = new TextBox
             {
                 PlaceholderText = "Tìm nhanh...",
-                Margin = new Padding(0, 4, 0, 4),
-                Width = 260,
+                Anchor = AnchorStyles.Left,
+                Margin = new Padding(0),
+                Width = 240,
             };
             _txtSearch.TextChanged += (_, _) =>
             {
@@ -62,18 +66,19 @@ namespace TruckingSystem.Desktop.Common
                 BackColor = Color.White,
                 Cursor = Cursors.Hand,
                 Enabled = false,
-                Margin = new Padding(12, 3, 0, 3),
+                Anchor = AnchorStyles.Left,
+                Margin = new Padding(0),
+                MinimumSize = new Size(0, 30),
                 Padding = new Padding(6, 0, 6, 0),
                 UseVisualStyleBackColor = false,
             };
             _btnClear.FlatAppearance.BorderColor = Color.FromArgb(203, 213, 225);
             _btnClear.Click += (_, _) => ClearFilters();
-            _lblCount = new Label { AutoSize = true, ForeColor = Muted, Margin = new Padding(12, 8, 0, 0) };
+            _lblCount = new Label { AutoSize = true, ForeColor = Muted, Anchor = AnchorStyles.Left, Margin = new Padding(10, 0, 0, 0) };
 
-            Controls.Add(lblSearch);
-            Controls.Add(_txtSearch);
-            Controls.Add(_btnClear);
-            Controls.Add(_lblCount);
+            Controls.Add(Group(lblSearch, _txtSearch));
+            _tailGroup = Group(_btnClear, _lblCount);
+            Controls.Add(_tailGroup);
 
             _searchTimer.Tick += (_, _) => { _searchTimer.Stop(); RaiseChanged(); };
         }
@@ -98,19 +103,34 @@ namespace TruckingSystem.Desktop.Common
         /// <summary>Thêm 1 ô chọn (đặt trước nút "Xóa lọc"). Dòng đầu luôn là "Tất cả" = không lọc.</summary>
         public void AddChoice(string key, string label, IEnumerable<string> options)
         {
-            var lbl = new Label { Text = label + ":", AutoSize = true, ForeColor = Muted, Margin = new Padding(12, 8, 4, 0) };
-            var cbo = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Margin = new Padding(0, 4, 0, 4) };
+            var lbl = new Label { Text = label + ":", AutoSize = true, ForeColor = Muted, Anchor = AnchorStyles.Left, Margin = new Padding(0, 0, 6, 0) };
+            var cbo = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Anchor = AnchorStyles.Left, Margin = new Padding(0) };
             cbo.Items.Add(AllText);
             cbo.Items.AddRange(options.Distinct().Cast<object>().ToArray());
             cbo.SelectedIndex = 0;
             cbo.SelectedIndexChanged += (_, _) => { if (!_suppress) RaiseChanged(); };
-            var at = Controls.IndexOf(_btnClear);
-            Controls.Add(lbl);
-            Controls.Add(cbo);
-            Controls.SetChildIndex(lbl, at);
-            Controls.SetChildIndex(cbo, at + 1);
+            var group = Group(lbl, cbo);
+            Controls.Add(group);
+            Controls.SetChildIndex(group, Controls.IndexOf(_tailGroup));
             _choices[key] = cbo;
             FitWidth(cbo);
+        }
+
+        /// <summary>Khối KHÔNG xuống dòng giữa chừng (nhãn luôn đi cùng ô của nó), các khối cách đều
+        /// nhau, căn giữa theo chiều dọc.</summary>
+        private static FlowLayoutPanel Group(params Control[] parts)
+        {
+            var g = new FlowLayoutPanel
+            {
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                WrapContents = false,
+                Anchor = AnchorStyles.Left,
+                Margin = new Padding(0, 0, 18, 6),
+                Padding = new Padding(0),
+            };
+            g.Controls.AddRange(parts);
+            return g;
         }
 
         /// <summary>Đổi danh sách lựa chọn (VD khách hàng / kho lấy từ dữ liệu vừa tải) — GIỮ lựa
@@ -178,7 +198,7 @@ namespace TruckingSystem.Desktop.Common
         {
             var text = cbo.Items.Cast<object>().Select(i => TextRenderer.MeasureText(i.ToString(), cbo.Font).Width).DefaultIfEmpty(0).Max();
             var pad = cbo.Font.Height * 2; // chỗ cho mũi tên thả xuống
-            cbo.Width = Math.Min(text + pad, cbo.Font.Height * 18);
+            cbo.Width = Math.Max(cbo.Font.Height * 7, Math.Min(text + pad, cbo.Font.Height * 16));
             cbo.DropDownWidth = Math.Max(cbo.Width, text + pad);
         }
 

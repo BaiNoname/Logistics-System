@@ -36,14 +36,9 @@ namespace TruckingSystem.Desktop.Common
         {
             var btn = new Button
             {
-                Text = text,
-                Width = width,
-                Height = height,
-                BackColor = Primary,
-                ForeColor = Color.White,
-                FlatStyle = FlatStyle.Flat,
-                Font = FontBold,
-                Cursor = Cursors.Hand,
+                Text = text, Width = width, Height = height,
+                BackColor = Primary, ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat, Font = FontBold, Cursor = Cursors.Hand,
             };
             btn.FlatAppearance.BorderSize = 0;
             btn.FlatAppearance.MouseOverBackColor = PrimaryDark;
@@ -54,14 +49,9 @@ namespace TruckingSystem.Desktop.Common
         {
             var btn = new Button
             {
-                Text = text,
-                Width = width,
-                Height = height,
-                BackColor = Color.White,
-                ForeColor = TextPrimary,
-                FlatStyle = FlatStyle.Flat,
-                Font = FontBold,
-                Cursor = Cursors.Hand,
+                Text = text, Width = width, Height = height,
+                BackColor = Color.White, ForeColor = TextPrimary,
+                FlatStyle = FlatStyle.Flat, Font = FontBold, Cursor = Cursors.Hand,
             };
             btn.FlatAppearance.BorderSize = 1;
             btn.FlatAppearance.BorderColor = BorderColor;
@@ -71,6 +61,23 @@ namespace TruckingSystem.Desktop.Common
 
         /// <summary>Định dạng ĐẦY ĐỦ cho bảng danh sách (chỉ xem): phần nhìn + chỉ đọc, chọn
         /// nguyên dòng, 1 dòng mỗi lần, không có dòng trống cuối bảng.</summary>
+        /// <summary>Các nút trên thanh công cụ CÙNG BỀ NGANG, CÙNG CHIỀU CAO, chữ căn giữa — khi màn
+        /// hẹp phải xuống dòng thì các nút vẫn thẳng cột như 1 lưới. Gọi trong sự kiện Load (sau khi
+        /// WinForms đã co giãn theo DPI, tránh nhân đôi kích thước); truyền nhiều thanh để các thanh
+        /// cùng màn có nút rộng bằng nhau.</summary>
+        public static void UniformButtons(params Control[] bars)
+        {
+            var buttons = bars.SelectMany(b => b.Controls.OfType<Button>()).ToList();
+            if (buttons.Count < 2) return;
+            var width = buttons.Max(b => b.GetPreferredSize(Size.Empty).Width);
+            var height = buttons.Max(b => Math.Max(b.MinimumSize.Height, b.GetPreferredSize(Size.Empty).Height));
+            foreach (var b in buttons)
+            {
+                b.MinimumSize = new Size(width, height);
+                b.TextAlign = ContentAlignment.MiddleCenter;
+            }
+        }
+
         public static void StyleGrid(DataGridView grid)
         {
             StyleGridLook(grid);
