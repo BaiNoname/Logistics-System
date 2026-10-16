@@ -24,6 +24,8 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
             // giãn (TableLayoutPanel + FlowLayoutPanel), không còn tính tọa độ bằng code.
             InitializeComponent();
             Theme.StyleGrid(grid);
+            GridLayout.FitColumns(grid); // cột vừa nội dung, nhiều cột thì cuộn ngang thay vì cắt chữ
+            Load += (_, _) => Theme.UniformButtons(toolbar); // nút đều nhau, xuống dòng vẫn thẳng cột
             grid.DataBindingComplete += (_, _) => { if (grid.Columns["Id"] != null) grid.Columns["Id"]!.Visible = false; };
             grid.CellFormatting += Grid_CellFormatting;
             grid.SelectionChanged += (_, _) => UpdateActionButtons();

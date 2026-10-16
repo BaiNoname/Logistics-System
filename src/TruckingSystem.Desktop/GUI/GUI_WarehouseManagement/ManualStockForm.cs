@@ -49,6 +49,11 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                 await LoadAvailableBinsAsync();
             };
             chkAllOrders.CheckedChanged += (_, _) => BindHistory();
+            historyFilter.AddChoice("type", "Loại", new[] { "📥 Nhập", "📤 Xuất" });
+            historyFilter.AddChoice("source", "Nguồn", Array.Empty<string>());
+            historyFilter.AddChoice("reversed", "Hoàn tác", new[] { "Còn hiệu lực", "Đã hoàn tác" });
+            historyFilter.FilterChanged += (_, _) => BindHistory();
+            GridLayout.FitColumns(gridHistory);
 
             Theme.StyleGrid(gridHistory);
             Theme.StyleGrid(gridBins);
@@ -283,6 +288,16 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             var rows = _history.AsEnumerable();
             if (!chkAllOrders.Checked && SelectedOrderId is int orderId)
                 rows = rows.Where(h => h.OrderId == orderId);
+            var scoped = rows.ToList();
+            historyFilter.SetChoiceOptions("source", scoped.Select(h => h.Source));
+            rows = scoped.Where(h =>
+                historyFilter.Is("type", h.Type == "Nhập" ? "📥 Nhập" : "📤 Xuất") &&
+                historyFilter.Is("source", h.Source) &&
+                historyFilter.Is("reversed", h.IsReversed ? "Đã hoàn tác" : "Còn hiệu lực") &&
+                historyFilter.MatchesSearch(h.OrderCode, h.CargoType, h.ByEmployeeName, h.Note, ToVn(h.OccurredAt)));
+            var shownRows = rows.ToList();
+            historyFilter.SetCount(shownRows.Count, scoped.Count);
+            rows = shownRows;
 
             gridHistory.DataSource = rows.Select(h => new
             {

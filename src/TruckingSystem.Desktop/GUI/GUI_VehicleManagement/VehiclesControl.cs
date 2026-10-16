@@ -12,6 +12,8 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
         {
             InitializeComponent();
             Theme.StyleGrid(grid);
+            GridLayout.FitColumns(grid); // cột vừa nội dung, nhiều cột thì cuộn ngang thay vì cắt chữ
+            Load += (_, _) => Theme.UniformButtons(toolbar); // nút đều nhau, xuống dòng vẫn thẳng cột
             grid.DataBindingComplete += (_, _) => { if (grid.Columns["Id"] != null) grid.Columns["Id"]!.Visible = false; };
             // Sửa xe / Giấy tờ xe chỉ bấm được khi đã chọn 1 xe
             grid.SelectionChanged += (_, _) => btnEdit.Enabled = btnDocuments.Enabled = btnFuelLevel.Enabled = grid.CurrentRow is not null;

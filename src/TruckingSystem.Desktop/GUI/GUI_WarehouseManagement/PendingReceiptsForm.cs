@@ -45,6 +45,14 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             };
             gridBins.CellFormatting += GridBins_CellFormatting;
             gridPending.SelectionChanged += async (_, _) => await OnSelectionChangedAsync();
+            GridLayout.FitColumns(gridPending);
+            pendingFilter.AddChoice("zone", "Khu", new[] { ZoneText("Normal"), ZoneText("Fragile"), ZoneText("Hazmat") });
+            pendingFilter.AddChoice("order", "Đơn", Array.Empty<string>());
+            pendingFilter.FilterChanged += async (_, _) =>
+            {
+                BindPending((SelectedLine() is { } cur) ? Key(cur) : null);
+                await OnSelectionChangedAsync();
+            };
         }
 
         public PendingReceiptsForm(ApiServices api, int warehouseId, string warehouseName) : this()
@@ -84,24 +92,8 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             {
                 _pending = await _service.GetPendingAsync(_warehouseId);
                 if (IsDisposed) return;
-                gridPending.DataSource = _pending.Select(p => new
-                {
-                    Key = Key(p),
-                    Chuyến = $"#{p.TripId}",
-                    Đơn = p.OrderCode,
-                    Khách_hàng = p.CustomerName,
-                    Tài_xế_xe = $"{p.DriverName} · {p.PlateNumber}",
-                    Về_kho_lúc = p.ArrivedAt is null ? "" : ToVn(p.ArrivedAt.Value).ToString("dd/MM HH:mm"),
-                    Loại_hàng = p.CargoType,
-                    Khu = ZoneText(p.ZoneType),
-                    Kế_hoạch = p.QtyPlanned,
-                    Đã_nhập = p.QtyReceived,
-                    Chờ_nhập = p.QtyPending,
-                }).ToList();
-
-                var keep = keepKey is null ? -1 : _pending.FindIndex(p => Key(p) == keepKey);
-                if (keep >= 0 && keep < gridPending.Rows.Count)
-                    gridPending.CurrentCell = gridPending.Rows[keep].Cells["Chuyến"];
+                pendingFilter.SetChoiceOptions("order", _pending.Select(p => p.OrderCode));
+                BindPending(keepKey);
 
                 if (_pending.Count == 0)
                     ShowStatus("✅ Không còn hàng nào chờ nhập kho ở kho này.", Theme.Success);
@@ -111,6 +103,34 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             {
                 if (!IsDisposed) ShowStatus("Lỗi tải danh sách hàng chờ nhập: " + ex.Message, Theme.Danger);
             }
+        }
+
+        private void BindPending(string? keepKey)
+        {
+            var rows = _pending.Where(p =>
+                    pendingFilter.Is("zone", ZoneText(p.ZoneType)) &&
+                    pendingFilter.Is("order", p.OrderCode) &&
+                    pendingFilter.MatchesSearch($"#{p.TripId}", p.OrderCode, p.CustomerName, p.DriverName, p.PlateNumber, p.CargoType))
+                .ToList();
+            pendingFilter.SetCount(rows.Count, _pending.Count);
+            gridPending.DataSource = rows.Select(p => new
+            {
+                Key = Key(p),
+                Chuyến = $"#{p.TripId}",
+                Đơn = p.OrderCode,
+                Khách_hàng = p.CustomerName,
+                Tài_xế_xe = $"{p.DriverName} · {p.PlateNumber}",
+                Về_kho_lúc = p.ArrivedAt is null ? "" : ToVn(p.ArrivedAt.Value).ToString("dd/MM HH:mm"),
+                Loại_hàng = p.CargoType,
+                Khu = ZoneText(p.ZoneType),
+                Kế_hoạch = p.QtyPlanned,
+                Đã_nhập = p.QtyReceived,
+                Chờ_nhập = p.QtyPending,
+            }).ToList();
+
+            var keep = keepKey is null ? -1 : rows.FindIndex(p => Key(p) == keepKey);
+            if (keep >= 0 && keep < gridPending.Rows.Count)
+                gridPending.CurrentCell = gridPending.Rows[keep].Cells["Chuyến"];
         }
 
         private async Task OnSelectionChangedAsync()

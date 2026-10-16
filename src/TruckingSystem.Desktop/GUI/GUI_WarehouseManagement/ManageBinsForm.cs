@@ -19,6 +19,38 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
         {
             InitializeComponent();
             Theme.StyleGrid(grid);
+            GridLayout.FitColumns(grid);
+            grid.DataBindingComplete += (_, _) => { if (grid.Columns["Id"] != null) grid.Columns["Id"]!.Visible = false; };
+            filterBar.AddChoice("usage", "Tình trạng", new[] { UsageEmpty, UsagePartial, UsageFull });
+            filterBar.FilterChanged += (_, _) => BindGrid();
+        }
+
+        private const string UsageEmpty = "Trống";
+        private const string UsagePartial = "Đang chứa hàng";
+        private const string UsageFull = "Gần đầy (≥ 90%)";
+
+        private static string UsageGroup(StorageBinItem b)
+            => b.CurrentUsedM3 <= 0 ? UsageEmpty
+             : b.CapacityM3 > 0 && b.CurrentUsedM3 / b.CapacityM3 >= 0.9m ? UsageFull
+             : UsagePartial;
+
+        private void BindGrid()
+        {
+            var rows = _bins.Where(b => filterBar.Is("usage", UsageGroup(b)) && filterBar.MatchesSearch(b.Code)).ToList();
+            filterBar.SetCount(rows.Count, _bins.Count);
+            grid.DataSource = rows.Select(b => new
+            {
+                b.Id,
+                Mã_vị_trí = b.Code,
+                Vị_trí_X = b.PosX,
+                Vị_trí_Y = b.PosY,
+                Rộng_m = b.WidthMeters,
+                Cao_m = b.HeightMeters,
+                Sức_chứa_m3 = b.CapacityM3,
+                Đã_dùng_m3 = b.CurrentUsedM3,
+                Tình_trạng = UsageGroup(b),
+                Tải_tối_đa_kg = b.MaxWeightKg,
+            }).ToList();
         }
 
         public ManageBinsForm(ApiServices api, int zoneId, string zoneName, decimal zoneWidth, decimal zoneHeight) : this()
@@ -39,19 +71,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             try
             {
                 _bins = await _api.Warehouses.GetBinsAsync(_zoneId);
-                grid.DataSource = _bins.Select(b => new
-                {
-                    b.Id,
-                    Mã_vị_trí = b.Code,
-                    Vị_trí_X = b.PosX,
-                    Vị_trí_Y = b.PosY,
-                    Rộng_m = b.WidthMeters,
-                    Cao_m = b.HeightMeters,
-                    Sức_chứa_m3 = b.CapacityM3,
-                    Đã_dùng_m3 = b.CurrentUsedM3,
-                    Tải_tối_đa_kg = b.MaxWeightKg,
-                }).ToList();
-                grid.DataBindingComplete += (_, _) => { if (grid.Columns["Id"] != null) grid.Columns["Id"]!.Visible = false; };
+                BindGrid();
                 lblStatus.Text = $"{_bins.Count} vị trí lưu trữ";
             }
             catch (Exception ex)

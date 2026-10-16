@@ -180,7 +180,7 @@ partial class TripsControl
         btnApprove.Name = "btnApprove";
         btnApprove.Padding = new System.Windows.Forms.Padding(10, 4, 10, 4);
         btnApprove.TabIndex = 3;
-        btnApprove.Text = "✅ Duyệt xác nhận tài xế";
+        btnApprove.Text = "✅ Duyệt xác nhận";
         btnApprove.UseVisualStyleBackColor = false;
         btnApprove.Click += new System.EventHandler(this.BtnApprove_Click);
         // 

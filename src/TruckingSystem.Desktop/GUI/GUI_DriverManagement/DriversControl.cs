@@ -20,6 +20,8 @@ namespace TruckingSystem.Desktop.GUI_DriverManagement
         {
             InitializeComponent();
             Theme.StyleGrid(grid);
+            GridLayout.FitColumns(grid); // cột vừa nội dung, nhiều cột thì cuộn ngang thay vì cắt chữ
+            Load += (_, _) => Theme.UniformButtons(toolbar); // nút đều nhau, xuống dòng vẫn thẳng cột
             grid.DataBindingComplete += (_, _) =>
             {
                 if (grid.Columns["EmployeeId"] != null) grid.Columns["EmployeeId"]!.Visible = false;
