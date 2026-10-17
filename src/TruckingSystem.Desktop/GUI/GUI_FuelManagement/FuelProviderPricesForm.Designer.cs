@@ -48,7 +48,7 @@
             root.Controls.Add(grid, 0, 4);
             root.Dock = DockStyle.Fill;
             root.Location = new Point(0, 0);
-            root.Margin = new Padding(4, 4, 4, 4);
+            root.Margin = new Padding(4);
             root.Name = "root";
             root.Padding = new Padding(30, 24, 30, 24);
             root.RowCount = 5;
@@ -222,7 +222,7 @@
             filterBar.Margin = new Padding(0, 0, 0, 9);
             filterBar.Name = "filterBar";
             filterBar.SearchPlaceholder = "Loại nhiên liệu, giá, ngày...";
-            filterBar.Size = new Size(1440, 54);
+            filterBar.Size = new Size(1440, 46);
             filterBar.TabIndex = 2;
             // 
             // lblStatus
@@ -231,7 +231,7 @@
             lblStatus.AutoSize = true;
             lblStatus.Font = new Font("Segoe UI", 9F);
             lblStatus.ForeColor = Color.FromArgb(100, 116, 139);
-            lblStatus.Location = new Point(30, 241);
+            lblStatus.Location = new Point(30, 233);
             lblStatus.Margin = new Padding(0, 6, 0, 12);
             lblStatus.Name = "lblStatus";
             lblStatus.Size = new Size(1440, 25);
@@ -241,11 +241,11 @@
             // 
             grid.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             grid.Dock = DockStyle.Fill;
-            grid.Location = new Point(30, 278);
+            grid.Location = new Point(30, 270);
             grid.Margin = new Padding(0);
             grid.Name = "grid";
             grid.RowHeadersWidth = 62;
-            grid.Size = new Size(1440, 628);
+            grid.Size = new Size(1440, 636);
             grid.TabIndex = 3;
             // 
             // FuelProviderPricesForm
@@ -255,7 +255,7 @@
             BackColor = Color.White;
             ClientSize = new Size(1500, 930);
             Controls.Add(root);
-            Margin = new Padding(6, 6, 6, 6);
+            Margin = new Padding(6);
             MinimumSize = new Size(1129, 662);
             Name = "FuelProviderPricesForm";
             StartPosition = FormStartPosition.CenterParent;

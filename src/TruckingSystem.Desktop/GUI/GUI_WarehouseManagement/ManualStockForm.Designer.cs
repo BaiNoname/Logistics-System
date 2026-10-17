@@ -119,7 +119,7 @@ partial class ManualStockForm
         inputs.RowCount = 2;
         inputs.RowStyles.Add(new RowStyle());
         inputs.RowStyles.Add(new RowStyle());
-        inputs.Size = new Size(1590, 67);
+        inputs.Size = new Size(1590, 65);
         inputs.TabIndex = 1;
         // 
         // lblOrder
@@ -196,7 +196,7 @@ partial class ManualStockForm
         // 
         lblFlowTitle.AutoSize = true;
         lblFlowTitle.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
-        lblFlowTitle.Location = new Point(30, 154);
+        lblFlowTitle.Location = new Point(30, 152);
         lblFlowTitle.Margin = new Padding(0, 0, 0, 6);
         lblFlowTitle.Name = "lblFlowTitle";
         lblFlowTitle.Size = new Size(661, 28);
@@ -209,7 +209,7 @@ partial class ManualStockForm
         lblFlowSummary.AutoSize = true;
         lblFlowSummary.BackColor = Color.FromArgb(241, 245, 249);
         lblFlowSummary.Font = new Font("Segoe UI", 10F);
-        lblFlowSummary.Location = new Point(30, 188);
+        lblFlowSummary.Location = new Point(30, 186);
         lblFlowSummary.Margin = new Padding(0, 0, 0, 9);
         lblFlowSummary.Name = "lblFlowSummary";
         lblFlowSummary.Padding = new Padding(12, 6, 12, 6);
@@ -221,18 +221,18 @@ partial class ManualStockForm
         // 
         gridTrips.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
         gridTrips.Dock = DockStyle.Fill;
-        gridTrips.Location = new Point(30, 237);
+        gridTrips.Location = new Point(30, 235);
         gridTrips.Margin = new Padding(0, 0, 0, 15);
         gridTrips.Name = "gridTrips";
         gridTrips.RowHeadersWidth = 62;
-        gridTrips.Size = new Size(1590, 147);
+        gridTrips.Size = new Size(1590, 150);
         gridTrips.TabIndex = 4;
         // 
         // lblBinsTitle
         // 
         lblBinsTitle.AutoSize = true;
         lblBinsTitle.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
-        lblBinsTitle.Location = new Point(30, 399);
+        lblBinsTitle.Location = new Point(30, 400);
         lblBinsTitle.Margin = new Padding(0, 0, 0, 6);
         lblBinsTitle.Name = "lblBinsTitle";
         lblBinsTitle.Size = new Size(561, 28);
@@ -243,13 +243,13 @@ partial class ManualStockForm
         // 
         gridBins.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
         gridBins.Dock = DockStyle.Fill;
-        gridBins.Location = new Point(30, 433);
+        gridBins.Location = new Point(30, 434);
         gridBins.Margin = new Padding(0, 0, 0, 15);
         gridBins.MultiSelect = false;
         gridBins.Name = "gridBins";
         gridBins.RowHeadersWidth = 62;
         gridBins.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-        gridBins.Size = new Size(1590, 147);
+        gridBins.Size = new Size(1590, 150);
         gridBins.TabIndex = 6;
         // 
         // actionBar
@@ -264,7 +264,7 @@ partial class ManualStockForm
         actionBar.Controls.Add(btnIssue, 1, 0);
         actionBar.Controls.Add(lblStatus, 2, 0);
         actionBar.Dock = DockStyle.Fill;
-        actionBar.Location = new Point(30, 595);
+        actionBar.Location = new Point(30, 599);
         actionBar.Margin = new Padding(0, 0, 0, 15);
         actionBar.Name = "actionBar";
         actionBar.RowCount = 1;
@@ -339,7 +339,7 @@ partial class ManualStockForm
         historyBar.Controls.Add(chkAllOrders, 1, 0);
         historyBar.Controls.Add(btnReverse, 2, 0);
         historyBar.Dock = DockStyle.Fill;
-        historyBar.Location = new Point(30, 667);
+        historyBar.Location = new Point(30, 671);
         historyBar.Margin = new Padding(0, 0, 0, 9);
         historyBar.Name = "historyBar";
         historyBar.RowCount = 1;
@@ -399,22 +399,22 @@ partial class ManualStockForm
         historyFilter.AutoSize = true;
         historyFilter.AutoSizeMode = AutoSizeMode.GrowAndShrink;
         historyFilter.Dock = DockStyle.Fill;
-        historyFilter.Location = new Point(30, 727);
+        historyFilter.Location = new Point(30, 731);
         historyFilter.Margin = new Padding(0, 0, 0, 9);
         historyFilter.Name = "historyFilter";
         historyFilter.SearchPlaceholder = "Mã đơn, loại hàng, người, ghi chú...";
-        historyFilter.Size = new Size(1590, 54);
+        historyFilter.Size = new Size(1590, 46);
         historyFilter.TabIndex = 9;
         // 
         // gridHistory
         // 
         gridHistory.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
         gridHistory.Dock = DockStyle.Fill;
-        gridHistory.Location = new Point(30, 790);
+        gridHistory.Location = new Point(30, 786);
         gridHistory.Margin = new Padding(0);
         gridHistory.Name = "gridHistory";
         gridHistory.RowHeadersWidth = 62;
-        gridHistory.Size = new Size(1590, 326);
+        gridHistory.Size = new Size(1590, 330);
         gridHistory.TabIndex = 9;
         // 
         // ManualStockForm
@@ -424,7 +424,7 @@ partial class ManualStockForm
         BackColor = Color.White;
         ClientSize = new Size(1650, 1140);
         Controls.Add(root);
-        Margin = new Padding(6, 6, 6, 6);
+        Margin = new Padding(6);
         MinimumSize = new Size(1129, 722);
         Name = "ManualStockForm";
         StartPosition = FormStartPosition.CenterParent;

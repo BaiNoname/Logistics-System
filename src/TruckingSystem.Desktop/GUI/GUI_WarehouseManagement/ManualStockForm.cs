@@ -85,7 +85,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             Text = receive ? "Nhận hàng khách mang tới kho" : "Xuất hàng tồn & lịch sử nhập/xuất";
             lblTitle.Text = receive
                 ? "🙋 Nhận hàng khách tự mang tới kho"
-                : "📤 Xuất hàng tồn (đơn đã Hoàn tất / Đã hủy) & lịch sử nhập/xuất";
+                : "📤 Hàng trong kho theo đơn & lịch sử nhập/xuất (xuất tay: đơn Hoàn tất / Đã hủy)";
             btnReceive.Visible = receive;
             lblBinsTitle.Visible = gridBins.Visible = receive;
             btnIssue.Visible = !receive;
@@ -101,7 +101,11 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
         /// <summary>Đơn hợp lệ cho việc đang làm — cùng điều kiện server cho phép nhập / xuất tay.</summary>
         private bool MatchesMode(TransportOrderListItem o) => _mode == ManualStockMode.Receive
             ? o.PickupMethod == "SelfDelivery" && (o.Status is "Confirmed" or "InProgress")
-            : (o.Status is "Done" or "Cancelled") && o.QtyOnHand > 0;
+            // Đơn Hoàn tất / Đã hủy còn hàng -> xuất tay. Đơn ĐANG vận chuyển có hàng trong kho (VD
+            // chặng Lấy hàng đã nhập kho, chặng Giao chưa chạy) cũng HIỆN để biết hàng đang nằm đâu,
+            // chờ chuyến nào — nút Xuất tự mờ, kèm lý do (hàng tự xuất khi chặng Giao bắt đầu).
+            // Trước đây ẩn hẳn -> nhập kho xong mở màn này không thấy đơn đâu, tưởng mất hàng.
+            : o.QtyOnHand > 0 && o.Status is ("Done" or "Cancelled" or "Confirmed" or "InProgress");
 
         /// <summary>Giờ trong DB là UTC (đôi khi thiếu nhãn) -> đổi đúng giờ Việt Nam.</summary>
         private static DateTime ToVn(DateTime t)
@@ -118,17 +122,22 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             try
             {
                 // CHỈ đơn liên quan tới kho đang mở (trước đây hiện mọi đơn của mọi kho)
-                _orders = (await _api.Warehouses.GetOrdersForWarehouseAsync(_warehouseId)).Where(MatchesMode).ToList();
+                _orders = (await _api.Warehouses.GetOrdersForWarehouseAsync(_warehouseId)).Where(MatchesMode)
+                    // Màn xuất: đơn xuất tay được (Hoàn tất / Đã hủy) lên trước.
+                    .OrderBy(o => _mode == ManualStockMode.Issue && o.Status is not ("Done" or "Cancelled") ? 1 : 0)
+                    .ToList();
                 if (_orders.Count == 0)
                 {
                     lblFlowSummary.Text = _mode == ManualStockMode.Receive
                         ? "Không có đơn \"Khách tự mang tới kho\" nào đang chờ nhận hàng tại kho này. " +
                           "(Hàng do XE CÔNG TY chở về thì nhập ở nút 📦 Nhập hàng từ chuyến.)"
-                        : "Không có đơn Hoàn tất / Đã hủy nào còn hàng tồn trong kho này — xem lịch sử nhập/xuất ở bảng dưới.";
+                        : "Kho này hiện không còn hàng của đơn nào — xem lịch sử nhập/xuất ở bảng dưới.";
                     btnReceive.Enabled = btnIssue.Enabled = false;
                 }
                 cboOrder.DataSource = _orders;
-                cboOrder.DisplayMember = nameof(TransportOrderListItem.DisplayText);
+                cboOrder.DisplayMember = _mode == ManualStockMode.Issue
+                    ? nameof(TransportOrderListItem.StockDisplayText)
+                    : nameof(TransportOrderListItem.DisplayText);
                 cboOrder.ValueMember = nameof(TransportOrderListItem.Id);
             }
             catch (Exception ex)
