@@ -28,8 +28,8 @@
             dtEffectiveDate = new DateTimePicker();
             btnAddPrice = new Button();
             btnDeletePrice = new Button();
-            lblStatus = new Label();
             filterBar = new TruckingSystem.Desktop.Common.FilterBar();
+            lblStatus = new Label();
             grid = new DataGridView();
             root.SuspendLayout();
             inputs.SuspendLayout();
@@ -47,15 +47,17 @@
             root.Controls.Add(lblStatus, 0, 3);
             root.Controls.Add(grid, 0, 4);
             root.Dock = DockStyle.Fill;
+            root.Location = new Point(0, 0);
+            root.Margin = new Padding(4, 4, 4, 4);
             root.Name = "root";
-            root.Padding = new Padding(20, 16, 20, 16);
+            root.Padding = new Padding(30, 24, 30, 24);
             root.RowCount = 5;
-            root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            root.RowStyles.Add(new RowStyle());
+            root.RowStyles.Add(new RowStyle());
+            root.RowStyles.Add(new RowStyle());
+            root.RowStyles.Add(new RowStyle());
             root.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            root.Size = new Size(1000, 620);
+            root.Size = new Size(1500, 930);
             root.TabIndex = 0;
             // 
             // lblTitle
@@ -63,8 +65,10 @@
             lblTitle.AutoSize = true;
             lblTitle.Font = new Font("Segoe UI", 13F, FontStyle.Bold);
             lblTitle.ForeColor = Color.FromArgb(15, 23, 42);
-            lblTitle.Margin = new Padding(0, 0, 0, 12);
+            lblTitle.Location = new Point(30, 24);
+            lblTitle.Margin = new Padding(0, 0, 0, 18);
             lblTitle.Name = "lblTitle";
+            lblTitle.Size = new Size(306, 36);
             lblTitle.TabIndex = 0;
             lblTitle.Text = "⛽ Lịch sử giá xăng dầu";
             // 
@@ -76,8 +80,8 @@
             inputs.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40F));
             inputs.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30F));
             inputs.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30F));
-            inputs.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-            inputs.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            inputs.ColumnStyles.Add(new ColumnStyle());
+            inputs.ColumnStyles.Add(new ColumnStyle());
             inputs.Controls.Add(lblFuelType, 0, 0);
             inputs.Controls.Add(lblPrice, 1, 0);
             inputs.Controls.Add(lblEffectiveDate, 2, 0);
@@ -87,11 +91,13 @@
             inputs.Controls.Add(btnAddPrice, 3, 1);
             inputs.Controls.Add(btnDeletePrice, 4, 1);
             inputs.Dock = DockStyle.Fill;
-            inputs.Margin = new Padding(0, 0, 0, 8);
+            inputs.Location = new Point(30, 78);
+            inputs.Margin = new Padding(0, 0, 0, 12);
             inputs.Name = "inputs";
             inputs.RowCount = 2;
-            inputs.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            inputs.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            inputs.RowStyles.Add(new RowStyle());
+            inputs.RowStyles.Add(new RowStyle());
+            inputs.Size = new Size(1440, 82);
             inputs.TabIndex = 1;
             // 
             // lblFuelType
@@ -99,8 +105,10 @@
             lblFuelType.AutoSize = true;
             lblFuelType.Font = new Font("Segoe UI", 9F);
             lblFuelType.ForeColor = Color.FromArgb(100, 116, 139);
-            lblFuelType.Margin = new Padding(0, 0, 12, 4);
+            lblFuelType.Location = new Point(0, 0);
+            lblFuelType.Margin = new Padding(0, 0, 18, 6);
             lblFuelType.Name = "lblFuelType";
+            lblFuelType.Size = new Size(124, 25);
             lblFuelType.TabIndex = 0;
             lblFuelType.Text = "Loại nhiên liệu";
             // 
@@ -109,8 +117,10 @@
             lblPrice.AutoSize = true;
             lblPrice.Font = new Font("Segoe UI", 9F);
             lblPrice.ForeColor = Color.FromArgb(100, 116, 139);
-            lblPrice.Margin = new Padding(0, 0, 12, 4);
+            lblPrice.Location = new Point(405, 0);
+            lblPrice.Margin = new Padding(0, 0, 18, 6);
             lblPrice.Name = "lblPrice";
+            lblPrice.Size = new Size(63, 25);
             lblPrice.TabIndex = 1;
             lblPrice.Text = "Giá (đ)";
             // 
@@ -119,8 +129,10 @@
             lblEffectiveDate.AutoSize = true;
             lblEffectiveDate.Font = new Font("Segoe UI", 9F);
             lblEffectiveDate.ForeColor = Color.FromArgb(100, 116, 139);
-            lblEffectiveDate.Margin = new Padding(0, 0, 12, 4);
+            lblEffectiveDate.Location = new Point(708, 0);
+            lblEffectiveDate.Margin = new Padding(0, 0, 18, 6);
             lblEffectiveDate.Name = "lblEffectiveDate";
+            lblEffectiveDate.Size = new Size(120, 25);
             lblEffectiveDate.TabIndex = 2;
             lblEffectiveDate.Text = "Ngày hiệu lực";
             // 
@@ -128,16 +140,20 @@
             // 
             cboFuelType.Dock = DockStyle.Fill;
             cboFuelType.DropDownStyle = ComboBoxStyle.DropDownList;
-            cboFuelType.Margin = new Padding(0, 0, 12, 0);
+            cboFuelType.Location = new Point(0, 31);
+            cboFuelType.Margin = new Padding(0, 0, 18, 0);
             cboFuelType.Name = "cboFuelType";
+            cboFuelType.Size = new Size(387, 36);
             cboFuelType.TabIndex = 3;
             // 
             // numPrice
             // 
             numPrice.Dock = DockStyle.Fill;
-            numPrice.Margin = new Padding(0, 0, 12, 0);
+            numPrice.Location = new Point(405, 31);
+            numPrice.Margin = new Padding(0, 0, 18, 0);
             numPrice.Maximum = new decimal(new int[] { 999999999, 0, 0, 0 });
             numPrice.Name = "numPrice";
+            numPrice.Size = new Size(285, 34);
             numPrice.TabIndex = 4;
             numPrice.ThousandsSeparator = true;
             // 
@@ -146,8 +162,10 @@
             dtEffectiveDate.CustomFormat = "dd/MM/yyyy";
             dtEffectiveDate.Dock = DockStyle.Fill;
             dtEffectiveDate.Format = DateTimePickerFormat.Custom;
-            dtEffectiveDate.Margin = new Padding(0, 0, 12, 0);
+            dtEffectiveDate.Location = new Point(708, 31);
+            dtEffectiveDate.Margin = new Padding(0, 0, 18, 0);
             dtEffectiveDate.Name = "dtEffectiveDate";
+            dtEffectiveDate.Size = new Size(285, 34);
             dtEffectiveDate.TabIndex = 5;
             // 
             // btnAddPrice
@@ -162,10 +180,12 @@
             btnAddPrice.FlatStyle = FlatStyle.Flat;
             btnAddPrice.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
             btnAddPrice.ForeColor = Color.White;
-            btnAddPrice.Margin = new Padding(0, 0, 8, 0);
-            btnAddPrice.MinimumSize = new Size(0, 34);
+            btnAddPrice.Location = new Point(1011, 31);
+            btnAddPrice.Margin = new Padding(0, 0, 12, 0);
+            btnAddPrice.MinimumSize = new Size(0, 51);
             btnAddPrice.Name = "btnAddPrice";
-            btnAddPrice.Padding = new Padding(10, 2, 10, 2);
+            btnAddPrice.Padding = new Padding(15, 3, 15, 3);
+            btnAddPrice.Size = new Size(174, 51);
             btnAddPrice.TabIndex = 6;
             btnAddPrice.Text = "➕ Thêm giá";
             btnAddPrice.UseVisualStyleBackColor = false;
@@ -182,20 +202,27 @@
             btnDeletePrice.FlatStyle = FlatStyle.Flat;
             btnDeletePrice.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
             btnDeletePrice.ForeColor = Color.FromArgb(220, 38, 38);
+            btnDeletePrice.Location = new Point(1197, 31);
             btnDeletePrice.Margin = new Padding(0);
-            btnDeletePrice.MinimumSize = new Size(0, 34);
+            btnDeletePrice.MinimumSize = new Size(0, 51);
             btnDeletePrice.Name = "btnDeletePrice";
-            btnDeletePrice.Padding = new Padding(10, 2, 10, 2);
+            btnDeletePrice.Padding = new Padding(15, 3, 15, 3);
+            btnDeletePrice.Size = new Size(241, 51);
             btnDeletePrice.TabIndex = 7;
             btnDeletePrice.Text = "🗑️ Xóa giá đã chọn";
             btnDeletePrice.UseVisualStyleBackColor = false;
             btnDeletePrice.Click += BtnDeletePrice_Click;
             // 
-            // filterBar — tìm nhanh + lọc (Common/FilterBar); các ô chọn thêm ở .cs
+            // filterBar
             // 
+            filterBar.AutoSize = true;
+            filterBar.AutoSizeMode = AutoSizeMode.GrowAndShrink;
             filterBar.Dock = DockStyle.Fill;
+            filterBar.Location = new Point(30, 172);
+            filterBar.Margin = new Padding(0, 0, 0, 9);
             filterBar.Name = "filterBar";
             filterBar.SearchPlaceholder = "Loại nhiên liệu, giá, ngày...";
+            filterBar.Size = new Size(1440, 54);
             filterBar.TabIndex = 2;
             // 
             // lblStatus
@@ -204,26 +231,32 @@
             lblStatus.AutoSize = true;
             lblStatus.Font = new Font("Segoe UI", 9F);
             lblStatus.ForeColor = Color.FromArgb(100, 116, 139);
-            lblStatus.Margin = new Padding(0, 4, 0, 8);
+            lblStatus.Location = new Point(30, 241);
+            lblStatus.Margin = new Padding(0, 6, 0, 12);
             lblStatus.Name = "lblStatus";
+            lblStatus.Size = new Size(1440, 25);
             lblStatus.TabIndex = 2;
             // 
             // grid
             // 
             grid.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             grid.Dock = DockStyle.Fill;
+            grid.Location = new Point(30, 278);
             grid.Margin = new Padding(0);
             grid.Name = "grid";
+            grid.RowHeadersWidth = 62;
+            grid.Size = new Size(1440, 628);
             grid.TabIndex = 3;
             // 
             // FuelProviderPricesForm
             // 
-            AutoScaleDimensions = new SizeF(96F, 96F);
+            AutoScaleDimensions = new SizeF(144F, 144F);
             AutoScaleMode = AutoScaleMode.Dpi;
             BackColor = Color.White;
-            ClientSize = new Size(1000, 620);
+            ClientSize = new Size(1500, 930);
             Controls.Add(root);
-            MinimumSize = new Size(760, 460);
+            Margin = new Padding(6, 6, 6, 6);
+            MinimumSize = new Size(1129, 662);
             Name = "FuelProviderPricesForm";
             StartPosition = FormStartPosition.CenterParent;
             Text = "Giá xăng dầu";
