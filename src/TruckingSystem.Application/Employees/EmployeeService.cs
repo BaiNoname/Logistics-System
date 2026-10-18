@@ -40,12 +40,15 @@ public class EmployeeService : IEmployeeService
 
         var existing = await _db.DriverProfiles.AnyAsync(dp => dp.EmployeeId == employeeId);
         if (existing) return new EmployeeActionResult(false, "Nhân viên này đã có hồ sơ tài xế rồi.");
+        var profileError = await ValidateDriverProfileAsync(employeeId, request.LicenseNumber, request.LicenseClass,
+            request.LicenseExpiryDate, request.HealthCertExpiryDate, request.YearsOfExperience, request.WarehouseId);
+        if (profileError is not null) return new EmployeeActionResult(false, profileError);
 
         _db.DriverProfiles.Add(new DriverProfile
         {
             EmployeeId = employeeId,
-            LicenseNumber = request.LicenseNumber,
-            LicenseClass = request.LicenseClass,
+            LicenseNumber = request.LicenseNumber.Trim().ToUpperInvariant(),
+            LicenseClass = TruckingSystem.Application.Drivers.DriverLicenseRules.NormalizeClass(request.LicenseClass),
             LicenseExpiryDate = request.LicenseExpiryDate,
             HealthCertExpiryDate = request.HealthCertExpiryDate,
             YearsOfExperience = request.YearsOfExperience,
@@ -54,6 +57,36 @@ public class EmployeeService : IEmployeeService
         });
         await _db.SaveChangesAsync();
         return new EmployeeActionResult(true, null);
+    }
+
+    /// <summary>Kiểm tra hồ sơ tài xế ở SERVER (trước đây chỉ Desktop bắt số bằng trống — gọi thẳng
+    /// API thì số bằng trống, bằng đã hết hạn, hạng bằng gõ tay ngoài danh mục đều lưu được):
+    ///  - Số bằng lái bắt buộc, 6–20 ký tự chữ / số, không trùng tài xế khác.
+    ///  - Hạng bằng thuộc danh mục hạng ô tô (B, B2, C1, C, CE, D..., FC) — Chia xe dựa vào đây.
+    ///  - Bằng lái và giấy khám sức khỏe BẮT BUỘC, còn hạn (tính theo ngày Việt Nam).
+    ///  - Kinh nghiệm 0–60 năm; kho đóng quân (nếu chọn) phải tồn tại.</summary>
+    private async Task<string?> ValidateDriverProfileAsync(int employeeId, string? licenseNumber, string? licenseClass,
+        DateTime licenseExpiry, DateTime? healthCertExpiry, int yearsOfExperience, int? warehouseId)
+    {
+        var number = (licenseNumber ?? "").Trim().ToUpperInvariant();
+        if (number.Length == 0) return "Vui lòng nhập số bằng lái.";
+        if (number.Length < 6 || number.Length > 20 || !number.All(char.IsLetterOrDigit))
+            return "Số bằng lái không hợp lệ — chỉ gồm chữ / số, 6–20 ký tự (bằng mới: 12 chữ số).";
+        if (await _db.DriverProfiles.AnyAsync(dp => dp.EmployeeId != employeeId && dp.LicenseNumber.ToUpper() == number))
+            return $"Số bằng lái {number} đã thuộc hồ sơ tài xế khác.";
+        if (string.IsNullOrWhiteSpace(licenseClass)) return "Vui lòng chọn hạng bằng lái.";
+        if (!TruckingSystem.Application.Drivers.DriverLicenseRules.IsKnownClass(licenseClass))
+            return $"Hạng bằng \"{licenseClass}\" không hợp lệ — chọn trong danh sách (B, B2, C1, C, CE, D, E, FC...).";
+        var today = TruckingSystem.Application.Common.VnClock.Today;
+        if (licenseExpiry.Date < today)
+            return $"Bằng lái đã hết hạn ({licenseExpiry:dd/MM/yyyy}) — nhập ngày hết hạn của bằng mới (đã đổi bằng).";
+        if (healthCertExpiry is null) return "Vui lòng nhập ngày hết hạn giấy khám sức khỏe — tài xế bắt buộc có giấy khám còn hạn.";
+        if (healthCertExpiry.Value.Date < today)
+            return $"Giấy khám sức khỏe đã hết hạn ({healthCertExpiry.Value:dd/MM/yyyy}) — nhập ngày hết hạn của giấy khám mới.";
+        if (yearsOfExperience < 0 || yearsOfExperience > 60) return "Số năm kinh nghiệm phải từ 0 đến 60.";
+        if (warehouseId is int wid && !await _db.Warehouses.AnyAsync(w => w.Id == wid))
+            return "Kho đóng quân đã chọn không tồn tại.";
+        return null;
     }
 
     public async Task<DriverProfileDto?> GetDriverProfileAsync(int employeeId)
@@ -68,9 +101,12 @@ public class EmployeeService : IEmployeeService
     {
         var profile = await _db.DriverProfiles.FirstOrDefaultAsync(dp => dp.EmployeeId == employeeId);
         if (profile is null) return new EmployeeActionResult(false, "Nhân viên này chưa có hồ sơ tài xế.");
+        var profileError = await ValidateDriverProfileAsync(employeeId, request.LicenseNumber, request.LicenseClass,
+            request.LicenseExpiryDate, request.HealthCertExpiryDate, request.YearsOfExperience, request.WarehouseId);
+        if (profileError is not null) return new EmployeeActionResult(false, profileError);
 
-        profile.LicenseNumber = request.LicenseNumber;
-        profile.LicenseClass = request.LicenseClass;
+        profile.LicenseNumber = request.LicenseNumber.Trim().ToUpperInvariant();
+        profile.LicenseClass = TruckingSystem.Application.Drivers.DriverLicenseRules.NormalizeClass(request.LicenseClass);
         profile.LicenseExpiryDate = request.LicenseExpiryDate;
         profile.HealthCertExpiryDate = request.HealthCertExpiryDate;
         profile.YearsOfExperience = request.YearsOfExperience;

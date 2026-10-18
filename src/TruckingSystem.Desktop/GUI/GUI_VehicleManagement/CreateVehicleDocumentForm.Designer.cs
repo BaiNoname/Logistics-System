@@ -102,7 +102,7 @@
             lblDocType.Margin = new System.Windows.Forms.Padding(0, 8, 0, 2);
             lblDocType.Font = new System.Drawing.Font("Segoe UI", 9F);
             lblDocType.ForeColor = System.Drawing.Color.FromArgb(100, 116, 139);
-            lblDocType.Text = "Loại giấy tờ * (Registration=Đăng kiểm, Insurance=Bảo hiểm)";
+            lblDocType.Text = "Loại giấy tờ *";
             lblDocType.Name = "lblDocType";
             lblDocType.TabIndex = 0;
             // 

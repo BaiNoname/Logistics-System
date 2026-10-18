@@ -160,7 +160,7 @@ partial class CreateWarehouseForm
         lblAddress.Margin = new System.Windows.Forms.Padding(0, 0, 0, 4);
         lblAddress.Name = "lblAddress";
         lblAddress.TabIndex = 2;
-        lblAddress.Text = "🔍 Tìm địa chỉ (tuỳ chọn, gõ từ khóa rồi chọn từ gợi ý)";
+        lblAddress.Text = "🔍 Địa chỉ kho * (gõ từ khóa rồi CHỌN từ gợi ý)";
         // 
         // txtSearch
         // 
@@ -221,7 +221,7 @@ partial class CreateWarehouseForm
         lblLength.Margin = new System.Windows.Forms.Padding(0, 0, 8, 4);
         lblLength.Name = "lblLength";
         lblLength.TabIndex = 8;
-        lblLength.Text = "Chiều dài (mét)";
+        lblLength.Text = "Chiều dài (mét) *";
         // 
         // lblWidth
         // 
@@ -232,7 +232,7 @@ partial class CreateWarehouseForm
         lblWidth.Margin = new System.Windows.Forms.Padding(8, 0, 0, 4);
         lblWidth.Name = "lblWidth";
         lblWidth.TabIndex = 9;
-        lblWidth.Text = "Chiều rộng (mét)";
+        lblWidth.Text = "Chiều rộng (mét) *";
         // 
         // numLength
         // 

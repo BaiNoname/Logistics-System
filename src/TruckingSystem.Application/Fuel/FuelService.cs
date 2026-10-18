@@ -35,11 +35,22 @@ public class FuelService : IFuelService
 
     public async Task<FuelProviderDto> CreateProviderAsync(CreateFuelProviderRequest request)
     {
+        // Kiểm tra ở server (trước đây chỉ Desktop kiểm tra tên): tên bắt buộc, không trùng; SĐT nếu
+        // nhập thì phải đúng định dạng.
+        var name = (request.Name ?? "").Trim();
+        if (name.Length == 0) throw new InvalidOperationException("Vui lòng nhập tên hãng xăng.");
+        var lowered = name.ToLower();
+        if (await _db.FuelProviders.AnyAsync(p => p.Name.ToLower() == lowered))
+            throw new InvalidOperationException($"Hãng xăng \"{name}\" đã có trong danh sách.");
+        var phone = TruckingSystem.Application.Common.ContactRules.NormalizePhone(request.ContactPhone);
+        if (phone is not null && !TruckingSystem.Application.Common.ContactRules.IsValidPhone(phone))
+            throw new InvalidOperationException("Số điện thoại không hợp lệ — cần 10 hoặc 11 chữ số, bắt đầu bằng 0.");
+
         var provider = new FuelProvider
         {
-            Name = request.Name,
-            ContactPhone = request.ContactPhone,
-            Address = request.Address,
+            Name = name,
+            ContactPhone = phone,
+            Address = string.IsNullOrWhiteSpace(request.Address) ? null : request.Address.Trim(),
         };
         _db.FuelProviders.Add(provider);
         await _db.SaveChangesAsync();

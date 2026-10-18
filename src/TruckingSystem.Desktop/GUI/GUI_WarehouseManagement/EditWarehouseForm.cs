@@ -131,6 +131,17 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             var address = _newSelectedAddress?.Address ?? _oldAddress;
             var lat = _newSelectedAddress?.Lat ?? _oldLat;
             var lng = _newSelectedAddress?.Lng ?? _oldLng;
+            // Kho cũ chưa có địa chỉ / tọa độ: bắt buộc chọn lại từ bản đồ (server cũng kiểm tra).
+            if (string.IsNullOrWhiteSpace(address) || lat is null || lng is null)
+            {
+                lblStatus.Text = "Kho chưa có địa chỉ / tọa độ — vui lòng tìm và CHỌN địa chỉ kho từ danh sách gợi ý.";
+                return;
+            }
+            if (numLength.Value <= 0 || numWidth.Value <= 0)
+            {
+                lblStatus.Text = "Vui lòng nhập Chiều dài và Chiều rộng kho (mét) — dùng để vẽ sơ đồ kho.";
+                return;
+            }
             // Tọa độ (0, 0) = chưa có tọa độ thật (điểm giữa biển) — server cũng từ chối.
             if (lat == 0 && lng == 0)
             {

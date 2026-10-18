@@ -21,6 +21,11 @@ public static class DriverLicenseRules
 
     private static readonly string[] TractorKeywords = { "dau keo", "container", "cong te no", "ro mooc", "romooc", "ro-mooc", "so mi" };
 
+    /// <summary>Chuẩn hóa hạng bằng ("c 1" -> "C1"); hạng nằm trong danh mục hạng ô tô mới được lưu.</summary>
+    public static string NormalizeClass(string? licenseClass) => (licenseClass ?? "").Trim().Replace(" ", "").ToUpperInvariant();
+
+    public static bool IsKnownClass(string? licenseClass) => CarClasses.Contains(NormalizeClass(licenseClass));
+
     public static bool IsTractor(string? vehicleType)
     {
         var n = DriverPositionRules.NormalizeText(vehicleType);

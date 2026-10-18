@@ -202,6 +202,18 @@ public class TransportOrderService : ITransportOrderService
         if (zoneError is not null)
             return new OrderActionResult(false, zoneError);
 
+        // Đơn NHÁP tạo trước khi có các quy tắc mới (bắt buộc hạn giao, điểm lấy ≠ điểm giao, địa
+        // điểm có tọa độ) hoặc để lâu tới khi hạn giao đã qua -> kiểm tra lại lúc xác nhận; trước
+        // đây xác nhận thẳng, tới Chia xe mới vướng (hoặc chia xe với hạn giao rỗng / đã qua).
+        if (order.CommittedDeliveryDate is null)
+            return new OrderActionResult(false, MissingCommittedDateMessage + " Bấm Sửa đơn để nhập hạn giao rồi xác nhận lại.");
+        if (order.CommittedDeliveryDate.Value.Date < VnClock.Today)
+            return new OrderActionResult(false,
+                $"Hạn giao {order.CommittedDeliveryDate.Value:dd/MM/yyyy} đã qua — bấm Sửa đơn để thỏa thuận hạn mới với khách rồi xác nhận lại.");
+        var locationError = await ValidateLocationsAsync(order.PickupMethod.ToString(), order.PickupLocationId, order.DropoffLocationId, order.CustomerId);
+        if (locationError is not null)
+            return new OrderActionResult(false, locationError + " (Bấm Sửa đơn để chọn lại địa điểm.)");
+
         order.Status = TransportOrderStatus.Confirmed;
         await _db.SaveChangesAsync();
         return new OrderActionResult(true, null);

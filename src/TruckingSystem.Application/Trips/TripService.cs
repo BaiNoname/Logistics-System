@@ -333,8 +333,11 @@ public class TripService : ITripService
 
         // Không đổ quá chỗ trống của bình (khi xe đã khai dung tích + mức đo) — chặn khai khống /
         // gõ nhầm số lít. Cho lệch 5% vì mức hiện có là ƯỚC TÍNH theo định mức + GPS.
+        // Ghi BÙ cho chuyến đã kết thúc TRƯỚC lần đo mức nhiên liệu gần nhất: bình hiện tại không
+        // liên quan tới lần đổ đó (đã đổ và đã tiêu trước lúc đo) -> không so với chỗ trống.
         var level = (await VehicleFuelLevelRules.ComputeAsync(_db, trip.VehicleId))[trip.VehicleId];
-        if (level.TankCapacityLiters is decimal cap && level.FreeLiters is decimal free
+        var endedBeforeMeasure = trip.EndTime is DateTime ended && level.MeasuredAtUtc is DateTime measuredAt && ended <= measuredAt;
+        if (!endedBeforeMeasure && level.TankCapacityLiters is decimal cap && level.FreeLiters is decimal free
             && request.Liters > free + cap * 0.05m)
             return new TripActionResult(false,
                 $"Đổ {request.Liters:0.#} lít nhưng bình xe {trip.Vehicle.PlateNumber} ước tính chỉ còn trống ~{free:0.#} lít " +
@@ -435,13 +438,16 @@ public class TripService : ITripService
     }
 
     /// <summary>Đặt Trip.ActualFuelCost = TỔNG tiền các lần đổ xăng của chuyến, tính
-    /// ngay trong database (không đọc-sửa-ghi) — luôn khớp với báo cáo.</summary>
+    /// ngay trong database bằng 1 câu UPDATE (không đọc-sửa-ghi) — luôn khớp với báo cáo.
+    /// Viết SQL trực tiếp (có tham số, không nối chuỗi): EF Core KHÔNG dịch được tổng qua
+    /// navigation (t.FuelLogs.Sum) bên trong ExecuteUpdate/SetProperty -> trước đây lỗi 500
+    /// "could not be translated" NGAY SAU khi đã lưu lần đổ xăng (lần đổ vẫn được lưu, nhưng
+    /// tổng tiền xăng của chuyến không cập nhật và Desktop báo lỗi).</summary>
     private Task<int> RecalculateActualFuelCostAsync(int tripId)
-        => _db.Trips
-            .Where(t => t.Id == tripId)
-            .ExecuteUpdateAsync(s => s.SetProperty(
-                t => t.ActualFuelCost,
-                t => t.FuelLogs.Sum(f => (decimal?)f.Cost) ?? 0m));
+        => _db.Database.ExecuteSqlInterpolatedAsync($@"
+UPDATE ""Trips""
+SET ""ActualFuelCost"" = COALESCE((SELECT SUM(f.""Cost"") FROM ""FuelLogs"" f WHERE f.""TripId"" = {tripId}), 0)
+WHERE ""Id"" = {tripId}");
 
     private sealed record FuelPriceLookup(bool Found, decimal UnitPrice, DateTime? EffectiveDate, string? SourceText, string? Message);
 
@@ -767,14 +773,8 @@ public class TripService : ITripService
 
         var driver = await _db.DriverProfiles
             .Where(dp => dp.EmployeeId == trip.DriverEmployeeId)
-            .Select(dp => new {
-                dp.LicenseExpiryDate,
-                dp.LicenseClass,
-                dp.HealthCertExpiryDate,
-                EmpStatus = dp.Employee.Status,
-                dp.Employee.FullName,
-                PositionName = dp.Employee.Position != null ? dp.Employee.Position.Name : null
-            })
+            .Select(dp => new { dp.LicenseExpiryDate, dp.LicenseClass, dp.HealthCertExpiryDate, EmpStatus = dp.Employee.Status, dp.Employee.FullName,
+                                PositionName = dp.Employee.Position != null ? dp.Employee.Position.Name : null })
             .FirstOrDefaultAsync();
         if (driver is null) return "Tài xế của chuyến này chưa có hồ sơ tài xế.";
         if (driver.EmpStatus != EmployeeStatus.Active)
@@ -962,7 +962,21 @@ public class TripService : ITripService
         }
 
         if (!gotAnyRealRoute)
+        {
+            // Vẫn lưu THỜI GIAN ước lượng (đường chim bay) nếu chuyến chưa có — để kiểm tra giấy tờ /
+            // bằng lái / ngày làm lúc Bắt đầu chuyến phủ đúng số ngày (thiếu số này thì chặng 8 ngày
+            // chỉ bị xét như 1 ngày). KHÔNG lưu km: km kế hoạch của báo cáo phải là lộ trình thật.
+            if (trip.EstimatedDurationMinutes is null)
+            {
+                var fallback = 0;
+                for (int i = 0; i < stops.Count - 1; i++)
+                    fallback += TruckingSystem.Application.Routing.RouteFallback.DriveMinutes(
+                        stops[i].Lat!.Value, stops[i].Lng!.Value, stops[i + 1].Lat!.Value, stops[i + 1].Lng!.Value);
+                trip.EstimatedDurationMinutes = fallback;
+                await _db.SaveChangesAsync();
+            }
             return new TripRouteEstimateDto(0, 0, "VietMap không tính được lộ trình (lỗi mạng hoặc hết quota) — thử lại sau.");
+        }
 
         // LƯU LẠI vào Trip — không chỉ hiện tạm thời rồi bỏ đi, để SAU NÀY có
         // thể làm bảng thống kê so sánh với số liệu THỰC TẾ (StartTime/
@@ -999,8 +1013,9 @@ public class TripService : ITripService
                 waypoints[i].Lat, waypoints[i].Lng);
         }
 
-        // Bước 2: Chi phí THỰC TẾ — tổng các lần đổ xăng thực tế đã ghi (FuelLog)
-        var actualCost = trip.ActualFuelCost;
+        // Bước 2: Chi phí THỰC TẾ — cộng THẲNG từ các lần đổ xăng đã ghi (FuelLog), cùng nguồn với
+        // báo cáo — không đọc cột tổng Trip.ActualFuelCost (có thể lệch nếu lần cập nhật tổng lỗi).
+        var actualCost = await _db.FuelLogs.Where(f => f.TripId == tripId).SumAsync(f => (decimal?)f.Cost) ?? 0m;
 
         if (waypoints.Count < 2)
             return new FuelEstimateDto(actualDistanceKm, null, null, actualCost, null,
@@ -1059,18 +1074,22 @@ public class TripService : ITripService
         var blockReason = await GetTripCostBlockReasonAsync(tripId, "sự cố có chi phí", lockClosed: request.Cost is > 0);
         if (blockReason is not null) throw new InvalidOperationException(blockReason);
 
+        // Mô tả BẮT BUỘC — biên bản sự cố phải ghi rõ chuyện gì đã xảy ra (đối chiếu chi phí, bảo hiểm).
+        if (string.IsNullOrWhiteSpace(request.Description) || request.Description.Trim().Length < 5)
+            throw new InvalidOperationException("Vui lòng mô tả sự cố (ít nhất 5 ký tự) — VD \"Thủng lốp sau trên QL1A, Km 1520\".");
         if (request.Cost.HasValue && request.Cost.Value < 0)
             throw new InvalidOperationException("Chi phí phát sinh không thể là số âm.");
         if (request.Cost.HasValue && request.Cost.Value > MaxMoney)
             throw new InvalidOperationException($"Chi phí phát sinh quá lớn (tối đa {MaxMoney:N0} đ).");
 
-        var type = Enum.TryParse<IncidentType>(request.Type, out var parsed) ? parsed : IncidentType.Other;
+        if (!Enum.TryParse<IncidentType>(request.Type, out var type) || !Enum.IsDefined(type))
+            throw new InvalidOperationException("Vui lòng chọn loại sự cố.");
 
         var incident = new IncidentReport
         {
             TripId = tripId,
             Type = type,
-            Description = request.Description,
+            Description = request.Description.Trim(),
             Cost = request.Cost,
             Timestamp = DateTime.UtcNow,
         };
@@ -1242,14 +1261,20 @@ public class TripService : ITripService
         if (request.Amount > MaxMoney)
             throw new InvalidOperationException($"Số tiền quá lớn (tối đa {MaxMoney:N0} đ).");
 
-        var type = Enum.TryParse<TripExpenseType>(request.Type, out var parsed) ? parsed : TripExpenseType.Other;
+        // Loại chi phí phải đúng danh mục (trước đây gõ sai thì âm thầm thành "Khác"). Loại "Khác"
+        // BẮT BUỘC ghi chú là chi gì — không thì kế toán không đối chiếu được.
+        if (!Enum.TryParse<TripExpenseType>(request.Type, out var type) || !Enum.IsDefined(type))
+            throw new InvalidOperationException("Vui lòng chọn loại chi phí.");
+        var note = string.IsNullOrWhiteSpace(request.Note) ? null : request.Note.Trim();
+        if (type == TripExpenseType.Other && note is null)
+            throw new InvalidOperationException("Chi phí loại \"Khác\" phải ghi chú là chi cho việc gì.");
 
         var expense = new TripExpense
         {
             TripId = tripId,
             Type = type,
             Amount = request.Amount,
-            Note = request.Note,
+            Note = note,
         };
         _db.TripExpenses.Add(expense);
         await _db.SaveChangesAsync();
@@ -1564,17 +1589,8 @@ public class TripService : ITripService
         var driverPositionIds = await DriverPositionRules.DriverPositionIdsAsync(_db);
         var drivers = await _db.DriverProfiles
             .OrderBy(dp => dp.Employee.FullName)
-            .Select(dp => new {
-                dp.EmployeeId,
-                dp.Employee.FullName,
-                dp.Employee.Code,
-                EmpStatus = dp.Employee.Status,
-                dp.Employee.PositionId,
-                dp.LicenseExpiryDate,
-                dp.LicenseClass,
-                dp.WarehouseId,
-                dp.HealthCertExpiryDate
-            })
+            .Select(dp => new { dp.EmployeeId, dp.Employee.FullName, dp.Employee.Code, EmpStatus = dp.Employee.Status, dp.Employee.PositionId,
+                                dp.LicenseExpiryDate, dp.LicenseClass, dp.WarehouseId, dp.HealthCertExpiryDate })
             .ToListAsync();
         var driverOptions = new List<ReassignOptionDto>();
         foreach (var d in drivers)

@@ -87,13 +87,15 @@ public class VehicleService : IVehicleService
             throw new InvalidOperationException($"Biển số {plate} đã tồn tại trong hệ thống.");
         var (fuelTypeOk, fuelType) = await NormalizeFuelTypeAsync(request.FuelType);
         if (!fuelTypeOk) throw new InvalidOperationException($"Loại nhiên liệu \"{request.FuelType}\" không có trong danh mục.");
+        var requiredError = RequiredFieldsError(request.VehicleType, fuelType, request.FuelConsumptionPer100Km);
+        if (requiredError is not null) throw new InvalidOperationException(requiredError);
         var capacityError = ValidateCapacity(request.CapacityQty, request.CapacityKg, request.CapacityM3, request.FuelConsumptionPer100Km);
         if (capacityError is not null) throw new InvalidOperationException(capacityError);
 
         var vehicle = new Vehicle
         {
             PlateNumber = plate,
-            VehicleType = request.VehicleType,
+            VehicleType = request.VehicleType.Trim(),
             CapacityQty = request.CapacityQty,
             CapacityKg = request.CapacityKg,
             CapacityM3 = request.CapacityM3,
@@ -127,6 +129,8 @@ public class VehicleService : IVehicleService
             return new VehicleActionResult(false, $"Biển số {plate} đã tồn tại trong hệ thống.");
         var (fuelTypeOk, fuelType) = await NormalizeFuelTypeAsync(request.FuelType);
         if (!fuelTypeOk) return new VehicleActionResult(false, $"Loại nhiên liệu \"{request.FuelType}\" không có trong danh mục.");
+        var requiredError = RequiredFieldsError(request.VehicleType, fuelType, request.FuelConsumptionPer100Km);
+        if (requiredError is not null) return new VehicleActionResult(false, requiredError);
 
         // Trạng thái "Đang chạy" do HỆ THỐNG quản lý (Chia xe đặt, hoàn tất/hủy
         // chuyến trả về) — không cho sửa tay, tránh xe bị "Rảnh" khi vẫn còn chuyến
@@ -204,7 +208,7 @@ public class VehicleService : IVehicleService
                 $"Xe còn chuyến chưa xong (#{tripListText}) — chưa thể đổi kho đóng quân.");
 
         vehicle.PlateNumber = plate;
-        vehicle.VehicleType = request.VehicleType;
+        vehicle.VehicleType = request.VehicleType.Trim();
         vehicle.CapacityQty = request.CapacityQty;
         vehicle.CapacityKg = request.CapacityKg;
         vehicle.CapacityM3 = request.CapacityM3;
@@ -241,6 +245,18 @@ public class VehicleService : IVehicleService
         return match is null ? (false, null) : (true, match);
     }
 
+    /// <summary>Thông tin BẮT BUỘC của xe (trước đây để trống vẫn lưu được):
+    ///  - Loại xe: quyết định hạng bằng lái (đầu kéo / container cần FC, CE).
+    ///  - Loại nhiên liệu + định mức L/100km: thiếu thì không ghi giá xăng tự động, không ước tính
+    ///    / so sánh nhiên liệu, không tính được mức nhiên liệu trong bình, báo cáo xăng bỏ trống.</summary>
+    private static string? RequiredFieldsError(string? vehicleType, string? fuelType, decimal? fuelPer100Km)
+    {
+        if (string.IsNullOrWhiteSpace(vehicleType)) return "Vui lòng chọn Loại xe.";
+        if (string.IsNullOrWhiteSpace(fuelType)) return "Vui lòng chọn Loại nhiên liệu.";
+        if (fuelPer100Km is null) return "Vui lòng nhập Định mức nhiên liệu (lít/100 km) — xem trên giấy tờ xe / kinh nghiệm chạy thực tế.";
+        return null;
+    }
+
     /// <summary>Sức chứa phải &gt; 0 ở CẢ 3 chiều — Chia xe giới hạn theo số lượng, kg VÀ m³:
     /// xe có kg hoặc m³ = 0 sẽ luôn bị bỏ qua nhưng vẫn hiện "Rảnh" như xe dùng được.</summary>
     private static string? ValidateCapacity(decimal qty, decimal kg, decimal m3, decimal? fuelPer100Km)
@@ -250,7 +266,7 @@ public class VehicleService : IVehicleService
         if (m3 <= 0) return "Thể tích (m³) phải lớn hơn 0.";
         if (qty > 1_000_000 || kg > 1_000_000 || m3 > 1_000_000) return "Sức chứa quá lớn (tối đa 1.000.000 cho mỗi chiều).";
         // Định mức xăng âm/0 làm dự toán nhiên liệu ra số âm.
-        if (fuelPer100Km is { } f && (f <= 0 || f > 200)) return "Định mức nhiên liệu phải trong khoảng 0 – 200 lít/100 km (để trống nếu chưa biết).";
+        if (fuelPer100Km is { } f && (f <= 0 || f > 200)) return "Định mức nhiên liệu phải lớn hơn 0 và tối đa 200 lít/100 km.";
         return null;
     }
 
@@ -275,7 +291,10 @@ public class VehicleService : IVehicleService
         if (expiryDate <= issueDate)
             throw new InvalidOperationException("Ngày hết hạn phải sau ngày cấp.");
 
-        var docType = Enum.TryParse<VehicleDocumentType>(request.DocType, out var parsed) ? parsed : VehicleDocumentType.Other;
+        // Loại giấy tờ phải đúng danh mục — trước đây gõ sai (VD "registration") thì âm thầm lưu thành
+        // "Khác": xe vẫn bị coi là THIẾU Đăng kiểm dù người dùng tưởng đã nhập.
+        if (!Enum.TryParse<VehicleDocumentType>(request.DocType, out var docType) || !Enum.IsDefined(docType))
+            throw new InvalidOperationException("Vui lòng chọn loại giấy tờ (Đăng kiểm, Bảo hiểm, Phù hiệu xe hoặc Khác).");
 
         var doc = new VehicleDocument
         {

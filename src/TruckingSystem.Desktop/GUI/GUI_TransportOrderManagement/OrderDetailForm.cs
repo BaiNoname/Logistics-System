@@ -19,6 +19,8 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             InitializeComponent();
             Theme.StyleGrid(gridCargo);
             Theme.StyleGrid(gridTrips);
+            dtPlannedStart.MinDate = DateTime.Today;
+            dtPlannedStart.MaxDate = DateTime.Today.AddDays(3); // khớp server: chia xe trước tối đa 3 ngày
             dtPlannedStart.Value = DateTime.Today; // mặc định xuất phát hôm nay
         }
 
