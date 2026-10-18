@@ -147,14 +147,9 @@ public class VehicleAllocationService : IVehicleAllocationService
             return new AllocateVehiclesResponse(false, 0, 0, new(), "Đơn này vừa được chia xe xong (thao tác khác) — không chia lại.");
 
         // Bước 1: sắp xếp giảm dần theo sức chứa — cốt lõi của tính "tham lam"
-        // BẮT BUỘC phải có ĐĂNG KIỂM CÒN HẠN mới cho dùng — đúng luật giao
-        // thông thực tế (xe không đăng kiểm KHÔNG ĐƯỢC PHÉP lưu thông), khác
-        // với các giấy tờ khác (Bảo hiểm/Giấy phép vận tải) vẫn áp dụng kiểu
-        // MỀM như cũ (chưa nhập thì vẫn cho qua, chỉ chặn khi PHÁT HIỆN thật
-        // sự hết hạn) — Đăng kiểm là giấy tờ DUY NHẤT bị siết chặt vì đây là
-        // điều kiện PHÁP LÝ bắt buộc để xe được lưu thông trên đường.
-        // Chỉ xét giấy tờ MỚI NHẤT của từng loại (gia hạn = thêm dòng mới, dòng cũ
-        // hết hạn vẫn còn) và so theo NGÀY Việt Nam — xem VehicleDocumentRules.
+        // Giấy tờ xe: BẮT BUỘC đủ 3 loại (Đăng kiểm, Bảo hiểm, Phù hiệu xe) còn hạn — chỉ xét bản
+        // MỚI NHẤT của từng loại (gia hạn = thêm dòng mới) và so theo NGÀY Việt Nam — xem
+        // VehicleDocumentRules.
         var today = VnClock.Today;
         // Giấy tờ xe + bằng lái phải còn hạn tới HẾT NGÀY CUỐI chuyến dự kiến (cùng khoảng
         // ngày bắt tài xế đăng ký ngày làm bên dưới) — trước đây chỉ xét hôm nay: đăng
@@ -165,8 +160,12 @@ public class VehicleAllocationService : IVehicleAllocationService
         var startDay = plannedStartDate?.Date ?? today;
         if (startDay < today)
             return new AllocateVehiclesResponse(false, totalQtyToShip, 0, new(), $"Ngày xuất phát dự kiến ({startDay:dd/MM/yyyy}) đã qua — chọn từ hôm nay trở đi.");
-        if (startDay > today.AddDays(60))
-            return new AllocateVehiclesResponse(false, totalQtyToShip, 0, new(), "Ngày xuất phát dự kiến quá xa (tối đa 60 ngày tới).");
+        // Chia xe là GIỮ xe + tài xế ngay (xe chuyển "Đang chạy", tài xế tính là bận) cho tới khi
+        // chuyến xong -> không cho đặt trước quá xa, tránh xe / tài xế nằm chờ nhiều ngày mà không
+        // nhận được đơn khác.
+        if (startDay > today.AddDays(MaxPlannedStartDays))
+            return new AllocateVehiclesResponse(false, totalQtyToShip, 0, new(),
+                $"Ngày xuất phát dự kiến quá xa — chỉ chia xe trước tối đa {MaxPlannedStartDays} ngày (tới {today.AddDays(MaxPlannedStartDays):dd/MM/yyyy}). Gần ngày chạy hãy chia xe.");
         var lastTripDay = startDay.AddDays(estimatedTripDays - 1);
 
         // HẠN GIAO (DeliveryDeadlineRules): chia xe hôm nay thì giao sớm nhất ngày nào — trễ hạn
@@ -538,6 +537,9 @@ public class VehicleAllocationService : IVehicleAllocationService
     /// tối đa/ngày theo quy định (có tính giờ nghỉ bắt buộc).
     /// Nếu THIẾU tọa độ hoặc VietMap API lỗi (mất mạng, hết quota...) -> KHÔNG
     /// chặn nghiệp vụ, mặc định 1 ngày (giữ hành vi cũ, an toàn).</summary>
+    /// <summary>Số ngày tối đa được đặt NGÀY XUẤT PHÁT DỰ KIẾN trước (tính từ hôm nay) khi Chia xe.</summary>
+    public const int MaxPlannedStartDays = 3;
+
     private async Task<int> EstimateTripDurationDaysAsync(TransportOrder order)
     {
         const int maxDrivingMinutesPerDay = 480; // 8 giờ lái/ngày — đã trừ giờ nghỉ bắt buộc theo quy định
@@ -562,7 +564,10 @@ public class VehicleAllocationService : IVehicleAllocationService
             // tế. Đường 2 chiều dài bằng nhau -> nhân đôi thời gian 1 chiều,
             // đỡ tốn thêm 1 lần gọi API cho chiều ngược lại (cùng 1 con đường).
             var leg1 = await _routeProvider.GetRouteAsync(new RouteRequest(pickupLat.Value, pickupLng.Value, warehouseLat.Value, warehouseLng.Value));
-            if (leg1.Success) { totalMinutes += leg1.DurationMinutes * 2; gotAnyRealRoute = true; }
+            // VietMap lỗi (mạng / hết quota) -> ước lượng theo đường chim bay, KHÔNG coi như 1 ngày:
+            // trước đây chuyến 8 ngày chỉ bị kiểm tra giấy tờ / ngày làm cho 1 ngày.
+            totalMinutes += (leg1.Success ? leg1.DurationMinutes : TruckingSystem.Application.Routing.RouteFallback.DriveMinutes(pickupLat.Value, pickupLng.Value, warehouseLat.Value, warehouseLng.Value)) * 2;
+            gotAnyRealRoute = true;
         }
         if (warehouseLat.HasValue && warehouseLng.HasValue && dropoffLat.HasValue && dropoffLng.HasValue)
         {
@@ -571,13 +576,12 @@ public class VehicleAllocationService : IVehicleAllocationService
             // tính vào đơn/chuyến TIẾP THEO của xe đó, không thuộc phạm vi đơn
             // này).
             var leg2 = await _routeProvider.GetRouteAsync(new RouteRequest(warehouseLat.Value, warehouseLng.Value, dropoffLat.Value, dropoffLng.Value));
-            if (leg2.Success) { totalMinutes += leg2.DurationMinutes; gotAnyRealRoute = true; }
+            totalMinutes += leg2.Success ? leg2.DurationMinutes : TruckingSystem.Application.Routing.RouteFallback.DriveMinutes(warehouseLat.Value, warehouseLng.Value, dropoffLat.Value, dropoffLng.Value);
+            gotAnyRealRoute = true;
         }
 
-        // Thiếu tọa độ HOẶC VietMap không trả được lộ trình nào cả (lỗi mạng,
-        // hết quota, thiếu API key...) -> không ước tính được, mặc định 1
-        // ngày như hành vi cũ, không để lỗi API bên ngoài chặn cả nghiệp vụ
-        // Chia xe quan trọng hơn nhiều.
+        // Thiếu tọa độ -> không ước tính được, mặc định 1 ngày (đơn mới bắt buộc chọn địa điểm có
+        // tọa độ nên chỉ còn gặp ở dữ liệu cũ).
         if (!gotAnyRealRoute) return 1;
 
         var estimatedDays = (int)Math.Ceiling((double)totalMinutes / maxDrivingMinutesPerDay);

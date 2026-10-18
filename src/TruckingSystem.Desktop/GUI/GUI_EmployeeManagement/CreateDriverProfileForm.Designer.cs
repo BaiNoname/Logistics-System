@@ -61,7 +61,7 @@ partial class CreateDriverProfileForm
         lblLicenseClass.Name = "lblLicenseClass";
         lblLicenseClass.Size = new Size(285, 27);
         lblLicenseClass.TabIndex = 2;
-        lblLicenseClass.Text = "Hạng bằng";
+        lblLicenseClass.Text = "Hạng bằng *";
         // 
         // cboLicenseClass
         // 
@@ -99,7 +99,7 @@ partial class CreateDriverProfileForm
         chkHasHealthCert.Name = "chkHasHealthCert";
         chkHasHealthCert.Size = new Size(285, 36);
         chkHasHealthCert.TabIndex = 6;
-        chkHasHealthCert.Text = "Có giấy khám sức khỏe";
+        chkHasHealthCert.Text = "Giấy khám sức khỏe — ngày hết hạn *";
         // 
         // dtHealthCertExpiry
         // 

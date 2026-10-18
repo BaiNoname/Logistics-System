@@ -29,6 +29,11 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
         private async void BtnSave_Click(object? sender, EventArgs e)
         {
             if (_api is null) return;
+            if (txtDescription.Text.Trim().Length < 5)
+            {
+                lblStatus.Text = "Vui lòng mô tả sự cố (ít nhất 5 ký tự) — VD \"Thủng lốp sau trên QL1A, Km 1520\".";
+                return;
+            }
 
             btnSave.Enabled = false;
             try

@@ -42,10 +42,12 @@ public static class VehicleFuelLevelRules
         var ids = measured.Select(v => v.Id).ToList();
         var minAt = measured.Min(v => v.FuelLevelMeasuredAt!.Value);
 
-        // Đổ xăng sau mốc đo (lọc mốc riêng từng xe trong bộ nhớ).
+        // Đổ xăng sau mốc đo (lọc mốc riêng từng xe trong bộ nhớ). Lần đổ GHI BÙ cho chuyến đã
+        // kết thúc TRƯỚC mốc đo thì KHÔNG cộng: giờ ghi (Timestamp) là lúc nhập máy, nhưng xăng đó
+        // đã đổ trước khi đo -> mức đo đã bao gồm rồi (trước đây bị cộng 2 lần).
         var refuels = await db.FuelLogs
             .Where(f => ids.Contains(f.Trip.VehicleId) && f.Timestamp > minAt)
-            .Select(f => new { f.Trip.VehicleId, f.Timestamp, f.Liters })
+            .Select(f => new { f.Trip.VehicleId, f.Timestamp, f.Liters, TripEnd = f.Trip.EndTime })
             .ToListAsync();
 
         // Điểm GPS sau mốc đo của các chuyến của xe (để tính km đi thật).
@@ -58,7 +60,7 @@ public static class VehicleFuelLevelRules
         foreach (var v in measured)
         {
             var at = v.FuelLevelMeasuredAt!.Value;
-            var refueled = refuels.Where(f => f.VehicleId == v.Id && f.Timestamp > at).Sum(f => f.Liters);
+            var refueled = refuels.Where(f => f.VehicleId == v.Id && f.Timestamp > at && (f.TripEnd is null || f.TripEnd > at)).Sum(f => f.Liters);
 
             decimal km = 0, consumed = 0;
             foreach (var trip in points.Where(p => p.VehicleId == v.Id && p.Timestamp > at).GroupBy(p => p.TripId))

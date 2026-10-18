@@ -8,7 +8,7 @@
         public bool IsRead { get; set; }
         public DateTime CreatedAt { get; set; }
 
-        /// <summary>"Chuyến chờ duyệt" / "Giấy tờ xe" / "Giấy tờ tài xế" / "Hạn giao" / "Lịch tài xế" / "Khác".
+        /// <summary>"Chuyến chờ duyệt" / "Chuyến bị chặn" / "Giấy tờ xe" / "Giấy tờ tài xế" / "Hạn giao" / "Lịch tài xế" / "Khác".
         /// Server cũ chưa trả trường này -> Desktop tự suy ra từ tiêu đề.</summary>
         public string? Category { get; set; }
 
@@ -28,6 +28,7 @@
             if (title.StartsWith("📅")) return "Lịch tài xế";
             if (title.StartsWith("🪪")) return "Giấy tờ tài xế";
             if (title.StartsWith("⏰")) return "Hạn giao";
+            if (title.StartsWith("🚫")) return "Chuyến bị chặn";
             return "Khác";
         }
     }

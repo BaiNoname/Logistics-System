@@ -104,6 +104,22 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
                 lblStatus.Text = "Vui lòng nhập biển số xe.";
                 return;
             }
+            // Loại xe, loại nhiên liệu, định mức là BẮT BUỘC (server cũng kiểm tra lại).
+            if (string.IsNullOrWhiteSpace(cboVehicleType.SelectedItem as string))
+            {
+                lblStatus.Text = "Vui lòng chọn Loại xe.";
+                return;
+            }
+            if (string.IsNullOrWhiteSpace(cboFuelType.SelectedItem as string))
+            {
+                lblStatus.Text = "Vui lòng chọn Loại nhiên liệu.";
+                return;
+            }
+            if (numFuelConsumption.Value <= 0)
+            {
+                lblStatus.Text = "Vui lòng nhập Định mức nhiên liệu (lít/100 km) lớn hơn 0.";
+                return;
+            }
             if (_api is null) return;
 
             btnSave.Enabled = false;

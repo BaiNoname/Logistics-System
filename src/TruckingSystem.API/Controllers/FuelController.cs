@@ -31,7 +31,16 @@ public class FuelController : ControllerBase
     [HttpPost("providers")]
     [Authorize(Roles = "Admin,Accountant")]
     public async Task<ActionResult<FuelProviderDto>> CreateProvider(CreateFuelProviderRequest request)
-        => Ok(await _service.CreateProviderAsync(request));
+    {
+        try
+        {
+            return Ok(await _service.CreateProviderAsync(request));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message); // tên trống / trùng tên / SĐT sai — trả 400 kèm lý do (trước đây 500)
+        }
+    }
 
     [HttpDelete("providers/{id:int}")]
     [Authorize(Roles = "Admin,Accountant")]

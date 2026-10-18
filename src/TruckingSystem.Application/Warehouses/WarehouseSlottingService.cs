@@ -351,6 +351,8 @@ public class WarehouseSlottingService : IWarehouseSlottingService
 
     public async Task<WarehouseListItemDto> CreateWarehouseAsync(CreateWarehouseRequest request)
     {
+        var requiredError = RequiredWarehouseError(request.Name, request.Address, request.Lat, request.Lng, request.LengthMeters, request.WidthMeters);
+        if (requiredError is not null) throw new InvalidOperationException(requiredError);
         var shapeError = ValidateWarehouseShape(request.CapacityM3, request.LengthMeters, request.WidthMeters, request.Lat, request.Lng);
         if (shapeError is not null) throw new InvalidOperationException(shapeError);
         var doorError = ValidateDoor(request.DoorSide, request.DoorOffsetMeters, request.LengthMeters, request.WidthMeters, out var doorSide);
@@ -358,8 +360,8 @@ public class WarehouseSlottingService : IWarehouseSlottingService
 
         var warehouse = new Warehouse
         {
-            Name = request.Name,
-            Address = request.Address,
+            Name = request.Name.Trim(),
+            Address = request.Address!.Trim(),
             CapacityM3 = request.CapacityM3,
             LengthMeters = request.LengthMeters,
             WidthMeters = request.WidthMeters,
@@ -379,6 +381,8 @@ public class WarehouseSlottingService : IWarehouseSlottingService
     {
         var warehouse = await _db.Warehouses.FindAsync(warehouseId);
         if (warehouse is null) return new WarehouseActionResult(false, "Không tìm thấy kho.");
+        var requiredError = RequiredWarehouseError(request.Name, request.Address, request.Lat, request.Lng, request.LengthMeters, request.WidthMeters);
+        if (requiredError is not null) return new WarehouseActionResult(false, requiredError);
         var shapeError = ValidateWarehouseShape(request.CapacityM3, request.LengthMeters, request.WidthMeters, request.Lat, request.Lng);
         if (shapeError is not null) return new WarehouseActionResult(false, shapeError);
 
@@ -414,8 +418,8 @@ public class WarehouseSlottingService : IWarehouseSlottingService
                     "Chờ các chuyến đó hoàn tất rồi đổi địa chỉ / tọa độ kho.");
         }
 
-        warehouse.Name = request.Name;
-        warehouse.Address = request.Address;
+        warehouse.Name = request.Name.Trim();
+        warehouse.Address = request.Address!.Trim();
         warehouse.CapacityM3 = request.CapacityM3;
         warehouse.LengthMeters = request.LengthMeters;
         warehouse.WidthMeters = request.WidthMeters;
@@ -430,6 +434,7 @@ public class WarehouseSlottingService : IWarehouseSlottingService
 
     public async Task<WarehouseZoneDto> CreateZoneAsync(int warehouseId, CreateZoneRequest request)
     {
+        if (string.IsNullOrWhiteSpace(request.Name)) throw new InvalidOperationException("Vui lòng nhập tên khu vực.");
         var rectError = ValidateRect(request.PosX, request.PosY, request.WidthMeters, request.HeightMeters, "Khu vực");
         if (rectError is not null) throw new InvalidOperationException(rectError);
         var warehouseForBounds = await _db.Warehouses.FindAsync(warehouseId);
@@ -460,7 +465,7 @@ public class WarehouseSlottingService : IWarehouseSlottingService
         var zone = new WarehouseZone
         {
             WarehouseId = warehouseId,
-            Name = request.Name,
+            Name = request.Name.Trim(),
             ZoneType = zoneType,
             PosX = request.PosX,
             PosY = request.PosY,
@@ -475,6 +480,7 @@ public class WarehouseSlottingService : IWarehouseSlottingService
 
     public async Task<WarehouseActionResult> UpdateZoneAsync(int zoneId, CreateZoneRequest request)
     {
+        if (string.IsNullOrWhiteSpace(request.Name)) return new WarehouseActionResult(false, "Vui lòng nhập tên khu vực.");
         var zone = await _db.WarehouseZones.FindAsync(zoneId);
         if (zone is null) return new WarehouseActionResult(false, "Không tìm thấy khu vực.");
         var rectError = ValidateRect(request.PosX, request.PosY, request.WidthMeters, request.HeightMeters, "Khu vực");
@@ -519,7 +525,7 @@ public class WarehouseSlottingService : IWarehouseSlottingService
             if (retypeBlock is not null) return new WarehouseActionResult(false, retypeBlock);
         }
 
-        zone.Name = request.Name;
+        zone.Name = request.Name.Trim();
         zone.ZoneType = zoneType;
         zone.PosX = request.PosX;
         zone.PosY = request.PosY;
@@ -923,6 +929,20 @@ public class WarehouseSlottingService : IWarehouseSlottingService
     // ---- Kiểm tra số liệu kho / khu / vị trí ở SERVER (trước đây chỉ Desktop kiểm tra:
     // gọi thẳng API được kích thước 0/âm, số quá lớn làm tràn cột -> lỗi 500) ----
     private const decimal MaxMeters = 100_000m;
+
+    /// <summary>Thông tin BẮT BUỘC của kho (trước đây chỉ bắt tên): địa chỉ + TỌA ĐỘ (chọn từ bản
+    /// đồ) — thiếu thì Chia xe không ước tính được quãng đường / số ngày chuyến (mọi chặng đều đi
+    /// qua kho), bản đồ lộ trình không vẽ được; Dài × Rộng — để vẽ sơ đồ kho và kiểm tra khu vực
+    /// nằm trong kho.</summary>
+    private static string? RequiredWarehouseError(string? name, string? address, double? lat, double? lng, decimal? length, decimal? width)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "Vui lòng nhập tên kho.";
+        if (string.IsNullOrWhiteSpace(address) || lat is null || lng is null)
+            return "Vui lòng tìm và CHỌN địa chỉ kho từ danh sách gợi ý (cần tọa độ để tính lộ trình, số ngày chuyến khi Chia xe).";
+        if (length is null || width is null)
+            return "Vui lòng nhập Chiều dài và Chiều rộng kho (mét) — dùng để vẽ sơ đồ kho và xếp khu vực.";
+        return null;
+    }
 
     private static string? ValidateWarehouseShape(decimal? capacityM3, decimal? length, decimal? width, double? lat, double? lng)
     {

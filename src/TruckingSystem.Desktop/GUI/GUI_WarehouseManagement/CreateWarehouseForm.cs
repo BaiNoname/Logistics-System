@@ -80,6 +80,18 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                 return;
             }
             if (_api is null) return;
+            // Địa chỉ (có tọa độ) BẮT BUỘC: mọi chặng đều đi qua kho — thiếu tọa độ thì Chia xe không
+            // ước tính được quãng đường / số ngày chuyến.
+            if (_selectedAddress is null)
+            {
+                lblStatus.Text = "Vui lòng tìm và CHỌN địa chỉ kho từ danh sách gợi ý.";
+                return;
+            }
+            if (numLength.Value <= 0 || numWidth.Value <= 0)
+            {
+                lblStatus.Text = "Vui lòng nhập Chiều dài và Chiều rộng kho (mét) — dùng để vẽ sơ đồ kho.";
+                return;
+            }
 
             var doorError = WarehouseDoorHelper.Validate(cboDoorSide.SelectedIndex, numDoorOffset.Value, numLength.Value, numWidth.Value);
             if (doorError is not null)
@@ -101,11 +113,11 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             {
                 await _api.Warehouses.CreateWarehouseAsync(
                     txtName.Text.Trim(),
-                    _selectedAddress?.Address, // null nếu chưa chọn địa chỉ — vẫn cho phép tạo kho không có địa chỉ
+                    _selectedAddress.Address,
                     numCapacity.Value == 0 ? null : numCapacity.Value,
-                    numLength.Value == 0 ? null : numLength.Value,
-                    numWidth.Value == 0 ? null : numWidth.Value,
-                    _selectedAddress?.Lat, _selectedAddress?.Lng,
+                    numLength.Value,
+                    numWidth.Value,
+                    _selectedAddress.Lat, _selectedAddress.Lng,
                     doorSide, doorOffset);
 
                 DialogResult = DialogResult.OK;
