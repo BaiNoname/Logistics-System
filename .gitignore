@@ -1,8 +1,6 @@
 # ==== Build output — không commit, sinh ra tự động mỗi lần Build ====
 bin/
 obj/
-**/bin/
-**/obj/
 TestResults/
 artifacts/
 publish/
@@ -14,15 +12,19 @@ publish/
 *.userosscache
 *.sln.docstates
 
-# ==== Configuración local y secretos ====
+# ==== Cấu hình cục bộ và thông tin bí mật ====
 .env
 .env.*
 !.env.example
 appsettings.json
+appsettings.*.json
 *.publishsettings
 AGENTS.md
-/tests/
+
+# ==== Chỉ đưa bộ UnitTests trong solution vào Git ====
+/tests/*
 !/tests/TruckingSystem.UnitTests/
+
 # ==== Log/cache khác ====
 *.log
 *.tmp
@@ -31,8 +33,6 @@ AGENTS.md
 .DS_Store
 Thumbs.db
 
-# Video hành trình do app tài xế upload — dữ liệu, không phải code
+# ==== Dữ liệu upload: video, ảnh hàng hóa và giấy tờ xe ====
 **/Storage/TripVideos/
-**/appsettings.json
-
 **/Storage/VehicleDocuments/
