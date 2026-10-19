@@ -29,6 +29,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             btnDeleteWarehouse = new System.Windows.Forms.Button();
             btnManualStock = new System.Windows.Forms.Button();
             btnPendingReceipts = new System.Windows.Forms.Button();
+            btnIssueStock = new System.Windows.Forms.Button();
             lblStatus = new System.Windows.Forms.Label();
             zonesPanel = new System.Windows.Forms.Panel();
             testPanel = new System.Windows.Forms.TableLayoutPanel();
@@ -89,8 +90,9 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             toolbar.Controls.Add(btnEditWarehouse);
             toolbar.Controls.Add(btnManageZones);
             toolbar.Controls.Add(btnDeleteWarehouse);
-            toolbar.Controls.Add(btnManualStock);
             toolbar.Controls.Add(btnPendingReceipts);
+            toolbar.Controls.Add(btnManualStock);
+            toolbar.Controls.Add(btnIssueStock);
             toolbar.Dock = System.Windows.Forms.DockStyle.Fill;
             toolbar.Margin = new System.Windows.Forms.Padding(0);
             toolbar.Name = "toolbar";
@@ -196,7 +198,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             // 
             btnManualStock.AutoSize = true;
             btnManualStock.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
-            btnManualStock.BackColor = System.Drawing.Color.FromArgb(217, 119, 6);
+            btnManualStock.BackColor = System.Drawing.Color.FromArgb(37, 99, 235);
             btnManualStock.Cursor = System.Windows.Forms.Cursors.Hand;
             btnManualStock.FlatAppearance.BorderSize = 0;
             btnManualStock.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
@@ -206,8 +208,8 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             btnManualStock.MinimumSize = new System.Drawing.Size(0, 36);
             btnManualStock.Name = "btnManualStock";
             btnManualStock.Padding = new System.Windows.Forms.Padding(10, 3, 10, 3);
-            btnManualStock.TabIndex = 6;
-            btnManualStock.Text = "📤 Nhập/Xuất kho";
+            btnManualStock.TabIndex = 7;
+            btnManualStock.Text = "🙋 Nhận hàng khách mang tới";
             btnManualStock.UseVisualStyleBackColor = false;
             btnManualStock.Click += new System.EventHandler(this.BtnManualStock_Click);
             // 
@@ -225,10 +227,30 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             btnPendingReceipts.MinimumSize = new System.Drawing.Size(0, 36);
             btnPendingReceipts.Name = "btnPendingReceipts";
             btnPendingReceipts.Padding = new System.Windows.Forms.Padding(10, 3, 10, 3);
-            btnPendingReceipts.TabIndex = 7;
-            btnPendingReceipts.Text = "📦 Hàng chờ nhập kho";
+            btnPendingReceipts.TabIndex = 6;
+            btnPendingReceipts.Text = "📦 Nhập hàng từ chuyến";
             btnPendingReceipts.UseVisualStyleBackColor = false;
             btnPendingReceipts.Click += new System.EventHandler(this.BtnPendingReceipts_Click);
+            // 
+            // btnIssueStock — xuất hàng tồn của đơn đã Hoàn tất / Hủy + hoàn tác + lịch sử nhập/xuất
+            // 
+            btnIssueStock.AutoSize = true;
+            btnIssueStock.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            btnIssueStock.BackColor = System.Drawing.Color.White;
+            btnIssueStock.Cursor = System.Windows.Forms.Cursors.Hand;
+            btnIssueStock.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(203, 213, 225);
+            btnIssueStock.FlatAppearance.BorderSize = 1;
+            btnIssueStock.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            btnIssueStock.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            btnIssueStock.ForeColor = System.Drawing.Color.FromArgb(15, 23, 42);
+            btnIssueStock.Margin = new System.Windows.Forms.Padding(0, 0, 8, 8);
+            btnIssueStock.MinimumSize = new System.Drawing.Size(0, 36);
+            btnIssueStock.Name = "btnIssueStock";
+            btnIssueStock.Padding = new System.Windows.Forms.Padding(10, 3, 10, 3);
+            btnIssueStock.TabIndex = 8;
+            btnIssueStock.Text = "📤 Xuất hàng tồn & lịch sử";
+            btnIssueStock.UseVisualStyleBackColor = false;
+            btnIssueStock.Click += new System.EventHandler(this.BtnIssueStock_Click);
             // 
             // lblStatus
             // 
@@ -405,6 +427,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
         private System.Windows.Forms.Button btnDeleteWarehouse;
         private System.Windows.Forms.Button btnManualStock;
         private System.Windows.Forms.Button btnPendingReceipts;
+        private System.Windows.Forms.Button btnIssueStock;
         private System.Windows.Forms.Label lblStatus;
         private System.Windows.Forms.Panel zonesPanel;
         private System.Windows.Forms.TableLayoutPanel testPanel;

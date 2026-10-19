@@ -20,16 +20,63 @@ public class VehicleService : IVehicleService
         var vehicles = await _db.Vehicles
             .Include(v => v.Warehouse)
             .OrderBy(v => v.PlateNumber)
-            .Select(v => new VehicleListItemDto(v.Id, v.PlateNumber, v.VehicleType, v.CapacityQty, v.CapacityKg, v.CapacityM3, v.Status.ToString(), v.FuelConsumptionPer100Km, v.FuelType, v.WarehouseId, v.Warehouse == null ? null : v.Warehouse.Name, null))
+            .Select(v => new VehicleListItemDto(v.Id, v.PlateNumber, v.VehicleType, v.CapacityQty, v.CapacityKg, v.CapacityM3, v.Status.ToString(), v.FuelConsumptionPer100Km, v.FuelType, v.WarehouseId, v.Warehouse == null ? null : v.Warehouse.Name,
+                null, null, null, null)) // truyền ĐỦ tham số: trong truy vấn EF (expression tree) không được bỏ tham số tùy chọn
             .ToListAsync();
 
         // Kèm lý do giấy tờ (nếu có) để Desktop biết xe "Rảnh" nào thực ra KHÔNG chia xe được
         // (VD Dashboard "Xe sẵn sàng" trước đây đếm cả xe hết Đăng kiểm).
         var today = VnClock.Today;
         var docsByVehicle = (await VehicleDocumentRules.GetLatestAsync(_db)).ToLookup(d => d.VehicleId);
+        var fuel = await VehicleFuelLevelRules.ComputeAsync(_db);
         return vehicles
-            .Select(v => v with { DocumentBlockReason = VehicleDocumentRules.BlockReason(docsByVehicle[v.Id], v.PlateNumber, today) })
+            .Select(v =>
+            {
+                var f = fuel.GetValueOrDefault(v.Id);
+                return v with
+                {
+                    DocumentBlockReason = VehicleDocumentRules.BlockReason(docsByVehicle[v.Id], v.PlateNumber, today),
+                    FuelTankCapacityLiters = f?.TankCapacityLiters,
+                    FuelCurrentLiters = f?.CurrentLiters,
+                    FuelLevelMeasuredAt = f?.MeasuredAtUtc is DateTime at ? DateTime.SpecifyKind(at, DateTimeKind.Utc) : null,
+                };
+            })
             .ToList();
+    }
+
+    public async Task<VehicleFuelLevelDto?> GetFuelLevelAsync(int vehicleId)
+    {
+        var vehicle = await _db.Vehicles.Where(v => v.Id == vehicleId)
+            .Select(v => new { v.PlateNumber, v.FuelConsumptionPer100Km }).FirstOrDefaultAsync();
+        if (vehicle is null) return null;
+        var l = (await VehicleFuelLevelRules.ComputeAsync(_db, vehicleId))[vehicleId];
+        return new VehicleFuelLevelDto(vehicleId, vehicle.PlateNumber, l.TankCapacityLiters, l.MeasuredLiters,
+            l.MeasuredAtUtc is DateTime at ? DateTime.SpecifyKind(at, DateTimeKind.Utc) : null,
+            l.RefueledLiters, l.ConsumedLiters, l.ConsumedKm, l.CurrentLiters, vehicle.FuelConsumptionPer100Km);
+    }
+
+    /// <summary>Dung tích bình 20–2.000 lít (xe tải nhỏ ~60 L, đầu kéo 2 bình ~1.000 L). Mức đo
+    /// 0..dung tích. Khai mức đo = đặt lại MỐC tính (các lần đổ / tiêu hao trước mốc không còn tính).</summary>
+    public async Task<VehicleActionResult> UpdateFuelLevelAsync(int vehicleId, UpdateFuelLevelRequest request)
+    {
+        var vehicle = await _db.Vehicles.FindAsync(vehicleId);
+        if (vehicle is null) return new VehicleActionResult(false, "Không tìm thấy xe.");
+        var capacity = request.TankCapacityLiters ?? vehicle.FuelTankCapacityLiters;
+        if (capacity is null) return new VehicleActionResult(false, "Nhập dung tích bình nhiên liệu (lít) trước.");
+        if (capacity < 20 || capacity > 2000) return new VehicleActionResult(false, "Dung tích bình phải từ 20 đến 2.000 lít.");
+        if (request.MeasuredLiters is decimal m && (m < 0 || m > capacity))
+            return new VehicleActionResult(false, $"Mức nhiên liệu đo được phải từ 0 đến dung tích bình ({capacity:0.#} lít).");
+        if (request.MeasuredLiters is null && vehicle.FuelLevelLiters is decimal old && old > capacity)
+            return new VehicleActionResult(false, $"Mức đo gần nhất ({old:0.#} lít) lớn hơn dung tích mới — khai lại mức đo thực tế.");
+
+        vehicle.FuelTankCapacityLiters = capacity;
+        if (request.MeasuredLiters is decimal measured)
+        {
+            vehicle.FuelLevelLiters = Math.Round(measured, 1);
+            vehicle.FuelLevelMeasuredAt = DateTime.UtcNow;
+        }
+        await _db.SaveChangesAsync();
+        return new VehicleActionResult(true, null);
     }
 
     public async Task<VehicleListItemDto> CreateAsync(CreateVehicleRequest request)
@@ -40,13 +87,15 @@ public class VehicleService : IVehicleService
             throw new InvalidOperationException($"Biển số {plate} đã tồn tại trong hệ thống.");
         var (fuelTypeOk, fuelType) = await NormalizeFuelTypeAsync(request.FuelType);
         if (!fuelTypeOk) throw new InvalidOperationException($"Loại nhiên liệu \"{request.FuelType}\" không có trong danh mục.");
+        var requiredError = RequiredFieldsError(request.VehicleType, fuelType, request.FuelConsumptionPer100Km);
+        if (requiredError is not null) throw new InvalidOperationException(requiredError);
         var capacityError = ValidateCapacity(request.CapacityQty, request.CapacityKg, request.CapacityM3, request.FuelConsumptionPer100Km);
         if (capacityError is not null) throw new InvalidOperationException(capacityError);
 
         var vehicle = new Vehicle
         {
             PlateNumber = plate,
-            VehicleType = request.VehicleType,
+            VehicleType = request.VehicleType.Trim(),
             CapacityQty = request.CapacityQty,
             CapacityKg = request.CapacityKg,
             CapacityM3 = request.CapacityM3,
@@ -80,6 +129,8 @@ public class VehicleService : IVehicleService
             return new VehicleActionResult(false, $"Biển số {plate} đã tồn tại trong hệ thống.");
         var (fuelTypeOk, fuelType) = await NormalizeFuelTypeAsync(request.FuelType);
         if (!fuelTypeOk) return new VehicleActionResult(false, $"Loại nhiên liệu \"{request.FuelType}\" không có trong danh mục.");
+        var requiredError = RequiredFieldsError(request.VehicleType, fuelType, request.FuelConsumptionPer100Km);
+        if (requiredError is not null) return new VehicleActionResult(false, requiredError);
 
         // Trạng thái "Đang chạy" do HỆ THỐNG quản lý (Chia xe đặt, hoàn tất/hủy
         // chuyến trả về) — không cho sửa tay, tránh xe bị "Rảnh" khi vẫn còn chuyến
@@ -157,7 +208,7 @@ public class VehicleService : IVehicleService
                 $"Xe còn chuyến chưa xong (#{tripListText}) — chưa thể đổi kho đóng quân.");
 
         vehicle.PlateNumber = plate;
-        vehicle.VehicleType = request.VehicleType;
+        vehicle.VehicleType = request.VehicleType.Trim();
         vehicle.CapacityQty = request.CapacityQty;
         vehicle.CapacityKg = request.CapacityKg;
         vehicle.CapacityM3 = request.CapacityM3;
@@ -194,6 +245,18 @@ public class VehicleService : IVehicleService
         return match is null ? (false, null) : (true, match);
     }
 
+    /// <summary>Thông tin BẮT BUỘC của xe (trước đây để trống vẫn lưu được):
+    ///  - Loại xe: quyết định hạng bằng lái (đầu kéo / container cần FC, CE).
+    ///  - Loại nhiên liệu + định mức L/100km: thiếu thì không ghi giá xăng tự động, không ước tính
+    ///    / so sánh nhiên liệu, không tính được mức nhiên liệu trong bình, báo cáo xăng bỏ trống.</summary>
+    private static string? RequiredFieldsError(string? vehicleType, string? fuelType, decimal? fuelPer100Km)
+    {
+        if (string.IsNullOrWhiteSpace(vehicleType)) return "Vui lòng chọn Loại xe.";
+        if (string.IsNullOrWhiteSpace(fuelType)) return "Vui lòng chọn Loại nhiên liệu.";
+        if (fuelPer100Km is null) return "Vui lòng nhập Định mức nhiên liệu (lít/100 km) — xem trên giấy tờ xe / kinh nghiệm chạy thực tế.";
+        return null;
+    }
+
     /// <summary>Sức chứa phải &gt; 0 ở CẢ 3 chiều — Chia xe giới hạn theo số lượng, kg VÀ m³:
     /// xe có kg hoặc m³ = 0 sẽ luôn bị bỏ qua nhưng vẫn hiện "Rảnh" như xe dùng được.</summary>
     private static string? ValidateCapacity(decimal qty, decimal kg, decimal m3, decimal? fuelPer100Km)
@@ -203,7 +266,7 @@ public class VehicleService : IVehicleService
         if (m3 <= 0) return "Thể tích (m³) phải lớn hơn 0.";
         if (qty > 1_000_000 || kg > 1_000_000 || m3 > 1_000_000) return "Sức chứa quá lớn (tối đa 1.000.000 cho mỗi chiều).";
         // Định mức xăng âm/0 làm dự toán nhiên liệu ra số âm.
-        if (fuelPer100Km is { } f && (f <= 0 || f > 200)) return "Định mức nhiên liệu phải trong khoảng 0 – 200 lít/100 km (để trống nếu chưa biết).";
+        if (fuelPer100Km is { } f && (f <= 0 || f > 200)) return "Định mức nhiên liệu phải lớn hơn 0 và tối đa 200 lít/100 km.";
         return null;
     }
 
@@ -228,7 +291,10 @@ public class VehicleService : IVehicleService
         if (expiryDate <= issueDate)
             throw new InvalidOperationException("Ngày hết hạn phải sau ngày cấp.");
 
-        var docType = Enum.TryParse<VehicleDocumentType>(request.DocType, out var parsed) ? parsed : VehicleDocumentType.Other;
+        // Loại giấy tờ phải đúng danh mục — trước đây gõ sai (VD "registration") thì âm thầm lưu thành
+        // "Khác": xe vẫn bị coi là THIẾU Đăng kiểm dù người dùng tưởng đã nhập.
+        if (!Enum.TryParse<VehicleDocumentType>(request.DocType, out var docType) || !Enum.IsDefined(docType))
+            throw new InvalidOperationException("Vui lòng chọn loại giấy tờ (Đăng kiểm, Bảo hiểm, Phù hiệu xe hoặc Khác).");
 
         var doc = new VehicleDocument
         {
@@ -255,27 +321,29 @@ public class VehicleService : IVehicleService
         // So CÙNG quy tắc với lúc Bắt đầu chuyến: Đăng kiểm mới nhất CÒN LẠI phải còn hạn tới
         // hết ngày cuối (dự kiến) của từng chuyến CHƯA CHẠY của xe (chuyến đang chạy đã qua bước
         // kiểm tra xuất phát).
-        if (doc.DocType == VehicleDocumentType.Registration && VehicleDocumentRules.IsValidOn(doc.ExpiryDate, VnClock.Today))
+        // Áp dụng cho CẢ 3 loại giấy tờ bắt buộc (Đăng kiểm, Bảo hiểm, Phù hiệu xe).
+        if (VehicleDocumentRules.Required.Contains(doc.DocType) && VehicleDocumentRules.IsValidOn(doc.ExpiryDate, VnClock.Today))
         {
             var today = VnClock.Today;
             var remainingExpiry = await _db.VehicleDocuments
-                .Where(d => d.VehicleId == doc.VehicleId && d.Id != doc.Id && d.DocType == VehicleDocumentType.Registration)
+                .Where(d => d.VehicleId == doc.VehicleId && d.Id != doc.Id && d.DocType == doc.DocType)
                 .MaxAsync(d => (DateTime?)d.ExpiryDate);
             var planned = await _db.Trips
                 .Where(t => t.VehicleId == doc.VehicleId && t.Status == TripStatus.Planned)
-                .Select(t => new { t.Id, t.EstimatedDurationMinutes })
+                .Select(t => new { t.Id, t.EstimatedDurationMinutes, t.PlannedStartDate })
                 .ToListAsync();
             var blocked = planned
                 .Where(t =>
                 {
-                    var lastDay = today.AddDays(Math.Max(1, (int)Math.Ceiling((t.EstimatedDurationMinutes ?? 0) / 480.0)) - 1);
+                    var from = t.PlannedStartDate is DateTime p && p.Date > today ? p.Date : today; // từ ngày xuất phát dự kiến
+                    var lastDay = from.AddDays(Math.Max(1, (int)Math.Ceiling((t.EstimatedDurationMinutes ?? 0) / 480.0)) - 1);
                     return remainingExpiry is null || !VehicleDocumentRules.IsValidOn(remainingExpiry.Value, lastDay);
                 })
                 .Select(t => t.Id).OrderBy(id => id).Take(5).ToList();
             if (blocked.Count > 0)
                 return new VehicleActionResult(false,
-                    $"Xóa Đăng kiểm này thì xe không còn Đăng kiểm hợp lệ cho chuyến chưa chạy #{string.Join(", #", blocked)} — các chuyến đó sẽ không xuất phát được. " +
-                    "Nếu nhập nhầm, hãy THÊM Đăng kiểm đúng trước rồi mới xóa bản này.");
+                    $"Xóa {VehicleDocumentRules.DocTypeText(doc.DocType)} này thì xe không còn {VehicleDocumentRules.DocTypeText(doc.DocType)} hợp lệ cho chuyến chưa chạy #{string.Join(", #", blocked)} — các chuyến đó sẽ không xuất phát được. " +
+                    "Nếu nhập nhầm, hãy THÊM bản đúng trước rồi mới xóa bản này.");
         }
 
         _db.VehicleDocuments.Remove(doc);

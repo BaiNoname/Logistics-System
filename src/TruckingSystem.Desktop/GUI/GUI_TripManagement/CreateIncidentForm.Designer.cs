@@ -99,7 +99,7 @@
             lblDescription.Margin = new System.Windows.Forms.Padding(0, 4, 12, 8);
             lblDescription.Name = "lblDescription";
             lblDescription.TabIndex = 2;
-            lblDescription.Text = "Mô tả chi tiết (tuỳ chọn)";
+            lblDescription.Text = "Mô tả chi tiết *";
             //
             // txtDescription
             //

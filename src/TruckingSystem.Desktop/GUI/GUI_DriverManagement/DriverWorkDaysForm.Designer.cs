@@ -26,7 +26,13 @@
             dtTo = new System.Windows.Forms.DateTimePicker();
             btnRegister = new System.Windows.Forms.Button();
             lblHint = new System.Windows.Forms.Label();
-            chkShowPast = new System.Windows.Forms.CheckBox();
+            monthBar = new System.Windows.Forms.FlowLayoutPanel();
+            btnPrevMonth = new System.Windows.Forms.Button();
+            lblMonth = new System.Windows.Forms.Label();
+            btnNextMonth = new System.Windows.Forms.Button();
+            lblMonthStats = new System.Windows.Forms.Label();
+            content = new System.Windows.Forms.TableLayoutPanel();
+            calendarPanel = new System.Windows.Forms.Panel();
             grid = new System.Windows.Forms.DataGridView();
             footer = new System.Windows.Forms.TableLayoutPanel();
             lblSummary = new System.Windows.Forms.Label();
@@ -37,6 +43,8 @@
             grpRegister.SuspendLayout();
             registerLayout.SuspendLayout();
             footer.SuspendLayout();
+            monthBar.SuspendLayout();
+            content.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)grid).BeginInit();
             SuspendLayout();
             // 
@@ -46,15 +54,17 @@
             root.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
             root.Controls.Add(lblTitle, 0, 0);
             root.Controls.Add(grpRegister, 0, 1);
-            root.Controls.Add(chkShowPast, 0, 2);
-            root.Controls.Add(grid, 0, 3);
-            root.Controls.Add(footer, 0, 4);
+            root.Controls.Add(monthBar, 0, 2);
+            root.Controls.Add(lblMonthStats, 0, 3);
+            root.Controls.Add(content, 0, 4);
+            root.Controls.Add(footer, 0, 5);
             root.Dock = System.Windows.Forms.DockStyle.Fill;
             root.Padding = new System.Windows.Forms.Padding(20, 16, 20, 16);
-            root.Size = new System.Drawing.Size(640, 600);
+            root.Size = new System.Drawing.Size(860, 680);
             root.Name = "root";
             root.TabIndex = 0;
-            root.RowCount = 5;
+            root.RowCount = 6;
+            root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
             root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
             root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
             root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
@@ -181,15 +191,98 @@
             lblHint.Name = "lblHint";
             lblHint.TabIndex = 5;
             // 
-            // chkShowPast
+            // monthBar — chọn tháng để xem thống kê ngày làm / chuỗi làm liên tục / quãng nghỉ
             // 
-            chkShowPast.AutoSize = true;
-            chkShowPast.Font = new System.Drawing.Font("Segoe UI", 9F);
-            chkShowPast.ForeColor = System.Drawing.Color.FromArgb(100, 116, 139);
-            chkShowPast.Margin = new System.Windows.Forms.Padding(2, 0, 0, 6);
-            chkShowPast.Text = "Hiện cả ngày đã qua";
-            chkShowPast.Name = "chkShowPast";
-            chkShowPast.TabIndex = 2;
+            monthBar.AutoSize = true;
+            monthBar.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            monthBar.Controls.Add(btnPrevMonth);
+            monthBar.Controls.Add(lblMonth);
+            monthBar.Controls.Add(btnNextMonth);
+            monthBar.Dock = System.Windows.Forms.DockStyle.Fill;
+            monthBar.Margin = new System.Windows.Forms.Padding(0, 4, 0, 4);
+            monthBar.Name = "monthBar";
+            monthBar.TabIndex = 2;
+            monthBar.WrapContents = false;
+            // 
+            // btnPrevMonth
+            // 
+            btnPrevMonth.AutoSize = true;
+            btnPrevMonth.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            btnPrevMonth.BackColor = System.Drawing.Color.White;
+            btnPrevMonth.Cursor = System.Windows.Forms.Cursors.Hand;
+            btnPrevMonth.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            btnPrevMonth.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            btnPrevMonth.Margin = new System.Windows.Forms.Padding(0);
+            btnPrevMonth.MinimumSize = new System.Drawing.Size(36, 32);
+            btnPrevMonth.Name = "btnPrevMonth";
+            btnPrevMonth.TabIndex = 0;
+            btnPrevMonth.Text = "◀";
+            btnPrevMonth.UseVisualStyleBackColor = false;
+            btnPrevMonth.Click += new System.EventHandler(this.BtnPrevMonth_Click);
+            // 
+            // lblMonth
+            // 
+            lblMonth.Anchor = System.Windows.Forms.AnchorStyles.Left;
+            lblMonth.AutoSize = true;
+            lblMonth.Font = new System.Drawing.Font("Segoe UI", 11F, System.Drawing.FontStyle.Bold);
+            lblMonth.ForeColor = System.Drawing.Color.FromArgb(15, 23, 42);
+            lblMonth.Margin = new System.Windows.Forms.Padding(12, 6, 12, 0);
+            lblMonth.MinimumSize = new System.Drawing.Size(130, 0);
+            lblMonth.Name = "lblMonth";
+            lblMonth.TabIndex = 1;
+            lblMonth.Text = "Tháng";
+            lblMonth.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            // 
+            // btnNextMonth
+            // 
+            btnNextMonth.AutoSize = true;
+            btnNextMonth.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            btnNextMonth.BackColor = System.Drawing.Color.White;
+            btnNextMonth.Cursor = System.Windows.Forms.Cursors.Hand;
+            btnNextMonth.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            btnNextMonth.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            btnNextMonth.Margin = new System.Windows.Forms.Padding(0);
+            btnNextMonth.MinimumSize = new System.Drawing.Size(36, 32);
+            btnNextMonth.Name = "btnNextMonth";
+            btnNextMonth.TabIndex = 2;
+            btnNextMonth.Text = "▶";
+            btnNextMonth.UseVisualStyleBackColor = false;
+            btnNextMonth.Click += new System.EventHandler(this.BtnNextMonth_Click);
+            // 
+            // lblMonthStats — số ngày làm trong tháng, các chuỗi làm liên tục và quãng nghỉ
+            // 
+            lblMonthStats.Anchor = System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
+            lblMonthStats.AutoSize = true;
+            lblMonthStats.Font = new System.Drawing.Font("Segoe UI", 9.5F);
+            lblMonthStats.ForeColor = System.Drawing.Color.FromArgb(15, 23, 42);
+            lblMonthStats.Margin = new System.Windows.Forms.Padding(0, 0, 0, 8);
+            lblMonthStats.Name = "lblMonthStats";
+            lblMonthStats.TabIndex = 3;
+            // 
+            // content — lịch tháng (trái) + danh sách ngày làm của tháng (phải)
+            // 
+            content.ColumnCount = 2;
+            content.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 58F));
+            content.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 42F));
+            content.Controls.Add(calendarPanel, 0, 0);
+            content.Controls.Add(grid, 1, 0);
+            content.Dock = System.Windows.Forms.DockStyle.Fill;
+            content.Margin = new System.Windows.Forms.Padding(0);
+            content.Name = "content";
+            content.RowCount = 1;
+            content.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            content.TabIndex = 4;
+            // 
+            // calendarPanel — vẽ lịch tháng ở DriverWorkDaysForm.cs (CalendarPanel_Paint)
+            // 
+            calendarPanel.BackColor = System.Drawing.Color.White;
+            calendarPanel.Dock = System.Windows.Forms.DockStyle.Fill;
+            calendarPanel.Margin = new System.Windows.Forms.Padding(0, 0, 12, 0);
+            calendarPanel.MinimumSize = new System.Drawing.Size(280, 220);
+            calendarPanel.Name = "calendarPanel";
+            calendarPanel.TabIndex = 0;
+            calendarPanel.Paint += new System.Windows.Forms.PaintEventHandler(this.CalendarPanel_Paint);
+            calendarPanel.Resize += new System.EventHandler(this.CalendarPanel_Resize);
             // 
             // grid
             // 
@@ -197,7 +290,7 @@
             grid.Dock = System.Windows.Forms.DockStyle.Fill;
             grid.Margin = new System.Windows.Forms.Padding(0);
             grid.Name = "grid";
-            grid.TabIndex = 3;
+            grid.TabIndex = 1;
             // 
             // footer
             // 
@@ -278,9 +371,9 @@
             AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
             AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
             BackColor = System.Drawing.Color.White;
-            ClientSize = new System.Drawing.Size(640, 600);
+            ClientSize = new System.Drawing.Size(860, 680);
             MinimizeBox = false;
-            MinimumSize = new System.Drawing.Size(560, 480);
+            MinimumSize = new System.Drawing.Size(700, 560);
             Name = "DriverWorkDaysForm";
             StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
             Text = "Ngày làm việc";
@@ -291,6 +384,9 @@
             grpRegister.PerformLayout();
             registerLayout.ResumeLayout(false);
             registerLayout.PerformLayout();
+            monthBar.ResumeLayout(false);
+            monthBar.PerformLayout();
+            content.ResumeLayout(false);
             footer.ResumeLayout(false);
             footer.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)grid).EndInit();
@@ -307,7 +403,13 @@
         private System.Windows.Forms.DateTimePicker dtTo;
         private System.Windows.Forms.Button btnRegister;
         private System.Windows.Forms.Label lblHint;
-        private System.Windows.Forms.CheckBox chkShowPast;
+        private System.Windows.Forms.FlowLayoutPanel monthBar;
+        private System.Windows.Forms.Button btnPrevMonth;
+        private System.Windows.Forms.Label lblMonth;
+        private System.Windows.Forms.Button btnNextMonth;
+        private System.Windows.Forms.Label lblMonthStats;
+        private System.Windows.Forms.TableLayoutPanel content;
+        private System.Windows.Forms.Panel calendarPanel;
         private System.Windows.Forms.DataGridView grid;
         private System.Windows.Forms.Label lblSummary;
         private System.Windows.Forms.Button btnDelete;

@@ -12,7 +12,7 @@ namespace TruckingSystem.Desktop.GUI_NotificationManagement
     public partial class NotificationsForm : BaseForm
     {
         private const string AllText = "Tất cả";
-        private static readonly string[] Categories = { "Chuyến chờ duyệt", "Hạn giao", "Giấy tờ xe", "Giấy tờ tài xế", "Lịch tài xế", "Khác" };
+        private static readonly string[] Categories = { "Chuyến chờ duyệt", "Chuyến bị chặn", "Hạn giao", "Giấy tờ xe", "Giấy tờ tài xế", "Lịch tài xế", "Khác" };
 
         private ApiServices? _api;
         private List<NotificationItem> _notifications = new();
@@ -141,13 +141,14 @@ namespace TruckingSystem.Desktop.GUI_NotificationManagement
             lblStatus.Text =
                 $"Hiển thị {shownCount}/{_notifications.Count} • " +
                 (unreadTotal > 0 ? $"🔵 {unreadTotal} chưa đọc" : "Không có thông báo chưa đọc") +
-                $"   (Chuyến chờ duyệt: {Unread("Chuyến chờ duyệt")} • Hạn giao: {Unread("Hạn giao")} • Giấy tờ xe: {Unread("Giấy tờ xe")} • Giấy tờ tài xế: {Unread("Giấy tờ tài xế")} • Lịch tài xế: {Unread("Lịch tài xế")})";
+                $"   (Chuyến chờ duyệt: {Unread("Chuyến chờ duyệt")} • Chuyến bị chặn: {Unread("Chuyến bị chặn")} • Hạn giao: {Unread("Hạn giao")} • Giấy tờ xe: {Unread("Giấy tờ xe")} • Giấy tờ tài xế: {Unread("Giấy tờ tài xế")} • Lịch tài xế: {Unread("Lịch tài xế")})";
             btnMarkAllRead.Enabled = unreadTotal > 0;
         }
 
         private static Color CategoryColor(string category) => category switch
         {
             "Chuyến chờ duyệt" => Theme.Success,
+            "Chuyến bị chặn" => Theme.Danger,
             "Giấy tờ xe" => Theme.Danger,
             "Giấy tờ tài xế" => Theme.Danger,
             "Hạn giao" => Theme.Danger,

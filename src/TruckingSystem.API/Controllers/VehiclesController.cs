@@ -41,6 +41,22 @@ public class VehiclesController : ControllerBase
         return result.Success ? Ok(result) : BadRequest(result);
     }
 
+    /// <summary>Mức nhiên liệu hiện có của xe.</summary>
+    [HttpGet("{vehicleId:int}/fuel-level")]
+    public async Task<ActionResult<VehicleFuelLevelDto>> GetFuelLevel(int vehicleId)
+    {
+        var dto = await _service.GetFuelLevelAsync(vehicleId);
+        return dto is null ? NotFound() : Ok(dto);
+    }
+
+    /// <summary>Khai báo dung tích bình / mức đo thực tế.</summary>
+    [HttpPut("{vehicleId:int}/fuel-level")]
+    public async Task<ActionResult<VehicleActionResult>> UpdateFuelLevel(int vehicleId, UpdateFuelLevelRequest request)
+    {
+        var result = await _service.UpdateFuelLevelAsync(vehicleId, request);
+        return result.Success ? Ok(result) : BadRequest(result);
+    }
+
     [HttpGet("{vehicleId:int}/documents")]
     public async Task<ActionResult<List<VehicleDocumentDto>>> GetDocuments(int vehicleId)
         => Ok(await _service.GetDocumentsAsync(vehicleId));

@@ -17,11 +17,17 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
         public CreateDriverProfileForm()
         {
             InitializeComponent();
-            cboLicenseClass.Items.AddRange(new object[] { "B2", "C", "D", "E", "FC" });
-            cboLicenseClass.SelectedIndex = 0;
-            dtLicenseExpiry.Value = DateTime.Today.AddYears(3);
-            dtHealthCertExpiry.Value = DateTime.Today.AddYears(1);
-            chkHasHealthCert.CheckedChanged += (_, _) => dtHealthCertExpiry.Enabled = chkHasHealthCert.Checked;
+            // Đủ hạng cũ (luật 2008: B2, E, FC...) và hạng mới (luật 2024: B, C1, CE...) — khớp DriverLicenseRules.
+            cboLicenseClass.Items.AddRange(new object[] { "B", "B2", "C1", "C", "CE", "D1", "D2", "D", "DE", "E", "FC" });
+            cboLicenseClass.SelectedItem = "C";
+            // KHÔNG điền sẵn ngày "đẹp" (VD +3 năm): người nhập lỡ bỏ qua là lưu ngày hết hạn giả, cảnh báo
+            // giấy tờ sai hết. Để hôm qua (không hợp lệ) -> bắt buộc chọn đúng ngày trên bằng / giấy khám.
+            dtLicenseExpiry.Value = DateTime.Today.AddDays(-1);
+            dtHealthCertExpiry.Value = DateTime.Today.AddDays(-1);
+            // Giấy khám sức khỏe BẮT BUỘC với tài xế (server cũng kiểm tra) — luôn nhập ngày hết hạn.
+            chkHasHealthCert.Checked = true;
+            chkHasHealthCert.Enabled = false;
+            dtHealthCertExpiry.Enabled = true;
         }
 
         public CreateDriverProfileForm(ApiServices api, int employeeId, string employeeName) : this()
@@ -68,15 +74,21 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
                 btnSave.Text = "Lưu thay đổi";
 
                 txtLicenseNumber.Text = existing.LicenseNumber;
+                // Hạng cũ không còn trong danh sách vẫn hiện đúng (không âm thầm đổi sang hạng khác).
+                if (!cboLicenseClass.Items.Contains(existing.LicenseClass)) cboLicenseClass.Items.Add(existing.LicenseClass);
                 cboLicenseClass.SelectedItem = existing.LicenseClass;
                 dtLicenseExpiry.Value = existing.LicenseExpiryDate;
                 numYearsExp.Value = existing.YearsOfExperience;
                 txtGoogleCalendarId.Text = existing.GoogleCalendarId ?? "";
                 cboWarehouse.SelectedValue = existing.WarehouseId; // đã đổ dropdown ở LoadWarehousesAsync trước đó, giờ chỉ chọn lại đúng giá trị
                 if (existing.HealthCertExpiryDate.HasValue)
-                {
-                    chkHasHealthCert.Checked = true;
                     dtHealthCertExpiry.Value = existing.HealthCertExpiryDate.Value;
+                else
+                {
+                    // Hồ sơ cũ chưa có giấy khám: KHÔNG điền sẵn ngày giả (lưu nhầm thành "có giấy khám") —
+                    // để ngày hôm qua (không hợp lệ) buộc người dùng chọn đúng ngày trên giấy.
+                    dtHealthCertExpiry.Value = DateTime.Today.AddDays(-1);
+                    lblStatus.Text = "Hồ sơ này chưa có giấy khám sức khỏe — chọn ngày hết hạn ghi trên giấy khám rồi lưu.";
                 }
             }
             catch (Exception ex)
@@ -92,12 +104,27 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
                 lblStatus.Text = "Vui lòng nhập số bằng lái.";
                 return;
             }
+            if (cboLicenseClass.SelectedItem is not string)
+            {
+                lblStatus.Text = "Vui lòng chọn hạng bằng lái.";
+                return;
+            }
+            if (dtLicenseExpiry.Value.Date < DateTime.Today)
+            {
+                lblStatus.Text = "Chọn ngày hết hạn ghi trên bằng lái (bằng đã hết hạn thì nhập theo bằng mới).";
+                return;
+            }
+            if (dtHealthCertExpiry.Value.Date < DateTime.Today)
+            {
+                lblStatus.Text = "Chọn ngày hết hạn ghi trên giấy khám sức khỏe (giấy cũ hết hạn thì nhập theo giấy khám mới).";
+                return;
+            }
             if (_api is null) return;
 
             btnSave.Enabled = false;
             try
             {
-                var healthCert = chkHasHealthCert.Checked ? dtHealthCertExpiry.Value : (DateTime?)null;
+                DateTime? healthCert = dtHealthCertExpiry.Value;
                 var googleCalendarId = string.IsNullOrWhiteSpace(txtGoogleCalendarId.Text) ? null : txtGoogleCalendarId.Text.Trim();
                 var warehouseId = cboWarehouse.SelectedValue as int?;
                 var result = _isEditMode

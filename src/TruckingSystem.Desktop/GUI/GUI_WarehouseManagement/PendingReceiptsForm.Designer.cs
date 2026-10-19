@@ -20,6 +20,7 @@
             root = new System.Windows.Forms.TableLayoutPanel();
             lblTitle = new System.Windows.Forms.Label();
             lblInfo = new System.Windows.Forms.Label();
+            pendingFilter = new TruckingSystem.Desktop.Common.FilterBar();
             gridPending = new System.Windows.Forms.DataGridView();
             pendingBar = new System.Windows.Forms.TableLayoutPanel();
             btnAutoTrip = new System.Windows.Forms.Button();
@@ -49,16 +50,18 @@
             root.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
             root.Controls.Add(lblTitle, 0, 0);
             root.Controls.Add(lblInfo, 0, 1);
-            root.Controls.Add(gridPending, 0, 2);
-            root.Controls.Add(pendingBar, 0, 3);
-            root.Controls.Add(manualBar, 0, 4);
-            root.Controls.Add(lblManualHint, 0, 5);
-            root.Controls.Add(gridBins, 0, 6);
-            root.Controls.Add(bottomBar, 0, 7);
+            root.Controls.Add(pendingFilter, 0, 2);
+            root.Controls.Add(gridPending, 0, 3);
+            root.Controls.Add(pendingBar, 0, 4);
+            root.Controls.Add(manualBar, 0, 5);
+            root.Controls.Add(lblManualHint, 0, 6);
+            root.Controls.Add(gridBins, 0, 7);
+            root.Controls.Add(bottomBar, 0, 8);
             root.Dock = System.Windows.Forms.DockStyle.Fill;
             root.Margin = new System.Windows.Forms.Padding(0);
             root.Name = "root";
-            root.RowCount = 8;
+            root.RowCount = 9;
+            root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
             root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
             root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
             root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 55F));
@@ -80,7 +83,7 @@
             lblTitle.Margin = new System.Windows.Forms.Padding(0, 0, 0, 4);
             lblTitle.Name = "lblTitle";
             lblTitle.TabIndex = 0;
-            lblTitle.Text = "📦 Hàng chờ nhập kho";
+            lblTitle.Text = "📦 Nhập hàng từ chuyến";
             // 
             // lblInfo
             // 
@@ -93,6 +96,13 @@
             lblInfo.TabIndex = 1;
             lblInfo.Text = "Xe Lấy hàng đã về kho (đã duyệt) nhưng hàng CHƯA lên kệ. Chọn 1 dòng rồi nhập: TỰ ĐỘNG cả chuyến theo Best-Fit, hoặc THỦ CÔNG — tự chọn vị trí + số lượng (nhập nhiều lần để chia nhiều vị trí). Chặng Giao của đơn chỉ bắt đầu được khi hàng đã nhập kho đủ.";
             // 
+            // pendingFilter — tìm chuyến / đơn / khách / loại hàng, lọc theo khu, đơn
+            //
+            pendingFilter.Dock = System.Windows.Forms.DockStyle.Fill;
+            pendingFilter.Name = "pendingFilter";
+            pendingFilter.SearchPlaceholder = "Chuyến, đơn, khách, loại hàng...";
+            pendingFilter.TabIndex = 2;
+            //
             // gridPending
             // 
             gridPending.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
@@ -300,7 +310,7 @@
             MinimizeBox = false;
             Name = "PendingReceiptsForm";
             StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
-            Text = "Hàng chờ nhập kho";
+            Text = "Nhập hàng từ chuyến (hàng xe công ty chở về)";
             ((System.ComponentModel.ISupportInitialize)gridPending).EndInit();
             ((System.ComponentModel.ISupportInitialize)numQty).EndInit();
             ((System.ComponentModel.ISupportInitialize)gridBins).EndInit();
@@ -321,6 +331,7 @@
         private System.Windows.Forms.TableLayoutPanel root;
         private System.Windows.Forms.Label lblTitle;
         private System.Windows.Forms.Label lblInfo;
+        private TruckingSystem.Desktop.Common.FilterBar pendingFilter;
         private System.Windows.Forms.DataGridView gridPending;
         private System.Windows.Forms.TableLayoutPanel pendingBar;
         private System.Windows.Forms.Button btnAutoTrip;

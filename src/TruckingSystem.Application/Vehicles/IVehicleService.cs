@@ -15,4 +15,10 @@ public interface IVehicleService
     Task<VehicleDocumentDto> CreateDocumentAsync(int vehicleId, CreateVehicleDocumentRequest request);
 
     Task<VehicleActionResult> DeleteDocumentAsync(int documentId);
+
+    /// <summary>Mức nhiên liệu hiện có của xe (VehicleFuelLevelRules).</summary>
+    Task<VehicleFuelLevelDto?> GetFuelLevelAsync(int vehicleId);
+
+    /// <summary>Khai báo dung tích bình / mức đo thực tế (đặt lại mốc tính).</summary>
+    Task<VehicleActionResult> UpdateFuelLevelAsync(int vehicleId, UpdateFuelLevelRequest request);
 }

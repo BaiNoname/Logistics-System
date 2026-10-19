@@ -1,4 +1,4 @@
-using TruckingSystem.Desktop.Common;
+﻿using TruckingSystem.Desktop.Common;
 using TruckingSystem.Desktop.DTO_VehicleManagement;
 
 namespace TruckingSystem.Desktop.SERVICE_VehicleManagement
@@ -11,6 +11,14 @@ namespace TruckingSystem.Desktop.SERVICE_VehicleManagement
         {
             _conn = conn;
         }
+
+        /// <summary>Mức nhiên liệu hiện có của xe.</summary>
+        public Task<VehicleFuelLevelItem> GetFuelLevelAsync(int vehicleId)
+            => _conn.GetAsync<VehicleFuelLevelItem>($"/api/vehicles/{vehicleId}/fuel-level")!;
+
+        /// <summary>Khai dung tích bình và/hoặc mức đo thực tế (measuredLiters null = giữ mốc đo cũ).</summary>
+        public Task<VehicleActionResultItem> UpdateFuelLevelAsync(int vehicleId, decimal? tankCapacityLiters, decimal? measuredLiters)
+            => _conn.PutAsync<VehicleActionResultItem>($"/api/vehicles/{vehicleId}/fuel-level", new { tankCapacityLiters, measuredLiters })!;
 
         public Task<List<VehicleListItem>> GetVehiclesAsync()
             => _conn.GetAsync<List<VehicleListItem>>("/api/vehicles")!;

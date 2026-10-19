@@ -1434,6 +1434,9 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.Property<decimal>("PlannedFuelCost")
                         .HasColumnType("numeric(18,2)");
 
+                    b.Property<DateTime?>("PlannedStartDate")
+                        .HasColumnType("timestamp without time zone");
+
                     b.Property<double?>("StartLat")
                         .HasColumnType("double precision");
 
@@ -1695,6 +1698,15 @@ namespace TruckingSystem.Infrastructure.Migrations
                         .HasColumnType("timestamp without time zone");
 
                     b.Property<decimal?>("FuelConsumptionPer100Km")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal?>("FuelLevelLiters")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime?>("FuelLevelMeasuredAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<decimal?>("FuelTankCapacityLiters")
                         .HasColumnType("numeric(18,2)");
 
                     b.Property<string>("FuelType")

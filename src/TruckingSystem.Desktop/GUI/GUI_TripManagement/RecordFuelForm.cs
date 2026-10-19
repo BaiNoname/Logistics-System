@@ -98,6 +98,13 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
             btnDelete.Enabled = _logs.Count > 0;
         }
 
+        /// <summary>Nhiên liệu trong bình của xe (ước tính) — để biết còn đổ thêm được bao nhiêu lít.</summary>
+        private static string TankText(FuelPriceQuoteItem q)
+        {
+            if (q.TankCapacityLiters is not decimal cap || q.CurrentFuelLiters is not decimal cur) return "";
+            return $"\n⛽ Bình xe đang có ~{cur:0.#} / {cap:0.#} L — còn đổ thêm được ~{Math.Max(0, cap - cur):0.#} lít (ước tính).";
+        }
+
         private async Task LoadQuoteAsync()
         {
             if (_fuel is null || cboProvider.SelectedItem is not ProviderOption option) return;
@@ -117,7 +124,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
                 if (_quote.Found)
                 {
                     var from = _quote.EffectiveDate.HasValue ? $", áp dụng từ {_quote.EffectiveDate.Value:dd/MM/yyyy}" : "";
-                    lblPrice.Text = $"Đơn giá: {_quote.UnitPrice:N0} đ/lít — {_quote.SourceText}{from}";
+                    lblPrice.Text = $"Đơn giá: {_quote.UnitPrice:N0} đ/lít — {_quote.SourceText}{from}" + TankText(_quote);
                     lblPrice.ForeColor = Theme.TextSecondary;
                 }
                 else

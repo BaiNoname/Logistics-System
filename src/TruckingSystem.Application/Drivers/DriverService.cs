@@ -78,10 +78,14 @@ public class DriverService : IDriverService
             if (dp?.HealthCertExpiryDate is { } health && health.Date < today)
                 warnings.Add($"Giấy khám sức khỏe hết hạn {health:dd/MM/yyyy}");
 
-            // "Sẵn sàng" = đang làm việc + có hồ sơ + bằng lái còn hạn (theo ngày VN, ngày hết
-            // hạn vẫn tính còn hạn) + có ngày làm HÔM NAY. Lưu ý: khi Chia xe còn xét thêm kho
-            // đóng quân của tài xế và số ngày chuyến cần (chuyến dài phải đăng ký đủ các ngày).
-            var eligible = e.Status == EmployeeStatus.Active && dp is not null && dp.LicenseExpiryDate.Date >= today;
+            // "Sẵn sàng" = đang làm việc + chức danh Tài xế + có hồ sơ + bằng lái và giấy khám sức
+            // khỏe (nếu đã nhập) còn hạn (theo ngày VN, ngày hết hạn vẫn tính còn hạn) + có ngày làm
+            // HÔM NAY — CÙNG điều kiện Chia xe dùng (trước đây bỏ sót chức danh và giấy khám: người
+            // giấy khám đã hết hạn vẫn hiện "Sẵn sàng" nhưng Chia xe không bao giờ chọn).
+            // Lưu ý: khi Chia xe còn xét thêm kho đóng quân, hạng bằng theo xe và số ngày chuyến cần.
+            var eligible = e.Status == EmployeeStatus.Active && isDriverPosition && dp is not null
+                           && dp.LicenseExpiryDate.Date >= today
+                           && (dp.HealthCertExpiryDate is not DateTime hc || hc.Date >= today);
             var availability = isBusy ? "Đang làm"
                 : !eligible ? "Không sẵn sàng"
                 : scheduledTodayIds.Contains(e.Id) ? "Sẵn sàng"
@@ -130,13 +134,15 @@ public class DriverService : IDriverService
 
         var legs = await _db.Trips
             .Where(t => t.DriverEmployeeId == driverEmployeeId && activeOrderIds.Contains(t.TransportOrderId) && t.Status != TripStatus.Cancelled)
-            .Select(t => new { t.Id, t.TransportOrderId, t.Status, t.StartTime, t.EstimatedDurationMinutes })
+            .Select(t => new { t.Id, t.TransportOrderId, t.Status, t.StartTime, t.EstimatedDurationMinutes, t.PlannedStartDate })
             .ToListAsync();
 
         foreach (var order in legs.GroupBy(l => l.TransportOrderId))
         {
             var started = order.Where(l => l.StartTime.HasValue).Select(l => l.StartTime!.Value.AddHours(7).Date).ToList();
-            var start = started.Count > 0 ? started.Min() : today;
+            // Chưa chặng nào chạy: tính từ NGÀY XUẤT PHÁT DỰ KIẾN (chọn lúc Chia xe), quá rồi thì từ hôm nay.
+            var planned = order.Where(l => l.PlannedStartDate.HasValue).Select(l => l.PlannedStartDate!.Value.Date).DefaultIfEmpty(today).Min();
+            var start = started.Count > 0 ? started.Min() : (planned > today ? planned : today);
 
             var knownMinutes = order.Sum(l => l.EstimatedDurationMinutes ?? 0);
             var unknownOpenLegs = order.Count(l => l.EstimatedDurationMinutes is null && l.Status != TripStatus.Completed);
@@ -153,7 +159,8 @@ public class DriverService : IDriverService
                 var plannedDays = Math.Max(1,
                     (int)Math.Ceiling(plannedLegs.Sum(l => l.EstimatedDurationMinutes ?? 0) / (double)maxDrivingMinutesPerDay)
                     + plannedLegs.Count(l => l.EstimatedDurationMinutes is null));
-                var plannedEnd = today.AddDays(plannedDays);
+                var plannedFrom = planned > today ? planned : today;
+                var plannedEnd = plannedFrom.AddDays(plannedDays);
                 if (plannedEnd > end) end = plannedEnd;
             }
 

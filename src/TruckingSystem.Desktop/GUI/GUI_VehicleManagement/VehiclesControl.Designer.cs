@@ -24,7 +24,9 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
             btnCreate = new System.Windows.Forms.Button();
             btnEdit = new System.Windows.Forms.Button();
             btnDocuments = new System.Windows.Forms.Button();
+            btnFuelLevel = new System.Windows.Forms.Button();
             lblStatus = new System.Windows.Forms.Label();
+            filterBar = new TruckingSystem.Desktop.Common.FilterBar();
             grid = new System.Windows.Forms.DataGridView();
             root.SuspendLayout();
             toolbar.SuspendLayout();
@@ -37,13 +39,15 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
             root.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
             root.Controls.Add(lblTitle, 0, 0);
             root.Controls.Add(toolbar, 0, 1);
-            root.Controls.Add(lblStatus, 0, 2);
-            root.Controls.Add(grid, 0, 3);
+            root.Controls.Add(filterBar, 0, 2);
+            root.Controls.Add(lblStatus, 0, 3);
+            root.Controls.Add(grid, 0, 4);
             root.Dock = System.Windows.Forms.DockStyle.Fill;
             root.Location = new System.Drawing.Point(0, 0);
             root.Name = "root";
             root.Padding = new System.Windows.Forms.Padding(0);
-            root.RowCount = 4;
+            root.RowCount = 5;
+            root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
             root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
             root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
             root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
@@ -69,6 +73,7 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
             toolbar.Controls.Add(btnCreate);
             toolbar.Controls.Add(btnEdit);
             toolbar.Controls.Add(btnDocuments);
+            toolbar.Controls.Add(btnFuelLevel);
             toolbar.Dock = System.Windows.Forms.DockStyle.Fill;
             toolbar.Margin = new System.Windows.Forms.Padding(0);
             toolbar.Name = "toolbar";
@@ -158,6 +163,34 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
             btnDocuments.UseVisualStyleBackColor = false;
             btnDocuments.Click += new System.EventHandler(this.BtnDocuments_Click);
             // 
+            // btnFuelLevel — nhiên liệu hiện có trong bình (ước tính) + khai dung tích / mức đo
+            // 
+            btnFuelLevel.AutoSize = true;
+            btnFuelLevel.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            btnFuelLevel.BackColor = System.Drawing.Color.White;
+            btnFuelLevel.Cursor = System.Windows.Forms.Cursors.Hand;
+            btnFuelLevel.FlatAppearance.BorderSize = 1;
+            btnFuelLevel.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(203, 213, 225);
+            btnFuelLevel.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(248, 250, 252);
+            btnFuelLevel.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            btnFuelLevel.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            btnFuelLevel.ForeColor = System.Drawing.Color.FromArgb(15, 23, 42);
+            btnFuelLevel.Margin = new System.Windows.Forms.Padding(0, 0, 8, 8);
+            btnFuelLevel.MinimumSize = new System.Drawing.Size(0, 38);
+            btnFuelLevel.Name = "btnFuelLevel";
+            btnFuelLevel.Padding = new System.Windows.Forms.Padding(10, 4, 10, 4);
+            btnFuelLevel.TabIndex = 4;
+            btnFuelLevel.Text = "⛽ Nhiên liệu";
+            btnFuelLevel.UseVisualStyleBackColor = false;
+            btnFuelLevel.Click += new System.EventHandler(this.BtnFuelLevel_Click);
+            // 
+            // filterBar — tìm nhanh + lọc (Common/FilterBar); các ô chọn thêm ở .cs
+            // 
+            filterBar.Dock = System.Windows.Forms.DockStyle.Fill;
+            filterBar.Name = "filterBar";
+            filterBar.SearchPlaceholder = "Biển số, loại xe, kho...";
+            filterBar.TabIndex = 2;
+            // 
             // lblStatus
             // 
             lblStatus.AutoSize = true;
@@ -201,7 +234,9 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
         private System.Windows.Forms.Button btnCreate;
         private System.Windows.Forms.Button btnEdit;
         private System.Windows.Forms.Button btnDocuments;
+        private System.Windows.Forms.Button btnFuelLevel;
         private System.Windows.Forms.Label lblStatus;
+        private TruckingSystem.Desktop.Common.FilterBar filterBar;
         private System.Windows.Forms.DataGridView grid;
     }
 }

@@ -17,6 +17,24 @@ public class TransportOrderListItem
 
     /// <summary>Số chuyến chưa hủy — > 0 nghĩa là đơn đã được chia xe.</summary>
     public int ActiveTripCount { get; set; }
+
+    /// <summary>Hạn giao (giờ VN) và kho trung chuyển — API danh sách đơn trả về, để lọc.</summary>
+    public DateTime? CommittedDeliveryDate { get; set; }
+    public string? WarehouseName { get; set; }
+
+    /// <summary>"CompanyPickup" / "SelfDelivery" — chỉ API danh sách đơn theo kho trả về.</summary>
+    public string PickupMethod { get; set; } = "CompanyPickup";
+    /// <summary>Hàng của đơn đang nằm trong kho đang xem — chỉ API danh sách đơn theo kho trả về.</summary>
+    public decimal QtyOnHand { get; set; }
+
+    /// <summary>Chữ hiện ở ô chọn đơn của màn Xuất hàng tồn: nói rõ đơn nào xuất tay được, đơn
+    /// nào đang chờ chặng Giao tự xuất.</summary>
+    public string StockDisplayText => Status switch
+    {
+        "Done" => $"{Code} — {CustomerName} · Hoàn tất, còn {QtyOnHand:0.##} trong kho",
+        "Cancelled" => $"{Code} — {CustomerName} · Đã hủy, còn {QtyOnHand:0.##} trong kho",
+        _ => $"{Code} — {CustomerName} · đang vận chuyển, {QtyOnHand:0.##} đang giữ chờ chặng Giao (tự xuất)",
+    };
 }
 
 public class CargoLineItem

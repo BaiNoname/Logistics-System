@@ -15,6 +15,8 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
         {
             InitializeComponent();
             Theme.StyleGrid(grid);
+            GridLayout.FitColumns(grid); // cột vừa nội dung, nhiều cột thì cuộn ngang thay vì cắt chữ
+            Load += (_, _) => Theme.UniformButtons(toolbar); // nút đều nhau, xuống dòng vẫn thẳng cột
 
             grid.DataBindingComplete += (_, _) =>
             {
@@ -25,6 +27,13 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             // đơn đang chạy / hoàn tất / đã hủy không chia xe được nữa).
             grid.SelectionChanged += (_, _) => UpdateActionButtons();
             grid.DataBindingComplete += (_, _) => UpdateActionButtons();
+
+            // Bộ lọc (Common/FilterBar): trạng thái, hạn giao, khách hàng, kho — lọc ngay trên máy.
+            filterBar.AddChoice("status", "Trạng thái", new[] { "Nháp", "Đã xác nhận", "Đang vận chuyển", "Hoàn tất", "Đã hủy" });
+            filterBar.AddChoice("deadline", "Hạn giao", new[] { DeadlineOverdue, DeadlineSoon, DeadlineLater, DeadlineNone });
+            filterBar.AddChoice("customer", "Khách hàng", Array.Empty<string>());
+            filterBar.AddChoice("warehouse", "Kho", Array.Empty<string>());
+            filterBar.FilterChanged += (_, _) => BindGrid();
 
             Load += async (_, _) => await LoadAsync();
         }
@@ -52,16 +61,9 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             try
             {
                 _orders = await _api.TransportOrders.GetTransportOrdersAsync();
-                grid.DataSource = _orders.Select(o => new
-                {
-                    o.Id,
-                    Mã_đơn = o.Code,
-                    Khách_hàng = o.CustomerName,
-                    Trạng_thái = TranslateStatus(o.Status),
-                    Tiến_độ = $"{o.ProgressPercent}%",
-                    Điểm_lấy = o.PickupPoint,
-                    Điểm_giao = o.DropoffPoint,
-                }).ToList();
+                filterBar.SetChoiceOptions("customer", _orders.Select(o => o.CustomerName));
+                filterBar.SetChoiceOptions("warehouse", _orders.Select(o => o.WarehouseName ?? ""));
+                BindGrid();
                 lblStatus.Text = $"Tổng {_orders.Count} đơn hàng — chọn 1 dòng rồi bấm \"Chia xe\" để chạy thuật toán Greedy";
                 lblStatus.ForeColor = Theme.TextSecondary;
             }
@@ -70,6 +72,49 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                 lblStatus.Text = "Lỗi: " + ex.Message;
                 lblStatus.ForeColor = Theme.Danger;
             }
+        }
+
+        private const string DeadlineOverdue = "Quá hạn (chưa xong)";
+        private const string DeadlineSoon = "Trong 3 ngày tới";
+        private const string DeadlineLater = "Còn hơn 3 ngày";
+        private const string DeadlineNone = "Chưa có hạn";
+
+        /// <summary>Nhóm hạn giao của đơn (đơn đã xong / hủy thì không còn "quá hạn").</summary>
+        private static string DeadlineGroup(TransportOrderListItem o)
+        {
+            if (o.CommittedDeliveryDate is not DateTime due) return DeadlineNone;
+            var days = (due.Date - DateTime.Today).Days;
+            if (days < 0) return o.Status is "Done" or "Cancelled" ? DeadlineLater : DeadlineOverdue;
+            return days <= 3 ? DeadlineSoon : DeadlineLater;
+        }
+
+        /// <summary>Đổ lưới theo bộ lọc (không gọi lại API).</summary>
+        private void BindGrid()
+        {
+            var keepId = grid.CurrentRow?.Cells["Id"].Value as int?;
+            var rows = _orders.Where(o =>
+                    filterBar.Is("status", TranslateStatus(o.Status)) &&
+                    filterBar.Is("deadline", DeadlineGroup(o)) &&
+                    filterBar.Is("customer", o.CustomerName) &&
+                    filterBar.Is("warehouse", o.WarehouseName ?? "") &&
+                    filterBar.MatchesSearch(o.Code, o.CustomerName, o.PickupPoint, o.DropoffPoint, o.WarehouseName))
+                .ToList();
+            grid.DataSource = rows.Select(o => new
+            {
+                o.Id,
+                Mã_đơn = o.Code,
+                Khách_hàng = o.CustomerName,
+                Trạng_thái = TranslateStatus(o.Status),
+                Tiến_độ = $"{o.ProgressPercent}%",
+                Hạn_giao = o.CommittedDeliveryDate?.ToString("dd/MM/yyyy") ?? "—",
+                Kho = o.WarehouseName ?? "—",
+                Điểm_lấy = o.PickupPoint,
+                Điểm_giao = o.DropoffPoint,
+            }).ToList();
+            filterBar.SetCount(rows.Count, _orders.Count);
+            if (keepId is int id)
+                foreach (DataGridViewRow r in grid.Rows)
+                    if (r.Cells["Id"].Value is int rid && rid == id) { grid.CurrentCell = r.Cells["Mã_đơn"]; break; }
         }
 
         private async Task OpenDetailAsync()

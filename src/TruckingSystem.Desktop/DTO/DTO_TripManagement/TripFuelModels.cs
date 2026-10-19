@@ -26,5 +26,8 @@
         public DateTime? EffectiveDate { get; set; }
         public string? SourceText { get; set; }
         public string? Message { get; set; }
+        /// <summary>Dung tích bình / nhiên liệu hiện có của xe (null = xe chưa khai báo).</summary>
+        public decimal? TankCapacityLiters { get; set; }
+        public decimal? CurrentFuelLiters { get; set; }
     }
 }

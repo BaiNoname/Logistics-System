@@ -144,7 +144,7 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
         {
             "Registration" => "Đăng kiểm",
             "Insurance" => "Bảo hiểm",
-            "TransportPermit" => "Giấy phép vận tải",
+            "TransportPermit" => "Phù hiệu xe (GP vận tải)",
             _ => "Khác",
         };
     }

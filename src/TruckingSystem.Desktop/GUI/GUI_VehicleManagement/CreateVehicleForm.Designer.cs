@@ -120,7 +120,7 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
             lblPlateNumber.AutoSize = true;
             lblPlateNumber.Anchor = System.Windows.Forms.AnchorStyles.Left;
             lblPlateNumber.Margin = new System.Windows.Forms.Padding(0, 6, 12, 6);
-            lblPlateNumber.Text = "Biển số xe:";
+            lblPlateNumber.Text = "Biển số xe *";
             lblPlateNumber.Name = "lblPlateNumber";
             lblPlateNumber.TabIndex = 0;
             // 
@@ -136,7 +136,7 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
             lblVehicleType.AutoSize = true;
             lblVehicleType.Anchor = System.Windows.Forms.AnchorStyles.Left;
             lblVehicleType.Margin = new System.Windows.Forms.Padding(0, 6, 12, 6);
-            lblVehicleType.Text = "Loại xe:";
+            lblVehicleType.Text = "Loại xe *";
             lblVehicleType.Name = "lblVehicleType";
             lblVehicleType.TabIndex = 2;
             // 
@@ -153,7 +153,7 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
             lblCapacityQty.AutoSize = true;
             lblCapacityQty.Anchor = System.Windows.Forms.AnchorStyles.Left;
             lblCapacityQty.Margin = new System.Windows.Forms.Padding(0, 6, 12, 6);
-            lblCapacityQty.Text = "Sức chứa (đơn vị):";
+            lblCapacityQty.Text = "Sức chứa (đơn vị) *";
             lblCapacityQty.Name = "lblCapacityQty";
             lblCapacityQty.TabIndex = 4;
             // 
@@ -172,7 +172,7 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
             lblCapacityKg.AutoSize = true;
             lblCapacityKg.Anchor = System.Windows.Forms.AnchorStyles.Left;
             lblCapacityKg.Margin = new System.Windows.Forms.Padding(0, 6, 12, 6);
-            lblCapacityKg.Text = "Sức chứa (kg):";
+            lblCapacityKg.Text = "Sức chứa (kg) *";
             lblCapacityKg.Name = "lblCapacityKg";
             lblCapacityKg.TabIndex = 6;
             // 
@@ -191,7 +191,7 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
             lblCapacityM3.AutoSize = true;
             lblCapacityM3.Anchor = System.Windows.Forms.AnchorStyles.Left;
             lblCapacityM3.Margin = new System.Windows.Forms.Padding(0, 6, 12, 6);
-            lblCapacityM3.Text = "Sức chứa (m³):";
+            lblCapacityM3.Text = "Sức chứa (m³) *";
             lblCapacityM3.Name = "lblCapacityM3";
             lblCapacityM3.TabIndex = 8;
             // 
@@ -210,7 +210,7 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
             lblFuelConsumption.AutoSize = true;
             lblFuelConsumption.Anchor = System.Windows.Forms.AnchorStyles.Left;
             lblFuelConsumption.Margin = new System.Windows.Forms.Padding(0, 6, 12, 6);
-            lblFuelConsumption.Text = "Định mức (L/100km):";
+            lblFuelConsumption.Text = "Định mức (L/100km) *";
             lblFuelConsumption.Name = "lblFuelConsumption";
             lblFuelConsumption.TabIndex = 10;
             // 
@@ -228,7 +228,7 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
             lblFuelType.AutoSize = true;
             lblFuelType.Anchor = System.Windows.Forms.AnchorStyles.Left;
             lblFuelType.Margin = new System.Windows.Forms.Padding(0, 6, 12, 6);
-            lblFuelType.Text = "Loại nhiên liệu:";
+            lblFuelType.Text = "Loại nhiên liệu *";
             lblFuelType.Name = "lblFuelType";
             lblFuelType.TabIndex = 12;
             // 

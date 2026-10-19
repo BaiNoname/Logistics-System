@@ -72,6 +72,12 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
                 lblStatus.ForeColor = Theme.Warning;
                 return;
             }
+            if ((cboType.SelectedItem as ComboOption)?.Value == "Other" && string.IsNullOrWhiteSpace(txtNote.Text))
+            {
+                lblStatus.Text = "Chi phí loại \"Chi phí khác\" phải ghi chú là chi cho việc gì.";
+                lblStatus.ForeColor = Theme.Warning;
+                return;
+            }
             // Khóa nút trong lúc chờ server — bấm 2 lần trước đây tạo 2 khoản chi trùng.
             btnAddExpense.Enabled = false;
             try

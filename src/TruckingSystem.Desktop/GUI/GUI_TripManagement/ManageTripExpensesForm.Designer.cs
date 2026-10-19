@@ -119,7 +119,7 @@
             lblNote.Margin = new System.Windows.Forms.Padding(0, 0, 12, 4);
             lblNote.Name = "lblNote";
             lblNote.TabIndex = 2;
-            lblNote.Text = "Ghi chú";
+            lblNote.Text = "Ghi chú (bắt buộc với \"Chi phí khác\")";
             //
             // cboType
             //

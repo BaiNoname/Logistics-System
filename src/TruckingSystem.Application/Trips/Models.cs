@@ -18,7 +18,11 @@ public record TripListItemDto(
     DateTime? CommittedDeliveryDate = null,
     DateTime? LatestStartDate = null,
     string DeadlineStatus = "—",
-    string DeadlineLevel = "None"
+    string DeadlineLevel = "None",
+    // Ngày xuất phát dự kiến chọn lúc Chia xe (null = dữ liệu cũ).
+    DateTime? PlannedStartDate = null,
+    // Kho trung chuyển của chuyến — để lọc theo kho.
+    string? WarehouseName = null
 );
 
 public record TripActionResult(bool Success, string? Message);
@@ -36,7 +40,9 @@ public record FuelLogDto(int Id, DateTime Timestamp, decimal Liters, decimal Uni
 /// <summary>Đơn giá tự động cho form ghi đổ xăng. CanRecord = chuyến có đang
 /// cho ghi xăng không (đã chạy, chưa hủy); Found = có tìm được đơn giá không.</summary>
 public record FuelPriceQuoteDto(bool CanRecord, bool Found, string? FuelType, decimal UnitPrice,
-    DateTime? EffectiveDate, string? SourceText, string? Message);
+    DateTime? EffectiveDate, string? SourceText, string? Message,
+    // Mức nhiên liệu của xe (VehicleFuelLevelRules) — form ghi đổ xăng hiện "bình còn trống ~X lít".
+    decimal? TankCapacityLiters = null, decimal? CurrentFuelLiters = null);
 
 // ==== Dùng cho App tài xế (GPS ping + xác nhận đến nơi) — ĐÃ CÓ TỪ TRƯỚC,
 // giữ nguyên tên/kiểu để không phá vỡ TripsController đã tồn tại ====

@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using TruckingSystem.Application.Common.Interfaces;
 using TruckingSystem.Domain.Entities;
 using TruckingSystem.Domain.Enums;
@@ -351,6 +351,8 @@ public class WarehouseSlottingService : IWarehouseSlottingService
 
     public async Task<WarehouseListItemDto> CreateWarehouseAsync(CreateWarehouseRequest request)
     {
+        var requiredError = RequiredWarehouseError(request.Name, request.Address, request.Lat, request.Lng, request.LengthMeters, request.WidthMeters);
+        if (requiredError is not null) throw new InvalidOperationException(requiredError);
         var shapeError = ValidateWarehouseShape(request.CapacityM3, request.LengthMeters, request.WidthMeters, request.Lat, request.Lng);
         if (shapeError is not null) throw new InvalidOperationException(shapeError);
         var doorError = ValidateDoor(request.DoorSide, request.DoorOffsetMeters, request.LengthMeters, request.WidthMeters, out var doorSide);
@@ -358,8 +360,8 @@ public class WarehouseSlottingService : IWarehouseSlottingService
 
         var warehouse = new Warehouse
         {
-            Name = request.Name,
-            Address = request.Address,
+            Name = request.Name.Trim(),
+            Address = request.Address!.Trim(),
             CapacityM3 = request.CapacityM3,
             LengthMeters = request.LengthMeters,
             WidthMeters = request.WidthMeters,
@@ -379,6 +381,8 @@ public class WarehouseSlottingService : IWarehouseSlottingService
     {
         var warehouse = await _db.Warehouses.FindAsync(warehouseId);
         if (warehouse is null) return new WarehouseActionResult(false, "Không tìm thấy kho.");
+        var requiredError = RequiredWarehouseError(request.Name, request.Address, request.Lat, request.Lng, request.LengthMeters, request.WidthMeters);
+        if (requiredError is not null) return new WarehouseActionResult(false, requiredError);
         var shapeError = ValidateWarehouseShape(request.CapacityM3, request.LengthMeters, request.WidthMeters, request.Lat, request.Lng);
         if (shapeError is not null) return new WarehouseActionResult(false, shapeError);
 
@@ -414,8 +418,8 @@ public class WarehouseSlottingService : IWarehouseSlottingService
                     "Chờ các chuyến đó hoàn tất rồi đổi địa chỉ / tọa độ kho.");
         }
 
-        warehouse.Name = request.Name;
-        warehouse.Address = request.Address;
+        warehouse.Name = request.Name.Trim();
+        warehouse.Address = request.Address!.Trim();
         warehouse.CapacityM3 = request.CapacityM3;
         warehouse.LengthMeters = request.LengthMeters;
         warehouse.WidthMeters = request.WidthMeters;
@@ -430,6 +434,7 @@ public class WarehouseSlottingService : IWarehouseSlottingService
 
     public async Task<WarehouseZoneDto> CreateZoneAsync(int warehouseId, CreateZoneRequest request)
     {
+        if (string.IsNullOrWhiteSpace(request.Name)) throw new InvalidOperationException("Vui lòng nhập tên khu vực.");
         var rectError = ValidateRect(request.PosX, request.PosY, request.WidthMeters, request.HeightMeters, "Khu vực");
         if (rectError is not null) throw new InvalidOperationException(rectError);
         var warehouseForBounds = await _db.Warehouses.FindAsync(warehouseId);
@@ -460,7 +465,7 @@ public class WarehouseSlottingService : IWarehouseSlottingService
         var zone = new WarehouseZone
         {
             WarehouseId = warehouseId,
-            Name = request.Name,
+            Name = request.Name.Trim(),
             ZoneType = zoneType,
             PosX = request.PosX,
             PosY = request.PosY,
@@ -475,6 +480,7 @@ public class WarehouseSlottingService : IWarehouseSlottingService
 
     public async Task<WarehouseActionResult> UpdateZoneAsync(int zoneId, CreateZoneRequest request)
     {
+        if (string.IsNullOrWhiteSpace(request.Name)) return new WarehouseActionResult(false, "Vui lòng nhập tên khu vực.");
         var zone = await _db.WarehouseZones.FindAsync(zoneId);
         if (zone is null) return new WarehouseActionResult(false, "Không tìm thấy khu vực.");
         var rectError = ValidateRect(request.PosX, request.PosY, request.WidthMeters, request.HeightMeters, "Khu vực");
@@ -519,7 +525,7 @@ public class WarehouseSlottingService : IWarehouseSlottingService
             if (retypeBlock is not null) return new WarehouseActionResult(false, retypeBlock);
         }
 
-        zone.Name = request.Name;
+        zone.Name = request.Name.Trim();
         zone.ZoneType = zoneType;
         zone.PosX = request.PosX;
         zone.PosY = request.PosY;
@@ -924,6 +930,20 @@ public class WarehouseSlottingService : IWarehouseSlottingService
     // gọi thẳng API được kích thước 0/âm, số quá lớn làm tràn cột -> lỗi 500) ----
     private const decimal MaxMeters = 100_000m;
 
+    /// <summary>Thông tin BẮT BUỘC của kho (trước đây chỉ bắt tên): địa chỉ + TỌA ĐỘ (chọn từ bản
+    /// đồ) — thiếu thì Chia xe không ước tính được quãng đường / số ngày chuyến (mọi chặng đều đi
+    /// qua kho), bản đồ lộ trình không vẽ được; Dài × Rộng — để vẽ sơ đồ kho và kiểm tra khu vực
+    /// nằm trong kho.</summary>
+    private static string? RequiredWarehouseError(string? name, string? address, double? lat, double? lng, decimal? length, decimal? width)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "Vui lòng nhập tên kho.";
+        if (string.IsNullOrWhiteSpace(address) || lat is null || lng is null)
+            return "Vui lòng tìm và CHỌN địa chỉ kho từ danh sách gợi ý (cần tọa độ để tính lộ trình, số ngày chuyến khi Chia xe).";
+        if (length is null || width is null)
+            return "Vui lòng nhập Chiều dài và Chiều rộng kho (mét) — dùng để vẽ sơ đồ kho và xếp khu vực.";
+        return null;
+    }
+
     private static string? ValidateWarehouseShape(decimal? capacityM3, decimal? length, decimal? width, double? lat, double? lng)
     {
         if (capacityM3 is { } c && (c <= 0 || c > 100_000_000m)) return "Sức chứa kho phải lớn hơn 0 (tối đa 100.000.000 m³).";
@@ -1261,7 +1281,7 @@ public class WarehouseSlottingService : IWarehouseSlottingService
         var max = Math.Max(0, cargoLine.QtyTotal - alreadyReceived - pendingPickups);
         if (max > 0) return (max, null);
         return (0, pendingPickups > 0
-            ? $"Dòng hàng \"{cargoLine.CargoType}\": khai {cargoLine.QtyTotal:0.##}, đã nhập {alreadyReceived:0.##}, còn {pendingPickups:0.##} thuộc các chuyến Lấy hàng (đang chạy, hoặc đã về kho chờ nhập) — hàng của chuyến nhập ở màn 📦 Hàng chờ nhập, không nhập tay ở đây."
+            ? $"Dòng hàng \"{cargoLine.CargoType}\": khai {cargoLine.QtyTotal:0.##}, đã nhập {alreadyReceived:0.##}, còn {pendingPickups:0.##} thuộc các chuyến Lấy hàng (đang chạy, hoặc đã về kho chờ nhập) — hàng của chuyến nhập ở nút 📦 Nhập hàng từ chuyến, không nhập tay ở đây."
             : $"Dòng hàng \"{cargoLine.CargoType}\" đã nhập đủ số lượng khai báo ({cargoLine.QtyTotal:0.##}).");
     }
 
@@ -1390,10 +1410,17 @@ public class WarehouseSlottingService : IWarehouseSlottingService
                 || _db.GoodsReceipts.Any(r => r.TransportOrderId == o.Id && r.WarehouseId == warehouseId)
                 || _db.GoodsIssues.Any(i => i.TransportOrderId == o.Id && i.WarehouseId == warehouseId))
             .OrderByDescending(o => o.Id)
-            .Select(o => new { o.Id, o.Code, CustomerName = o.Customer.Name, o.Status })
+            .Select(o => new
+            {
+                o.Id, o.Code, CustomerName = o.Customer.Name, o.Status, o.PickupMethod,
+                OnHand = _db.WarehouseStocks
+                    .Where(s => s.WarehouseId == warehouseId && s.CargoLine.TransportOrderId == o.Id)
+                    .Sum(s => (decimal?)s.QtyOnHand) ?? 0m,
+            })
             .ToListAsync();
 
-        return orders.Select(o => new WarehouseOrderDto(o.Id, o.Code, o.CustomerName, o.Status.ToString())).ToList();
+        return orders.Select(o => new WarehouseOrderDto(o.Id, o.Code, o.CustomerName, o.Status.ToString(),
+            o.PickupMethod.ToString(), o.OnHand)).ToList();
     }
 
     public async Task<OrderStockFlowDto?> GetOrderStockFlowAsync(int transportOrderId, int warehouseId)
@@ -1480,7 +1507,7 @@ public class WarehouseSlottingService : IWarehouseSlottingService
                 progress = done >= t.Planned && t.Planned > 0 ? $"✅ Đã nhập kho {done:0.##}/{t.Planned:0.##}"
                          : done > 0 ? $"📥 Đã nhập {done:0.##}/{t.Planned:0.##}" + (t.Status == TripStatus.Completed ? $" — còn chờ nhập {t.Planned - done:0.##}" : "")
                          : t.Status == TripStatus.PendingConfirmation ? "⏳ Chờ duyệt — duyệt xong chuyển sang Chờ nhập kho"
-                         : t.Status == TripStatus.Completed ? $"📦 Đã về kho — CHỜ NHẬP {t.Planned:0.##} (màn Hàng chờ nhập)"
+                         : t.Status == TripStatus.Completed ? $"📦 Đã về kho — CHỜ NHẬP {t.Planned:0.##} (màn Kho → 📦 Nhập hàng từ chuyến)"
                          : "⏳ Chưa về kho";
             else
                 progress = done >= t.Planned && t.Planned > 0 ? $"✅ Đã xuất kho {done:0.##}/{t.Planned:0.##}"

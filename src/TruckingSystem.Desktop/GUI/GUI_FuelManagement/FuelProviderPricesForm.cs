@@ -19,6 +19,42 @@ namespace TruckingSystem.Desktop.GUI_FuelManagement
             Theme.StyleGrid(grid); // bảng chỉ xem: giãn kín bề ngang, chọn nguyên dòng
             dtEffectiveDate.Value = DateTime.Today;
             grid.DataBindingComplete += (_, _) => { if (grid.Columns["Id"] != null) grid.Columns["Id"]!.Visible = false; };
+            GridLayout.FitColumns(grid);
+            filterBar.AddChoice("type", "Loại", Array.Empty<string>());
+            filterBar.AddChoice("when", "Thời gian", new[] { WhenCurrent, WhenFuture, WhenPast });
+            filterBar.FilterChanged += (_, _) => BindGrid();
+        }
+
+        private const string WhenCurrent = "Giá đang áp dụng";
+        private const string WhenFuture = "Áp dụng từ ngày mai";
+        private const string WhenPast = "Giá cũ (đã thay)";
+
+        /// <summary>Giá đang áp dụng = mức có ngày hiệu lực gần nhất (≤ hôm nay) của từng loại.</summary>
+        private string WhenGroup(FuelPriceHistoryItem p)
+        {
+            if (p.EffectiveDate.Date > DateTime.Today) return WhenFuture;
+            var current = _prices.Where(x => x.FuelType == p.FuelType && x.EffectiveDate.Date <= DateTime.Today)
+                .OrderByDescending(x => x.EffectiveDate).FirstOrDefault();
+            return current?.Id == p.Id ? WhenCurrent : WhenPast;
+        }
+
+        private void BindGrid()
+        {
+            var rows = _prices.Where(p =>
+                    filterBar.Is("type", p.FuelType) &&
+                    filterBar.Is("when", WhenGroup(p)) &&
+                    filterBar.MatchesSearch(p.FuelType, p.Price.ToString("N0"), p.EffectiveDate))
+                .OrderByDescending(p => p.EffectiveDate)
+                .ToList();
+            filterBar.SetCount(rows.Count, _prices.Count);
+            grid.DataSource = rows.Select(p => new
+            {
+                p.Id,
+                Loại_nhiên_liệu = p.FuelType,
+                Giá_VNĐ = p.Price.ToString("N0"),
+                Ngày_hiệu_lực = p.EffectiveDate.ToString("dd/MM/yyyy"),
+                Tình_trạng = WhenGroup(p),
+            }).ToList();
         }
 
         public FuelProviderPricesForm(ApiServices api, int? providerId, string providerName) : this()
@@ -65,13 +101,8 @@ namespace TruckingSystem.Desktop.GUI_FuelManagement
                 _prices = (await _api.Fuel.GetPriceHistoryAsync(_providerId))
                     .Where(p => _providerId.HasValue || p.FuelProviderId == null)
                     .ToList();
-                grid.DataSource = _prices.Select(p => new
-                {
-                    p.Id,
-                    Loại_nhiên_liệu = p.FuelType,
-                    Giá_VNĐ = p.Price.ToString("N0"),
-                    Ngày_hiệu_lực = p.EffectiveDate.ToString("dd/MM/yyyy"),
-                }).ToList();
+                filterBar.SetChoiceOptions("type", _prices.Select(p => p.FuelType));
+                BindGrid();
                 lblStatus.Text = $"{_prices.Count} mức giá đã ghi nhận";
                 lblStatus.ForeColor = Theme.TextSecondary;
             }

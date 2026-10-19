@@ -26,10 +26,12 @@ public class TransportOrderService : ITransportOrderService
         return await _db.TransportOrders
             .Include(o => o.Customer)
             .OrderByDescending(o => o.Id)
+            // Truyền ĐỦ tham số (trong truy vấn EF không được bỏ tham số tùy chọn).
             .Select(o => new TransportOrderListItemDto(
                 o.Id, o.Code, o.Customer.Name, o.Status.ToString(),
                 o.ProgressPercent, o.PickupPoint, o.DropoffPoint, o.PublicTrackingToken,
-                o.Trips.Count(t => t.Status != TripStatus.Cancelled)))
+                o.Trips.Count(t => t.Status != TripStatus.Cancelled),
+                o.CommittedDeliveryDate, o.Warehouse.Name))
             .ToListAsync();
     }
 
@@ -200,23 +202,23 @@ public class TransportOrderService : ITransportOrderService
         if (zoneError is not null)
             return new OrderActionResult(false, zoneError);
 
+        // Đơn NHÁP tạo trước khi có các quy tắc mới (bắt buộc hạn giao, điểm lấy ≠ điểm giao, địa
+        // điểm có tọa độ) hoặc để lâu tới khi hạn giao đã qua -> kiểm tra lại lúc xác nhận; trước
+        // đây xác nhận thẳng, tới Chia xe mới vướng (hoặc chia xe với hạn giao rỗng / đã qua).
+        if (order.CommittedDeliveryDate is null)
+            return new OrderActionResult(false, MissingCommittedDateMessage + " Bấm Sửa đơn để nhập hạn giao rồi xác nhận lại.");
+        if (order.CommittedDeliveryDate.Value.Date < VnClock.Today)
+            return new OrderActionResult(false,
+                $"Hạn giao {order.CommittedDeliveryDate.Value:dd/MM/yyyy} đã qua — bấm Sửa đơn để thỏa thuận hạn mới với khách rồi xác nhận lại.");
+        var locationError = await ValidateLocationsAsync(order.PickupMethod.ToString(), order.PickupLocationId, order.DropoffLocationId, order.CustomerId);
+        if (locationError is not null)
+            return new OrderActionResult(false, locationError + " (Bấm Sửa đơn để chọn lại địa điểm.)");
+
         order.Status = TransportOrderStatus.Confirmed;
         await _db.SaveChangesAsync();
         return new OrderActionResult(true, null);
     }
 
-    /// <summary>Hủy đơn — xử lý theo 3 mức tùy tình trạng hàng hóa thật tại
-    /// thời điểm hủy (KHÔNG hủy lẻ từng Trip, chỉ hủy qua Đơn):
-    ///   Mức 1 — Chưa chạm kho (Planned/InProgress, chưa Pickup xong): hủy
-    ///     thẳng mọi Trip còn hoạt động, trả xe/tài xế rảnh ngay.
-    ///   Mức 2 — Hàng đã nằm trong kho (Pickup đã Completed VÀ đã nhập kho đủ
-    ///     — còn hàng chờ nhập thì CHẶN hủy) nhưng Giao hàng còn
-    ///     Planned (chưa xuất): hủy Delivery cũ, TẠO THÊM 1 Trip "Trả hàng"
-    ///     (LegType.Return) dùng lại xe/tài xế đã có sẵn gần kho. Xuất kho
-    ///     thật + trả xe rảnh chỉ xảy ra SAU, khi tài xế chạy xong và bấm
-    ///     Hoàn tất (tái dùng cơ chế Complete có sẵn, xem HandleArrivalAsync).
-    ///   Mức 3 — Giao hàng đã InProgress (hàng đã xuất kho thật): CHẶN,
-    ///     không cho hủy nữa.</summary>
     /// <summary>ĐỔI HẠN GIAO cho đơn đã xác nhận / đang chạy — nghiệp vụ thật: khách xin dời ngày,
     /// hoặc hai bên thỏa thuận lùi hạn (kẹt đường, thời tiết...). Cũng dùng để BỔ SUNG hạn cho
     /// đơn cũ chưa có hạn. Không mở sửa cả đơn (địa điểm/hàng đã gắn với chuyến, tồn kho, chi phí).
@@ -262,6 +264,18 @@ public class TransportOrderService : ITransportOrderService
             : $"Đã đổi hạn giao từ {oldDate:dd/MM/yyyy} sang {newDate:dd/MM/yyyy} (đã ghi nhật ký).");
     }
 
+    /// <summary>Hủy đơn — xử lý theo 3 mức tùy tình trạng hàng hóa thật tại
+    /// thời điểm hủy (KHÔNG hủy lẻ từng Trip, chỉ hủy qua Đơn):
+    ///   Mức 1 — Chưa chạm kho (Planned/InProgress, chưa Pickup xong): hủy
+    ///     thẳng mọi Trip còn hoạt động, trả xe/tài xế rảnh ngay.
+    ///   Mức 2 — Hàng đã nằm trong kho (Pickup đã Completed VÀ đã nhập kho đủ
+    ///     — còn hàng chờ nhập thì CHẶN hủy) nhưng Giao hàng còn
+    ///     Planned (chưa xuất): hủy Delivery cũ, TẠO THÊM 1 Trip "Trả hàng"
+    ///     (LegType.Return) dùng lại xe/tài xế đã có sẵn gần kho. Xuất kho
+    ///     thật + trả xe rảnh chỉ xảy ra SAU, khi tài xế chạy xong và bấm
+    ///     Hoàn tất (tái dùng cơ chế Complete có sẵn, xem HandleArrivalAsync).
+    ///   Mức 3 — Giao hàng đã InProgress (hàng đã xuất kho thật): CHẶN,
+    ///     không cho hủy nữa.</summary>
     public async Task<OrderActionResult> CancelAsync(int id)
     {
         // KHÓA đơn + mọi chuyến của đơn NGAY ĐẦU (SELECT ... FOR UPDATE) rồi mới đọc
@@ -306,7 +320,7 @@ public class TransportOrderService : ITransportOrderService
             return new OrderActionResult(false,
                 "Chuyến lấy hàng #" + string.Join(", #", pendingPickupIds) +
                 " đang CHỜ XÁC NHẬN (hàng đã về kho nhưng chưa nhập). " +
-                "Hãy DUYỆT chuyến đó rồi NHẬP KHO (màn Kho → 📦 Hàng chờ nhập) trước, rồi mới hủy đơn — hàng trong kho sẽ được trả lại khi hủy. " +
+                "Hãy DUYỆT chuyến đó rồi NHẬP KHO (màn Kho → 📦 Nhập hàng từ chuyến) trước, rồi mới hủy đơn — hàng trong kho sẽ được trả lại khi hủy. " +
                 "CHỈ Từ chối khi tài xế báo nhầm và hàng THẬT SỰ chưa về kho.");
 
         // CHẶN nếu có chuyến Lấy hàng đã về kho (Hoàn tất) mà hàng CHƯA NHẬP KHO hết: hàng
@@ -316,7 +330,7 @@ public class TransportOrderService : ITransportOrderService
         if (waitingReceipt.Count > 0)
             return new OrderActionResult(false,
                 "Chuyến lấy hàng " + PendingReceiptRules.Describe(waitingReceipt) +
-                " đã về kho nhưng hàng CHƯA NHẬP KHO. Hãy nhập kho trước (màn Kho → 📦 Hàng chờ nhập — thủ công hoặc Best-Fit), " +
+                " đã về kho nhưng hàng CHƯA NHẬP KHO. Hãy nhập kho trước (màn Kho → 📦 Nhập hàng từ chuyến — thủ công hoặc Best-Fit), " +
                 "rồi mới hủy đơn — hàng trong kho sẽ được trả lại khách khi hủy.");
 
         // Chuyến Lấy hàng đang chạy: vẫn cho hủy, nhưng báo lại để điều phối gọi
@@ -519,6 +533,10 @@ public class TransportOrderService : ITransportOrderService
         if (!dropoffLocationId.HasValue)
             return "Vui lòng chọn Điểm giao hàng từ danh sách Địa điểm.";
 
+        // Điểm lấy và điểm giao KHÔNG được trùng (cùng 1 địa điểm) — chở hàng từ A về chính A là vô lý.
+        if (method == PickupMethod.CompanyPickup && pickupLocationId == dropoffLocationId)
+            return "Điểm lấy hàng và điểm giao hàng đang là CÙNG 1 địa điểm — hãy chọn điểm giao khác.";
+
         var ids = new[] { pickupLocationId, dropoffLocationId }.Where(i => i.HasValue).Select(i => i!.Value).Distinct().ToList();
         var locations = await _db.Locations
             .Where(l => ids.Contains(l.Id))
@@ -531,6 +549,15 @@ public class TransportOrderService : ITransportOrderService
         var noCoords = locations.FirstOrDefault(l => l.Lat is null || l.Lng is null);
         if (noCoords is not null)
             return $"Địa điểm \"{noCoords.Name}\" chưa có tọa độ — chọn địa điểm khác hoặc tạo lại địa điểm qua ô tìm kiếm bản đồ.";
+
+        // 2 địa điểm khác tên nhưng CÙNG VỊ TRÍ (lệch < ~11 m) cũng coi là trùng.
+        if (method == PickupMethod.CompanyPickup && pickupLocationId.HasValue)
+        {
+            var p = locations.First(l => l.Id == pickupLocationId.Value);
+            var d = locations.First(l => l.Id == dropoffLocationId.Value);
+            if (Math.Abs(p.Lat!.Value - d.Lat!.Value) < 0.0001 && Math.Abs(p.Lng!.Value - d.Lng!.Value) < 0.0001)
+                return $"Điểm lấy hàng \"{p.Name}\" và điểm giao hàng \"{d.Name}\" ở CÙNG 1 vị trí trên bản đồ — hãy chọn điểm giao khác.";
+        }
 
         // Địa điểm RIÊNG của 1 khách hàng chỉ dùng cho đơn của chính khách đó.
         var otherCustomers = locations.FirstOrDefault(l => l.CustomerId.HasValue && l.CustomerId.Value != customerId);

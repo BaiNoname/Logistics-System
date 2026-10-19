@@ -35,25 +35,29 @@ public static class VehicleDocumentRules
     {
         VehicleDocumentType.Registration => "Đăng kiểm",
         VehicleDocumentType.Insurance => "Bảo hiểm",
-        VehicleDocumentType.TransportPermit => "Giấy phép vận tải",
+        VehicleDocumentType.TransportPermit => "Phù hiệu xe (GP vận tải)",
         _ => "Giấy tờ",
     };
 
-    /// <summary>Lý do xe KHÔNG được chạy vào ngày VN <paramref name="date"/> vì giấy tờ
-    /// (null = hợp lệ): Đăng kiểm BẮT BUỘC có và còn hạn; Bảo hiểm / Giấy phép vận tải
-    /// chưa nhập thì cho qua, đã nhập mà bản mới nhất hết hạn thì chặn.</summary>
+    /// <summary>3 giấy tờ BẮT BUỘC để xe tải kinh doanh vận tải được chạy: Đăng kiểm (kiểm định),
+    /// Bảo hiểm TNDS bắt buộc, Phù hiệu xe (GP vận tải). Thiếu hoặc hết hạn loại nào cũng chặn.</summary>
+    public static readonly VehicleDocumentType[] Required =
+        { VehicleDocumentType.Registration, VehicleDocumentType.Insurance, VehicleDocumentType.TransportPermit };
+
+    /// <summary>Lý do xe KHÔNG được chạy tới hết ngày VN <paramref name="date"/> vì giấy tờ (null = hợp lệ).
+    /// Truyền NGÀY CUỐI của chuyến dự kiến -> giấy tờ phải còn hạn PHỦ HẾT thời gian chuyến (hạn
+    /// xa nhất của mỗi loại; gia hạn = thêm dòng mới). Trước đây Bảo hiểm / Giấy phép vận tải
+    /// chưa nhập vẫn cho chạy — nay cả 3 loại đều bắt buộc.</summary>
     public static string? BlockReason(IEnumerable<LatestDoc> docsOfVehicle, string plate, DateTime date)
     {
         var docs = docsOfVehicle.ToList();
-        var registration = docs.FirstOrDefault(d => d.DocType == VehicleDocumentType.Registration);
-        if (registration is null)
-            return $"Xe {plate} chưa nhập Đăng kiểm — nhập trong màn Xe trước khi chạy.";
-        if (!IsValidOn(registration.ExpiryDate, date))
-            return $"Đăng kiểm xe {plate} đã hết hạn ({registration.ExpiryDate:dd/MM/yyyy}) — gia hạn trong màn Xe trước khi chạy.";
-
-        var expiredOther = docs.FirstOrDefault(d => d.DocType != VehicleDocumentType.Registration && !IsValidOn(d.ExpiryDate, date));
-        if (expiredOther is not null)
-            return $"{DocTypeText(expiredOther.DocType)} xe {plate} đã hết hạn ({expiredOther.ExpiryDate:dd/MM/yyyy}) — gia hạn trong màn Xe trước khi chạy.";
+        var missing = Required.Where(t => docs.All(d => d.DocType != t)).ToList();
+        if (missing.Count > 0)
+            return $"Xe {plate} chưa nhập {string.Join(", ", missing.Select(DocTypeText))} — nhập trong màn Đội xe → Giấy tờ xe trước khi chạy.";
+        var expired = docs.Where(d => Required.Contains(d.DocType) && !IsValidOn(d.ExpiryDate, date))
+            .OrderBy(d => d.ExpiryDate).FirstOrDefault();
+        if (expired is not null)
+            return $"{DocTypeText(expired.DocType)} xe {plate} hết hạn ngày {expired.ExpiryDate:dd/MM/yyyy}, trước khi chuyến xong (cần còn hạn tới hết {date:dd/MM/yyyy}) — gia hạn trong màn Đội xe → Giấy tờ xe.";
         return null;
     }
 }

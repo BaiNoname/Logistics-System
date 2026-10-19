@@ -38,6 +38,22 @@ namespace TruckingSystem.Desktop.GUI_Shared
             ApplyPeriod();
             Theme.StyleGrid(_grid);
             Theme.StyleGrid(_gridFuel);
+            GridLayout.FitColumns(_grid);
+            GridLayout.FitColumns(_gridFuel);
+
+            // Bộ lọc riêng cho 2 bảng dài (lọc ngay trên số liệu đã tải, không gọi lại API).
+            _ordersFilter.AddChoice("status", "Trạng thái", Array.Empty<string>());
+            _ordersFilter.AddChoice("customer", "Khách hàng", Array.Empty<string>());
+            _ordersFilter.AddChoice("profit", "Kết quả", new[] { ProfitLoss, ProfitGain, ProfitZero });
+            _ordersFilter.AddChoice("delivery", "Giao hàng", new[] { DeliveryOnTime, DeliveryLate, DeliveryNone });
+            _ordersFilter.AddChoice("invoice", "Hóa đơn", new[] { InvoiceMissing, InvoiceDone });
+            _ordersFilter.FilterChanged += (_, _) => BindOrdersGrid();
+
+            _fuelFilter.AddChoice("state", "Tình trạng", new[] { FuelFlagged, FuelNormal, FuelOpen });
+            _fuelFilter.AddChoice("actual", "Hóa đơn xăng", new[] { FuelHasActual, FuelNoActual });
+            _fuelFilter.AddChoice("leg", "Chặng", Array.Empty<string>());
+            _fuelFilter.AddChoice("plate", "Xe", Array.Empty<string>());
+            _fuelFilter.FilterChanged += (_, _) => BindFuelGrid();
             Load += async (_, _) => await LoadAsync();
         }
 
@@ -252,9 +268,40 @@ namespace TruckingSystem.Desktop.GUI_Shared
 
         private static readonly string[] MoneyColumns = { "Doanh_thu", "Nhiên_liệu", "Phát_sinh", "Sự_cố", "Tổng_chi_phí", "Lãi_Lỗ" };
 
+        private const string ProfitLoss = "📉 Lỗ";
+        private const string ProfitGain = "📈 Lãi";
+        private const string ProfitZero = "Hòa vốn";
+        private const string DeliveryOnTime = "Đúng hạn";
+        private const string DeliveryLate = "Trễ hạn";
+        private const string DeliveryNone = "Chưa giao / không có hạn";
+        private const string InvoiceMissing = "⚠️ Đơn xong chưa xuất HĐ";
+        private const string InvoiceDone = "Đã xuất HĐ";
+
+        private static string ProfitGroup(OrderProfitItem o) => o.Profit < 0 ? ProfitLoss : o.Profit > 0 ? ProfitGain : ProfitZero;
+        private static string DeliveryGroup(OrderProfitItem o)
+            => o.DeliveryResult is null ? DeliveryNone : o.DeliveryResult == "Đúng hạn" ? DeliveryOnTime : DeliveryLate;
+
         private void RenderGrid(ProfitReport r)
         {
-            _grid.DataSource = r.Orders.Select(o => new
+            _ordersFilter.SetChoiceOptions("status", r.Orders.Select(o => ReportFormat.OrderStatus(o.Status)));
+            _ordersFilter.SetChoiceOptions("customer", r.Orders.Select(o => o.CustomerName));
+            BindOrdersGrid();
+        }
+
+        private void BindOrdersGrid()
+        {
+            var all = _report?.Orders ?? new List<OrderProfitItem>();
+            var rows = all.Where(o =>
+                    _ordersFilter.Is("status", ReportFormat.OrderStatus(o.Status)) &&
+                    _ordersFilter.Is("customer", o.CustomerName) &&
+                    _ordersFilter.Is("profit", ProfitGroup(o)) &&
+                    _ordersFilter.Is("delivery", DeliveryGroup(o)) &&
+                    (_ordersFilter.Choice("invoice") is not string inv
+                        || (inv == InvoiceMissing ? o.Status == "Done" && !o.HasInvoice : o.HasInvoice)) &&
+                    _ordersFilter.MatchesSearch(o.OrderCode, o.CustomerName))
+                .ToList();
+            _ordersFilter.SetCount(rows.Count, all.Count);
+            _grid.DataSource = rows.Select(o => new
             {
                 o.OrderId,
                 Mã_đơn = o.OrderCode,
@@ -323,6 +370,15 @@ namespace TruckingSystem.Desktop.GUI_Shared
 
         // ================= Kiểm soát nhiên liệu =================
 
+        private const string FuelFlagged = "🚩 Lệch > 15%";
+        private const string FuelNormal = "Hoàn tất, không lệch";
+        private const string FuelOpen = "Chưa hoàn tất / đã hủy";
+        private const string FuelHasActual = "Đã nhập";
+        private const string FuelNoActual = "Chưa nhập";
+
+        private static string FuelState(FuelControlRowItem x)
+            => x.Flagged ? FuelFlagged : x.Status == "Completed" ? FuelNormal : FuelOpen;
+
         private void RenderFuelControl(ProfitReport r)
         {
             var rows = r.FuelControl ?? new List<FuelControlRowItem>();
@@ -343,8 +399,24 @@ namespace TruckingSystem.Desktop.GUI_Shared
                 ReportFormat.FullMoney(r.FuelActualCost)));
             _kpiFuel.Controls.Add(MakeCard("🚩", "Chuyến lệch > 15%", $"{flagged}/{rows.Count}", Theme.Danger,
                 flagged > 0 ? Theme.Danger : Theme.TextPrimary,
-                flagged > 0 ? "Xem dòng tô đỏ bên dưới" : "Không có chuyến bất thường", null));
+                flagged > 0 ? "Lọc \"🚩 Lệch > 15%\" ở bảng bên dưới" : "Không có chuyến bất thường", null));
 
+            _fuelFilter.SetChoiceOptions("leg", rows.Select(x => x.LegType));
+            _fuelFilter.SetChoiceOptions("plate", rows.Select(x => x.PlateNumber));
+            BindFuelGrid();
+        }
+
+        private void BindFuelGrid()
+        {
+            var all = _report?.FuelControl ?? new List<FuelControlRowItem>();
+            var rows = all.Where(x =>
+                    _fuelFilter.Is("state", FuelState(x)) &&
+                    _fuelFilter.Is("actual", x.HasActual ? FuelHasActual : FuelNoActual) &&
+                    _fuelFilter.Is("leg", x.LegType) &&
+                    _fuelFilter.Is("plate", x.PlateNumber) &&
+                    _fuelFilter.MatchesSearch($"#{x.TripId}", x.OrderCode, x.PlateNumber, FuelNote(x)))
+                .ToList();
+            _fuelFilter.SetCount(rows.Count, all.Count);
             _gridFuel.DataSource = rows.Select(x => new
             {
                 Chuyến = $"#{x.TripId}",

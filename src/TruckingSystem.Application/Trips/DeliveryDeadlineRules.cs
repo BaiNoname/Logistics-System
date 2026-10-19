@@ -85,6 +85,10 @@ public static class DeliveryDeadlineRules
         // Chưa chạy (Đã lên kế hoạch)
         if (todayVn > deadline)
             return new Info(deadline, latestStart, Level.Late, $"🔴 Đã QUÁ hạn giao {deadline:dd/MM}");
+        // Lịch xuất phát dự kiến (chọn lúc Chia xe) đã muộn hơn mốc -> chắc chắn trễ nếu giữ lịch.
+        if (trip.PlannedStartDate is DateTime planned && planned.Date > latestStart)
+            return new Info(deadline, latestStart, Level.Late,
+                $"🔴 Lịch xuất phát {planned:dd/MM} muộn hơn mốc {latestStart:dd/MM} — sẽ trễ hạn");
         if (todayVn > latestStart)
             return new Info(deadline, latestStart, Level.Late, $"🔴 Không còn kịp hạn (phải xuất phát trước hết {latestStart:dd/MM})");
         if (todayVn == latestStart)

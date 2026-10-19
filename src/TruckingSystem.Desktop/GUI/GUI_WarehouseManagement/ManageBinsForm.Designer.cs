@@ -23,6 +23,7 @@ partial class ManageBinsForm
         btnEditBin = new System.Windows.Forms.Button();
         btnDeleteBin = new System.Windows.Forms.Button();
         lblStatus = new System.Windows.Forms.Label();
+        filterBar = new TruckingSystem.Desktop.Common.FilterBar();
         grid = new System.Windows.Forms.DataGridView();
         root.SuspendLayout();
         toolbar.SuspendLayout();
@@ -35,12 +36,14 @@ partial class ManageBinsForm
         root.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
         root.Controls.Add(lblTitle, 0, 0);
         root.Controls.Add(toolbar, 0, 1);
-        root.Controls.Add(lblStatus, 0, 2);
-        root.Controls.Add(grid, 0, 3);
+        root.Controls.Add(filterBar, 0, 2);
+        root.Controls.Add(lblStatus, 0, 3);
+        root.Controls.Add(grid, 0, 4);
         root.Dock = System.Windows.Forms.DockStyle.Fill;
         root.Margin = new System.Windows.Forms.Padding(0);
         root.Name = "root";
-        root.RowCount = 4;
+        root.RowCount = 5;
+        root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
         root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
         root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
         root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
@@ -129,6 +132,13 @@ partial class ManageBinsForm
         btnDeleteBin.UseVisualStyleBackColor = false;
         btnDeleteBin.Click += new System.EventHandler(this.BtnDeleteBin_Click);
         // 
+        // filterBar — tìm nhanh + lọc (Common/FilterBar); các ô chọn thêm ở .cs
+        // 
+        filterBar.Dock = System.Windows.Forms.DockStyle.Fill;
+        filterBar.Name = "filterBar";
+        filterBar.SearchPlaceholder = "Mã ô, khu, trạng thái...";
+        filterBar.TabIndex = 2;
+        // 
         // lblStatus
         // 
         lblStatus.Anchor = System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
@@ -176,5 +186,6 @@ partial class ManageBinsForm
     private System.Windows.Forms.Button btnEditBin;
     private System.Windows.Forms.Button btnDeleteBin;
     private System.Windows.Forms.Label lblStatus;
+    private TruckingSystem.Desktop.Common.FilterBar filterBar;
     private System.Windows.Forms.DataGridView grid;
 }

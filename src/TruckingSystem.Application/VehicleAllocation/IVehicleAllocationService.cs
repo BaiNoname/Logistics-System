@@ -9,5 +9,8 @@ public interface IVehicleAllocationService
     /// tạo đơn GỢI Ý hạn giao. Cùng cách tính với Chia xe.</summary>
     Task<int> EstimateRouteDaysAsync(int? pickupLocationId, int? dropoffLocationId, int warehouseId, string pickupMethod);
 
-    Task<AllocateVehiclesResponse> AllocateAsync(int transportOrderId, bool acceptLate = false, string? userId = null, string? userName = null);
+    /// <param name="plannedStartDate">Ngày xuất phát dự kiến (lịch VN) — null = hôm nay. Giấy tờ xe,
+    /// bằng lái, giấy khám sức khỏe, ngày làm tài xế phải phủ đủ [ngày này .. ngày cuối chuyến].</param>
+    Task<AllocateVehiclesResponse> AllocateAsync(int transportOrderId, bool acceptLate = false, string? userId = null, string? userName = null,
+        DateTime? plannedStartDate = null);
 }
