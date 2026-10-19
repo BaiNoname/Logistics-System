@@ -43,6 +43,8 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             txtCode.Text = employee.Code;
             txtFullName.Text = employee.FullName;
             txtPhone.Text = employee.Phone ?? "";
+            txtIdentityCardNo.Text = employee.IdentityCardNo ?? "";
+            txtAddress.Text = employee.Address ?? "";
             cboEmployeeStatus.SelectedValue = employee.Status;
             Text = "Sửa thông tin nhân viên";
             btnSave.Text = "Lưu thay đổi";
@@ -98,8 +100,8 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
                 int? posId = cboPos.SelectedValue is int selectedPosId && selectedPosId > 0 ? selectedPosId : null;
                 var status = (string)cboEmployeeStatus.SelectedValue!;
                 var result = _employeeId.HasValue
-                    ? await _api.Employees.UpdateEmployeeAsync(_employeeId.Value, txtCode.Text.Trim(), txtFullName.Text.Trim(), txtPhone.Text.Trim(), deptId, posId, status)
-                    : await _api.Employees.CreateEmployeeAsync(txtCode.Text.Trim(), txtFullName.Text.Trim(), txtPhone.Text.Trim(), deptId, posId);
+                    ? await _api.Employees.UpdateEmployeeAsync(_employeeId.Value, txtCode.Text.Trim(), txtFullName.Text.Trim(), txtPhone.Text.Trim(), deptId, posId, status, txtIdentityCardNo.Text.Trim(), txtAddress.Text.Trim())
+                    : await _api.Employees.CreateEmployeeAsync(txtCode.Text.Trim(), txtFullName.Text.Trim(), txtPhone.Text.Trim(), deptId, posId, txtIdentityCardNo.Text.Trim(), txtAddress.Text.Trim());
 
                 if (!result.Success)
                 {

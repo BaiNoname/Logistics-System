@@ -23,13 +23,14 @@ public class EmployeeService : IEmployeeService
             .Include(e => e.Position)
             .OrderBy(e => e.FullName)
             .Select(e => new EmployeeListItemDto(
-                e.Id, e.Code, e.FullName, e.Phone,
+                e.Id, e.Code, e.FullName, e.Phone, e.HireDate,
                 e.DepartmentId,
                 e.Department != null ? e.Department.Name : null,
                 e.PositionId,
                 e.Position != null ? e.Position.Name : null,
                 e.Status.ToString(),
-                driverEmployeeIds.Contains(e.Id)))
+                driverEmployeeIds.Contains(e.Id),
+                e.IdentityCardNo, e.Address))
             .ToListAsync();
     }
 
@@ -91,6 +92,8 @@ public class EmployeeService : IEmployeeService
             Code = request.Code.Trim(),
             FullName = request.FullName.Trim(),
             Phone = NullIfWhiteSpace(request.Phone),
+            IdentityCardNo = NullIfWhiteSpace(request.IdentityCardNo),
+            Address = NullIfWhiteSpace(request.Address),
             DepartmentId = request.DepartmentId,
             PositionId = request.PositionId,
             HireDate = DateTime.UtcNow,
@@ -115,6 +118,11 @@ public class EmployeeService : IEmployeeService
         employee.Code = request.Code.Trim();
         employee.FullName = request.FullName.Trim();
         employee.Phone = NullIfWhiteSpace(request.Phone);
+        // Keep these fields when older clients omit them; an empty string clears the value.
+        if (request.IdentityCardNo is not null)
+            employee.IdentityCardNo = NullIfWhiteSpace(request.IdentityCardNo);
+        if (request.Address is not null)
+            employee.Address = NullIfWhiteSpace(request.Address);
         employee.DepartmentId = request.DepartmentId;
         employee.PositionId = request.PositionId;
         employee.Status = status;
