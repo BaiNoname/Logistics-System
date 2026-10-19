@@ -526,7 +526,7 @@ namespace TruckingSystem.Desktop.GUI_Shared
             g.SmoothingMode = SmoothingMode.AntiAlias;
             DrawFrame(g, rect, "📈 Doanh thu & chi phí theo tháng");
             DrawLegend(g, rect.Width - 210, 12, Theme.Primary, "Doanh thu");
-            DrawLegend(g, rect.Width - 110, 12, Theme.Warning, "Chi phí");
+            DrawLegend(g, rect.Width - 90, 12, Theme.Warning, "Chi phí");
 
             var data = _report?.Monthly ?? new List<MonthlyProfitItem>();
             if (data.Count == 0) { DrawEmpty(g, rect, "Chưa có dữ liệu trong kỳ này"); return; }
