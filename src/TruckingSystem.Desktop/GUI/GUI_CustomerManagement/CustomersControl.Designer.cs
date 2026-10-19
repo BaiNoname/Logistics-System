@@ -29,28 +29,9 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
             _contactsControl = new CustomerContactsControl();
             var customerLayout = new TableLayoutPanel();
             toolbar = new FlowLayoutPanel();
+            filterBar = new TruckingSystem.Desktop.Common.FilterBar { Dock = DockStyle.Fill, AutoSize = true };
             ((System.ComponentModel.ISupportInitialize)grid).BeginInit();
             SuspendLayout();
-            // 
-            // root
-            // 
-            root.ColumnCount = 1;
-            root.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            root.Controls.Add(lblTitle, 0, 0);
-            root.Controls.Add(toolbar, 0, 1);
-            root.Controls.Add(lblStatus, 0, 2);
-            root.Controls.Add(grid, 0, 3);
-            root.Dock = System.Windows.Forms.DockStyle.Fill;
-            root.Location = new System.Drawing.Point(0, 0);
-            root.Name = "root";
-            root.Padding = new System.Windows.Forms.Padding(0);
-            root.RowCount = 4;
-            root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
-            root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
-            root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
-            root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            root.Size = new System.Drawing.Size(1200, 700);
-            root.TabIndex = 0;
             // 
             // lblTitle
             // 
@@ -183,14 +164,16 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
             grid.AccessibleName = "Danh sách khách hàng";
             customerLayout.Dock = DockStyle.Fill;
             customerLayout.ColumnCount = 1;
-            customerLayout.RowCount = 3;
+            customerLayout.RowCount = 4;
             customerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            customerLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             customerLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             customerLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
             customerLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));
             customerLayout.Controls.Add(toolbar, 0, 0);
-            customerLayout.Controls.Add(grid, 0, 1);
-            customerLayout.Controls.Add(lblStatus, 0, 2);
+            customerLayout.Controls.Add(filterBar, 0, 1);
+            customerLayout.Controls.Add(grid, 0, 2);
+            customerLayout.Controls.Add(lblStatus, 0, 3);
             customersTab.BackColor = Color.White;
             customersTab.Padding = new Padding(8);
             customersTab.Controls.Add(customerLayout);

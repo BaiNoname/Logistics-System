@@ -30,7 +30,7 @@ public class EmployeeService : IEmployeeService
                 e.Position != null ? e.Position.Name : null,
                 e.Status.ToString(),
                 driverEmployeeIds.Contains(e.Id),
-                e.IdentityCardNo, e.Address))
+                e.IdentityCardNo, e.Address, e.TerminationDate))
             .ToListAsync();
     }
 
@@ -122,6 +122,9 @@ public class EmployeeService : IEmployeeService
     {
         var validation = await ValidateAsync(request.Code, request.FullName, request.DepartmentId, request.PositionId);
         if (validation is not null) return new EmployeeActionResult(false, validation);
+        var hireDate = request.HireDate?.Date ?? DateTime.UtcNow;
+        if (hireDate.Year is < 2000 or > 2100 || request.TerminationDate?.Date < hireDate.Date)
+            return new(false, "Ngày vào làm phải từ năm 2000–2100; ngày nghỉ việc không được trước ngày vào làm.");
 
         var employee = new Employee
         {
@@ -132,7 +135,8 @@ public class EmployeeService : IEmployeeService
             Address = NullIfWhiteSpace(request.Address),
             DepartmentId = request.DepartmentId,
             PositionId = request.PositionId,
-            HireDate = DateTime.UtcNow,
+            HireDate = hireDate,
+            TerminationDate = request.TerminationDate?.Date,
             Status = EmployeeStatus.Active,
         };
         _db.Employees.Add(employee);
@@ -150,6 +154,16 @@ public class EmployeeService : IEmployeeService
         if (validation is not null) return new EmployeeActionResult(false, validation);
         if (!Enum.TryParse<EmployeeStatus>(request.Status, true, out var status))
             return new EmployeeActionResult(false, "Trạng thái nhân viên không hợp lệ.");
+
+        // Older clients omit both dates; a supplied hire date also permits clearing termination.
+        if (request.HireDate.HasValue || request.TerminationDate.HasValue)
+        {
+            var hireDate = request.HireDate?.Date ?? employee.HireDate.Date;
+            if (hireDate.Year is < 2000 or > 2100 || request.TerminationDate?.Date < hireDate)
+                return new(false, "Ngày vào làm phải từ năm 2000–2100; ngày nghỉ việc không được trước ngày vào làm.");
+            employee.HireDate = hireDate;
+            employee.TerminationDate = request.TerminationDate?.Date;
+        }
 
         employee.Code = request.Code.Trim();
         employee.FullName = request.FullName.Trim();

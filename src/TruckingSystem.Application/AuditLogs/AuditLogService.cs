@@ -12,9 +12,11 @@ public class AuditLogService : IAuditLogService
         _db = db;
     }
 
-    public async Task<List<AuditLogDto>> GetAsync(AuditLogFilterRequest filter)
+    public async Task<List<AuditLogDto>> GetAsync(AuditLogFilterRequest filter, bool includePayroll = false)
     {
         var query = _db.AuditLogs.AsQueryable();
+        if (!includePayroll)
+            query = query.Where(a => a.EntityName != "PayrollSlip" && a.EntityName != "PayrollPeriod" && a.EntityName != "EmployeeSalary");
 
         if (!string.IsNullOrWhiteSpace(filter.Action))
             query = query.Where(a => a.Action == filter.Action);
@@ -38,8 +40,10 @@ public class AuditLogService : IAuditLogService
             .ToListAsync();
     }
 
-    public async Task<List<string>> GetDistinctActionsAsync()
+    public async Task<List<string>> GetDistinctActionsAsync(bool includePayroll = false)
     {
-        return await _db.AuditLogs.Select(a => a.Action).Distinct().OrderBy(a => a).ToListAsync();
+        return await _db.AuditLogs
+            .Where(a => includePayroll || (a.EntityName != "PayrollSlip" && a.EntityName != "PayrollPeriod" && a.EntityName != "EmployeeSalary"))
+            .Select(a => a.Action).Distinct().OrderBy(a => a).ToListAsync();
     }
 }

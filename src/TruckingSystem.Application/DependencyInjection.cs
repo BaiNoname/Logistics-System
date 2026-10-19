@@ -43,6 +43,7 @@ public static class DependencyInjection
         services.AddScoped<IWarehouseSlottingService, WarehouseSlottingService>();
         services.AddScoped<IPendingReceiptService, PendingReceiptService>();
         services.AddScoped<IEmployeeService, EmployeeService>();
+        services.AddScoped<Payroll.IPayrollService, Payroll.PayrollService>();
         services.AddScoped<ISystemManagementService, SystemManagementService>();
         services.AddScoped<IInvoiceService, InvoiceService>();
         services.AddScoped<IVehicleAllocationService, VehicleAllocationService>();

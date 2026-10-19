@@ -1,8 +1,8 @@
 ﻿namespace TruckingSystem.Application.Employees;
 
-public record EmployeeListItemDto(int Id, string Code, string FullName, string? Phone, DateTime? HireDate, int? DepartmentId, string? DepartmentName, int? PositionId, string? PositionName, string Status, bool IsDriver, string? IdentityCardNo = null, string? Address = null);
-public record CreateEmployeeRequest(string Code, string FullName, string? Phone, int? DepartmentId, int? PositionId, string? IdentityCardNo = null, string? Address = null);
-public record UpdateEmployeeRequest(string Code, string FullName, string? Phone, int? DepartmentId, int? PositionId, string Status, string? IdentityCardNo = null, string? Address = null);
+public record EmployeeListItemDto(int Id, string Code, string FullName, string? Phone, DateTime? HireDate, int? DepartmentId, string? DepartmentName, int? PositionId, string? PositionName, string Status, bool IsDriver, string? IdentityCardNo = null, string? Address = null, DateTime? TerminationDate = null);
+public record CreateEmployeeRequest(string Code, string FullName, string? Phone, int? DepartmentId, int? PositionId, string? IdentityCardNo = null, string? Address = null, DateTime? HireDate = null, DateTime? TerminationDate = null);
+public record UpdateEmployeeRequest(string Code, string FullName, string? Phone, int? DepartmentId, int? PositionId, string Status, string? IdentityCardNo = null, string? Address = null, DateTime? HireDate = null, DateTime? TerminationDate = null);
 public record LookupItemDto(int Id, string Name);
 
 /// <summary>Tạo hồ sơ tài xế (DriverProfile) cho 1 nhân viên đã có sẵn — quan

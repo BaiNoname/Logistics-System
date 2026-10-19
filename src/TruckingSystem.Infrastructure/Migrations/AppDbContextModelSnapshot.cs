@@ -510,6 +510,9 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.Property<int>("Status")
                         .HasColumnType("integer");
 
+                    b.Property<DateTime?>("TerminationDate")
+                        .HasColumnType("timestamp without time zone");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp without time zone");
 
@@ -522,7 +525,10 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     b.HasIndex("PositionId");
 
-                    b.ToTable("Employees");
+                    b.ToTable("Employees", t =>
+                        {
+                            t.HasCheckConstraint("CK_Employee_EmploymentDates", "\"TerminationDate\" IS NULL OR \"TerminationDate\" >= \"HireDate\"::date");
+                        });
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.EmployeeDocument", b =>
@@ -557,6 +563,49 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.HasIndex("EmployeeId");
 
                     b.ToTable("EmployeeDocuments");
+                });
+
+            modelBuilder.Entity("TruckingSystem.Domain.Entities.EmployeeSalary", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("EffectiveFrom")
+                        .HasColumnType("date");
+
+                    b.Property<int>("EmployeeId")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("MonthlySalary")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EmployeeId", "EffectiveFrom")
+                        .IsUnique();
+
+                    b.ToTable("EmployeeSalaries", t =>
+                        {
+                            t.HasCheckConstraint("CK_EmployeeSalary_Positive", "\"MonthlySalary\" > 0");
+                        });
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.FuelLog", b =>
@@ -941,6 +990,84 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.ToTable("Locations");
                 });
 
+            modelBuilder.Entity("TruckingSystem.Domain.Entities.MonthlyAttendance", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("ConfirmedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("ConfirmedBy")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("DriverWorkDates")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int>("EmployeeId")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("HolidayDays")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("HolidayOvertimeHours")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("Note")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<decimal>("PaidLeaveDays")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<int>("PayrollPeriodId")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("RestDayOvertimeHours")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("StandardDays")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("UnpaidLeaveDays")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<decimal>("WeekdayOvertimeHours")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime?>("WorkFrom")
+                        .HasColumnType("date");
+
+                    b.Property<DateTime?>("WorkTo")
+                        .HasColumnType("date");
+
+                    b.Property<decimal>("WorkedDays")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EmployeeId");
+
+                    b.HasIndex("PayrollPeriodId", "EmployeeId")
+                        .IsUnique();
+
+                    b.ToTable("MonthlyAttendances", t =>
+                        {
+                            t.HasCheckConstraint("CK_MonthlyAttendance_Days", "\"StandardDays\" > 0 AND \"StandardDays\" <= 31 AND \"WorkedDays\" >= 0 AND \"PaidLeaveDays\" >= 0 AND \"HolidayDays\" >= 0 AND \"UnpaidLeaveDays\" >= 0 AND \"WorkedDays\" + \"PaidLeaveDays\" + \"HolidayDays\" + \"UnpaidLeaveDays\" <= \"StandardDays\" AND \"WeekdayOvertimeHours\" >= 0 AND \"RestDayOvertimeHours\" >= 0 AND \"HolidayOvertimeHours\" >= 0");
+                        });
+                });
+
             modelBuilder.Entity("TruckingSystem.Domain.Entities.Notification", b =>
                 {
                     b.Property<int>("Id")
@@ -1007,6 +1134,220 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.HasIndex("InvoiceId");
 
                     b.ToTable("Payments");
+                });
+
+            modelBuilder.Entity("TruckingSystem.Domain.Entities.PayrollItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("CalculatedAmount")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsAdjustment")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("PayrollSlipId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("ProrateByAttendance")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PayrollSlipId");
+
+                    b.ToTable("PayrollItems", t =>
+                        {
+                            t.HasCheckConstraint("CK_PayrollItem_Amount", "\"Amount\" > 0 AND \"CalculatedAmount\" >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("TruckingSystem.Domain.Entities.PayrollPeriod", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("ApprovedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("ApprovedBy")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("Month")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Year", "Month")
+                        .IsUnique();
+
+                    b.ToTable("PayrollPeriods", t =>
+                        {
+                            t.HasCheckConstraint("CK_PayrollPeriod_Month", "\"Month\" BETWEEN 1 AND 12 AND \"Year\" BETWEEN 2000 AND 2100");
+                        });
+                });
+
+            modelBuilder.Entity("TruckingSystem.Domain.Entities.PayrollSlip", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal?>("ApprovedNetPay")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime>("AttendanceConfirmedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("AttendanceConfirmedBy")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("AttendanceNote")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<decimal>("Deductions")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("DepartmentName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("DriverWorkDates")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<decimal>("EarnedSalary")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("EmployeeCode")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("EmployeeId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("EmployeeName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<decimal>("GrossIncome")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("HolidayDays")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("HolidayOvertimeHours")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("MonthlySalary")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("NetPay")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("PaidAmount")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("PaidLeaveDays")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<int>("PayrollPeriodId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("PositionName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<decimal>("RestDayOvertimeHours")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime>("SalaryEffectiveFrom")
+                        .HasColumnType("date");
+
+                    b.Property<decimal>("StandardDays")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("UnpaidLeaveDays")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<decimal>("WeekdayOvertimeHours")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime?>("WorkFrom")
+                        .HasColumnType("date");
+
+                    b.Property<DateTime?>("WorkTo")
+                        .HasColumnType("date");
+
+                    b.Property<decimal>("WorkedDays")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EmployeeId");
+
+                    b.HasIndex("PayrollPeriodId", "EmployeeId")
+                        .IsUnique();
+
+                    b.ToTable("PayrollSlips", t =>
+                        {
+                            t.HasCheckConstraint("CK_PayrollSlip_Balance", "\"NetPay\" >= 0 AND \"PaidAmount\" >= 0 AND \"PaidAmount\" <= \"NetPay\"");
+                        });
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.Permission", b =>
@@ -1101,6 +1442,55 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.HasIndex("PermissionId");
 
                     b.ToTable("RolePermissions");
+                });
+
+            modelBuilder.Entity("TruckingSystem.Domain.Entities.SalaryPayment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("Method")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("PaidOn")
+                        .HasColumnType("date");
+
+                    b.Property<int>("PayrollSlipId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("RecordedBy")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Reference")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PayrollSlipId");
+
+                    b.HasIndex("Reference")
+                        .IsUnique();
+
+                    b.ToTable("SalaryPayments", t =>
+                        {
+                            t.HasCheckConstraint("CK_SalaryPayment_Positive", "\"Amount\" > 0");
+                        });
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.SalesOrder", b =>
@@ -2215,6 +2605,17 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.Navigation("Employee");
                 });
 
+            modelBuilder.Entity("TruckingSystem.Domain.Entities.EmployeeSalary", b =>
+                {
+                    b.HasOne("TruckingSystem.Domain.Entities.Employee", "Employee")
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Employee");
+                });
+
             modelBuilder.Entity("TruckingSystem.Domain.Entities.FuelLog", b =>
                 {
                     b.HasOne("TruckingSystem.Domain.Entities.Trip", "Trip")
@@ -2365,6 +2766,25 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.Navigation("Customer");
                 });
 
+            modelBuilder.Entity("TruckingSystem.Domain.Entities.MonthlyAttendance", b =>
+                {
+                    b.HasOne("TruckingSystem.Domain.Entities.Employee", "Employee")
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("TruckingSystem.Domain.Entities.PayrollPeriod", "PayrollPeriod")
+                        .WithMany()
+                        .HasForeignKey("PayrollPeriodId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Employee");
+
+                    b.Navigation("PayrollPeriod");
+                });
+
             modelBuilder.Entity("TruckingSystem.Domain.Entities.Payment", b =>
                 {
                     b.HasOne("TruckingSystem.Domain.Entities.Invoice", "Invoice")
@@ -2374,6 +2794,36 @@ namespace TruckingSystem.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Invoice");
+                });
+
+            modelBuilder.Entity("TruckingSystem.Domain.Entities.PayrollItem", b =>
+                {
+                    b.HasOne("TruckingSystem.Domain.Entities.PayrollSlip", "PayrollSlip")
+                        .WithMany("Items")
+                        .HasForeignKey("PayrollSlipId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("PayrollSlip");
+                });
+
+            modelBuilder.Entity("TruckingSystem.Domain.Entities.PayrollSlip", b =>
+                {
+                    b.HasOne("TruckingSystem.Domain.Entities.Employee", "Employee")
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("TruckingSystem.Domain.Entities.PayrollPeriod", "PayrollPeriod")
+                        .WithMany()
+                        .HasForeignKey("PayrollPeriodId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Employee");
+
+                    b.Navigation("PayrollPeriod");
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.RolePermission", b =>
@@ -2391,6 +2841,17 @@ namespace TruckingSystem.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Permission");
+                });
+
+            modelBuilder.Entity("TruckingSystem.Domain.Entities.SalaryPayment", b =>
+                {
+                    b.HasOne("TruckingSystem.Domain.Entities.PayrollSlip", "PayrollSlip")
+                        .WithMany("Payments")
+                        .HasForeignKey("PayrollSlipId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("PayrollSlip");
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.SalesOrder", b =>
@@ -2685,6 +3146,13 @@ namespace TruckingSystem.Infrastructure.Migrations
             modelBuilder.Entity("TruckingSystem.Domain.Entities.Invoice", b =>
                 {
                     b.Navigation("Lines");
+
+                    b.Navigation("Payments");
+                });
+
+            modelBuilder.Entity("TruckingSystem.Domain.Entities.PayrollSlip", b =>
+                {
+                    b.Navigation("Items");
 
                     b.Navigation("Payments");
                 });

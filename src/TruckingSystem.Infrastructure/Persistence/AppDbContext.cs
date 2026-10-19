@@ -21,6 +21,12 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
 
     // Nhóm A — Nhân viên & Phân quyền
     public DbSet<Employee> Employees => Set<Employee>();
+    public DbSet<EmployeeSalary> EmployeeSalaries => Set<EmployeeSalary>();
+    public DbSet<PayrollPeriod> PayrollPeriods => Set<PayrollPeriod>();
+    public DbSet<MonthlyAttendance> MonthlyAttendances => Set<MonthlyAttendance>();
+    public DbSet<PayrollSlip> PayrollSlips => Set<PayrollSlip>();
+    public DbSet<PayrollItem> PayrollItems => Set<PayrollItem>();
+    public DbSet<SalaryPayment> SalaryPayments => Set<SalaryPayment>();
     public DbSet<Department> Departments => Set<Department>();
     public DbSet<Position> Positions => Set<Position>();
     public DbSet<DriverProfile> DriverProfiles => Set<DriverProfile>();
@@ -200,6 +206,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
             .HasIndex(n => new { n.UserId, n.IsRead });
 
         ConfigureDataConstraints(builder);
+        PayrollConfiguration.Configure(builder);
 
         // ---- Kiểu decimal cho tiền tệ/số lượng — chỉ định precision rõ ràng cho PostgreSQL ----
         foreach (var property in builder.Model.GetEntityTypes()
