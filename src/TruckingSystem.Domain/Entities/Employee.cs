@@ -15,6 +15,7 @@ public class Employee : BaseEntity
     public string? IdentityCardNo { get; set; }
     public string? Address { get; set; }
     public DateTime HireDate { get; set; }
+    public DateTime? TerminationDate { get; set; }
     public EmployeeStatus Status { get; set; } = EmployeeStatus.Active;
 
     public int? DepartmentId { get; set; }

@@ -21,11 +21,11 @@ namespace TruckingSystem.Desktop.SERVICE_EmployeeManagement
         public Task<List<LookupItem>> GetPositionsAsync()
             => _conn.GetAsync<List<LookupItem>>("/api/employees/positions")!;
 
-        public Task<EmployeeActionResultItem> CreateEmployeeAsync(string code, string fullName, string? phone, int? departmentId, int? positionId)
-            => _conn.PostAsync<EmployeeActionResultItem>("/api/employees", new { code, fullName, phone, departmentId, positionId })!;
+        public Task<EmployeeActionResultItem> CreateEmployeeAsync(string code, string fullName, string? phone, int? departmentId, int? positionId, string? identityCardNo = null, string? address = null, DateTime? hireDate = null, DateTime? terminationDate = null)
+            => _conn.PostAsync<EmployeeActionResultItem>("/api/employees", new { code, fullName, phone, departmentId, positionId, identityCardNo, address, hireDate, terminationDate })!;
 
-        public Task<EmployeeActionResultItem> UpdateEmployeeAsync(int id, string code, string fullName, string? phone, int? departmentId, int? positionId, string status)
-            => _conn.PutAsync<EmployeeActionResultItem>($"/api/employees/{id}", new { code, fullName, phone, departmentId, positionId, status })!;
+        public Task<EmployeeActionResultItem> UpdateEmployeeAsync(int id, string code, string fullName, string? phone, int? departmentId, int? positionId, string status, string? identityCardNo = null, string? address = null, DateTime? hireDate = null, DateTime? terminationDate = null)
+            => _conn.PutAsync<EmployeeActionResultItem>($"/api/employees/{id}", new { code, fullName, phone, departmentId, positionId, status, identityCardNo, address, hireDate, terminationDate })!;
 
         /// <summary>Tạo hồ sơ tài xế cho 1 nhân viên đã có sẵn.</summary>
         public Task<EmployeeActionResultItem> CreateDriverProfileAsync(int employeeId, string licenseNumber, string licenseClass,

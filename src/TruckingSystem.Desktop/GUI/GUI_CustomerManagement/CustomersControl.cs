@@ -25,6 +25,11 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
         {
             _api = api;
             btnCreate.Visible = btnEdit.Visible = api.Connection.IsInRole("Admin", "Dispatcher");
+            _contactsControl.SetApi(api);
+            tabs.SelectedIndexChanged += async (_, _) =>
+            {
+                if (tabs.SelectedTab == contactsTab) await _contactsControl.LoadAsync();
+            };
         }
 
         private void BtnRefresh_Click(object? sender, EventArgs e) => _ = LoadAsync();

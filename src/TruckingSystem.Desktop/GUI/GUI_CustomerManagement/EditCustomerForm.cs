@@ -1,4 +1,5 @@
 ﻿using System.Data;
+using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using TruckingSystem.Desktop.Common;
 using TruckingSystem.Desktop.DTO_CustomerManagement;
@@ -49,6 +50,13 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
                 lblStatus.Text = "Vui lòng nhập tên khách hàng.";
                 return;
             }
+            if (!IsValidPhoneNumber(txtPhone.Text))
+            {
+                lblStatus.ForeColor = Theme.Danger;
+                lblStatus.Text = "Vui lòng nhập số điện thoại hợp lệ (ví dụ: +84 123456789).";
+                txtPhone.Focus();
+                return;
+            }
             if (_api is null || !btnSave.Enabled) return;
 
             btnSave.Enabled = false;
@@ -77,6 +85,16 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
             {
                 if (!IsDisposed) btnSave.Enabled = true;
             }
+        }
+        public static bool IsValidPhoneNumber(string? phone)
+        {
+            if (string.IsNullOrWhiteSpace(phone))
+                return false;
+
+            return Regex.IsMatch(
+                phone,
+                @"^(?:0[35789][0-9]{8}|\+[1-9][0-9]{0,2} [0-9]{4,14})$"
+            );
         }
     }
 }

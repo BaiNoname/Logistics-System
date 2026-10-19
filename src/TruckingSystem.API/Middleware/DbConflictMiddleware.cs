@@ -41,12 +41,22 @@ public class DbConflictMiddleware
                 PostgresErrorCodes.UniqueViolation => UniqueMessage(pg.ConstraintName),
                 PostgresErrorCodes.ForeignKeyViolation => "Không thể thực hiện — dữ liệu này đang được dữ liệu khác sử dụng (đơn hàng, chuyến, phiếu kho...).",
                 PostgresErrorCodes.CheckViolation => "Dữ liệu không hợp lệ (số lượng/tồn kho không được âm) — hãy tải lại và kiểm tra.",
+                PostgresErrorCodes.SerializationFailure or PostgresErrorCodes.DeadlockDetected => "Dữ liệu vừa thay đổi trong lúc xử lý — tải lại và thử lại thao tác.",
                 _ => null,
             };
             if (message is null) throw;
             await WriteAsync(context, message);
         }
+        catch (Exception ex) when (IsTransactionConflict(ex))
+        {
+            _logger.LogWarning(ex, "Concurrent transaction on {Path}", context.Request.Path);
+            await WriteAsync(context, "Dữ liệu vừa thay đổi trong lúc xử lý — tải lại và thử lại thao tác.");
+        }
     }
+
+    private static bool IsTransactionConflict(Exception ex)
+        => ex is PostgresException { SqlState: PostgresErrorCodes.SerializationFailure or PostgresErrorCodes.DeadlockDetected }
+           || (ex.InnerException is not null && IsTransactionConflict(ex.InnerException));
 
     private static string UniqueMessage(string? constraint)
     {
