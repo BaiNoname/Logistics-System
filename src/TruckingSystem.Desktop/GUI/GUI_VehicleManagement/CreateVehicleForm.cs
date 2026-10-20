@@ -50,24 +50,11 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
             };
         }
 
-        /// <summary>Đổ dropdown "Kho đóng quân" — để tuỳ chọn (có thể để trống,
-        /// nghĩa là xe CHƯA gán kho cố định, vẫn dùng được cho mọi đơn).</summary>
+        /// <summary>Đổ dropdown "Kho đóng quân" — tuỳ chọn (để trống = xe dùng được cho mọi kho).</summary>
         private async Task LoadWarehousesAsync()
         {
             if (_api is null) return;
-            try
-            {
-                var warehouses = await _api.Warehouses.GetWarehousesAsync();
-                var items = new List<object> { new { Id = (int?)null, Name = "(Không cố định — dùng được mọi kho)" } };
-                items.AddRange(warehouses.Select(w => new { Id = (int?)w.Id, w.Name }));
-                cboWarehouse.DataSource = items;
-                cboWarehouse.DisplayMember = "Name";
-                cboWarehouse.ValueMember = "Id";
-            }
-            catch (Exception ex)
-            {
-                lblStatus.Text = "Không tải được danh sách kho: " + ex.Message;
-            }
+            await WarehouseOptions.FillAsync(cboWarehouse, _api, null, lblStatus);
         }
 
         private async void BtnSave_Click(object? sender, EventArgs e)
@@ -103,7 +90,7 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
                     numCapacityQty.Value, numCapacityKg.Value, numCapacityM3.Value,
                     numFuelConsumption.Value == 0 ? null : numFuelConsumption.Value,
                     string.IsNullOrEmpty((string)cboFuelType.SelectedItem!) ? null : (string)cboFuelType.SelectedItem!,
-                    cboWarehouse.SelectedValue as int?);
+                    WarehouseOptions.Selected(cboWarehouse));
 
                 DialogResult = DialogResult.OK;
                 Close();

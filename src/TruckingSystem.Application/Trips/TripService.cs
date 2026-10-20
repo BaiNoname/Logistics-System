@@ -25,8 +25,9 @@ namespace TruckingSystem.Application.Trips;
 ///   - Chặng Pickup hoàn tất -> hàng về tới kho, chuyển sang "Chờ nhập kho";
 ///     Vận hành nhập kho riêng trên Desktop (thủ công / Best-Fit) — xem
 ///     PendingReceiptService. Chặng Giao chỉ chạy khi hàng đã nhập kho đủ.
-///   - Chặng Delivery bắt đầu chạy -> tự động IssueGoodsAsync (tạo GoodsIssue
-///     + trừ dần StorageAssignment theo FIFO + trừ WarehouseStock)
+///   - Chặng Delivery: Vận hành XÁC NHẬN XUẤT KHO theo chuyến (màn Kho → 📤 Xuất kho theo
+///     chuyến — TripIssueService: soạn hàng, bốc lên xe, trừ tồn theo FIFO); chỉ khi đã xuất
+///     ĐỦ thì chặng Giao mới bắt đầu được (Desktop hay app tài xế).
 ///   - Chặng Return (MỚI — chuyến trả hàng về đối tác khi đơn bị hủy sau khi
 ///     đã nhập kho) hoàn tất -> tự động IssueGoodsAsync (xuất kho thật, trả
 ///     hàng), trả xe rảnh lại — xem TransportOrderService.CancelAsync là nơi
@@ -165,30 +166,11 @@ public class TripService : ITripService
         if (assigned.VehicleId != trip.VehicleId || assigned.DriverEmployeeId != trip.DriverEmployeeId)
             return new TripActionResult(false, "Chuyến vừa được đổi xe / tài xế — hãy tải lại và thử lại.");
 
-        // Chặng Delivery bắt đầu chạy = hàng THẬT SỰ rời khỏi kho — xuất kho
-        // ngay tại đây (không đợi tới lúc giao xong, vì giao xong đã sang xe khác chở đi rồi).
-        if (trip.LegType == TripLegType.Delivery && trip.WarehouseId.HasValue)
-        {
-            foreach (var line in trip.TripLines)
-            {
-                // Chỉ xuất PHẦN CÒN THIẾU của chuyến này: nếu trước đó đã có phiếu
-                // xuất gắn đúng chuyến này (VD lần bắt đầu trước bị gián đoạn, dữ
-                // liệu từ phiên bản cũ) thì không xuất lại lần 2 — tránh báo "không
-                // đủ tồn kho" dù hàng thật ra đã được xuất cho chính chuyến này.
-                var alreadyIssued = await _db.GoodsIssues
-                    .Where(g => g.TripId == trip.Id && g.CargoLineId == line.CargoLineId)
-                    .SumAsync(g => (decimal?)g.QtyIssued) ?? 0m;
-                var qtyToIssue = line.QtyPlanned - alreadyIssued;
-                if (qtyToIssue <= 0) continue;
-
-                var issueResult = await _warehouseService.IssueGoodsAsync(
-                    trip.WarehouseId.Value, trip.TransportOrderId, line.CargoLineId,
-                    qtyToIssue, trip.DriverEmployeeId, trip.Id);
-
-                if (!issueResult.Success)
-                    return new TripActionResult(false, "Không thể bắt đầu chuyến — " + issueResult.Message);
-            }
-        }
+        // Chặng Delivery: hàng đã được KHO XÁC NHẬN XUẤT trước đó (TripIssueService) — không tự xuất
+        // nữa (xuất kho là việc của nhân viên kho). Kiểm tra LẠI sau khi đã giành dòng chuyến: đúng lúc
+        // đó kho vừa bấm "Hoàn tác xuất" (cũng khóa dòng chuyến) thì dừng, không chạy khi xe rỗng.
+        if (trip.LegType == TripLegType.Delivery && await NotIssuedTextAsync(trip.Id) is { } notIssued)
+            return new TripActionResult(false, $"Kho chưa xác nhận xuất đủ hàng cho chuyến #{trip.Id} ({notIssued}) — chưa thể bắt đầu.");
 
         trip.Status = TripStatus.InProgress;
         trip.StartTime = DateTime.UtcNow;
@@ -278,13 +260,13 @@ public class TripService : ITripService
                     await _notificationService.CreateBroadcastAsync(
                         $"📦 Chuyến #{trip.Id} đã về kho — chờ nhập kho",
                         $"Hàng của chuyến lấy #{trip.Id} (đơn {trip.TransportOrder.Code}) đã về kho, còn chờ nhập {waiting.Sum(w => w.QtyPending):0.##}. " +
-                        "Vào màn Kho → 📦 Nhập hàng từ chuyến để nhập (thủ công hoặc Best-Fit); nhập xong chặng Giao mới bắt đầu được.");
+                        "Vào màn Kho → 📦 Nhập hàng từ chuyến để nhập (thủ công hoặc Best-Fit); nhập xong thì xuất kho ở 📤 Xuất kho theo chuyến, chặng Giao mới bắt đầu được.");
             }
             catch { /* thông báo không phải dữ liệu chính — chuyến đã hoàn tất xong */ }
         }
         return new TripActionResult(true, trip.LegType == TripLegType.Pickup
             ? $"Chuyến lấy hàng #{trip.Id} đã hoàn tất — hàng đã về kho, đang CHỜ NHẬP KHO. " +
-              "Vào màn Kho → 📦 Nhập hàng từ chuyến để nhập (thủ công hoặc Best-Fit); nhập xong chặng Giao mới bắt đầu được."
+              "Vào màn Kho → 📦 Nhập hàng từ chuyến để nhập (thủ công hoặc Best-Fit); nhập xong thì xuất kho ở 📤 Xuất kho theo chuyến, chặng Giao mới bắt đầu được."
             : null);
     }
 
@@ -537,7 +519,7 @@ WHERE ""Id"" = {tripId}");
         // GPS ĐẦU TIÊN của chuyến còn "Đã lên kế hoạch" = tài xế bắt đầu chạy.
         // Trước đây chỉ đổi trạng thái sang Đang chạy -> chặng Giao có thể chạy
         // khi chặng Lấy hàng chưa xong, và BỎ QUA bước xuất kho (tồn kho sai).
-        // Giờ đi qua ĐÚNG quy trình StartAsync: kiểm tra điều kiện + xuất kho.
+        // Giờ đi qua ĐÚNG quy trình StartAsync: kiểm tra điều kiện (chặng Giao: kho phải đã xuất đủ).
         if (trip.Status == TripStatus.Planned)
         {
             var start = await StartAsync(tripId);
@@ -694,7 +676,7 @@ WHERE ""Id"" = {tripId}");
         {
             var list = string.Join(", ", pendingPickups.Select(p => $"#{p.Id} ({PickupStatusText(p.Status)})"));
             return $"Chưa thể bắt đầu chuyến giao hàng — đơn còn chuyến lấy hàng chưa hoàn tất: {list}. " +
-                   "Hàng phải được lấy về (Vận hành duyệt) và nhập kho xong mới được xuất kho đi giao.";
+                   "Hàng phải được lấy về (Vận hành duyệt), nhập kho và kho xác nhận xuất xong mới được đi giao.";
         }
 
         // Chỉ chặn khi tồn kho THẬT SỰ chưa đủ cho chính chuyến giao này — trước đây chặn cả đơn,
@@ -702,7 +684,14 @@ WHERE ""Id"" = {tripId}");
         // tính theo dòng hàng, không theo xe): chuyến giao nào xuất phát trước dùng hàng đã nhập
         // trước; chuyến còn lại chờ phần hàng còn chờ nhập — tổng hàng giao đi vẫn đúng.
         var stockReason = await GetStockBlockReasonAsync(trip);
-        if (stockReason is null) return null;
+        if (stockReason is null)
+        {
+            // Đủ hàng trong kho nhưng KHO CHƯA XÁC NHẬN XUẤT cho chuyến này (soạn hàng + bốc lên xe).
+            var notIssued = await NotIssuedTextAsync(trip.Id);
+            return notIssued is null ? null
+                : $"Kho chưa xác nhận XUẤT KHO cho chuyến giao #{trip.Id} ({notIssued}). Vận hành vào màn Kho → 📤 Xuất kho theo chuyến, " +
+                  "soạn hàng lên xe rồi bấm Xác nhận xuất — xong mới bắt đầu chuyến được.";
+        }
 
         // Thiếu hàng vì xe lấy hàng đã về kho nhưng hàng CHƯA lên kệ (nhập kho là bước riêng của
         // Vận hành) -> báo rõ thay vì câu chung "kho không đủ hàng".
@@ -712,6 +701,20 @@ WHERE ""Id"" = {tripId}");
             return "Chưa thể bắt đầu chuyến giao hàng — hàng của chuyến lấy " + PendingReceiptRules.Describe(waitingReceipt) +
                    " đã về kho nhưng CHƯA NHẬP KHO. Vận hành nhập kho trước (màn Kho → 📦 Nhập hàng từ chuyến: thủ công hoặc Best-Fit) rồi mới xuất kho đi giao.";
         return stockReason;
+    }
+
+    /// <summary>Các dòng hàng của chuyến giao CHƯA được kho xuất đủ ("Hàng A: còn 5; Hàng B: còn 2"), null = đã xuất đủ.</summary>
+    private async Task<string?> NotIssuedTextAsync(int tripId)
+    {
+        var lines = await _db.TripLines.Where(l => l.TripId == tripId)
+            .Select(l => new { l.CargoLineId, l.QtyPlanned, l.CargoLine.CargoType }).ToListAsync();
+        var issued = await _db.GoodsIssues.Where(g => g.TripId == tripId && g.ReversedAt == null)
+            .GroupBy(g => g.CargoLineId).Select(g => new { CargoLineId = g.Key, Qty = g.Sum(x => x.QtyIssued) })
+            .ToDictionaryAsync(x => x.CargoLineId, x => x.Qty);
+        var missing = lines
+            .Select(l => (l.CargoType, Need: l.QtyPlanned - (issued.TryGetValue(l.CargoLineId, out var q) ? q : 0)))
+            .Where(x => x.Need > 0).ToList();
+        return missing.Count == 0 ? null : string.Join("; ", missing.Select(m => $"\"{m.CargoType}\" còn {m.Need:0.##}"));
     }
 
     /// <summary>Chặng Giao: kho phải còn ĐỦ hàng để xuất cho chuyến — kiểm tra NGAY ở
@@ -729,7 +732,7 @@ WHERE ""Id"" = {tripId}");
         foreach (var line in lines)
         {
             var issued = await _db.GoodsIssues
-                .Where(g => g.TripId == trip.Id && g.CargoLineId == line.CargoLineId)
+                .Where(g => g.TripId == trip.Id && g.CargoLineId == line.CargoLineId && g.ReversedAt == null)
                 .SumAsync(g => (decimal?)g.QtyIssued) ?? 0m;
             var need = line.QtyPlanned - issued;
             if (need <= 0) continue;
@@ -1515,6 +1518,16 @@ WHERE ""Id"" = {tripId}");
                         && t.VehicleId == trip.VehicleId && t.DriverEmployeeId == trip.DriverEmployeeId)
             .OrderBy(t => t.Id)
             .ToListAsync();
+
+        // Kho đã xuất hàng LÊN XE CŨ cho chặng giao -> đổi xe thì hàng vẫn nằm trên xe cũ. Hoàn tác xuất
+        // (dỡ hàng về kệ) trước, đổi xe xong kho xuất lại lên xe mới.
+        var affectedIds = affected.Select(t => t.Id).ToList();
+        var loaded = await _db.GoodsIssues
+            .Where(g => g.TripId != null && affectedIds.Contains(g.TripId.Value) && g.ReversedAt == null)
+            .Select(g => g.TripId!.Value).Distinct().ToListAsync();
+        if (loaded.Count > 0)
+            return (null, $"Kho đã xuất hàng lên xe hiện tại cho chuyến #{string.Join(", #", loaded)} — vào màn Kho → 📤 Xuất kho theo chuyến, " +
+                          "bấm Hoàn tác xuất (dỡ hàng về kệ) rồi mới đổi xe / tài xế; đổi xong kho xuất lại lên xe mới.");
 
         decimal needQty = 0, needKg = 0, needM3 = 0;
         foreach (var t in affected)

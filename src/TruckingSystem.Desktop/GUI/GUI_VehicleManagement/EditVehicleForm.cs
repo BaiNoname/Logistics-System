@@ -75,26 +75,11 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
             cboStatus.SelectedItem = match ?? cboStatus.Items[0];
         }
 
-        /// <summary>Đổ dropdown "Kho đóng quân" — để tuỳ chọn (có thể để trống,
-        /// nghĩa là xe CHƯA gán kho cố định, vẫn dùng được cho mọi đơn).</summary>
+        /// <summary>Đổ dropdown "Kho đóng quân" và chọn sẵn kho hiện tại của xe.</summary>
         private async Task LoadWarehousesAsync()
         {
             if (_api is null) return;
-            try
-            {
-                var warehouses = await _api.Warehouses.GetWarehousesAsync();
-                var items = new List<object> { new { Id = (int?)null, Name = "(Không cố định — dùng được mọi kho)" } };
-                items.AddRange(warehouses.Select(w => new { Id = (int?)w.Id, w.Name }));
-                cboWarehouse.DataSource = items;
-                cboWarehouse.DisplayMember = "Name";
-                cboWarehouse.ValueMember = "Id";
-                cboWarehouse.SelectedValue = _currentWarehouseId;
-                _warehousesLoaded = true;
-            }
-            catch (Exception ex)
-            {
-                lblStatus.Text = "Không tải được danh sách kho: " + ex.Message;
-            }
+            _warehousesLoaded = await WarehouseOptions.FillAsync(cboWarehouse, _api, _currentWarehouseId, lblStatus);
         }
 
         private async void BtnSave_Click(object? sender, EventArgs e)
@@ -131,7 +116,7 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
                     (cboStatus.SelectedItem as ComboOption)?.Value ?? _currentStatus,
                     numFuelConsumption.Value == 0 ? null : numFuelConsumption.Value,
                     string.IsNullOrEmpty((string)(cboFuelType.SelectedItem ?? "")) ? null : (string)cboFuelType.SelectedItem!,
-                    _warehousesLoaded ? cboWarehouse.SelectedValue as int? : _currentWarehouseId);
+                    _warehousesLoaded ? WarehouseOptions.Selected(cboWarehouse) : _currentWarehouseId);
 
                 if (!result.Success)
                 {

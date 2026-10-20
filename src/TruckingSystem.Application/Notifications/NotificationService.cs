@@ -270,6 +270,20 @@ public class NotificationService : INotificationService
             .GroupBy(s => s.DriverEmployeeId)
             .ToDictionary(g => g.Key, g => g.Select(x => x.ShiftDate.Date).ToHashSet());
 
+        // Chặng Giao tới ngày chạy mà KHO CHƯA XUẤT hàng lên xe (hàng đã nhập kho đủ, chặng Lấy đã xong).
+        var deliveryIds = trips.Where(t => t.LegType == TripLegType.Delivery).Select(t => t.Id).ToList();
+        var plannedByTrip = (await _db.TripLines.Where(l => deliveryIds.Contains(l.TripId))
+                .GroupBy(l => l.TripId).Select(g => new { g.Key, Qty = g.Sum(x => x.QtyPlanned) }).ToListAsync())
+            .ToDictionary(x => x.Key, x => x.Qty);
+        var issuedByTrip = (await _db.GoodsIssues.Where(g => g.TripId != null && deliveryIds.Contains(g.TripId.Value) && g.ReversedAt == null)
+                .GroupBy(g => g.TripId!.Value).Select(g => new { g.Key, Qty = g.Sum(x => x.QtyIssued) }).ToListAsync())
+            .ToDictionary(x => x.Key, x => x.Qty);
+        var orderOfTrip = await _db.Trips.Where(t => deliveryIds.Contains(t.Id)).ToDictionaryAsync(t => t.Id, t => t.TransportOrderId);
+        var ordersWithOpenPickup = (await _db.Trips
+                .Where(t => orderOfTrip.Values.Contains(t.TransportOrderId) && t.LegType == TripLegType.Pickup
+                            && t.Status != TripStatus.Cancelled && t.Status != TripStatus.Completed)
+                .Select(t => t.TransportOrderId).Distinct().ToListAsync()).ToHashSet();
+
         var result = new List<(string Title, string Message)>();
         foreach (var t in trips)
         {
@@ -305,6 +319,10 @@ public class NotificationService : INotificationService
                         reason = $"Tài xế {d.FullName} chưa đăng ký ngày làm {string.Join(", ", missing.Select(x => x.ToString("dd/MM")))}";
                 }
             }
+            if (reason is null && t.LegType == TripLegType.Delivery && from == today
+                && !ordersWithOpenPickup.Contains(orderOfTrip[t.Id])
+                && (issuedByTrip.TryGetValue(t.Id, out var iq) ? iq : 0) < (plannedByTrip.TryGetValue(t.Id, out var pq) ? pq : 0))
+                reason = "Kho chưa xác nhận xuất hàng lên xe (màn Kho → 📤 Xuất kho theo chuyến; hàng chưa nhập kho thì nhập ở 📦 Nhập hàng từ chuyến trước)";
             if (reason is null) continue;
 
             var leg = t.LegType switch { TripLegType.Pickup => "Lấy hàng", TripLegType.Return => "Trả hàng", _ => "Giao hàng" };

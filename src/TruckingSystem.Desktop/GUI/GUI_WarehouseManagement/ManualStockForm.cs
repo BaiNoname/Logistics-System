@@ -82,14 +82,15 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
         private void ApplyMode()
         {
             var receive = _mode == ManualStockMode.Receive;
-            Text = receive ? "Nhận hàng khách mang tới kho" : "Xuất hàng tồn & lịch sử nhập/xuất";
+            Text = receive ? "Nhận hàng khách mang tới kho" : "Tồn kho theo đơn & lịch sử nhập/xuất";
             lblTitle.Text = receive
                 ? "🙋 Nhận hàng khách tự mang tới kho"
-                : "📤 Hàng trong kho theo đơn & lịch sử nhập/xuất (xuất tay: đơn Hoàn tất / Đã hủy)";
+                : "📋 Tồn kho theo đơn & lịch sử nhập/xuất";
             btnReceive.Visible = receive;
             lblBinsTitle.Visible = gridBins.Visible = receive;
-            btnIssue.Visible = !receive;
-            btnReverse.Visible = !receive; // hoàn tác chỉ dành cho phiếu XUẤT tay
+            btnIssue.Visible = false; // màn Nhận: không xuất; màn Tồn kho: chỉ hiện khi có hàng xuất tay được (UpdateFlowSummary)
+            if (!receive) lblQty.Visible = numQty.Visible = false;
+            btnReverse.Visible = false; // chỉ hiện khi chọn 1 phiếu xuất tay hoàn tác được (UpdateReverseButton)
             if (!receive)
             {
                 // Hàng bảng chọn vị trí (Percent) -> 0, nhường chỗ cho lịch sử.
@@ -103,7 +104,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             ? o.PickupMethod == "SelfDelivery" && (o.Status is "Confirmed" or "InProgress")
             // Đơn Hoàn tất / Đã hủy còn hàng -> xuất tay. Đơn ĐANG vận chuyển có hàng trong kho (VD
             // chặng Lấy hàng đã nhập kho, chặng Giao chưa chạy) cũng HIỆN để biết hàng đang nằm đâu,
-            // chờ chuyến nào — nút Xuất tự mờ, kèm lý do (hàng tự xuất khi chặng Giao bắt đầu).
+            // chờ chuyến nào — nút Xuất ẩn, kèm lý do (hàng xuất theo chuyến ở màn 📤 Xuất kho theo chuyến).
             // Trước đây ẩn hẳn -> nhập kho xong mở màn này không thấy đơn đâu, tưởng mất hàng.
             : o.QtyOnHand > 0 && o.Status is ("Done" or "Cancelled" or "Confirmed" or "InProgress");
 
@@ -235,6 +236,12 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
 
             btnReceive.Enabled = !_busy && canReceive > 0;
             btnIssue.Enabled = !_busy && f.QtyFreeForManualIssue > 0;
+            // Màn xem tồn kho: hàng rời kho THEO CHUYẾN (📤 Xuất kho theo chuyến cho chặng Giao, chuyến Trả
+            // hàng, trả khách khi hủy đơn) nên gần như không bao giờ phải xuất tay. Ô số lượng + nút Xuất CHỈ HIỆN khi
+            // dòng hàng đang chọn thật sự có hàng xuất tay được (hàng còn sót của đơn Hoàn tất / Đã hủy)
+            // — trước đây nút luôn hiện nhưng mờ, người dùng không hiểu để làm gì.
+            if (_mode == ManualStockMode.Issue)
+                lblQty.Visible = numQty.Visible = btnIssue.Visible = f.QtyFreeForManualIssue > 0;
             // Hàng đếm theo đơn vị NGUYÊN (số lượng khai là số nguyên) -> ô nhập không cho số lẻ
             // (server cũng từ chối 2,5 máy); hàng số lượng lẻ cho 2 chữ số thập phân.
             var wholeUnits = f.QtyTotal == Math.Floor(f.QtyTotal);
@@ -338,7 +345,10 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
         private void UpdateReverseButton()
         {
             var h = SelectedHistory();
-            btnReverse.Enabled = !_busy && h is not null && h.Type == "Xuất" && h.CanReverse;
+            var canReverse = h is not null && h.Type == "Xuất" && h.CanReverse;
+            btnReverse.Enabled = !_busy && canReverse;
+            // Chỉ hiện khi đang chọn đúng 1 phiếu xuất tay hoàn tác được (hiếm) — không để nút mờ thường trực.
+            btnReverse.Visible = _mode == ManualStockMode.Issue && canReverse;
         }
 
         // ================= Tô màu =================
@@ -427,7 +437,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                 (isReceive
                     ? $"Còn được nhập tối đa {referenceQty:0.##}."
                     : $"Có thể xuất tay tối đa {referenceQty:0.##} (đã trừ {(f?.QtyReserved ?? 0):0.##} đang giữ cho chuyến giao/trả).\n" +
-                      "Lưu ý: hàng của chuyến giao sẽ TỰ xuất kho khi chuyến bắt đầu — KHÔNG cần xuất tay.");
+                      "Lưu ý: hàng của chuyến giao xuất ở màn 📤 Xuất kho theo chuyến — KHÔNG xuất tay ở đây.");
             if (numQty.Value < referenceQty)
                 confirmText += $"\n\n⚠️ Số lượng nhỏ hơn mức tối đa — sau thao tác vẫn còn {referenceQty - numQty.Value:0.##}.";
 

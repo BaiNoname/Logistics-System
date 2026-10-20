@@ -28,12 +28,12 @@ public class TransportOrderListItem
     public decimal QtyOnHand { get; set; }
 
     /// <summary>Chữ hiện ở ô chọn đơn của màn Xuất hàng tồn: nói rõ đơn nào xuất tay được, đơn
-    /// nào đang chờ chặng Giao tự xuất.</summary>
+    /// nào đang chờ xuất theo chuyến giao.</summary>
     public string StockDisplayText => Status switch
     {
         "Done" => $"{Code} — {CustomerName} · Hoàn tất, còn {QtyOnHand:0.##} trong kho",
         "Cancelled" => $"{Code} — {CustomerName} · Đã hủy, còn {QtyOnHand:0.##} trong kho",
-        _ => $"{Code} — {CustomerName} · đang vận chuyển, {QtyOnHand:0.##} đang giữ chờ chặng Giao (tự xuất)",
+        _ => $"{Code} — {CustomerName} · đang vận chuyển, {QtyOnHand:0.##} đang giữ chờ xuất theo chuyến giao",
     };
 }
 
