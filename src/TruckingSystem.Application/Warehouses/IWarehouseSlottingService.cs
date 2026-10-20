@@ -1,4 +1,4 @@
-namespace TruckingSystem.Application.Warehouses;
+﻿namespace TruckingSystem.Application.Warehouses;
 
 /// <summary>
 /// Use case tối ưu vị trí lưu trữ trong kho — cài đặt thuật toán Best-Fit.
@@ -76,6 +76,8 @@ public interface IWarehouseSlottingService
 
     /// <summary>Hoàn tác 1 phiếu xuất THỦ CÔNG làm nhầm — trả hàng lại vào kho, giữ phiếu để lưu vết.</summary>
     Task<WarehouseActionResult> ReverseManualIssueAsync(int issueId, string? userName);
+    /// <summary>Hoàn tác MỌI phiếu xuất (chưa hoàn tác) của 1 chuyến giao chưa chạy — dỡ hàng về kệ.</summary>
+    Task<WarehouseActionResult> ReverseTripIssuesAsync(int tripId, string? userName);
 
     /// <summary>Toàn cảnh hàng của 1 đơn trong 1 kho: đã nhập/xuất/còn/đang giữ + tiến độ từng chuyến.</summary>
     Task<OrderStockFlowDto?> GetOrderStockFlowAsync(int transportOrderId, int warehouseId);
