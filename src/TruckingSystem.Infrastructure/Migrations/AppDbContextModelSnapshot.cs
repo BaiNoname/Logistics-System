@@ -488,12 +488,18 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp without time zone");
 
+                    b.Property<DateTime?>("DateOfBirth")
+                        .HasColumnType("date");
+
                     b.Property<int?>("DepartmentId")
                         .HasColumnType("integer");
 
                     b.Property<string>("FullName")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<int?>("Gender")
+                        .HasColumnType("integer");
 
                     b.Property<DateTime>("HireDate")
                         .HasColumnType("timestamp without time zone");

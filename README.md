@@ -427,8 +427,19 @@ Khách tra cứu đơn qua link công khai; lịch chuyến đồng bộ Google 
   },
   "Jwt": { "Issuer": "TruckingSystemApi", "Audience": "TruckingSystemClients", "Key": "CHUOI_BI_MAT_TOI_THIEU_32_KY_TU" },
   "VietMap": { "RouteApiKey": "KEY_ROUTING", "MapApiKey": "KEY_TILE" },
+  "Gemini": {
+    "ApiKey": "YOUR_GEMINI_API_KEY",
+    "Model": "gemini-3.5-flash-lite",
+    "ApiUrl": "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
+  }
 }
 ```
+
+Quét danh thiếp dùng Gemini, được copy từ AI_Vision. Đặt khóa trên **máy chạy API** trong `Gemini:ApiKey` hoặc biến môi trường `GEMINI_API_KEY` / `Gemini__ApiKey`; không đặt khóa trong Desktop. Có thể dùng `GEMINI_MODEL` và `GEMINI_API_URL` để ghi đè model/URL. URL phải đầy đủ `/chat/completions`, không chỉ là base URL. API không đọc file `.env` của AI_Vision và không dùng khóa NVIDIA thay cho Gemini. Khởi động lại API sau khi thay cấu hình.
+
+Trong **Khách hàng → Thêm → Quét danh thiếp**, chọn ảnh JPG/PNG tối đa 10 MB. Màn hình hiển thị ảnh và các trường đọc được kể cả khi AI trả về JSON bị cắt hoặc danh sách Markdown. Kiểm tra cảnh báo và sửa thông tin trước khi lưu. Họ tên liên hệ, công ty, chức danh, email, website ở cột đối chiếu chỉ phục vụ tham khảo; nút lưu tiếp tục lưu các trường khách hàng hiện có ở cột bên trái. Kết quả quét không tự tạo khách hàng hoặc người liên hệ.
+
+Endpoint `/api/customers/read-business-card` giữ nguyên phương thức POST, file `image`, phân quyền và năm trường kết quả cũ; bổ sung `fullName`, `company`, `title`, `email`, `website`, `rawResponse`, `errorMessage`. Phản hồi đọc được một phần trả 200 kèm cảnh báo; phản hồi lỗi không có trường đọc được trả 502. API vẫn trả `rawResponse` để giữ tương thích, nhưng Desktop không hiển thị dữ liệu gốc. Ảnh sai định dạng trả 400, dịch vụ quá thời gian chờ trả 504. Kiểm thử bằng `dotnet test tests/TruckingSystem.UnitTests --filter FullyQualifiedName~CustomerBusinessCardReaderTests`; kiểm tra giao diện bằng `dotnet run --project tests/TruckingSystem.CustomerFormChecks`.
 
 ### 9.3. Tạo / cập nhật database
 Trong Visual Studio → **Package Manager Console**, chọn *Default project* = `TruckingSystem.Infrastructure`, *Startup project* = `TruckingSystem.API`:

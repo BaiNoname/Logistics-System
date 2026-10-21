@@ -483,9 +483,9 @@ partial class PayrollInputForm
         // 
         _salaryPage.AutoScroll = true;
         _salaryPage.Controls.Add(_salaryPageLayout);
-        _salaryPage.Location = new Point(4, 92);
+        _salaryPage.Location = new Point(4, 26);
         _salaryPage.Name = "_salaryPage";
-        _salaryPage.Size = new Size(192, 4);
+        _salaryPage.Size = new Size(712, 497);
         _salaryPage.TabIndex = 1;
         _salaryPage.Text = "Mức lương";
         _salaryPage.UseVisualStyleBackColor = true;
@@ -505,7 +505,7 @@ partial class PayrollInputForm
         _salaryPageLayout.RowCount = 2;
         _salaryPageLayout.RowStyles.Add(new RowStyle());
         _salaryPageLayout.RowStyles.Add(new RowStyle());
-        _salaryPageLayout.Size = new Size(175, 1261);
+        _salaryPageLayout.Size = new Size(712, 463);
         _salaryPageLayout.TabIndex = 0;
         // 
         // SalaryHistory
@@ -523,7 +523,7 @@ partial class PayrollInputForm
         SalaryHistory.ReadOnly = true;
         SalaryHistory.RowHeadersVisible = false;
         SalaryHistory.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-        SalaryHistory.Size = new Size(143, 180);
+        SalaryHistory.Size = new Size(680, 180);
         SalaryHistory.TabIndex = 1;
         // 
         // SalaryEditor
@@ -550,7 +550,7 @@ partial class PayrollInputForm
         SalaryEditor.RowStyles.Add(new RowStyle());
         SalaryEditor.RowStyles.Add(new RowStyle());
         SalaryEditor.RowStyles.Add(new RowStyle());
-        SalaryEditor.Size = new Size(143, 1025);
+        SalaryEditor.Size = new Size(680, 227);
         SalaryEditor.TabIndex = 3;
         // 
         // SalaryDateLabel
@@ -561,7 +561,7 @@ partial class PayrollInputForm
         SalaryDateLabel.Margin = new Padding(4, 8, 4, 8);
         SalaryDateLabel.MaximumSize = new Size(660, 0);
         SalaryDateLabel.Name = "SalaryDateLabel";
-        SalaryDateLabel.Size = new Size(43, 76);
+        SalaryDateLabel.Size = new Size(274, 25);
         SalaryDateLabel.TabIndex = 0;
         SalaryDateLabel.Text = "Áp dụng từ ngày";
         SalaryDateLabel.TextAlign = ContentAlignment.MiddleLeft;
@@ -572,21 +572,21 @@ partial class PayrollInputForm
         SalaryDate.CustomFormat = "dd/MM/yyyy";
         SalaryDate.Dock = DockStyle.Top;
         SalaryDate.Format = DateTimePickerFormat.Custom;
-        SalaryDate.Location = new Point(67, 20);
+        SalaryDate.Location = new Point(298, 20);
         SalaryDate.Margin = new Padding(4, 8, 4, 8);
         SalaryDate.Name = "SalaryDate";
-        SalaryDate.Size = new Size(60, 25);
+        SalaryDate.Size = new Size(366, 25);
         SalaryDate.TabIndex = 1;
         // 
         // SalaryAmountLabel
         // 
         SalaryAmountLabel.AutoSize = true;
         SalaryAmountLabel.Dock = DockStyle.Fill;
-        SalaryAmountLabel.Location = new Point(16, 112);
+        SalaryAmountLabel.Location = new Point(16, 61);
         SalaryAmountLabel.Margin = new Padding(4, 8, 4, 8);
         SalaryAmountLabel.MaximumSize = new Size(660, 0);
         SalaryAmountLabel.Name = "SalaryAmountLabel";
-        SalaryAmountLabel.Size = new Size(43, 114);
+        SalaryAmountLabel.Size = new Size(274, 25);
         SalaryAmountLabel.TabIndex = 2;
         SalaryAmountLabel.Text = "Lương tháng (đồng)";
         SalaryAmountLabel.TextAlign = ContentAlignment.MiddleLeft;
@@ -595,11 +595,11 @@ partial class PayrollInputForm
         // 
         SalaryAmount.AccessibleName = "Lương tháng (đồng)";
         SalaryAmount.Dock = DockStyle.Top;
-        SalaryAmount.Location = new Point(67, 112);
+        SalaryAmount.Location = new Point(298, 61);
         SalaryAmount.Margin = new Padding(4, 8, 4, 8);
         SalaryAmount.Maximum = new decimal(new int[] { -727379968, 232, 0, 0 });
         SalaryAmount.Name = "SalaryAmount";
-        SalaryAmount.Size = new Size(60, 25);
+        SalaryAmount.Size = new Size(366, 25);
         SalaryAmount.TabIndex = 3;
         SalaryAmount.ThousandsSeparator = true;
         // 
@@ -607,11 +607,11 @@ partial class PayrollInputForm
         // 
         SalaryReasonLabel.AutoSize = true;
         SalaryReasonLabel.Dock = DockStyle.Fill;
-        SalaryReasonLabel.Location = new Point(16, 242);
+        SalaryReasonLabel.Location = new Point(16, 102);
         SalaryReasonLabel.Margin = new Padding(4, 8, 4, 8);
         SalaryReasonLabel.MaximumSize = new Size(660, 0);
         SalaryReasonLabel.Name = "SalaryReasonLabel";
-        SalaryReasonLabel.Size = new Size(43, 76);
+        SalaryReasonLabel.Size = new Size(274, 70);
         SalaryReasonLabel.TabIndex = 4;
         SalaryReasonLabel.Text = "Căn cứ thay đổi *";
         SalaryReasonLabel.TextAlign = ContentAlignment.MiddleLeft;
@@ -620,13 +620,13 @@ partial class PayrollInputForm
         // 
         SalaryReason.AccessibleName = "Căn cứ thay đổi *";
         SalaryReason.Dock = DockStyle.Top;
-        SalaryReason.Location = new Point(67, 242);
+        SalaryReason.Location = new Point(298, 102);
         SalaryReason.Margin = new Padding(4, 8, 4, 8);
         SalaryReason.MaxLength = 500;
         SalaryReason.Multiline = true;
         SalaryReason.Name = "SalaryReason";
         SalaryReason.ScrollBars = ScrollBars.Vertical;
-        SalaryReason.Size = new Size(60, 70);
+        SalaryReason.Size = new Size(366, 70);
         SalaryReason.TabIndex = 5;
         // 
         // SalaryHint
@@ -634,11 +634,11 @@ partial class PayrollInputForm
         SalaryHint.AutoSize = true;
         SalaryEditor.SetColumnSpan(SalaryHint, 2);
         SalaryHint.Dock = DockStyle.Top;
-        SalaryHint.Location = new Point(16, 334);
+        SalaryHint.Location = new Point(16, 188);
         SalaryHint.Margin = new Padding(4, 8, 4, 8);
         SalaryHint.MaximumSize = new Size(660, 0);
         SalaryHint.Name = "SalaryHint";
-        SalaryHint.Size = new Size(111, 95);
+        SalaryHint.Size = new Size(648, 19);
         SalaryHint.TabIndex = 7;
         SalaryHint.Text = "Mức lương từ ngày 26 đầu kỳ; mức đầu tiên có thể từ ngày vào làm.";
         // 
@@ -646,9 +646,9 @@ partial class PayrollInputForm
         // 
         _driverPage.AutoScroll = true;
         _driverPage.Controls.Add(_driverPageLayout);
-        _driverPage.Location = new Point(4, 92);
+        _driverPage.Location = new Point(4, 26);
         _driverPage.Name = "_driverPage";
-        _driverPage.Size = new Size(192, 4);
+        _driverPage.Size = new Size(712, 497);
         _driverPage.TabIndex = 2;
         _driverPage.Text = "Công tài xế";
         _driverPage.UseVisualStyleBackColor = true;
@@ -673,7 +673,7 @@ partial class PayrollInputForm
         _driverPageLayout.RowStyles.Add(new RowStyle());
         _driverPageLayout.RowStyles.Add(new RowStyle());
         _driverPageLayout.RowStyles.Add(new RowStyle());
-        _driverPageLayout.Size = new Size(175, 534);
+        _driverPageLayout.Size = new Size(712, 350);
         _driverPageLayout.TabIndex = 0;
         // 
         // DriverPeriod
@@ -685,7 +685,7 @@ partial class PayrollInputForm
         DriverPeriod.Margin = new Padding(4, 8, 4, 8);
         DriverPeriod.MaximumSize = new Size(660, 0);
         DriverPeriod.Name = "DriverPeriod";
-        DriverPeriod.Size = new Size(143, 114);
+        DriverPeriod.Size = new Size(660, 38);
         DriverPeriod.TabIndex = 1;
         DriverPeriod.Text = "Kỳ công: ngày 26 tháng trước đến ngày 25 tháng này.\nMỗi ngày đăng ký riêng biệt = 1 công. Chốt ngày 25.";
         // 
@@ -693,11 +693,11 @@ partial class PayrollInputForm
         // 
         DriverStandardDaysLabel.AutoSize = true;
         DriverStandardDaysLabel.Dock = DockStyle.Fill;
-        DriverStandardDaysLabel.Location = new Point(16, 150);
+        DriverStandardDaysLabel.Location = new Point(16, 74);
         DriverStandardDaysLabel.Margin = new Padding(4, 8, 4, 8);
         DriverStandardDaysLabel.MaximumSize = new Size(660, 0);
         DriverStandardDaysLabel.Name = "DriverStandardDaysLabel";
-        DriverStandardDaysLabel.Size = new Size(56, 57);
+        DriverStandardDaysLabel.Size = new Size(287, 25);
         DriverStandardDaysLabel.TabIndex = 2;
         DriverStandardDaysLabel.Text = "Công chuẩn kỳ *";
         DriverStandardDaysLabel.TextAlign = ContentAlignment.MiddleLeft;
@@ -707,11 +707,11 @@ partial class PayrollInputForm
         DriverStandardDays.AccessibleName = "Công chuẩn kỳ *";
         DriverStandardDays.DecimalPlaces = 2;
         DriverStandardDays.Dock = DockStyle.Top;
-        DriverStandardDays.Location = new Point(80, 150);
+        DriverStandardDays.Location = new Point(311, 74);
         DriverStandardDays.Margin = new Padding(4, 8, 4, 8);
         DriverStandardDays.Maximum = new decimal(new int[] { 31, 0, 0, 0 });
         DriverStandardDays.Name = "DriverStandardDays";
-        DriverStandardDays.Size = new Size(79, 25);
+        DriverStandardDays.Size = new Size(385, 25);
         DriverStandardDays.TabIndex = 3;
         DriverStandardDays.ThousandsSeparator = true;
         // 
@@ -720,13 +720,13 @@ partial class PayrollInputForm
         DriverDates.AccessibleName = "Ngày đăng ký làm việc trong kỳ";
         _driverPageLayout.SetColumnSpan(DriverDates, 2);
         DriverDates.Dock = DockStyle.Top;
-        DriverDates.Location = new Point(16, 223);
+        DriverDates.Location = new Point(16, 115);
         DriverDates.Margin = new Padding(4, 8, 4, 8);
         DriverDates.Multiline = true;
         DriverDates.Name = "DriverDates";
         DriverDates.ReadOnly = true;
         DriverDates.ScrollBars = ScrollBars.Vertical;
-        DriverDates.Size = new Size(143, 180);
+        DriverDates.Size = new Size(680, 180);
         DriverDates.TabIndex = 5;
         // 
         // DriverHint
@@ -734,11 +734,11 @@ partial class PayrollInputForm
         DriverHint.AutoSize = true;
         _driverPageLayout.SetColumnSpan(DriverHint, 2);
         DriverHint.Dock = DockStyle.Top;
-        DriverHint.Location = new Point(16, 419);
+        DriverHint.Location = new Point(16, 311);
         DriverHint.Margin = new Padding(4, 8, 4, 8);
         DriverHint.MaximumSize = new Size(660, 0);
         DriverHint.Name = "DriverHint";
-        DriverHint.Size = new Size(143, 95);
+        DriverHint.Size = new Size(660, 19);
         DriverHint.TabIndex = 7;
         DriverHint.Text = "Lưu sẽ lấy lại lịch mới nhất và bỏ xác nhận công cũ. Kiểm tra, xác nhận công rồi lập phiếu.";
         // 
@@ -746,9 +746,9 @@ partial class PayrollInputForm
         // 
         _itemPage.AutoScroll = true;
         _itemPage.Controls.Add(_itemPageLayout);
-        _itemPage.Location = new Point(4, 92);
+        _itemPage.Location = new Point(4, 26);
         _itemPage.Name = "_itemPage";
-        _itemPage.Size = new Size(192, 4);
+        _itemPage.Size = new Size(712, 497);
         _itemPage.TabIndex = 3;
         _itemPage.Text = "Cộng / trừ";
         _itemPage.UseVisualStyleBackColor = true;
@@ -778,7 +778,7 @@ partial class PayrollInputForm
         _itemPageLayout.RowStyles.Add(new RowStyle());
         _itemPageLayout.RowStyles.Add(new RowStyle());
         _itemPageLayout.RowStyles.Add(new RowStyle());
-        _itemPageLayout.Size = new Size(175, 440);
+        _itemPageLayout.Size = new Size(712, 266);
         _itemPageLayout.TabIndex = 0;
         // 
         // ItemKindLabel
@@ -789,7 +789,7 @@ partial class PayrollInputForm
         ItemKindLabel.Margin = new Padding(4, 8, 4, 8);
         ItemKindLabel.MaximumSize = new Size(660, 0);
         ItemKindLabel.Name = "ItemKindLabel";
-        ItemKindLabel.Size = new Size(56, 38);
+        ItemKindLabel.Size = new Size(287, 25);
         ItemKindLabel.TabIndex = 0;
         ItemKindLabel.Text = "Loại khoản";
         ItemKindLabel.TextAlign = ContentAlignment.MiddleLeft;
@@ -799,21 +799,21 @@ partial class PayrollInputForm
         ItemKind.AccessibleName = "Loại khoản";
         ItemKind.Dock = DockStyle.Top;
         ItemKind.DropDownStyle = ComboBoxStyle.DropDownList;
-        ItemKind.Location = new Point(80, 20);
+        ItemKind.Location = new Point(311, 20);
         ItemKind.Margin = new Padding(4, 8, 4, 8);
         ItemKind.Name = "ItemKind";
-        ItemKind.Size = new Size(79, 25);
+        ItemKind.Size = new Size(385, 25);
         ItemKind.TabIndex = 1;
         // 
         // ItemAmountLabel
         // 
         ItemAmountLabel.AutoSize = true;
         ItemAmountLabel.Dock = DockStyle.Fill;
-        ItemAmountLabel.Location = new Point(16, 74);
+        ItemAmountLabel.Location = new Point(16, 61);
         ItemAmountLabel.Margin = new Padding(4, 8, 4, 8);
         ItemAmountLabel.MaximumSize = new Size(660, 0);
         ItemAmountLabel.Name = "ItemAmountLabel";
-        ItemAmountLabel.Size = new Size(56, 57);
+        ItemAmountLabel.Size = new Size(287, 25);
         ItemAmountLabel.TabIndex = 2;
         ItemAmountLabel.Text = "Số tiền (đồng) *";
         ItemAmountLabel.TextAlign = ContentAlignment.MiddleLeft;
@@ -822,11 +822,11 @@ partial class PayrollInputForm
         // 
         ItemAmount.AccessibleName = "Số tiền (đồng) *";
         ItemAmount.Dock = DockStyle.Top;
-        ItemAmount.Location = new Point(80, 74);
+        ItemAmount.Location = new Point(311, 61);
         ItemAmount.Margin = new Padding(4, 8, 4, 8);
         ItemAmount.Maximum = new decimal(new int[] { -727379968, 232, 0, 0 });
         ItemAmount.Name = "ItemAmount";
-        ItemAmount.Size = new Size(79, 25);
+        ItemAmount.Size = new Size(385, 25);
         ItemAmount.TabIndex = 3;
         ItemAmount.ThousandsSeparator = true;
         // 
@@ -834,11 +834,11 @@ partial class PayrollInputForm
         // 
         ItemProrateLabel.AutoSize = true;
         ItemProrateLabel.Dock = DockStyle.Fill;
-        ItemProrateLabel.Location = new Point(16, 147);
+        ItemProrateLabel.Location = new Point(16, 102);
         ItemProrateLabel.Margin = new Padding(4, 8, 4, 8);
         ItemProrateLabel.MaximumSize = new Size(660, 0);
         ItemProrateLabel.Name = "ItemProrateLabel";
-        ItemProrateLabel.Size = new Size(56, 76);
+        ItemProrateLabel.Size = new Size(287, 23);
         ItemProrateLabel.TabIndex = 4;
         ItemProrateLabel.Text = "Phụ cấp theo công";
         ItemProrateLabel.TextAlign = ContentAlignment.MiddleLeft;
@@ -848,10 +848,10 @@ partial class PayrollInputForm
         ItemProrate.AccessibleName = "Phụ cấp theo công";
         ItemProrate.AutoSize = true;
         ItemProrate.Dock = DockStyle.Top;
-        ItemProrate.Location = new Point(80, 147);
+        ItemProrate.Location = new Point(311, 102);
         ItemProrate.Margin = new Padding(4, 8, 4, 8);
         ItemProrate.Name = "ItemProrate";
-        ItemProrate.Size = new Size(79, 23);
+        ItemProrate.Size = new Size(385, 23);
         ItemProrate.TabIndex = 5;
         ItemProrate.Text = "Nhân công hưởng / công chuẩn";
         // 
@@ -859,11 +859,11 @@ partial class PayrollInputForm
         // 
         ItemReasonLabel.AutoSize = true;
         ItemReasonLabel.Dock = DockStyle.Fill;
-        ItemReasonLabel.Location = new Point(16, 239);
+        ItemReasonLabel.Location = new Point(16, 141);
         ItemReasonLabel.Margin = new Padding(4, 8, 4, 8);
         ItemReasonLabel.MaximumSize = new Size(660, 0);
         ItemReasonLabel.Name = "ItemReasonLabel";
-        ItemReasonLabel.Size = new Size(56, 70);
+        ItemReasonLabel.Size = new Size(287, 70);
         ItemReasonLabel.TabIndex = 6;
         ItemReasonLabel.Text = "Căn cứ / lý do *";
         ItemReasonLabel.TextAlign = ContentAlignment.MiddleLeft;
@@ -872,13 +872,13 @@ partial class PayrollInputForm
         // 
         ItemReason.AccessibleName = "Căn cứ / lý do *";
         ItemReason.Dock = DockStyle.Top;
-        ItemReason.Location = new Point(80, 239);
+        ItemReason.Location = new Point(311, 141);
         ItemReason.Margin = new Padding(4, 8, 4, 8);
         ItemReason.MaxLength = 500;
         ItemReason.Multiline = true;
         ItemReason.Name = "ItemReason";
         ItemReason.ScrollBars = ScrollBars.Vertical;
-        ItemReason.Size = new Size(79, 70);
+        ItemReason.Size = new Size(385, 70);
         ItemReason.TabIndex = 7;
         // 
         // ItemHint
@@ -886,11 +886,11 @@ partial class PayrollInputForm
         ItemHint.AutoSize = true;
         _itemPageLayout.SetColumnSpan(ItemHint, 2);
         ItemHint.Dock = DockStyle.Top;
-        ItemHint.Location = new Point(16, 325);
+        ItemHint.Location = new Point(16, 227);
         ItemHint.Margin = new Padding(4, 8, 4, 8);
         ItemHint.MaximumSize = new Size(660, 0);
         ItemHint.Name = "ItemHint";
-        ItemHint.Size = new Size(143, 95);
+        ItemHint.Size = new Size(660, 19);
         ItemHint.TabIndex = 9;
         ItemHint.Text = "Tiền tăng ca, thuế/bảo hiểm do kế toán xác định. Không nhập khoản ứng/trả vào khấu trừ.";
         // 
@@ -898,9 +898,9 @@ partial class PayrollInputForm
         // 
         _deletePage.AutoScroll = true;
         _deletePage.Controls.Add(_deletePageLayout);
-        _deletePage.Location = new Point(4, 92);
+        _deletePage.Location = new Point(4, 26);
         _deletePage.Name = "_deletePage";
-        _deletePage.Size = new Size(192, 4);
+        _deletePage.Size = new Size(712, 497);
         _deletePage.TabIndex = 4;
         _deletePage.Text = "Xóa khoản";
         _deletePage.UseVisualStyleBackColor = true;
@@ -919,7 +919,7 @@ partial class PayrollInputForm
         _deletePageLayout.Padding = new Padding(12);
         _deletePageLayout.RowCount = 1;
         _deletePageLayout.RowStyles.Add(new RowStyle());
-        _deletePageLayout.Size = new Size(175, 78);
+        _deletePageLayout.Size = new Size(712, 65);
         _deletePageLayout.TabIndex = 0;
         // 
         // ItemToDeleteLabel
@@ -930,7 +930,7 @@ partial class PayrollInputForm
         ItemToDeleteLabel.Margin = new Padding(4, 8, 4, 8);
         ItemToDeleteLabel.MaximumSize = new Size(660, 0);
         ItemToDeleteLabel.Name = "ItemToDeleteLabel";
-        ItemToDeleteLabel.Size = new Size(56, 38);
+        ItemToDeleteLabel.Size = new Size(287, 25);
         ItemToDeleteLabel.TabIndex = 0;
         ItemToDeleteLabel.Text = "Khoản cần xóa";
         ItemToDeleteLabel.TextAlign = ContentAlignment.MiddleLeft;
@@ -940,19 +940,19 @@ partial class PayrollInputForm
         ItemToDelete.AccessibleName = "Khoản cần xóa";
         ItemToDelete.Dock = DockStyle.Top;
         ItemToDelete.DropDownStyle = ComboBoxStyle.DropDownList;
-        ItemToDelete.Location = new Point(80, 20);
+        ItemToDelete.Location = new Point(311, 20);
         ItemToDelete.Margin = new Padding(4, 8, 4, 8);
         ItemToDelete.Name = "ItemToDelete";
-        ItemToDelete.Size = new Size(79, 25);
+        ItemToDelete.Size = new Size(385, 25);
         ItemToDelete.TabIndex = 1;
         // 
         // _paymentPage
         // 
         _paymentPage.AutoScroll = true;
         _paymentPage.Controls.Add(_paymentPageLayout);
-        _paymentPage.Location = new Point(4, 92);
+        _paymentPage.Location = new Point(4, 26);
         _paymentPage.Name = "_paymentPage";
-        _paymentPage.Size = new Size(192, 4);
+        _paymentPage.Size = new Size(712, 497);
         _paymentPage.TabIndex = 5;
         _paymentPage.Text = "Chi trả";
         _paymentPage.UseVisualStyleBackColor = true;
@@ -984,7 +984,7 @@ partial class PayrollInputForm
         _paymentPageLayout.RowStyles.Add(new RowStyle());
         _paymentPageLayout.RowStyles.Add(new RowStyle());
         _paymentPageLayout.RowStyles.Add(new RowStyle());
-        _paymentPageLayout.Size = new Size(175, 481);
+        _paymentPageLayout.Size = new Size(712, 277);
         _paymentPageLayout.TabIndex = 0;
         // 
         // PaymentBalance
@@ -996,7 +996,7 @@ partial class PayrollInputForm
         PaymentBalance.Margin = new Padding(4, 8, 4, 8);
         PaymentBalance.MaximumSize = new Size(660, 0);
         PaymentBalance.Name = "PaymentBalance";
-        PaymentBalance.Size = new Size(143, 19);
+        PaymentBalance.Size = new Size(660, 19);
         PaymentBalance.TabIndex = 1;
         PaymentBalance.Text = "Còn phải trả: … đ";
         // 
@@ -1008,7 +1008,7 @@ partial class PayrollInputForm
         PaymentAmountLabel.Margin = new Padding(4, 8, 4, 8);
         PaymentAmountLabel.MaximumSize = new Size(660, 0);
         PaymentAmountLabel.Name = "PaymentAmountLabel";
-        PaymentAmountLabel.Size = new Size(56, 38);
+        PaymentAmountLabel.Size = new Size(287, 25);
         PaymentAmountLabel.TabIndex = 2;
         PaymentAmountLabel.Text = "Số tiền đã chi *";
         PaymentAmountLabel.TextAlign = ContentAlignment.MiddleLeft;
@@ -1017,11 +1017,11 @@ partial class PayrollInputForm
         // 
         PaymentAmount.AccessibleName = "Số tiền đã chi *";
         PaymentAmount.Dock = DockStyle.Top;
-        PaymentAmount.Location = new Point(80, 55);
+        PaymentAmount.Location = new Point(311, 55);
         PaymentAmount.Margin = new Padding(4, 8, 4, 8);
         PaymentAmount.Maximum = new decimal(new int[] { -727379968, 232, 0, 0 });
         PaymentAmount.Name = "PaymentAmount";
-        PaymentAmount.Size = new Size(79, 25);
+        PaymentAmount.Size = new Size(385, 25);
         PaymentAmount.TabIndex = 3;
         PaymentAmount.ThousandsSeparator = true;
         // 
@@ -1029,11 +1029,11 @@ partial class PayrollInputForm
         // 
         PaymentDateLabel.AutoSize = true;
         PaymentDateLabel.Dock = DockStyle.Fill;
-        PaymentDateLabel.Location = new Point(16, 109);
+        PaymentDateLabel.Location = new Point(16, 96);
         PaymentDateLabel.Margin = new Padding(4, 8, 4, 8);
         PaymentDateLabel.MaximumSize = new Size(660, 0);
         PaymentDateLabel.Name = "PaymentDateLabel";
-        PaymentDateLabel.Size = new Size(56, 57);
+        PaymentDateLabel.Size = new Size(287, 25);
         PaymentDateLabel.TabIndex = 4;
         PaymentDateLabel.Text = "Ngày chi thực tế";
         PaymentDateLabel.TextAlign = ContentAlignment.MiddleLeft;
@@ -1044,21 +1044,21 @@ partial class PayrollInputForm
         PaymentDate.CustomFormat = "dd/MM/yyyy";
         PaymentDate.Dock = DockStyle.Top;
         PaymentDate.Format = DateTimePickerFormat.Custom;
-        PaymentDate.Location = new Point(80, 109);
+        PaymentDate.Location = new Point(311, 96);
         PaymentDate.Margin = new Padding(4, 8, 4, 8);
         PaymentDate.Name = "PaymentDate";
-        PaymentDate.Size = new Size(79, 25);
+        PaymentDate.Size = new Size(385, 25);
         PaymentDate.TabIndex = 5;
         // 
         // PaymentMethodLabel
         // 
         PaymentMethodLabel.AutoSize = true;
         PaymentMethodLabel.Dock = DockStyle.Fill;
-        PaymentMethodLabel.Location = new Point(16, 182);
+        PaymentMethodLabel.Location = new Point(16, 137);
         PaymentMethodLabel.Margin = new Padding(4, 8, 4, 8);
         PaymentMethodLabel.MaximumSize = new Size(660, 0);
         PaymentMethodLabel.Name = "PaymentMethodLabel";
-        PaymentMethodLabel.Size = new Size(56, 38);
+        PaymentMethodLabel.Size = new Size(287, 25);
         PaymentMethodLabel.TabIndex = 6;
         PaymentMethodLabel.Text = "Hình thức";
         PaymentMethodLabel.TextAlign = ContentAlignment.MiddleLeft;
@@ -1068,21 +1068,21 @@ partial class PayrollInputForm
         PaymentMethod.AccessibleName = "Hình thức";
         PaymentMethod.Dock = DockStyle.Top;
         PaymentMethod.DropDownStyle = ComboBoxStyle.DropDownList;
-        PaymentMethod.Location = new Point(80, 182);
+        PaymentMethod.Location = new Point(311, 137);
         PaymentMethod.Margin = new Padding(4, 8, 4, 8);
         PaymentMethod.Name = "PaymentMethod";
-        PaymentMethod.Size = new Size(79, 25);
+        PaymentMethod.Size = new Size(385, 25);
         PaymentMethod.TabIndex = 7;
         // 
         // PaymentReferenceLabel
         // 
         PaymentReferenceLabel.AutoSize = true;
         PaymentReferenceLabel.Dock = DockStyle.Fill;
-        PaymentReferenceLabel.Location = new Point(16, 236);
+        PaymentReferenceLabel.Location = new Point(16, 178);
         PaymentReferenceLabel.Margin = new Padding(4, 8, 4, 8);
         PaymentReferenceLabel.MaximumSize = new Size(660, 0);
         PaymentReferenceLabel.Name = "PaymentReferenceLabel";
-        PaymentReferenceLabel.Size = new Size(56, 95);
+        PaymentReferenceLabel.Size = new Size(287, 25);
         PaymentReferenceLabel.TabIndex = 8;
         PaymentReferenceLabel.Text = "Mã chứng từ / giao dịch *";
         PaymentReferenceLabel.TextAlign = ContentAlignment.MiddleLeft;
@@ -1091,11 +1091,11 @@ partial class PayrollInputForm
         // 
         PaymentReference.AccessibleName = "Mã chứng từ / giao dịch *";
         PaymentReference.Dock = DockStyle.Top;
-        PaymentReference.Location = new Point(80, 236);
+        PaymentReference.Location = new Point(311, 178);
         PaymentReference.Margin = new Padding(4, 8, 4, 8);
         PaymentReference.MaxLength = 100;
         PaymentReference.Name = "PaymentReference";
-        PaymentReference.Size = new Size(79, 25);
+        PaymentReference.Size = new Size(385, 25);
         PaymentReference.TabIndex = 9;
         // 
         // PaymentHint
@@ -1103,11 +1103,11 @@ partial class PayrollInputForm
         PaymentHint.AutoSize = true;
         _paymentPageLayout.SetColumnSpan(PaymentHint, 2);
         PaymentHint.Dock = DockStyle.Top;
-        PaymentHint.Location = new Point(16, 347);
+        PaymentHint.Location = new Point(16, 219);
         PaymentHint.Margin = new Padding(4, 8, 4, 8);
         PaymentHint.MaximumSize = new Size(660, 0);
         PaymentHint.Name = "PaymentHint";
-        PaymentHint.Size = new Size(143, 114);
+        PaymentHint.Size = new Size(660, 38);
         PaymentHint.TabIndex = 11;
         PaymentHint.Text = "Mỗi mã chứng từ chỉ được ghi một lần. Chỉ ghi khoản đã chi thực tế, kể cả tạm ứng phân bổ vào phiếu này.";
         // 
@@ -1115,9 +1115,9 @@ partial class PayrollInputForm
         // 
         _detailsPage.AutoScroll = true;
         _detailsPage.Controls.Add(_detailsPageLayout);
-        _detailsPage.Location = new Point(4, 92);
+        _detailsPage.Location = new Point(4, 26);
         _detailsPage.Name = "_detailsPage";
-        _detailsPage.Size = new Size(192, 4);
+        _detailsPage.Size = new Size(712, 497);
         _detailsPage.TabIndex = 6;
         _detailsPage.Text = "Chi tiết phiếu";
         _detailsPage.UseVisualStyleBackColor = true;
@@ -1143,7 +1143,7 @@ partial class PayrollInputForm
         _detailsPageLayout.RowStyles.Add(new RowStyle());
         _detailsPageLayout.RowStyles.Add(new RowStyle());
         _detailsPageLayout.RowStyles.Add(new RowStyle());
-        _detailsPageLayout.Size = new Size(175, 737);
+        _detailsPageLayout.Size = new Size(695, 718);
         _detailsPageLayout.TabIndex = 0;
         // 
         // DetailPeriod
@@ -1155,7 +1155,7 @@ partial class PayrollInputForm
         DetailPeriod.Margin = new Padding(4, 8, 4, 8);
         DetailPeriod.MaximumSize = new Size(660, 0);
         DetailPeriod.Name = "DetailPeriod";
-        DetailPeriod.Size = new Size(143, 38);
+        DetailPeriod.Size = new Size(660, 19);
         DetailPeriod.TabIndex = 1;
         DetailPeriod.Text = "Khoảng công đã dùng tính lương";
         // 
@@ -1163,13 +1163,13 @@ partial class PayrollInputForm
         // 
         _detailsPageLayout.SetColumnSpan(DetailSummary, 2);
         DetailSummary.Dock = DockStyle.Top;
-        DetailSummary.Location = new Point(16, 74);
+        DetailSummary.Location = new Point(16, 55);
         DetailSummary.Margin = new Padding(4, 8, 4, 8);
         DetailSummary.Multiline = true;
         DetailSummary.Name = "DetailSummary";
         DetailSummary.ReadOnly = true;
         DetailSummary.ScrollBars = ScrollBars.Vertical;
-        DetailSummary.Size = new Size(143, 150);
+        DetailSummary.Size = new Size(663, 150);
         DetailSummary.TabIndex = 3;
         // 
         // DetailItems
@@ -1180,14 +1180,14 @@ partial class PayrollInputForm
         DetailItems.BackgroundColor = Color.White;
         _detailsPageLayout.SetColumnSpan(DetailItems, 2);
         DetailItems.Dock = DockStyle.Top;
-        DetailItems.Location = new Point(16, 240);
+        DetailItems.Location = new Point(16, 221);
         DetailItems.Margin = new Padding(4, 8, 4, 8);
         DetailItems.MultiSelect = false;
         DetailItems.Name = "DetailItems";
         DetailItems.ReadOnly = true;
         DetailItems.RowHeadersVisible = false;
         DetailItems.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-        DetailItems.Size = new Size(143, 180);
+        DetailItems.Size = new Size(663, 180);
         DetailItems.TabIndex = 5;
         // 
         // DetailPayments
@@ -1198,14 +1198,14 @@ partial class PayrollInputForm
         DetailPayments.BackgroundColor = Color.White;
         _detailsPageLayout.SetColumnSpan(DetailPayments, 2);
         DetailPayments.Dock = DockStyle.Top;
-        DetailPayments.Location = new Point(16, 436);
+        DetailPayments.Location = new Point(16, 417);
         DetailPayments.Margin = new Padding(4, 8, 4, 8);
         DetailPayments.MultiSelect = false;
         DetailPayments.Name = "DetailPayments";
         DetailPayments.ReadOnly = true;
         DetailPayments.RowHeadersVisible = false;
         DetailPayments.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-        DetailPayments.Size = new Size(143, 180);
+        DetailPayments.Size = new Size(663, 180);
         DetailPayments.TabIndex = 7;
         // 
         // DetailDriverDates
@@ -1213,13 +1213,13 @@ partial class PayrollInputForm
         DetailDriverDates.AccessibleName = "Ngày công tài xế đã lưu";
         _detailsPageLayout.SetColumnSpan(DetailDriverDates, 2);
         DetailDriverDates.Dock = DockStyle.Top;
-        DetailDriverDates.Location = new Point(16, 632);
+        DetailDriverDates.Location = new Point(16, 613);
         DetailDriverDates.Margin = new Padding(4, 8, 4, 8);
         DetailDriverDates.Multiline = true;
         DetailDriverDates.Name = "DetailDriverDates";
         DetailDriverDates.ReadOnly = true;
         DetailDriverDates.ScrollBars = ScrollBars.Vertical;
-        DetailDriverDates.Size = new Size(143, 85);
+        DetailDriverDates.Size = new Size(663, 85);
         DetailDriverDates.TabIndex = 9;
         // 
         // _footer

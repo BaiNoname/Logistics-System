@@ -103,6 +103,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
         });
 
         // ---- Employee 1-1 DriverProfile ----
+        builder.Entity<Employee>().Property(e => e.DateOfBirth).HasColumnType("date");
         builder.Entity<Employee>()
             .HasOne(e => e.DriverProfile)
             .WithOne(d => d.Employee)
