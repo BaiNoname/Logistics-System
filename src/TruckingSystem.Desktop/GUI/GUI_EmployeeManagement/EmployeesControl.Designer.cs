@@ -65,7 +65,7 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             btnCreate.Name = "btnCreate";
             btnCreate.Size = new Size(143, 35);
             btnCreate.TabIndex = 2;
-            btnCreate.Text = "➕ Thêm nhân viên";
+            btnCreate.Text = "➕ Thêm mới";
             btnCreate.UseVisualStyleBackColor = false;
             btnCreate.Click += BtnCreate_Click;
             // 
@@ -91,7 +91,7 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             lblStatus.AutoSize = true;
             lblStatus.Font = new Font("Segoe UI", 9F);
             lblStatus.ForeColor = Color.FromArgb(100, 116, 139);
-            lblStatus.Location = new Point(0, 29);
+            lblStatus.Location = new Point(2, 40);
             lblStatus.Margin = new Padding(2, 0, 2, 0);
             lblStatus.Name = "lblStatus";
             lblStatus.Size = new Size(0, 15);

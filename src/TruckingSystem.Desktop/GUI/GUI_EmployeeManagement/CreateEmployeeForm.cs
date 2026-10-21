@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using TruckingSystem.Desktop.Common;
 using TruckingSystem.Desktop.DTO_EmployeeManagement;
 
@@ -18,6 +19,8 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
         public CreateEmployeeForm()
         {
             InitializeComponent();
+            dtpHireDate.Value = DateTime.UtcNow.AddHours(7).Date;
+            dtpTerminationDate.Checked = false;
             cboEmployeeStatus.DataSource = new[]
             {
                 new StatusOption("Active", "Đang làm"),
@@ -42,7 +45,12 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             txtCode.Text = employee.Code;
             txtFullName.Text = employee.FullName;
             txtPhone.Text = employee.Phone ?? "";
+            txtIdentityCardNo.Text = employee.IdentityCardNo ?? "";
+            txtAddress.Text = employee.Address ?? "";
             cboEmployeeStatus.SelectedValue = employee.Status;
+            dtpHireDate.Value = employee.HireDate < dtpHireDate.MinDate ? dtpHireDate.MinDate : employee.HireDate;
+            dtpTerminationDate.Value = employee.TerminationDate ?? DateTime.UtcNow.AddHours(7).Date;
+            dtpTerminationDate.Checked = employee.TerminationDate.HasValue;
             Text = "Sửa thông tin nhân viên";
             btnSave.Text = "Lưu thay đổi";
         }
@@ -78,8 +86,28 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
                 lblStatus.Text = "Vui lòng nhập đủ mã nhân viên và họ tên.";
                 return;
             }
+            if (!IsValidPhoneNumber(txtPhone.Text))
+            {
+                lblStatus.Text = $"Số điện thoại không hợp lệ.";
+                return;
+            }
+            if (cboDept.SelectedIndex == 0 || cboPos.SelectedIndex == 0)
+            {
+                lblStatus.Text = "Vui lòng chọn ít nhất 1 phòng ban hoặc chức danh.";
+                return;
+            }
             if (_api is null) return;
 
+            if (dtpTerminationDate.Checked && dtpTerminationDate.Value.Date < dtpHireDate.Value.Date)
+            {
+                lblStatus.Text = "Ngày nghỉ việc không được trước ngày vào làm.";
+                return;
+            }
+            if ((string?)cboEmployeeStatus.SelectedValue == "Terminated" && !dtpTerminationDate.Checked)
+            {
+                lblStatus.Text = "Vui lòng nhập ngày nghỉ việc thực tế.";
+                return;
+            }
             btnSave.Enabled = false;
             try
             {
@@ -87,8 +115,8 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
                 int? posId = cboPos.SelectedValue is int selectedPosId && selectedPosId > 0 ? selectedPosId : null;
                 var status = (string)cboEmployeeStatus.SelectedValue!;
                 var result = _employeeId.HasValue
-                    ? await _api.Employees.UpdateEmployeeAsync(_employeeId.Value, txtCode.Text.Trim(), txtFullName.Text.Trim(), txtPhone.Text.Trim(), deptId, posId, status)
-                    : await _api.Employees.CreateEmployeeAsync(txtCode.Text.Trim(), txtFullName.Text.Trim(), txtPhone.Text.Trim(), deptId, posId);
+                    ? await _api.Employees.UpdateEmployeeAsync(_employeeId.Value, txtCode.Text.Trim(), txtFullName.Text.Trim(), txtPhone.Text.Trim(), deptId, posId, status, txtIdentityCardNo.Text.Trim(), txtAddress.Text.Trim(), dtpHireDate.Value.Date, dtpTerminationDate.Checked ? dtpTerminationDate.Value.Date : null)
+                    : await _api.Employees.CreateEmployeeAsync(txtCode.Text.Trim(), txtFullName.Text.Trim(), txtPhone.Text.Trim(), deptId, posId, txtIdentityCardNo.Text.Trim(), txtAddress.Text.Trim(), dtpHireDate.Value.Date, dtpTerminationDate.Checked ? dtpTerminationDate.Value.Date : null);
 
                 if (!result.Success)
                 {
@@ -107,6 +135,17 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             {
                 btnSave.Enabled = true;
             }
+        }
+
+        public static bool IsValidPhoneNumber(string? phone)
+        {
+            if (string.IsNullOrWhiteSpace(phone))
+                return false;
+
+            return Regex.IsMatch(
+                phone,
+                @"^(?:0[35789][0-9]{8}|\+[1-9][0-9]{0,2} [0-9]{4,14})$"
+            );
         }
     }
 }

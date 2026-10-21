@@ -43,19 +43,7 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
         private async Task LoadWarehousesAsync()
         {
             if (_api is null) return;
-            try
-            {
-                var warehouses = await _api.Warehouses.GetWarehousesAsync();
-                var items = new List<object> { new { Id = (int?)null, Name = "(Không cố định — dùng được mọi kho)" } };
-                items.AddRange(warehouses.Select(w => new { Id = (int?)w.Id, w.Name }));
-                cboWarehouse.DataSource = items;
-                cboWarehouse.DisplayMember = "Name";
-                cboWarehouse.ValueMember = "Id";
-            }
-            catch (Exception ex)
-            {
-                lblStatus.Text = "Không tải được danh sách kho: " + ex.Message;
-            }
+            await WarehouseOptions.FillAsync(cboWarehouse, _api, null, lblStatus);
         }
 
         /// <summary>Nhân viên này ĐÃ có hồ sơ từ trước -> tự chuyển sang chế độ
@@ -80,7 +68,7 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
                 dtLicenseExpiry.Value = existing.LicenseExpiryDate;
                 numYearsExp.Value = existing.YearsOfExperience;
                 txtGoogleCalendarId.Text = existing.GoogleCalendarId ?? "";
-                cboWarehouse.SelectedValue = existing.WarehouseId; // đã đổ dropdown ở LoadWarehousesAsync trước đó, giờ chỉ chọn lại đúng giá trị
+                WarehouseOptions.Select(cboWarehouse, existing.WarehouseId); // đã đổ dropdown ở LoadWarehousesAsync trước đó, giờ chỉ chọn lại đúng giá trị
                 if (existing.HealthCertExpiryDate.HasValue)
                     dtHealthCertExpiry.Value = existing.HealthCertExpiryDate.Value;
                 else
@@ -126,7 +114,7 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             {
                 DateTime? healthCert = dtHealthCertExpiry.Value;
                 var googleCalendarId = string.IsNullOrWhiteSpace(txtGoogleCalendarId.Text) ? null : txtGoogleCalendarId.Text.Trim();
-                var warehouseId = cboWarehouse.SelectedValue as int?;
+                var warehouseId = WarehouseOptions.Selected(cboWarehouse);
                 var result = _isEditMode
                     ? await _api.Employees.UpdateDriverProfileAsync(
                         _employeeId, txtLicenseNumber.Text.Trim(), (string)cboLicenseClass.SelectedItem!,

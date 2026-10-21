@@ -14,151 +14,325 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
 
         private void InitializeComponent()
         {
-            this.lblCode = new System.Windows.Forms.Label();
-            this.txtCode = new System.Windows.Forms.TextBox();
-            this.lblFullName = new System.Windows.Forms.Label();
-            this.txtFullName = new System.Windows.Forms.TextBox();
-            this.lblPhone = new System.Windows.Forms.Label();
-            this.txtPhone = new System.Windows.Forms.TextBox();
-            this.lblDept = new System.Windows.Forms.Label();
-            this.cboDept = new System.Windows.Forms.ComboBox();
-            this.lblPos = new System.Windows.Forms.Label();
-            this.cboPos = new System.Windows.Forms.ComboBox();
-            this.lblEmployeeStatus = new System.Windows.Forms.Label();
-            this.cboEmployeeStatus = new System.Windows.Forms.ComboBox();
-            this.btnSave = new System.Windows.Forms.Button();
-            this.lblStatus = new System.Windows.Forms.Label();
-            this.SuspendLayout();
-            //
+            lblCode = new Label();
+            txtCode = new TextBox();
+            lblFullName = new Label();
+            txtFullName = new TextBox();
+            lblPhone = new Label();
+            txtPhone = new TextBox();
+            lblDept = new Label();
+            cboDept = new ComboBox();
+            lblPos = new Label();
+            cboPos = new ComboBox();
+            lblEmployeeStatus = new Label();
+            cboEmployeeStatus = new ComboBox();
+            btnSave = new Button();
+            lblStatus = new Label();
+            lblAddress = new Label();
+            tableLayoutPanel1 = new TableLayoutPanel();
+            txtAddress = new TextBox();
+            dtpHireDate = new DateTimePicker();
+            dtpTerminationDate = new DateTimePicker();
+            lblIdentityCardNo = new Label();
+            txtIdentityCardNo = new TextBox();
+            lblHireDate = new Label();
+            lblTerminationDate = new Label();
+            tableLayoutPanel1.SuspendLayout();
+            SuspendLayout();
+            // 
             // lblCode
-            //
-            this.lblCode.Location = new System.Drawing.Point(24, 20);
-            this.lblCode.Size = new System.Drawing.Size(400, 18);
-            this.lblCode.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
-            this.lblCode.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
-            this.lblCode.Text = "Mã nhân viên *";
-            //
+            // 
+            lblCode.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+            lblCode.Font = new Font("Segoe UI", 9F);
+            lblCode.ForeColor = Color.FromArgb(100, 116, 139);
+            lblCode.Location = new Point(13, 7);
+            lblCode.Name = "lblCode";
+            lblCode.Size = new Size(400, 18);
+            lblCode.TabIndex = 0;
+            lblCode.Text = "Mã nhân viên *";
+            // 
             // txtCode
-            //
-            this.txtCode.Location = new System.Drawing.Point(24, 40);
-            this.txtCode.Size = new System.Drawing.Size(400, 23);
-            //
+            // 
+            txtCode.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            txtCode.Location = new Point(13, 28);
+            txtCode.Name = "txtCode";
+            txtCode.Size = new Size(417, 25);
+            txtCode.TabIndex = 0;
+            // 
             // lblFullName
-            //
-            this.lblFullName.Location = new System.Drawing.Point(24, 90);
-            this.lblFullName.Size = new System.Drawing.Size(400, 18);
-            this.lblFullName.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
-            this.lblFullName.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
-            this.lblFullName.Text = "Họ tên *";
-            //
+            // 
+            lblFullName.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+            lblFullName.Font = new Font("Segoe UI", 9F);
+            lblFullName.ForeColor = Color.FromArgb(100, 116, 139);
+            lblFullName.Location = new Point(13, 82);
+            lblFullName.Name = "lblFullName";
+            lblFullName.Size = new Size(400, 18);
+            lblFullName.TabIndex = 2;
+            lblFullName.Text = "Họ tên *";
+            // 
             // txtFullName
-            //
-            this.txtFullName.Location = new System.Drawing.Point(24, 110);
-            this.txtFullName.Size = new System.Drawing.Size(400, 23);
-            //
+            // 
+            txtFullName.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            txtFullName.Location = new Point(13, 103);
+            txtFullName.Name = "txtFullName";
+            txtFullName.Size = new Size(417, 25);
+            txtFullName.TabIndex = 1;
+            // 
             // lblPhone
-            //
-            this.lblPhone.Location = new System.Drawing.Point(24, 160);
-            this.lblPhone.Size = new System.Drawing.Size(400, 18);
-            this.lblPhone.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
-            this.lblPhone.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
-            this.lblPhone.Text = "Số điện thoại";
-            //
+            // 
+            lblPhone.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+            lblPhone.Font = new Font("Segoe UI", 9F);
+            lblPhone.ForeColor = Color.FromArgb(100, 116, 139);
+            lblPhone.Location = new Point(13, 232);
+            lblPhone.Name = "lblPhone";
+            lblPhone.Size = new Size(400, 18);
+            lblPhone.TabIndex = 4;
+            lblPhone.Text = "Số điện thoại";
+            // 
             // txtPhone
-            //
-            this.txtPhone.Location = new System.Drawing.Point(24, 180);
-            this.txtPhone.Size = new System.Drawing.Size(400, 23);
-            //
+            // 
+            txtPhone.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            txtPhone.Location = new Point(13, 253);
+            txtPhone.Name = "txtPhone";
+            txtPhone.Size = new Size(417, 25);
+            txtPhone.TabIndex = 3;
+            // 
             // lblDept
-            //
-            this.lblDept.Location = new System.Drawing.Point(24, 230);
-            this.lblDept.Size = new System.Drawing.Size(400, 18);
-            this.lblDept.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
-            this.lblDept.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
-            this.lblDept.Text = "Phòng ban";
-            //
+            // 
+            lblDept.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+            lblDept.Font = new Font("Segoe UI", 9F);
+            lblDept.ForeColor = Color.FromArgb(100, 116, 139);
+            lblDept.Location = new Point(13, 382);
+            lblDept.Name = "lblDept";
+            lblDept.Size = new Size(400, 18);
+            lblDept.TabIndex = 6;
+            lblDept.Text = "Phòng ban";
+            // 
             // cboDept
-            //
-            this.cboDept.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.cboDept.Location = new System.Drawing.Point(24, 250);
-            this.cboDept.Size = new System.Drawing.Size(400, 23);
-            //
+            // 
+            cboDept.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            cboDept.DropDownStyle = ComboBoxStyle.DropDownList;
+            cboDept.Location = new Point(13, 403);
+            cboDept.Name = "cboDept";
+            cboDept.Size = new Size(417, 25);
+            cboDept.TabIndex = 5;
+            // 
             // lblPos
-            //
-            this.lblPos.Location = new System.Drawing.Point(24, 300);
-            this.lblPos.Size = new System.Drawing.Size(400, 18);
-            this.lblPos.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
-            this.lblPos.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
-            this.lblPos.Text = "Chức danh";
-            //
+            // 
+            lblPos.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+            lblPos.Font = new Font("Segoe UI", 9F);
+            lblPos.ForeColor = Color.FromArgb(100, 116, 139);
+            lblPos.Location = new Point(13, 457);
+            lblPos.Name = "lblPos";
+            lblPos.Size = new Size(400, 18);
+            lblPos.TabIndex = 8;
+            lblPos.Text = "Chức danh";
+            // 
             // cboPos
-            //
-            this.cboPos.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.cboPos.Location = new System.Drawing.Point(24, 320);
-            this.cboPos.Size = new System.Drawing.Size(400, 23);
-            //
+            // 
+            cboPos.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            cboPos.DropDownStyle = ComboBoxStyle.DropDownList;
+            cboPos.Location = new Point(13, 478);
+            cboPos.Name = "cboPos";
+            cboPos.Size = new Size(417, 25);
+            cboPos.TabIndex = 6;
+            // 
             // lblEmployeeStatus
-            //
-            this.lblEmployeeStatus.Location = new System.Drawing.Point(24, 370);
-            this.lblEmployeeStatus.Size = new System.Drawing.Size(400, 18);
-            this.lblEmployeeStatus.ForeColor = TruckingSystem.Desktop.Common.Theme.TextSecondary;
-            this.lblEmployeeStatus.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
-            this.lblEmployeeStatus.Text = "Trạng thái";
-            //
+            // 
+            lblEmployeeStatus.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+            lblEmployeeStatus.Font = new Font("Segoe UI", 9F);
+            lblEmployeeStatus.ForeColor = Color.FromArgb(100, 116, 139);
+            lblEmployeeStatus.Location = new Point(13, 532);
+            lblEmployeeStatus.Name = "lblEmployeeStatus";
+            lblEmployeeStatus.Size = new Size(400, 18);
+            lblEmployeeStatus.TabIndex = 10;
+            lblEmployeeStatus.Text = "Trạng thái";
+            // 
             // cboEmployeeStatus
-            //
-            this.cboEmployeeStatus.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.cboEmployeeStatus.Location = new System.Drawing.Point(24, 390);
-            this.cboEmployeeStatus.Size = new System.Drawing.Size(400, 23);
-            //
+            // 
+            cboEmployeeStatus.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            cboEmployeeStatus.DropDownStyle = ComboBoxStyle.DropDownList;
+            cboEmployeeStatus.Location = new Point(13, 553);
+            cboEmployeeStatus.Name = "cboEmployeeStatus";
+            cboEmployeeStatus.Size = new Size(417, 25);
+            cboEmployeeStatus.TabIndex = 7;
+            // 
             // btnSave
-            //
-            this.btnSave.Location = new System.Drawing.Point(244, 450);
-            this.btnSave.Size = new System.Drawing.Size(180, 38);
-            this.btnSave.Text = "Lưu nhân viên";
-            this.btnSave.BackColor = TruckingSystem.Desktop.Common.Theme.Primary;
-            this.btnSave.ForeColor = System.Drawing.Color.White;
-            this.btnSave.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnSave.Font = TruckingSystem.Desktop.Common.Theme.FontBold;
-            this.btnSave.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.btnSave.FlatAppearance.BorderSize = 0;
-            this.btnSave.FlatAppearance.MouseOverBackColor = TruckingSystem.Desktop.Common.Theme.PrimaryDark;
-            this.btnSave.Click += new System.EventHandler(this.BtnSave_Click);
-            //
+            // 
+            btnSave.Anchor = AnchorStyles.None;
+            btnSave.BackColor = Color.FromArgb(37, 99, 235);
+            btnSave.Cursor = Cursors.Hand;
+            btnSave.FlatAppearance.BorderSize = 0;
+            btnSave.FlatAppearance.MouseOverBackColor = Color.FromArgb(29, 78, 216);
+            btnSave.FlatStyle = FlatStyle.Flat;
+            btnSave.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+            btnSave.ForeColor = Color.White;
+            btnSave.Location = new Point(131, 736);
+            btnSave.Name = "btnSave";
+            btnSave.Size = new Size(180, 38);
+            btnSave.TabIndex = 10;
+            btnSave.Text = "Lưu nhân viên";
+            btnSave.UseVisualStyleBackColor = false;
+            btnSave.Click += BtnSave_Click;
+            // 
             // lblStatus
+            // 
+            lblStatus.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+            lblStatus.AutoSize = true;
+            lblStatus.Font = new Font("Segoe UI", 9F);
+            lblStatus.ForeColor = Color.FromArgb(220, 38, 38);
+            lblStatus.Location = new Point(13, 695);
+            lblStatus.Name = "lblStatus";
+            lblStatus.Size = new Size(0, 15);
+            lblStatus.TabIndex = 13;
+            // 
+            // lblAddress
+            // 
+            lblAddress.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+            lblAddress.Font = new Font("Segoe UI", 9F);
+            lblAddress.ForeColor = Color.FromArgb(100, 116, 139);
+            lblAddress.Location = new Point(13, 307);
+            lblAddress.Name = "lblAddress";
+            lblAddress.Size = new Size(400, 18);
+            lblAddress.TabIndex = 16;
+            lblAddress.Text = "Địa chỉ";
+            // 
+            // tableLayoutPanel1
+            // 
+            tableLayoutPanel1.AutoScroll = true;
+            tableLayoutPanel1.AutoScrollMinSize = new Size(0, 650);
+            tableLayoutPanel1.ColumnCount = 1;
+            tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            tableLayoutPanel1.Controls.Add(lblCode, 0, 0);
+            tableLayoutPanel1.Controls.Add(btnSave, 0, 28);
+            tableLayoutPanel1.Controls.Add(cboEmployeeStatus, 0, 22);
+            tableLayoutPanel1.Controls.Add(lblEmployeeStatus, 0, 21);
+            tableLayoutPanel1.Controls.Add(cboPos, 0, 19);
+            tableLayoutPanel1.Controls.Add(lblPos, 0, 18);
+            tableLayoutPanel1.Controls.Add(cboDept, 0, 16);
+            tableLayoutPanel1.Controls.Add(lblDept, 0, 15);
+            tableLayoutPanel1.Controls.Add(txtCode, 0, 1);
+            tableLayoutPanel1.Controls.Add(lblFullName, 0, 3);
+            tableLayoutPanel1.Controls.Add(txtPhone, 0, 10);
+            tableLayoutPanel1.Controls.Add(lblPhone, 0, 9);
+            tableLayoutPanel1.Controls.Add(txtFullName, 0, 4);
+            tableLayoutPanel1.Controls.Add(txtAddress, 0, 13);
+            tableLayoutPanel1.Controls.Add(lblAddress, 0, 12);
+            tableLayoutPanel1.Controls.Add(lblHireDate, 0, 23);
+            tableLayoutPanel1.Controls.Add(dtpHireDate, 0, 24);
+            tableLayoutPanel1.Controls.Add(lblTerminationDate, 0, 25);
+            tableLayoutPanel1.Controls.Add(dtpTerminationDate, 0, 26);
+            tableLayoutPanel1.Controls.Add(lblStatus, 0, 27);
+            tableLayoutPanel1.Controls.Add(lblIdentityCardNo, 0, 6);
+            tableLayoutPanel1.Controls.Add(txtIdentityCardNo, 0, 7);
+            tableLayoutPanel1.Dock = DockStyle.Fill;
+            tableLayoutPanel1.Location = new Point(0, 0);
+            tableLayoutPanel1.Name = "tableLayoutPanel1";
+            tableLayoutPanel1.Padding = new Padding(10, 0, 10, 0);
+            tableLayoutPanel1.RowCount = 29;
+            tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 25F));
+            tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 25F));
+            tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 10F));
+            tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 25F));
+            tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 25F));
+            tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 10F));
+            tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 25F));
+            tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 25F));
+            tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 10F));
+            tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 25F));
+            tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 25F));
+            tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 10F));
+            tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 25F));
+            tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 25F));
+            tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 10F));
+            tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 25F));
+            tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 25F));
+            tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 10F));
+            tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 25F));
+            tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 25F));
+            tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 10F));
+            tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 25F));
+            tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 25F));
+            tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 25F));
+            tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 35F));
+            tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 25F));
+            tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 35F));
+            tableLayoutPanel1.RowStyles.Add(new RowStyle());
+            tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 50F));
+            tableLayoutPanel1.Size = new Size(460, 666);
+            tableLayoutPanel1.TabIndex = 18;
+            // 
+            // txtAddress
+            // 
+            txtAddress.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            txtAddress.Location = new Point(13, 328);
+            txtAddress.Name = "txtAddress";
+            txtAddress.Size = new Size(417, 25);
+            txtAddress.TabIndex = 4;
+            // 
+            // dtpHireDate
             //
-            this.lblStatus.Location = new System.Drawing.Point(24, 440);
-            this.lblStatus.AutoSize = true;
-            this.lblStatus.Font = TruckingSystem.Desktop.Common.Theme.FontSmall;
-            this.lblStatus.ForeColor = TruckingSystem.Desktop.Common.Theme.Danger;
+            lblHireDate.Text = "Ngày vào làm thực tế *";
+            lblHireDate.Name = "lblHireDate";
+            lblHireDate.AutoSize = true;
+            lblHireDate.ForeColor = Color.FromArgb(100, 116, 139);
+            lblTerminationDate.Text = "Ngày nghỉ việc (bỏ chọn nếu chưa nghỉ)";
+            lblTerminationDate.Name = "lblTerminationDate";
+            lblTerminationDate.AutoSize = true;
+            lblTerminationDate.ForeColor = Color.FromArgb(100, 116, 139);
+            dtpHireDate.Format = DateTimePickerFormat.Short;
+            dtpHireDate.Dock = DockStyle.Top;
+            dtpHireDate.AccessibleName = "Ngày vào làm thực tế";
+            dtpHireDate.Location = new Point(13, 603);
+            dtpHireDate.Name = "dtpHireDate";
+            dtpHireDate.Size = new Size(200, 25);
+            dtpHireDate.TabIndex = 8;
             //
+            // dtpTerminationDate
+            //
+            dtpTerminationDate.Format = DateTimePickerFormat.Short;
+            dtpTerminationDate.Dock = DockStyle.Top;
+            dtpTerminationDate.ShowCheckBox = true;
+            dtpTerminationDate.AccessibleName = "Ngày nghỉ việc thực tế (bỏ chọn nếu chưa nghỉ)";
+            dtpTerminationDate.Location = new Point(13, 663);
+            dtpTerminationDate.Name = "dtpTerminationDate";
+            dtpTerminationDate.Size = new Size(200, 25);
+            dtpTerminationDate.TabIndex = 9;
+            //
+            // lblIdentityCardNo
+            // 
+            lblIdentityCardNo.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+            lblIdentityCardNo.Font = new Font("Segoe UI", 9F);
+            lblIdentityCardNo.ForeColor = Color.FromArgb(100, 116, 139);
+            lblIdentityCardNo.Location = new Point(13, 157);
+            lblIdentityCardNo.Name = "lblIdentityCardNo";
+            lblIdentityCardNo.Size = new Size(400, 18);
+            lblIdentityCardNo.TabIndex = 18;
+            lblIdentityCardNo.Text = "Căn cước";
+            // 
+            // txtIdentityCardNo
+            // 
+            txtIdentityCardNo.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            txtIdentityCardNo.Location = new Point(13, 178);
+            txtIdentityCardNo.Name = "txtIdentityCardNo";
+            txtIdentityCardNo.Size = new Size(417, 25);
+            txtIdentityCardNo.TabIndex = 2;
+            // 
             // CreateEmployeeForm
-            //
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
-            this.AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
-            this.BackColor = System.Drawing.Color.White;
-            this.ClientSize = new System.Drawing.Size(460, 530);
-            this.Controls.Add(this.lblCode);
-            this.Controls.Add(this.txtCode);
-            this.Controls.Add(this.lblFullName);
-            this.Controls.Add(this.txtFullName);
-            this.Controls.Add(this.lblPhone);
-            this.Controls.Add(this.txtPhone);
-            this.Controls.Add(this.lblDept);
-            this.Controls.Add(this.cboDept);
-            this.Controls.Add(this.lblPos);
-            this.Controls.Add(this.cboPos);
-            this.Controls.Add(this.lblEmployeeStatus);
-            this.Controls.Add(this.cboEmployeeStatus);
-            this.Controls.Add(this.btnSave);
-            this.Controls.Add(this.lblStatus);
-            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
-            this.MaximizeBox = false;
-            this.Name = "CreateEmployeeForm";
-            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
-            this.Text = "Thêm nhân viên mới";
-            this.ResumeLayout(false);
-            this.PerformLayout();
+            // 
+            AutoScaleDimensions = new SizeF(96F, 96F);
+            AutoScaleMode = AutoScaleMode.Dpi;
+            BackColor = Color.White;
+            ClientSize = new Size(460, 666);
+            Controls.Add(tableLayoutPanel1);
+            FormBorderStyle = FormBorderStyle.FixedDialog;
+            MaximizeBox = false;
+            Name = "CreateEmployeeForm";
+            StartPosition = FormStartPosition.CenterParent;
+            Text = "Thêm nhân viên mới";
+            tableLayoutPanel1.ResumeLayout(false);
+            tableLayoutPanel1.PerformLayout();
+            ResumeLayout(false);
         }
 
         #endregion
@@ -177,5 +351,14 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
         private System.Windows.Forms.ComboBox cboEmployeeStatus;
         private System.Windows.Forms.Button btnSave;
         private System.Windows.Forms.Label lblStatus;
+        private Label lblAddress;
+        private TableLayoutPanel tableLayoutPanel1;
+        private TextBox txtAddress;
+        private Label lblIdentityCardNo;
+        private TextBox txtIdentityCardNo;
+        private DateTimePicker dtpHireDate;
+        private DateTimePicker dtpTerminationDate;
+        private Label lblHireDate;
+        private Label lblTerminationDate;
     }
 }

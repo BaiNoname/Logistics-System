@@ -25,6 +25,12 @@ namespace TruckingSystem.Application.Common.Interfaces;
 public interface IApplicationDbContext
 {
     DbSet<Employee> Employees { get; }
+    DbSet<EmployeeSalary> EmployeeSalaries { get; }
+    DbSet<PayrollPeriod> PayrollPeriods { get; }
+    DbSet<MonthlyAttendance> MonthlyAttendances { get; }
+    DbSet<PayrollSlip> PayrollSlips { get; }
+    DbSet<PayrollItem> PayrollItems { get; }
+    DbSet<SalaryPayment> SalaryPayments { get; }
     DbSet<Department> Departments { get; }
     DbSet<Position> Positions { get; }
     DbSet<DriverProfile> DriverProfiles { get; }

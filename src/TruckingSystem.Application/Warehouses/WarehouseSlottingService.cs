@@ -1195,7 +1195,8 @@ public class WarehouseSlottingService : IWarehouseSlottingService
     private static string PerformerText(int? tripId, string? employeeName, string? userName)
     {
         // Có tài khoản thực hiện (nhập kho hàng chờ nhập của chuyến, trả khách tại kho...) -> ghi
-        // đúng người bấm; phiếu theo chuyến không có tài khoản (dữ liệu cũ, xuất khi chạy) = tài xế.
+        // đúng người bấm (xuất kho theo chuyến cũng ghi người bấm); phiếu theo chuyến không có tài khoản
+        // (dữ liệu cũ, trước đây tự xuất lúc xe chạy) = tài xế.
         if (userName is not null) return employeeName is null ? userName : $"{employeeName} ({userName})";
         if (tripId is not null) return employeeName is null ? "—" : $"{employeeName} (tài xế)";
         return "Không xác định (dữ liệu cũ)";
@@ -1294,7 +1295,7 @@ public class WarehouseSlottingService : IWarehouseSlottingService
     private async Task<(decimal Max, string? Reason)> GetManualIssueLimitAsync(CargoLine cargoLine, TransportOrder order, int warehouseId)
     {
         if (order.Status is TransportOrderStatus.Draft or TransportOrderStatus.Confirmed or TransportOrderStatus.InProgress)
-            return (0, $"Đơn {order.Code} đang xử lý — hàng sẽ TỰ xuất kho khi chuyến giao chạy, không xuất tay. " +
+            return (0, $"Đơn {order.Code} đang xử lý — hàng xuất THEO CHUYẾN GIAO (màn Kho → 📤 Xuất kho theo chuyến), không xuất tay. " +
                        "Muốn trả hàng cho khách: Hủy đơn (hàng còn trong kho chưa có chuyến trả sẽ được xuất trả tại kho).");
 
         var onHand = await _db.WarehouseStocks
@@ -1354,19 +1355,47 @@ public class WarehouseSlottingService : IWarehouseSlottingService
         if (IsCancelReturnIssue(issue.PerformedByUserName))
             return new WarehouseActionResult(false, "Phiếu này là hàng TRẢ KHÁCH tại kho khi hủy đơn — không hoàn tác được.");
 
+        var ownsTransaction = _db.Database.CurrentTransaction is null;
+        await using var transaction = ownsTransaction ? await _db.Database.BeginTransactionAsync() : null;
+        var (ok, message) = await ReverseIssueCoreAsync(issue, userName);
+        if (!ok) return new WarehouseActionResult(false, message);
+        if (ownsTransaction) await transaction!.CommitAsync();
+        return new WarehouseActionResult(true, message);
+    }
+
+    /// <summary>HOÀN TÁC XUẤT KHO của 1 chuyến giao CHƯA CHẠY (kho bấm xuất nhầm, đổi xe / tài xế,
+    /// hủy đơn...): dỡ hàng khỏi xe, cộng lại tồn kho, xếp lại vào kệ (Best-Fit). Phiếu xuất được
+    /// GIỮ và đánh dấu "đã hoàn tác" để lịch sử minh bạch. Người gọi lo transaction + khóa chuyến.</summary>
+    public async Task<WarehouseActionResult> ReverseTripIssuesAsync(int tripId, string? userName)
+    {
+        var issues = await _db.GoodsIssues.Include(i => i.CargoLine)
+            .Where(i => i.TripId == tripId && i.ReversedAt == null)
+            .ToListAsync();
+        if (issues.Count == 0) return new WarehouseActionResult(false, $"Chuyến #{tripId} chưa có phiếu xuất kho nào để hoàn tác.");
+        var bins = new List<string>();
+        foreach (var issue in issues)
+        {
+            var (ok, message) = await ReverseIssueCoreAsync(issue, userName);
+            if (!ok) return new WarehouseActionResult(false, $"\"{issue.CargoLine.CargoType}\": {message}");
+            bins.Add($"• \"{issue.CargoLine.CargoType}\": {message}");
+        }
+        return new WarehouseActionResult(true, string.Join("\n", bins));
+    }
+
+    /// <summary>Lõi hoàn tác 1 phiếu xuất: trả số lượng vào tồn kho + xếp lại vào kệ (Best-Fit),
+    /// đánh dấu phiếu đã hoàn tác. Thành công -> Message = mã các vị trí đã xếp. Không tự mở transaction.</summary>
+    private async Task<(bool Ok, string Message)> ReverseIssueCoreAsync(GoodsIssue issue, string? userName)
+    {
         var originReceipt = await _db.GoodsReceipts
             .Where(r => r.WarehouseId == issue.WarehouseId && r.CargoLineId == issue.CargoLineId)
             .OrderByDescending(r => r.ReceivedAt)
             .FirstOrDefaultAsync();
         if (originReceipt is null)
-            return new WarehouseActionResult(false, "Không tìm thấy phiếu nhập gốc của dòng hàng này — không thể xếp hàng trở lại kho.");
+            return (false, "Không tìm thấy phiếu nhập gốc của dòng hàng này — không thể xếp hàng trở lại kho.");
 
         var suggestion = await SuggestBinAsync(issue.WarehouseId, new SuggestBinRequest(issue.CargoLineId, issue.QtyIssued));
         if (!suggestion.Found)
-            return new WarehouseActionResult(false, "Kho không còn đủ chỗ phù hợp để xếp lại hàng: " + suggestion.Message);
-
-        var ownsTransaction = _db.Database.CurrentTransaction is null;
-        await using var transaction = ownsTransaction ? await _db.Database.BeginTransactionAsync() : null;
+            return (false, "Kho không còn đủ chỗ phù hợp để xếp lại hàng: " + suggestion.Message);
 
         var stock = await _db.WarehouseStocks.FirstOrDefaultAsync(s => s.WarehouseId == issue.WarehouseId && s.CargoLineId == issue.CargoLineId);
         if (stock is null)
@@ -1396,8 +1425,7 @@ public class WarehouseSlottingService : IWarehouseSlottingService
         issue.ReversedByUserName = userName;
 
         await _db.SaveChangesAsync();
-        if (ownsTransaction) await transaction!.CommitAsync();
-        return new WarehouseActionResult(true, $"Đã hoàn tác — trả {issue.QtyIssued:0.##} vào kho, vị trí {string.Join(", ", binCodes)}.");
+        return (true, $"Đã hoàn tác — trả {issue.QtyIssued:0.##} vào kho, vị trí {string.Join(", ", binCodes)}.");
     }
 
     /// <summary>CHỈ các đơn liên quan tới kho này (trước đây màn Nhập/Xuất kho
@@ -1513,7 +1541,7 @@ public class WarehouseSlottingService : IWarehouseSlottingService
                 progress = done >= t.Planned && t.Planned > 0 ? $"✅ Đã xuất kho {done:0.##}/{t.Planned:0.##}"
                          : done > 0 ? $"📤 Đã xuất {done:0.##}/{t.Planned:0.##}"
                          : t.LegType == TripLegType.Return ? "⏳ Xuất kho khi chuyến trả hàng hoàn tất"
-                         : "⏳ Xuất kho khi chuyến bắt đầu";
+                         : "⏳ Chờ kho xuất (màn Kho → 📤 Xuất kho theo chuyến)";
 
             return new TripStockFlowDto(t.Id, LegText(t.LegType), TripStatusText(t.Status), t.Driver, t.Planned, done, progress);
         }).ToList();

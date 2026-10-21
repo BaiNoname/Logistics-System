@@ -1,5 +1,5 @@
+using System.Text.RegularExpressions;
 using TruckingSystem.Desktop.Common;
-
 namespace TruckingSystem.Desktop.GUI_CustomerManagement
 {
     /// <summary>Logic xử lý — giao diện nằm ở CreateCustomerForm.Designer.cs.</summary>
@@ -37,6 +37,14 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
             {
                 lblStatus.Text = "Vui lòng nhập tên khách hàng.";
                 MessageBox.Show(this, lblStatus.Text, "Thiếu thông tin khách hàng", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+            if (!IsValidPhoneNumber(txtPhone.Text))
+            {
+                lblStatus.ForeColor = Theme.Danger;
+                lblStatus.Text = "Vui lòng nhập số điện thoại hợp lệ (ví dụ: +84 123456789).";
+               // MessageBox.Show(this, lblStatus.Text, "Số điện thoại không hợp lệ", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                txtPhone.Focus();
                 return;
             }
             if (_api is null || !btnSave.Enabled) return;
@@ -131,6 +139,18 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
             foreach (var control in new Control[] { txtName, txtPhone, txtTaxCode, txtAddress, cboType, btnSave, btnReadWithAi })
                 control.Enabled = !scanning;
             UseWaitCursor = scanning;
+        }
+
+
+        public static bool IsValidPhoneNumber(string? phone)
+        {
+            if (string.IsNullOrWhiteSpace(phone))
+                return false;
+
+            return Regex.IsMatch(
+                phone,
+                @"^(?:0[35789][0-9]{8}|\+[1-9][0-9]{0,2} [0-9]{4,14})$"
+            );
         }
     }
 }

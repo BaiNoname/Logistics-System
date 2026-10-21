@@ -17,41 +17,21 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
         /// -> không đè chữ ở mọi kích thước / mức phóng to màn hình. Sửa được bằng Designer.</summary>
         private void InitializeComponent()
         {
-            root = new System.Windows.Forms.TableLayoutPanel();
-            lblTitle = new System.Windows.Forms.Label();
-            toolbar = new System.Windows.Forms.FlowLayoutPanel();
-            btnRefresh = new System.Windows.Forms.Button();
-            btnCreate = new System.Windows.Forms.Button();
-            btnEdit = new System.Windows.Forms.Button();
-            lblStatus = new System.Windows.Forms.Label();
-            filterBar = new TruckingSystem.Desktop.Common.FilterBar();
-            grid = new System.Windows.Forms.DataGridView();
-            root.SuspendLayout();
-            toolbar.SuspendLayout();
+            lblTitle = new Label();
+            btnRefresh = new Button();
+            btnCreate = new Button();
+            btnEdit = new Button();
+            lblStatus = new Label();
+            grid = new DataGridView();
+            tabs = new TabControl();
+            customersTab = new TabPage("Khách hàng");
+            contactsTab = new TabPage("Người liên hệ khách hàng");
+            _contactsControl = new CustomerContactsControl();
+            var customerLayout = new TableLayoutPanel();
+            toolbar = new FlowLayoutPanel();
+            filterBar = new TruckingSystem.Desktop.Common.FilterBar { Dock = DockStyle.Fill, AutoSize = true };
             ((System.ComponentModel.ISupportInitialize)grid).BeginInit();
             SuspendLayout();
-            // 
-            // root
-            // 
-            root.ColumnCount = 1;
-            root.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            root.Controls.Add(lblTitle, 0, 0);
-            root.Controls.Add(toolbar, 0, 1);
-            root.Controls.Add(filterBar, 0, 2);
-            root.Controls.Add(lblStatus, 0, 3);
-            root.Controls.Add(grid, 0, 4);
-            root.Dock = System.Windows.Forms.DockStyle.Fill;
-            root.Location = new System.Drawing.Point(0, 0);
-            root.Name = "root";
-            root.Padding = new System.Windows.Forms.Padding(0);
-            root.RowCount = 5;
-            root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
-            root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
-            root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
-            root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
-            root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            root.Size = new System.Drawing.Size(1200, 700);
-            root.TabIndex = 0;
             // 
             // lblTitle
             // 
@@ -67,9 +47,9 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
             // 
             toolbar.AutoSize = true;
             toolbar.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
-            toolbar.Controls.Add(btnRefresh);
             toolbar.Controls.Add(btnCreate);
             toolbar.Controls.Add(btnEdit);
+            toolbar.Controls.Add(btnRefresh);
             toolbar.Dock = System.Windows.Forms.DockStyle.Fill;
             toolbar.Margin = new System.Windows.Forms.Padding(0);
             toolbar.Name = "toolbar";
@@ -165,23 +145,60 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
             // 
             // CustomersControl
             // 
-            AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
-            AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
-            BackColor = System.Drawing.Color.FromArgb(241, 245, 249);
-            Controls.Add(root);
+            AutoScaleDimensions = new SizeF(96F, 96F);
+            BackColor = Color.FromArgb(241, 245, 249);
+            lblTitle.Dock = DockStyle.Top;
+            lblTitle.Height = 44;
+            toolbar.Dock = DockStyle.Fill;
+            toolbar.AutoSize = true;
+            toolbar.WrapContents = true;
+            toolbar.Padding = new Padding(0, 4, 0, 8);
+            btnRefresh.Size = new Size(120, 38);
+            btnCreate.Size = new Size(190, 38);
+            btnEdit.Size = new Size(100, 38);
+            lblStatus.AutoSize = false;
+            lblStatus.Dock = DockStyle.Fill;
+            lblStatus.AutoEllipsis = true;
+            lblStatus.TextAlign = ContentAlignment.MiddleLeft;
+            grid.Dock = DockStyle.Fill;
+            grid.AccessibleName = "Danh sách khách hàng";
+            customerLayout.Dock = DockStyle.Fill;
+            customerLayout.ColumnCount = 1;
+            customerLayout.RowCount = 4;
+            customerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            customerLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            customerLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            customerLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+            customerLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));
+            customerLayout.Controls.Add(toolbar, 0, 0);
+            customerLayout.Controls.Add(filterBar, 0, 1);
+            customerLayout.Controls.Add(grid, 0, 2);
+            customerLayout.Controls.Add(lblStatus, 0, 3);
+            customersTab.BackColor = Color.White;
+            customersTab.Padding = new Padding(8);
+            customersTab.Controls.Add(customerLayout);
+            contactsTab.BackColor = Color.White;
+            contactsTab.Padding = new Padding(8);
+            _contactsControl.Dock = DockStyle.Fill;
+            _contactsControl.Name = "_contactsControl";
+            _contactsControl.TabIndex = 0;
+            contactsTab.Controls.Add(_contactsControl);
+            tabs.Dock = DockStyle.Fill;
+            tabs.AccessibleName = "Quản lý khách hàng và người liên hệ";
+            tabs.TabPages.AddRange(new[] { customersTab, contactsTab });
+            Controls.Add(tabs);
+            Controls.Add(lblTitle);
+            Margin = new Padding(2, 2, 2, 2);
             Name = "CustomersControl";
             Size = new System.Drawing.Size(1200, 700);
             ((System.ComponentModel.ISupportInitialize)grid).EndInit();
             toolbar.ResumeLayout(false);
             toolbar.PerformLayout();
-            root.ResumeLayout(false);
-            root.PerformLayout();
             ResumeLayout(false);
         }
 
         #endregion
 
-        private System.Windows.Forms.TableLayoutPanel root;
         private System.Windows.Forms.Label lblTitle;
         private System.Windows.Forms.FlowLayoutPanel toolbar;
         private System.Windows.Forms.Button btnRefresh;
@@ -190,5 +207,9 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
         private System.Windows.Forms.Label lblStatus;
         private TruckingSystem.Desktop.Common.FilterBar filterBar;
         private System.Windows.Forms.DataGridView grid;
+        private System.Windows.Forms.TabControl tabs;
+        private System.Windows.Forms.TabPage customersTab;
+        private System.Windows.Forms.TabPage contactsTab;
+        private CustomerContactsControl _contactsControl = null!;
     }
 }

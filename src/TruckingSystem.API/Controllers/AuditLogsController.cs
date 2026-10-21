@@ -19,9 +19,9 @@ public class AuditLogsController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<List<AuditLogDto>>> Get(
         [FromQuery] string? action, [FromQuery] DateTime? fromDate, [FromQuery] DateTime? toDate)
-        => Ok(await _service.GetAsync(new AuditLogFilterRequest(action, fromDate, toDate)));
+        => Ok(await _service.GetAsync(new AuditLogFilterRequest(action, fromDate, toDate), User.IsInRole("Admin")));
 
     [HttpGet("actions")]
     public async Task<ActionResult<List<string>>> GetDistinctActions()
-        => Ok(await _service.GetDistinctActionsAsync());
+        => Ok(await _service.GetDistinctActionsAsync(User.IsInRole("Admin")));
 }
