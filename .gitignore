@@ -22,12 +22,6 @@ appsettings.json
 *.publishsettings
 AGENTS.md
 /tests/*
-!/tests/TruckingSystem.UnitTests/
-/tests/TruckingSystem.UnitTests/*
-!/tests/TruckingSystem.UnitTests/TruckingSystem.UnitTests.csproj
-!/tests/TruckingSystem.UnitTests/CustomerBusinessCardReaderTests.cs
-!/tests/TruckingSystem.UnitTests/InvoiceServiceTests.cs
-!/tests/TruckingSystem.CustomerFormChecks/
 /docs/*
 # ==== Log/cache khác ====
 *.log
