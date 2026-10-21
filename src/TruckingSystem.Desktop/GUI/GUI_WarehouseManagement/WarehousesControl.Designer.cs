@@ -117,7 +117,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             // 
             cboWarehouse.Anchor = AnchorStyles.Left;
             cboWarehouse.DropDownStyle = ComboBoxStyle.DropDownList;
-            cboWarehouse.Location = new Point(109, 9);
+            cboWarehouse.Location = new Point(109, 10);
             cboWarehouse.Margin = new Padding(0, 0, 24, 12);
             cboWarehouse.MinimumSize = new Size(418, 0);
             cboWarehouse.Name = "cboWarehouse";
