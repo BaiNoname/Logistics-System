@@ -14,6 +14,8 @@ public class ContractListItemDto
     public string? Terms { get; set; }
     public string? PriceListName { get; set; }
     public int? PriceListId { get; set; }
+    public TruckingSystem.Application.Pricing.TariffRuleDto? TariffRule { get; set; }
+    public List<string> AppendixCodes { get; set; } = new();
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
 }
@@ -22,6 +24,7 @@ public class ContractLookupDto
 {
     public List<ContractOptionDto> Customers { get; set; } = new();
     public List<ContractOptionDto> PriceLists { get; set; } = new();
+    public List<TruckingSystem.Application.Pricing.TariffRuleDto> TariffRules { get; set; } = new();
 }
 
 public class ContractOptionDto
@@ -38,4 +41,5 @@ public class SaveContractRequest
     public DateTime? EndDate { get; set; }
     public string? Terms { get; set; }
     public int? PriceListId { get; set; }
+    public int? TariffRuleId { get; set; }
 }

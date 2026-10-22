@@ -27,6 +27,8 @@ public class Contract : BaseEntity
 
     public int? PriceListId { get; set; }
     public PriceList? PriceList { get; set; }
+    public int? TariffRuleId { get; set; }
+    public TariffRule? TariffRule { get; set; }
 }
 
 public enum ContractStatus { Upcoming, Active, Expired }

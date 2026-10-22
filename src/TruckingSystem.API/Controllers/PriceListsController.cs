@@ -24,6 +24,19 @@ public class PriceListsController(IPricingService service) : ControllerBase
         catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
     }
 
+    [HttpPost("{id:int}/copy")]
+    public async Task<ActionResult<PriceListDto>> Copy(int id, CopyPriceListRequest request)
+    {
+        try
+        {
+            var copy = await service.CopyPriceListAsync(id, request);
+            return copy is null
+                ? NotFound(new { message = "Bảng giá nguồn không tồn tại. Vui lòng làm mới danh sách." })
+                : Ok(copy);
+        }
+        catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
+    }
+
     [HttpPut("{id:int}")]
     public async Task<IActionResult> Update(int id, SavePriceListRequest request)
     {
@@ -47,6 +60,7 @@ public class PriceListsController(IPricingService service) : ControllerBase
     {
         try { return Ok(await service.CreateTariffRuleAsync(priceListId, request)); }
         catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
+        catch (InvalidOperationException ex) { return Conflict(new { message = ex.Message }); }
     }
 
     [HttpPut("{priceListId:int}/tariff-rules/{id:int}")]
@@ -54,9 +68,13 @@ public class PriceListsController(IPricingService service) : ControllerBase
     {
         try { return await service.UpdateTariffRuleAsync(priceListId, id, request) ? NoContent() : NotFound(); }
         catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
+        catch (InvalidOperationException ex) { return Conflict(new { message = ex.Message }); }
     }
 
     [HttpDelete("{priceListId:int}/tariff-rules/{id:int}")]
     public async Task<IActionResult> DeleteRule(int priceListId, int id)
-        => await service.DeleteTariffRuleAsync(priceListId, id) ? NoContent() : NotFound();
+    {
+        try { return await service.DeleteTariffRuleAsync(priceListId, id) ? NoContent() : NotFound(); }
+        catch (InvalidOperationException ex) { return Conflict(new { message = ex.Message }); }
+    }
 }

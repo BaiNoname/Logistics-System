@@ -10,7 +10,6 @@ namespace TruckingSystem.Desktop.GUI_InvoiceManagement
         {
             InitializeComponent();
             Theme.StyleGrid(grid);
-            Resize += (_, _) => { grid.Width = Width; grid.Height = Height - grid.Top; };
             Load += async (_, _) => await LoadAsync();
         }
 
@@ -21,20 +20,31 @@ namespace TruckingSystem.Desktop.GUI_InvoiceManagement
 
         private void BtnRefresh_Click(object? sender, EventArgs e) => _ = LoadAsync();
 
+        private async void BtnCreate_Click(object? sender, EventArgs e)
+        {
+            if (_api is null) return;
+            using var form = new CreateInvoiceForm(_api);
+            if (form.ShowDialog(this) == DialogResult.OK)
+                await LoadAsync();
+        }
+
         private async Task LoadAsync()
         {
             if (_api is null) return;
+            btnRefresh.Enabled = false;
             lblStatus.Text = "Đang tải...";
+            lblStatus.ForeColor = Theme.TextSecondary;
             try
             {
                 var invoices = await _api.Invoices.GetInvoicesAsync();
                 grid.DataSource = invoices.Select(i => new
                 {
+                    Mã_hóa_đơn = i.Id,
                     Mã_đơn = i.OrderCode,
                     Khách_hàng = i.CustomerName,
                     Tổng_tiền = i.TotalAmount.ToString("N0") + " đ",
                     Trạng_thái = TranslateStatus(i.Status),
-                    Ngày_xuất = i.IssueDate.ToString("dd/MM/yyyy"),
+                    Ngày_lập = i.IssueDate.AddHours(7).ToString("dd/MM/yyyy"),
                 }).ToList();
                 lblStatus.Text = $"Tổng {invoices.Count} hóa đơn";
             }
@@ -42,6 +52,10 @@ namespace TruckingSystem.Desktop.GUI_InvoiceManagement
             {
                 lblStatus.Text = "Lỗi: " + ex.Message;
                 lblStatus.ForeColor = Theme.Danger;
+            }
+            finally
+            {
+                btnRefresh.Enabled = true;
             }
         }
 

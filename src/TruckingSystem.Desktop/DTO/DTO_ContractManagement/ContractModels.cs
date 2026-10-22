@@ -20,6 +20,9 @@ public class ContractListItem
     public string? Terms { get; set; }
     public string? PriceListName { get; set; }
     public int? PriceListId { get; set; }
+    public TruckingSystem.Desktop.DTO_PricingManagement.TariffRuleItem? TariffRule { get; set; }
+    public List<string> AppendixCodes { get; set; } = new();
+    public string AppendixText => AppendixCodes.FirstOrDefault() ?? "Chưa có";
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
 }
@@ -28,6 +31,7 @@ public class ContractLookups
 {
     public List<ContractOption> Customers { get; set; } = new();
     public List<ContractOption> PriceLists { get; set; } = new();
+    public List<TruckingSystem.Desktop.DTO_PricingManagement.TariffRuleItem> TariffRules { get; set; } = new();
 }
 
 public class ContractOption

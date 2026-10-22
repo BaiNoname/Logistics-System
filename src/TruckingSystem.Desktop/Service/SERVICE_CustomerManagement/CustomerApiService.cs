@@ -68,6 +68,11 @@ namespace TruckingSystem.Desktop.SERVICE_CustomerManagement
                 try
                 {
                     var error = JToken.Parse(body);
+                    if ((int)response.StatusCode == 502 && error.Type == JTokenType.Object
+                        && error["rawResponse"]?.Type == JTokenType.String
+                        && error["errorMessage"]?.Type == JTokenType.String)
+                        return error.ToObject<CustomerBusinessCardInfoItem>()
+                            ?? throw new InvalidOperationException("Không đọc được kết quả từ AI.");
                     var detail = error.Type == JTokenType.String ? error.Value<string>() :
                         error.Type == JTokenType.Object ? (string?)(error["message"] ?? error["detail"] ?? error["title"]) : null;
                     if (!string.IsNullOrWhiteSpace(detail)) message = detail;

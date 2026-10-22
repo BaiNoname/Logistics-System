@@ -88,6 +88,8 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
                     e.Id,
                     Mã_NV = e.Code,
                     Họ_tên = e.FullName,
+                    Ngày_sinh = e.DateOfBirth?.ToString("dd/MM/yyyy") ?? "—",
+                    Giới_tính = e.Gender switch { "Male" => "Nam", "Female" => "Nữ", "Other" => "Khác", _ => "Chưa cập nhật" },
                     Căn_Cước = e.IdentityCardNo ?? "—",
                     Điện_thoại = e.Phone ?? "—",
                     Địa_chỉ = e.Address ?? "—",

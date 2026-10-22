@@ -35,5 +35,12 @@ namespace TruckingSystem.Desktop.DTO_CustomerManagement
         public string? TaxCode { get; set; }
         public string? CustomerType { get; set; }
         public string? Address { get; set; }
+        public string? FullName { get; set; }
+        public string? Company { get; set; }
+        public string? Title { get; set; }
+        public string? Email { get; set; }
+        public string? Website { get; set; }
+        public string? RawResponse { get; set; }
+        public string? ErrorMessage { get; set; }
     }
 }

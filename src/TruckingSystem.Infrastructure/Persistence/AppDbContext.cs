@@ -40,6 +40,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
     public DbSet<Location> Locations => Set<Location>();
     public DbSet<CustomerContact> CustomerContacts => Set<CustomerContact>();
     public DbSet<Contract> Contracts => Set<Contract>();
+    public DbSet<ContractAppendix> ContractAppendices => Set<ContractAppendix>();
     public DbSet<PriceList> PriceLists => Set<PriceList>();
     public DbSet<TariffRule> TariffRules => Set<TariffRule>();
     public DbSet<SalesOrder> SalesOrders => Set<SalesOrder>();
@@ -103,6 +104,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
         });
 
         // ---- Employee 1-1 DriverProfile ----
+        builder.Entity<Employee>().Property(e => e.DateOfBirth).HasColumnType("date");
         builder.Entity<Employee>()
             .HasOne(e => e.DriverProfile)
             .WithOne(d => d.Employee)
@@ -206,6 +208,17 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
             .HasIndex(n => new { n.UserId, n.IsRead });
 
         ConfigureDataConstraints(builder);
+        builder.Entity<Contract>().HasOne(c => c.TariffRule).WithMany().HasForeignKey(c => c.TariffRuleId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<ContractAppendix>(e =>
+        {
+            e.Property(a => a.Code).HasMaxLength(100);
+            e.HasIndex(a => a.Code).IsUnique();
+            e.Property(a => a.IssueDate).HasColumnType("date");
+            e.Property(a => a.EffectiveDate).HasColumnType("date");
+            e.HasOne(a => a.Contract).WithMany().HasForeignKey(a => a.ContractId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(a => a.TariffRule).WithMany().HasForeignKey(a => a.TariffRuleId).OnDelete(DeleteBehavior.Restrict);
+        });
         PayrollConfiguration.Configure(builder);
 
         // ---- Kiểu decimal cho tiền tệ/số lượng — chỉ định precision rõ ràng cho PostgreSQL ----

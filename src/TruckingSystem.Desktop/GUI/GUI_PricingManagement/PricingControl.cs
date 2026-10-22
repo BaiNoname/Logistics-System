@@ -11,6 +11,7 @@ public class PricingControl : BaseUserControl
     private readonly DataGridView _rulesGrid = new() { Dock = DockStyle.Fill, AccessibleName = "Chi tiết giá theo loại xe" };
     private readonly ComboBox _priceList = new() { Width = 360, DropDownStyle = ComboBoxStyle.DropDownList, AccessibleName = "Bảng giá của chi tiết giá" };
     private readonly Button _create = Theme.MakePrimaryButton("Thêm mới", 110);
+    private readonly Button _copy = Theme.MakeSecondaryButton("Tạo mới và sao chép", 200);
     private readonly Button _edit = Theme.MakeSecondaryButton("Sửa", 85);
     private readonly Button _delete = Theme.MakeSecondaryButton("Xóa", 85);
     private readonly Button _refresh = Theme.MakeSecondaryButton("Làm mới", 100);
@@ -25,6 +26,7 @@ public class PricingControl : BaseUserControl
     private PriceListItem? SelectedList => _listsGrid.CurrentRow?.DataBoundItem is PriceListItem item ? item : null;
     private PriceListItem? CurrentList => _priceList.SelectedItem as PriceListItem;
     private TariffRuleItem? SelectedRule => _rulesGrid.CurrentRow?.DataBoundItem as TariffRuleItem;
+    private bool CanEditRules => _rulesLoaded && CurrentList?.Status == "Active";
 
     public PricingControl(ApiServices api)
     {
@@ -37,6 +39,7 @@ public class PricingControl : BaseUserControl
         _listsGrid.Columns.AddRange(
             new DataGridViewTextBoxColumn { DataPropertyName = "Name", HeaderText = "Tên bảng giá", FillWeight = 180 },
             new DataGridViewTextBoxColumn { DataPropertyName = "EffectiveDate", HeaderText = "Ngày hiệu lực", DefaultCellStyle = new() { Format = "dd/MM/yyyy" } },
+            new DataGridViewTextBoxColumn { DataPropertyName = "StatusText", HeaderText = "Trạng thái" },
             new DataGridViewTextBoxColumn { DataPropertyName = "RuleCount", HeaderText = "Số dòng giá" },
             new DataGridViewTextBoxColumn { DataPropertyName = "ContractCount", HeaderText = "Số hợp đồng" });
         _rulesGrid.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "VehicleType", HeaderText = "Loại xe", FillWeight = 140 });
@@ -69,7 +72,7 @@ public class PricingControl : BaseUserControl
 
         var toolbar = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, WrapContents = true };
         toolbar.Controls.Add(new Label { Text = "Quản lý bảng giá", Font = Theme.FontTitle, ForeColor = Theme.TextPrimary, AutoSize = true, Margin = new Padding(0, 0, 24, 12) });
-        toolbar.Controls.AddRange(new Control[] { _create, _edit, _delete, _refresh });
+        toolbar.Controls.AddRange(new Control[] { _create, _copy, _edit, _delete, _refresh });
         _delete.ForeColor = Theme.Danger;
         var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3 };
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -82,6 +85,7 @@ public class PricingControl : BaseUserControl
         Controls.Add(layout);
 
         _create.Click += async (_, _) => await EditAsync(create: true);
+        _copy.Click += async (_, _) => await CopyAsync();
         _edit.Click += async (_, _) => await EditAsync(create: false);
         _delete.Click += async (_, _) => await DeleteAsync();
         _refresh.Click += async (_, _) => await LoadAsync();
@@ -104,8 +108,10 @@ public class PricingControl : BaseUserControl
 
     private void UpdateActions()
     {
-        _create.Enabled = !_busy && (IsPriceLists || CurrentList is not null && _rulesLoaded);
-        _edit.Enabled = !_busy && (IsPriceLists ? SelectedList is not null : _rulesLoaded && SelectedRule is not null);
+        _create.Enabled = !_busy && (IsPriceLists || CanEditRules);
+        _copy.Visible = IsPriceLists;
+        _copy.Enabled = !_busy && IsPriceLists && SelectedList is not null;
+        _edit.Enabled = !_busy && (IsPriceLists ? SelectedList is not null : CanEditRules && SelectedRule is not null);
         _delete.Enabled = _edit.Enabled && (!IsPriceLists || SelectedList?.ContractCount == 0);
         _refresh.Enabled = !_busy;
         _tabs.Enabled = !_busy;
@@ -118,6 +124,7 @@ public class PricingControl : BaseUserControl
             ? _lists.Count == 0 ? "Chưa có bảng giá. Chọn Thêm mới để tạo." : $"{_lists.Count} bảng giá · Bảng giá đang được hợp đồng sử dụng không thể xóa."
             : CurrentList is null ? "Tạo bảng giá trước khi thêm chi tiết giá."
             : !_rulesLoaded ? "Chưa tải được chi tiết giá. Chọn Làm mới để thử lại."
+            : !CanEditRules ? $"{CurrentList.Name}: {_rules.Count} dòng giá · {CurrentList.StatusText} · Chỉ xem chi tiết giá."
             : $"{CurrentList.Name}: {_rules.Count} dòng giá · Nhấp đúp để sửa.";
     }
 
@@ -186,10 +193,21 @@ public class PricingControl : BaseUserControl
             }
             else
             {
-                if (!_rulesLoaded || CurrentList is not { } list || !create && SelectedRule is null) return;
+                if (!CanEditRules || CurrentList is not { } list || !create && SelectedRule is null) return;
                 using var form = new TariffRuleForm(_api, list, create ? null : SelectedRule);
                 if (form.ShowDialog(FindForm()) == DialogResult.OK) await LoadAsync(list.Id);
             }
+        }
+        catch (Exception ex) { ShowError(ex); }
+    }
+
+    private async Task CopyAsync()
+    {
+        if (_busy || !IsPriceLists || SelectedList is not { } list) return;
+        try
+        {
+            using var form = new PriceListForm(_api, list, copy: true);
+            if (form.ShowDialog(FindForm()) == DialogResult.OK) await LoadAsync(form.SavedId);
         }
         catch (Exception ex) { ShowError(ex); }
     }
@@ -200,7 +218,7 @@ public class PricingControl : BaseUserControl
         var isList = IsPriceLists;
         var list = isList ? SelectedList : CurrentList;
         var rule = SelectedRule;
-        if (list is null || isList && list.ContractCount > 0 || !isList && (!_rulesLoaded || rule is null)) return;
+        if (list is null || isList && list.ContractCount > 0 || !isList && (!CanEditRules || rule is null)) return;
         var message = isList
             ? $"Xóa bảng giá \"{list.Name}\" và toàn bộ {list.RuleCount} dòng giá đi kèm?\nThao tác này không thể hoàn tác."
             : $"Xóa giá của loại xe \"{rule!.VehicleType}\" khỏi bảng giá \"{list.Name}\"?\nThao tác này không thể hoàn tác.";

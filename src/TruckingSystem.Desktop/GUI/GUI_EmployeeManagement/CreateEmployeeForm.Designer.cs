@@ -37,6 +37,13 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             txtIdentityCardNo = new TextBox();
             lblHireDate = new Label();
             lblTerminationDate = new Label();
+            lblDateOfBirth = new Label();
+            dtpDateOfBirth = new DateTimePicker();
+            lblGender = new Label();
+            pnlGender = new FlowLayoutPanel();
+            rdoMale = new RadioButton();
+            rdoFemale = new RadioButton();
+            pnlGender.SuspendLayout();
             tableLayoutPanel1.SuspendLayout();
             SuspendLayout();
             // 
@@ -95,7 +102,7 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             txtPhone.Location = new Point(13, 253);
             txtPhone.Name = "txtPhone";
             txtPhone.Size = new Size(417, 25);
-            txtPhone.TabIndex = 3;
+            txtPhone.TabIndex = 5;
             // 
             // lblDept
             // 
@@ -115,7 +122,7 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             cboDept.Location = new Point(13, 403);
             cboDept.Name = "cboDept";
             cboDept.Size = new Size(417, 25);
-            cboDept.TabIndex = 5;
+            cboDept.TabIndex = 7;
             // 
             // lblPos
             // 
@@ -135,7 +142,7 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             cboPos.Location = new Point(13, 478);
             cboPos.Name = "cboPos";
             cboPos.Size = new Size(417, 25);
-            cboPos.TabIndex = 6;
+            cboPos.TabIndex = 8;
             // 
             // lblEmployeeStatus
             // 
@@ -155,7 +162,7 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             cboEmployeeStatus.Location = new Point(13, 553);
             cboEmployeeStatus.Name = "cboEmployeeStatus";
             cboEmployeeStatus.Size = new Size(417, 25);
-            cboEmployeeStatus.TabIndex = 7;
+            cboEmployeeStatus.TabIndex = 9;
             // 
             // btnSave
             // 
@@ -170,7 +177,7 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             btnSave.Location = new Point(131, 736);
             btnSave.Name = "btnSave";
             btnSave.Size = new Size(180, 38);
-            btnSave.TabIndex = 10;
+            btnSave.TabIndex = 12;
             btnSave.Text = "Lưu nhân viên";
             btnSave.UseVisualStyleBackColor = false;
             btnSave.Click += BtnSave_Click;
@@ -200,36 +207,46 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             // tableLayoutPanel1
             // 
             tableLayoutPanel1.AutoScroll = true;
-            tableLayoutPanel1.AutoScrollMinSize = new Size(0, 650);
+            tableLayoutPanel1.AutoScrollMinSize = new Size(0, 770);
             tableLayoutPanel1.ColumnCount = 1;
             tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             tableLayoutPanel1.Controls.Add(lblCode, 0, 0);
-            tableLayoutPanel1.Controls.Add(btnSave, 0, 28);
-            tableLayoutPanel1.Controls.Add(cboEmployeeStatus, 0, 22);
-            tableLayoutPanel1.Controls.Add(lblEmployeeStatus, 0, 21);
-            tableLayoutPanel1.Controls.Add(cboPos, 0, 19);
-            tableLayoutPanel1.Controls.Add(lblPos, 0, 18);
-            tableLayoutPanel1.Controls.Add(cboDept, 0, 16);
-            tableLayoutPanel1.Controls.Add(lblDept, 0, 15);
+            tableLayoutPanel1.Controls.Add(btnSave, 0, 34);
+            tableLayoutPanel1.Controls.Add(cboEmployeeStatus, 0, 28);
+            tableLayoutPanel1.Controls.Add(lblEmployeeStatus, 0, 27);
+            tableLayoutPanel1.Controls.Add(cboPos, 0, 25);
+            tableLayoutPanel1.Controls.Add(lblPos, 0, 24);
+            tableLayoutPanel1.Controls.Add(cboDept, 0, 22);
+            tableLayoutPanel1.Controls.Add(lblDept, 0, 21);
             tableLayoutPanel1.Controls.Add(txtCode, 0, 1);
             tableLayoutPanel1.Controls.Add(lblFullName, 0, 3);
-            tableLayoutPanel1.Controls.Add(txtPhone, 0, 10);
-            tableLayoutPanel1.Controls.Add(lblPhone, 0, 9);
+            tableLayoutPanel1.Controls.Add(txtPhone, 0, 16);
+            tableLayoutPanel1.Controls.Add(lblPhone, 0, 15);
             tableLayoutPanel1.Controls.Add(txtFullName, 0, 4);
-            tableLayoutPanel1.Controls.Add(txtAddress, 0, 13);
-            tableLayoutPanel1.Controls.Add(lblAddress, 0, 12);
-            tableLayoutPanel1.Controls.Add(lblHireDate, 0, 23);
-            tableLayoutPanel1.Controls.Add(dtpHireDate, 0, 24);
-            tableLayoutPanel1.Controls.Add(lblTerminationDate, 0, 25);
-            tableLayoutPanel1.Controls.Add(dtpTerminationDate, 0, 26);
-            tableLayoutPanel1.Controls.Add(lblStatus, 0, 27);
-            tableLayoutPanel1.Controls.Add(lblIdentityCardNo, 0, 6);
-            tableLayoutPanel1.Controls.Add(txtIdentityCardNo, 0, 7);
+            tableLayoutPanel1.Controls.Add(txtAddress, 0, 19);
+            tableLayoutPanel1.Controls.Add(lblAddress, 0, 18);
+            tableLayoutPanel1.Controls.Add(lblHireDate, 0, 29);
+            tableLayoutPanel1.Controls.Add(dtpHireDate, 0, 30);
+            tableLayoutPanel1.Controls.Add(lblTerminationDate, 0, 31);
+            tableLayoutPanel1.Controls.Add(dtpTerminationDate, 0, 32);
+            tableLayoutPanel1.Controls.Add(lblStatus, 0, 33);
+            tableLayoutPanel1.Controls.Add(lblIdentityCardNo, 0, 12);
+            tableLayoutPanel1.Controls.Add(txtIdentityCardNo, 0, 13);
+            tableLayoutPanel1.Controls.Add(lblDateOfBirth, 0, 6);
+            tableLayoutPanel1.Controls.Add(dtpDateOfBirth, 0, 7);
+            tableLayoutPanel1.Controls.Add(lblGender, 0, 9);
+            tableLayoutPanel1.Controls.Add(pnlGender, 0, 10);
             tableLayoutPanel1.Dock = DockStyle.Fill;
             tableLayoutPanel1.Location = new Point(0, 0);
             tableLayoutPanel1.Name = "tableLayoutPanel1";
             tableLayoutPanel1.Padding = new Padding(10, 0, 10, 0);
-            tableLayoutPanel1.RowCount = 29;
+            tableLayoutPanel1.RowCount = 35;
+            tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 25F));
+            tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 25F));
+            tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 10F));
+            tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 25F));
+            tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 25F));
+            tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 10F));
             tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 25F));
             tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 25F));
             tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 10F));
@@ -268,7 +285,7 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             txtAddress.Location = new Point(13, 328);
             txtAddress.Name = "txtAddress";
             txtAddress.Size = new Size(417, 25);
-            txtAddress.TabIndex = 4;
+            txtAddress.TabIndex = 6;
             // 
             // dtpHireDate
             //
@@ -286,7 +303,7 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             dtpHireDate.Location = new Point(13, 603);
             dtpHireDate.Name = "dtpHireDate";
             dtpHireDate.Size = new Size(200, 25);
-            dtpHireDate.TabIndex = 8;
+            dtpHireDate.TabIndex = 10;
             //
             // dtpTerminationDate
             //
@@ -297,7 +314,7 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             dtpTerminationDate.Location = new Point(13, 663);
             dtpTerminationDate.Name = "dtpTerminationDate";
             dtpTerminationDate.Size = new Size(200, 25);
-            dtpTerminationDate.TabIndex = 9;
+            dtpTerminationDate.TabIndex = 11;
             //
             // lblIdentityCardNo
             // 
@@ -316,8 +333,68 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             txtIdentityCardNo.Location = new Point(13, 178);
             txtIdentityCardNo.Name = "txtIdentityCardNo";
             txtIdentityCardNo.Size = new Size(417, 25);
-            txtIdentityCardNo.TabIndex = 2;
+            txtIdentityCardNo.TabIndex = 4;
             // 
+            // lblDateOfBirth
+            //
+            lblDateOfBirth.Text = "Ngày sinh (bỏ chọn nếu chưa có)";
+            lblDateOfBirth.Name = "lblDateOfBirth";
+            lblDateOfBirth.AutoSize = true;
+            lblDateOfBirth.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+            lblDateOfBirth.ForeColor = Color.FromArgb(100, 116, 139);
+            //
+            // dtpDateOfBirth
+            //
+            dtpDateOfBirth.Name = "dtpDateOfBirth";
+            dtpDateOfBirth.Dock = DockStyle.Top;
+            dtpDateOfBirth.Format = DateTimePickerFormat.Custom;
+            dtpDateOfBirth.CustomFormat = "dd/MM/yyyy";
+            dtpDateOfBirth.MinDate = new DateTime(1900, 1, 1);
+            dtpDateOfBirth.ShowCheckBox = true;
+            dtpDateOfBirth.Checked = false;
+            dtpDateOfBirth.TabIndex = 2;
+            dtpDateOfBirth.AccessibleName = "Ngày sinh (bỏ chọn nếu chưa có)";
+            //
+            // lblGender
+            //
+            lblGender.Text = "Giới tính";
+            lblGender.Name = "lblGender";
+            lblGender.AutoSize = true;
+            lblGender.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+            lblGender.ForeColor = Color.FromArgb(100, 116, 139);
+            //
+            // pnlGender
+            //
+            pnlGender.Name = "pnlGender";
+            pnlGender.Dock = DockStyle.Fill;
+            pnlGender.Margin = new Padding(3, 0, 3, 0);
+            pnlGender.WrapContents = false;
+            pnlGender.TabIndex = 3;
+            pnlGender.AccessibleName = "Giới tính";
+            pnlGender.AccessibleRole = AccessibleRole.Grouping;
+            pnlGender.Controls.Add(rdoMale);
+            pnlGender.Controls.Add(rdoFemale);
+            //
+            // rdoMale
+            //
+            rdoMale.Name = "rdoMale";
+            rdoMale.Text = "Nam";
+            rdoMale.AutoSize = true;
+            rdoMale.Margin = new Padding(0, 0, 16, 0);
+            rdoMale.Checked = true;
+            rdoMale.TabIndex = 0;
+            rdoMale.TabStop = true;
+            rdoMale.AccessibleName = "Nam";
+            //
+            // rdoFemale
+            //
+            rdoFemale.Name = "rdoFemale";
+            rdoFemale.Text = "Nữ";
+            rdoFemale.AutoSize = true;
+            rdoFemale.Margin = Padding.Empty;
+            rdoFemale.TabIndex = 1;
+            rdoFemale.AccessibleName = "Nữ";
+            //
             // CreateEmployeeForm
             // 
             AutoScaleDimensions = new SizeF(96F, 96F);
@@ -330,6 +407,8 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             Name = "CreateEmployeeForm";
             StartPosition = FormStartPosition.CenterParent;
             Text = "Thêm nhân viên mới";
+            pnlGender.ResumeLayout(false);
+            pnlGender.PerformLayout();
             tableLayoutPanel1.ResumeLayout(false);
             tableLayoutPanel1.PerformLayout();
             ResumeLayout(false);
@@ -360,5 +439,11 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
         private DateTimePicker dtpTerminationDate;
         private Label lblHireDate;
         private Label lblTerminationDate;
+        private Label lblDateOfBirth;
+        private DateTimePicker dtpDateOfBirth;
+        private Label lblGender;
+        private FlowLayoutPanel pnlGender;
+        private RadioButton rdoMale;
+        private RadioButton rdoFemale;
     }
 }
