@@ -97,13 +97,14 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                     filterBar.Is("deadline", DeadlineGroup(o)) &&
                     filterBar.Is("customer", o.CustomerName) &&
                     filterBar.Is("warehouse", o.WarehouseName ?? "") &&
-                    filterBar.MatchesSearch(o.Code, o.CustomerName, o.PickupPoint, o.DropoffPoint, o.WarehouseName))
+                    filterBar.MatchesSearch(o.Code, o.CustomerName, o.PickupPoint, o.DropoffPoint, o.WarehouseName, o.ContractCode))
                 .ToList();
             grid.DataSource = rows.Select(o => new
             {
                 o.Id,
                 Mã_đơn = o.Code,
                 Khách_hàng = o.CustomerName,
+                Mã_HĐ = o.ContractCode ?? "—",
                 Trạng_thái = TranslateStatus(o.Status),
                 Tiến_độ = $"{o.ProgressPercent}%",
                 Hạn_giao = o.CommittedDeliveryDate?.ToString("dd/MM/yyyy") ?? "—",

@@ -25,6 +25,8 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
         private bool _rebindingLocations;                    // đang đổ lại dropdown bằng code
         private readonly AutoCompleteStringCollection _cargoTypeSuggestions = new();
         private List<string> _cargoTypes = new();
+        private int _contractLoadVersion;                    // bỏ kết quả tải hợp đồng cũ khi đổi khách liên tục
+        private const string NoContractText = "(Không theo hợp đồng — khách lẻ)";
 
         // ---- HẠN GIAO (bắt buộc) + gợi ý theo ước tính số ngày chạy của tuyến ----
         private int? _estimatedDays;          // số ngày chạy ước tính (VietMap, 8 giờ lái/ngày)
@@ -74,6 +76,11 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             // Đổi khách hàng -> lọc lại địa điểm (địa chỉ riêng của khách khác không được dùng).
             // (Chế độ Sửa đơn: không đổi được khách; danh sách được lọc 1 lần trong LoadExistingOrderAsync.)
             cboCustomer.SelectedIndexChanged += async (_, _) => { if (_locations.Count > 0 && !_editOrderId.HasValue) await LoadLocationsAsync(); };
+            // Đổi khách hàng -> nạp lại hợp đồng ĐANG HIỆU LỰC của đúng khách đó.
+            cboCustomer.SelectedIndexChanged += async (_, _) =>
+            {
+                if (!_editOrderId.HasValue && cboCustomer.SelectedValue is int customerId) await LoadContractsAsync(customerId, null, null);
+            };
             btnAddPickupLocation.Click += async (_, _) => await AddLocationAsync(cboPickupLocation);
             btnAddDropoffLocation.Click += async (_, _) => await AddLocationAsync(cboDropoffLocation);
 
@@ -115,6 +122,8 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
         private async Task LoadInitialDataAsync()
         {
             await LoadCustomersAsync();
+            if (!_editOrderId.HasValue && cboCustomer.SelectedValue is int firstCustomerId)
+                await LoadContractsAsync(firstCustomerId, null, null);
             await LoadLocationsAsync();
             await LoadWarehousesAsync();
             await LoadCargoTypesAsync();
@@ -392,6 +401,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                 }
 
                 cboCustomer.SelectedValue = order.CustomerId;
+                await LoadContractsAsync(order.CustomerId, order.ContractId, order.ContractCode);
                 rbCompanyPickup.Checked = order.PickupMethod == "CompanyPickup";
                 rbSelfDelivery.Checked = order.PickupMethod == "SelfDelivery";
                 // Đơn cũ: chọn lại đúng Địa điểm theo địa chỉ đã lưu. Không khớp
@@ -422,6 +432,38 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             {
                 lblStatus.Text = "Lỗi tải đơn hàng: " + ex.Message;
             }
+        }
+
+        /// <summary>Dropdown "Hợp đồng": hợp đồng ĐANG HIỆU LỰC của khách (server lọc). Khách chỉ có 1
+        /// hợp đồng -> chọn sẵn; không có -> "(Không theo hợp đồng)". Sửa đơn: giữ đúng hợp đồng đã
+        /// lưu, kể cả khi hợp đồng đó nay đã hết hạn (lúc Xác nhận server sẽ báo để chọn lại).</summary>
+        private async Task LoadContractsAsync(int customerId, int? selectId, string? selectCode)
+        {
+            if (_api is null) return;
+            var version = ++_contractLoadVersion;
+            var items = new List<OrderContractOption> { new() { Id = 0, Code = NoContractText } };
+            try
+            {
+                var options = await _api.TransportOrders.GetContractOptionsAsync(customerId);
+                if (version != _contractLoadVersion) return; // đã đổi sang khách khác
+                items.AddRange(options);
+                if (selectId is int keep && options.All(o => o.Id != keep))
+                    items.Add(new OrderContractOption { Id = keep, Code = selectCode ?? $"#{keep}", Inactive = true });
+            }
+            catch (Exception ex)
+            {
+                if (version != _contractLoadVersion) return;
+                lblStatus.Text = "Không tải được danh sách hợp đồng: " + ex.Message;
+            }
+
+            cboContract.BeginUpdate();
+            cboContract.Items.Clear();
+            foreach (var item in items) cboContract.Items.Add(item);
+            cboContract.EndUpdate();
+            var selected = selectId is int id ? items.FirstOrDefault(i => i.Id == id)
+                : items.Count == 2 ? items[1]  // khách có đúng 1 hợp đồng đang hiệu lực -> chọn sẵn
+                : null;
+            cboContract.SelectedItem = selected ?? items[0];
         }
 
         private int? MatchLocationId(string? address)
@@ -496,6 +538,8 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                 return;
             }
 
+            int? contractId = cboContract.SelectedItem is OrderContractOption c && c.Id > 0 ? c.Id : null;
+
             btnSave.Enabled = false;
             try
             {
@@ -503,7 +547,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                 {
                     var result = await _api.TransportOrders.UpdateTransportOrderAsync(
                         _editOrderId.Value, txtPickup.Text.Trim(), txtDropoff.Text.Trim(), warehouseId, committedDate,
-                        cargoLinesList, pickupLocId, dropoffLocId, pickupMethod);
+                        cargoLinesList, pickupLocId, dropoffLocId, pickupMethod, contractId);
 
                     if (!result.Success)
                     {
@@ -515,7 +559,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                 {
                     await _api.TransportOrders.CreateTransportOrderAsync(
                         (int)cboCustomer.SelectedValue, txtPickup.Text.Trim(), txtDropoff.Text.Trim(), warehouseId, committedDate,
-                        cargoLinesList, pickupLocId, dropoffLocId, pickupMethod);
+                        cargoLinesList, pickupLocId, dropoffLocId, pickupMethod, contractId);
                 }
 
                 DialogResult = DialogResult.OK;

@@ -23,5 +23,7 @@
         public decimal QtyOnHand { get; set; }
         /// <summary>Hàng đang nằm ở ô nào ("A-01 (5), A-02 (3)") — để soạn hàng.</summary>
         public string BinsText { get; set; } = "";
+        /// <summary>Điểm giao của chuyến — xe chở hàng đi đâu.</summary>
+        public string Destination { get; set; } = "—";
     }
 }

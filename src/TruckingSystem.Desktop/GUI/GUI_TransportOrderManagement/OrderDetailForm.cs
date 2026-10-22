@@ -47,7 +47,8 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                 var order = await _api.TransportOrders.GetOrderDetailAsync(_orderId);
                 _currentOrder = order;
 
-                lblHeader.Text = $"Đơn {order.Code} — {order.CustomerName}";
+                lblHeader.Text = $"Đơn {order.Code} — {order.CustomerName}" +
+                                 (string.IsNullOrWhiteSpace(order.ContractCode) ? "   ·   Không theo hợp đồng" : $"   ·   Hợp đồng {order.ContractCode}");
                 lblInfo.Text = $"Trạng thái: {TruckingSystem.Desktop.GUI_Shared.ReportFormat.OrderStatus(order.Status)}   |   Tiến độ: {order.ProgressPercent}%   |   " +
                                $"{order.PickupPoint} → {order.DropoffPoint}   |   Hạn giao: " +
                                (order.CommittedDeliveryDate is { } due ? due.ToString("dd/MM/yyyy") : "⚠️ chưa có hạn");
@@ -72,6 +73,8 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                 {
                     Mã_chuyến = t.Id,
                     Chặng = LegText(t.LegType),
+                    Điểm_đi = t.FromName ?? "—",
+                    Điểm_đến = t.ToName ?? "—",
                     Biển_số_xe = t.VehiclePlate,
                     Tài_xế = t.DriverName,
                     Trạng_thái = TruckingSystem.Desktop.GUI_Shared.ReportFormat.TripStatus(t.Status),

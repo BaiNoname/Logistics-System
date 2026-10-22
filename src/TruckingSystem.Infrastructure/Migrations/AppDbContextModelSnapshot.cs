@@ -1698,6 +1698,9 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.Property<DateTime?>("CommittedDeliveryDate")
                         .HasColumnType("timestamp without time zone");
 
+                    b.Property<int?>("ContractId")
+                        .HasColumnType("integer");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp without time zone");
 
@@ -1750,6 +1753,8 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     b.HasIndex("Code")
                         .IsUnique();
+
+                    b.HasIndex("ContractId");
 
                     b.HasIndex("CustomerId");
 
@@ -2914,6 +2919,11 @@ namespace TruckingSystem.Infrastructure.Migrations
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.TransportOrder", b =>
                 {
+                    b.HasOne("TruckingSystem.Domain.Entities.Contract", "Contract")
+                        .WithMany()
+                        .HasForeignKey("ContractId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("TruckingSystem.Domain.Entities.Customer", "Customer")
                         .WithMany("TransportOrders")
                         .HasForeignKey("CustomerId")
@@ -2939,6 +2949,8 @@ namespace TruckingSystem.Infrastructure.Migrations
                         .HasForeignKey("WarehouseId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("Contract");
 
                     b.Navigation("Customer");
 
