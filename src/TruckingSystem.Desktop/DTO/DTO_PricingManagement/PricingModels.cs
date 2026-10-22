@@ -1,5 +1,18 @@
 namespace TruckingSystem.Desktop.DTO_PricingManagement;
 
-public record PriceListItem(int Id, string Name, DateTime EffectiveDate, int RuleCount, int ContractCount);
+public record PriceListItem(int Id, string Name, DateTime EffectiveDate, int RuleCount, int ContractCount, string Status = "Active")
+{
+    public string StatusText => Status switch
+    {
+        "Active" => "Đang áp dụng",
+        "Inactive" => "Ngừng áp dụng",
+        "Expired" => "Hết hạn",
+        _ => Status,
+    };
+}
 public record TariffRuleItem(int Id, int PriceListId, string VehicleType, decimal PricePerKm,
-    decimal PricePerTon, decimal SurchargeFragile, decimal SurchargeHazmat);
+    decimal PricePerTon, decimal SurchargeFragile, decimal SurchargeHazmat)
+{
+    public string DisplayName => $"{VehicleType} · {PricePerKm:N2} đ/km · {PricePerTon:N2} đ/tấn";
+    public string Details => $"Giá/km: {PricePerKm:N2} đ · Giá/tấn: {PricePerTon:N2} đ\nPhụ phí dễ vỡ: {SurchargeFragile:N2} đ · Phụ phí nguy hiểm: {SurchargeHazmat:N2} đ";
+}

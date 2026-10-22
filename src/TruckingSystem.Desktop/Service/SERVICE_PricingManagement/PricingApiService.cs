@@ -8,11 +8,14 @@ public class PricingApiService(ApiConnection connection)
     public async Task<List<PriceListItem>> GetPriceListsAsync()
         => await connection.GetAsync<List<PriceListItem>>("/api/price-lists") ?? new();
 
-    public Task<PriceListItem?> CreatePriceListAsync(string name, DateTime effectiveDate)
-        => connection.PostAsync<PriceListItem>("/api/price-lists", new { name, effectiveDate });
+    public Task<PriceListItem?> CreatePriceListAsync(string name, DateTime effectiveDate, string? status = null)
+        => connection.PostAsync<PriceListItem>("/api/price-lists", new { name, effectiveDate, status });
 
-    public Task UpdatePriceListAsync(int id, string name, DateTime effectiveDate)
-        => connection.PutAsync<object>($"/api/price-lists/{id}", new { name, effectiveDate });
+    public Task<PriceListItem?> CopyPriceListAsync(int id, string name)
+        => connection.PostAsync<PriceListItem>($"/api/price-lists/{id}/copy", new { name });
+
+    public Task UpdatePriceListAsync(int id, string name, DateTime effectiveDate, string? status = null)
+        => connection.PutAsync<object>($"/api/price-lists/{id}", new { name, effectiveDate, status });
 
     public Task DeletePriceListAsync(int id)
         => connection.DeleteAsync<object>($"/api/price-lists/{id}");

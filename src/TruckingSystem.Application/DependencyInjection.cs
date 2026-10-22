@@ -36,6 +36,7 @@ public static class DependencyInjection
         services.AddScoped<IVehicleService, VehicleService>();
         services.AddScoped<ICustomerService, CustomerService>();
         services.AddScoped<IContractService, ContractService>();
+        services.AddScoped<IContractAppendixService, ContractAppendixService>();
         services.AddScoped<IPricingService, PricingService>();
         services.AddScoped<TruckingSystem.Application.Notifications.INotificationService, TruckingSystem.Application.Notifications.NotificationService>();
         services.AddScoped<TruckingSystem.Application.AuditLogs.IAuditLogService, TruckingSystem.Application.AuditLogs.AuditLogService>();
