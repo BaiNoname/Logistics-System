@@ -261,6 +261,9 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
             .HasForeignKey(o => o.CustomerId).OnDelete(DeleteBehavior.Restrict);
         builder.Entity<TransportOrder>().HasOne(o => o.Warehouse).WithMany()
             .HasForeignKey(o => o.WarehouseId).OnDelete(DeleteBehavior.Restrict);
+        // Hợp đồng đã có đơn chạy theo thì không xóa được (đơn / hóa đơn mất dấu hợp đồng).
+        builder.Entity<TransportOrder>().HasOne(o => o.Contract).WithMany()
+            .HasForeignKey(o => o.ContractId).OnDelete(DeleteBehavior.Restrict);
         builder.Entity<Trip>().HasOne(t => t.TransportOrder).WithMany(o => o.Trips)
             .HasForeignKey(t => t.TransportOrderId).OnDelete(DeleteBehavior.Restrict);
         builder.Entity<Invoice>().HasOne(i => i.Customer).WithMany(c => c.Invoices)

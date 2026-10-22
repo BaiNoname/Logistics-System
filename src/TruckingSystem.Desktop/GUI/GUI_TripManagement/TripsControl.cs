@@ -87,7 +87,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
                     filterBar.Is("deadline", DeadlineGroup(t)) &&
                     MatchesStart(t, filterBar.Choice("start")) &&
                     filterBar.Is("warehouse", t.WarehouseName ?? "") &&
-                    filterBar.MatchesSearch($"#{t.Id}", t.OrderCode, t.VehiclePlate, t.DriverName, t.WarehouseName))
+                    filterBar.MatchesSearch($"#{t.Id}", t.OrderCode, t.VehiclePlate, t.DriverName, t.WarehouseName, t.FromName, t.ToName))
                 .ToList();
             grid.DataSource = rows.Select(t => new
             {
@@ -96,6 +96,8 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
                 Biển_số_xe = t.VehiclePlate,
                 Tài_xế = t.DriverName,
                 Chặng = TranslateLegType(t.LegType),
+                Điểm_đi = t.FromName ?? "—",
+                Điểm_đến = t.ToName ?? "—",
                 Trạng_thái = StatusText(t),
                 Số_lượng = t.TotalQtyPlanned,
                 Kho = WarehouseText(t),

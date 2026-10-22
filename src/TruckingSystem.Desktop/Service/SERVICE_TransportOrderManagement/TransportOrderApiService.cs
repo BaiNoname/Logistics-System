@@ -36,7 +36,8 @@ namespace TruckingSystem.Desktop.SERVICE_TransportOrderManagement
             => _conn.GetAsync<List<TransportOrderListItem>>("/api/transport-orders")!;
 
         public Task CreateTransportOrderAsync(int customerId, string pickup, string dropoff, int warehouseId, DateTime? committedDate,
-            List<CargoLineItem> cargoLines, int? pickupLocationId = null, int? dropoffLocationId = null, string pickupMethod = "CompanyPickup")
+            List<CargoLineItem> cargoLines, int? pickupLocationId = null, int? dropoffLocationId = null, string pickupMethod = "CompanyPickup",
+            int? contractId = null)
             => _conn.PostAsync<object>("/api/transport-orders", new
             {
                 customerId,
@@ -48,11 +49,12 @@ namespace TruckingSystem.Desktop.SERVICE_TransportOrderManagement
                 pickupLocationId,
                 dropoffLocationId,
                 pickupMethod,
+                contractId,
             });
 
         /// <summary>Sửa đơn — CHỈ áp dụng được khi đơn còn Draft (Backend tự kiểm tra lại).</summary>
         public Task<OrderActionResultItem> UpdateTransportOrderAsync(int id, string pickup, string dropoff, int warehouseId, DateTime? committedDate,
-            List<CargoLineItem> cargoLines, int? pickupLocationId, int? dropoffLocationId, string pickupMethod)
+            List<CargoLineItem> cargoLines, int? pickupLocationId, int? dropoffLocationId, string pickupMethod, int? contractId = null)
             => _conn.PutAsync<OrderActionResultItem>($"/api/transport-orders/{id}", new
             {
                 pickupPoint = pickup,
@@ -63,7 +65,12 @@ namespace TruckingSystem.Desktop.SERVICE_TransportOrderManagement
                 pickupLocationId,
                 dropoffLocationId,
                 pickupMethod,
+                contractId,
             })!;
+
+        /// <summary>Hợp đồng đang hiệu lực của khách — dropdown "Hợp đồng" khi tạo / sửa đơn.</summary>
+        public Task<List<OrderContractOption>> GetContractOptionsAsync(int customerId)
+            => _conn.GetAsync<List<OrderContractOption>>($"/api/transport-orders/contract-options?customerId={customerId}")!;
 
         public Task<TransportOrderDetailItem> GetOrderDetailAsync(int id)
             => _conn.GetAsync<TransportOrderDetailItem>($"/api/transport-orders/{id}")!;

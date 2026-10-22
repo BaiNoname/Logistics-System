@@ -22,6 +22,8 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             fields = new System.Windows.Forms.TableLayoutPanel();
             lblCustomer = new System.Windows.Forms.Label();
             cboCustomer = new System.Windows.Forms.ComboBox();
+            lblContract = new System.Windows.Forms.Label();
+            cboContract = new System.Windows.Forms.ComboBox();
             lblPickup = new System.Windows.Forms.Label();
             txtPickup = new System.Windows.Forms.TextBox();
             lblPickupQuick = new System.Windows.Forms.Label();
@@ -104,27 +106,30 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             fields.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.AutoSize));
             fields.Controls.Add(lblCustomer, 0, 0);
             fields.Controls.Add(cboCustomer, 1, 0);
-            fields.Controls.Add(lblPickup, 0, 1);
-            fields.Controls.Add(txtPickup, 1, 1);
-            fields.Controls.Add(lblPickupQuick, 0, 2);
-            fields.Controls.Add(cboPickupLocation, 1, 2);
-            fields.Controls.Add(btnAddPickupLocation, 2, 2);
-            fields.Controls.Add(lblDropoff, 0, 3);
-            fields.Controls.Add(txtDropoff, 1, 3);
-            fields.Controls.Add(lblDropoffQuick, 0, 4);
-            fields.Controls.Add(cboDropoffLocation, 1, 4);
-            fields.Controls.Add(btnAddDropoffLocation, 2, 4);
-            fields.Controls.Add(lblCommitted, 0, 5);
-            fields.Controls.Add(dtCommitted, 1, 5);
-            fields.Controls.Add(lblDeadlineHint, 1, 6);
-            fields.Controls.Add(lblPickupMethod, 0, 7);
-            fields.Controls.Add(pickupMethodBar, 1, 7);
-            fields.Controls.Add(lblWarehouse, 0, 8);
-            fields.Controls.Add(cboWarehouse, 1, 8);
+            fields.Controls.Add(lblContract, 0, 1);
+            fields.Controls.Add(cboContract, 1, 1);
+            fields.Controls.Add(lblPickup, 0, 2);
+            fields.Controls.Add(txtPickup, 1, 2);
+            fields.Controls.Add(lblPickupQuick, 0, 3);
+            fields.Controls.Add(cboPickupLocation, 1, 3);
+            fields.Controls.Add(btnAddPickupLocation, 2, 3);
+            fields.Controls.Add(lblDropoff, 0, 4);
+            fields.Controls.Add(txtDropoff, 1, 4);
+            fields.Controls.Add(lblDropoffQuick, 0, 5);
+            fields.Controls.Add(cboDropoffLocation, 1, 5);
+            fields.Controls.Add(btnAddDropoffLocation, 2, 5);
+            fields.Controls.Add(lblCommitted, 0, 6);
+            fields.Controls.Add(dtCommitted, 1, 6);
+            fields.Controls.Add(lblDeadlineHint, 1, 7);
+            fields.Controls.Add(lblPickupMethod, 0, 8);
+            fields.Controls.Add(pickupMethodBar, 1, 8);
+            fields.Controls.Add(lblWarehouse, 0, 9);
+            fields.Controls.Add(cboWarehouse, 1, 9);
             fields.Dock = System.Windows.Forms.DockStyle.Top;
             fields.Margin = new System.Windows.Forms.Padding(0);
             fields.Name = "fields";
-            fields.RowCount = 9;
+            fields.RowCount = 10;
+            fields.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
             fields.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
             fields.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
             fields.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
@@ -152,6 +157,21 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             cboCustomer.Margin = new System.Windows.Forms.Padding(0, 4, 8, 4);
             cboCustomer.Name = "cboCustomer";
             cboCustomer.TabIndex = 1;
+            //
+            // lblContract
+            //
+            lblContract.Anchor = System.Windows.Forms.AnchorStyles.Left;
+            lblContract.AutoSize = true;
+            lblContract.Margin = new System.Windows.Forms.Padding(0, 4, 12, 4);
+            lblContract.Name = "lblContract";
+            lblContract.Text = "Hợp đồng:";
+            //
+            // cboContract
+            //
+            cboContract.Dock = System.Windows.Forms.DockStyle.Fill;
+            cboContract.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            cboContract.Margin = new System.Windows.Forms.Padding(0, 4, 8, 4);
+            cboContract.Name = "cboContract";
             //
             // lblPickup
             //
@@ -523,6 +543,8 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
 
         private System.Windows.Forms.Label lblCustomer;
         private System.Windows.Forms.ComboBox cboCustomer;
+        private System.Windows.Forms.Label lblContract;
+        private System.Windows.Forms.ComboBox cboContract;
         private System.Windows.Forms.Label lblPickup;
         private System.Windows.Forms.TextBox txtPickup;
         private System.Windows.Forms.Label lblPickupQuick;

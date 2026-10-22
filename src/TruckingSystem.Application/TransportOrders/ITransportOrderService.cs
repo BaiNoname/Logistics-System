@@ -7,6 +7,9 @@ public interface ITransportOrderService
     /// <summary>Gợi ý "Loại hàng" khi tạo đơn: danh mục chuẩn + các loại đã dùng.</summary>
     Task<List<string>> GetCargoTypeSuggestionsAsync();
     Task<TransportOrderDetailDto?> GetByIdAsync(int id);
+
+    /// <summary>Hợp đồng chọn được khi tạo / sửa đơn: của đúng khách, đang hiệu lực hôm nay.</summary>
+    Task<List<OrderContractOptionDto>> GetContractOptionsAsync(int customerId);
     Task<TransportOrderDetailDto> CreateAsync(CreateTransportOrderRequest request);
 
     /// <summary>Sửa đơn — CHỈ áp dụng được khi đơn còn Draft.</summary>

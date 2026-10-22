@@ -31,6 +31,9 @@ public class TripListItem
     public DateTime? PlannedStartDate { get; set; }
     /// <summary>Kho trung chuyển của chuyến.</summary>
     public string? WarehouseName { get; set; }
+    /// <summary>Điểm đi -> điểm đến của chặng (Lấy: điểm lấy → kho; Giao: kho → điểm giao; Trả: kho → điểm lấy).</summary>
+    public string? FromName { get; set; }
+    public string? ToName { get; set; }
 }
 
 public class TripActionResultItem

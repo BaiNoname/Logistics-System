@@ -77,7 +77,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
         {
             var rows = _lines.Where(l =>
                     issueFilter.Is("state", l.TripState) &&
-                    issueFilter.MatchesSearch($"#{l.TripId}", l.OrderCode, l.CustomerName, l.PlateNumber, l.DriverName, l.CargoType))
+                    issueFilter.MatchesSearch($"#{l.TripId}", l.OrderCode, l.CustomerName, l.PlateNumber, l.DriverName, l.CargoType, l.Destination))
                 .ToList();
             issueFilter.SetCount(rows.Select(r => r.TripId).Distinct().Count(), _lines.Select(l => l.TripId).Distinct().Count());
             grid.DataSource = rows.Select(l => new
@@ -87,6 +87,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                 Đơn = l.OrderCode,
                 Khách_hàng = l.CustomerName,
                 Xe_tài_xế = $"{l.PlateNumber} · {l.DriverName}",
+                Giao_đến = l.Destination,
                 Xuất_phát_dự_kiến = l.PlannedStartDate?.ToString("dd/MM/yyyy") ?? "—",
                 Loại_hàng = l.CargoType,
                 Cần_xuất = l.QtyPlanned,

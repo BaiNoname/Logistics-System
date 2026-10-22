@@ -22,7 +22,10 @@ public record TripListItemDto(
     // Ngày xuất phát dự kiến chọn lúc Chia xe (null = dữ liệu cũ).
     DateTime? PlannedStartDate = null,
     // Kho trung chuyển của chuyến — để lọc theo kho.
-    string? WarehouseName = null
+    string? WarehouseName = null,
+    // Điểm đi -> điểm đến của chặng (TripRouteText) — để nhìn danh sách biết chuyến chạy từ đâu tới đâu.
+    string? FromName = null,
+    string? ToName = null
 );
 
 public record TripActionResult(bool Success, string? Message);

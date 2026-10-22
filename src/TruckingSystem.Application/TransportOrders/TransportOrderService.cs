@@ -31,7 +31,8 @@ public class TransportOrderService : ITransportOrderService
                 o.Id, o.Code, o.Customer.Name, o.Status.ToString(),
                 o.ProgressPercent, o.PickupPoint, o.DropoffPoint, o.PublicTrackingToken,
                 o.Trips.Count(t => t.Status != TripStatus.Cancelled),
-                o.CommittedDeliveryDate, o.Warehouse.Name))
+                o.CommittedDeliveryDate, o.Warehouse.Name,
+                o.Contract != null ? o.Contract.Code : null))
             .ToListAsync();
     }
 
@@ -43,9 +44,11 @@ public class TransportOrderService : ITransportOrderService
             .Include(o => o.CargoLines)
             .Include(o => o.PickupLocation)
             .Include(o => o.DropoffLocation)
+            .Include(o => o.Contract)
             .Include(o => o.Trips).ThenInclude(t => t.Vehicle)
             .Include(o => o.Trips).ThenInclude(t => t.DriverEmployee)
             .Include(o => o.Trips).ThenInclude(t => t.TripLines)
+            .Include(o => o.Trips).ThenInclude(t => t.Warehouse)
             .FirstOrDefaultAsync(o => o.Id == id);
 
         if (order is null) return null;
@@ -76,6 +79,10 @@ public class TransportOrderService : ITransportOrderService
         if (locationError is not null)
             throw new InvalidOperationException(locationError);
 
+        var contractError = await ValidateContractAsync(request.ContractId, request.CustomerId);
+        if (contractError is not null)
+            throw new InvalidOperationException(contractError);
+
         // HẠN GIAO BẮT BUỘC với đơn mới — cả hệ thống nhắc hạn (Chia xe cảnh báo trễ, mốc xuất
         // phát muộn nhất, thông báo, tỉ lệ giao đúng hạn) dựa vào ngày này.
         if (request.CommittedDeliveryDate is null)
@@ -95,6 +102,7 @@ public class TransportOrderService : ITransportOrderService
         {
             Code = code,
             CustomerId = request.CustomerId,
+            ContractId = request.ContractId,
             PickupPoint = request.PickupPoint,
             DropoffPoint = request.DropoffPoint,
             WarehouseId = request.WarehouseId,
@@ -117,6 +125,8 @@ public class TransportOrderService : ITransportOrderService
         if (request.DropoffLocationId.HasValue)
             order.DropoffLocation = await _db.Locations.FindAsync(request.DropoffLocationId.Value);
 
+        if (request.ContractId.HasValue)
+            order.Contract = await _db.Contracts.FindAsync(request.ContractId.Value);
         order.Customer = customer; // gán tay để MapToDetail không phải query lại
         order.Warehouse = warehouse;
         order.Trips = new List<Trip>(); // đơn mới tạo chưa có chuyến nào
@@ -158,6 +168,15 @@ public class TransportOrderService : ITransportOrderService
         if (locationError is not null)
             return new OrderActionResult(false, locationError);
 
+        // Chỉ kiểm tra hiệu lực khi ĐỔI hợp đồng — nháp cũ giữ nguyên hợp đồng vẫn sửa được
+        // thông tin khác (lúc Xác nhận sẽ kiểm tra lại hiệu lực).
+        if (request.ContractId != order.ContractId)
+        {
+            var contractError = await ValidateContractAsync(request.ContractId, order.CustomerId);
+            if (contractError is not null)
+                return new OrderActionResult(false, contractError);
+        }
+
         // Chỉ kiểm tra "không phải ngày đã qua" khi NGÀY hạn giao bị đổi — đơn nháp cũ
         // giữ nguyên hạn giao (đã qua) vẫn sửa được các thông tin khác.
         if (request.CommittedDeliveryDate is null)
@@ -174,6 +193,7 @@ public class TransportOrderService : ITransportOrderService
         order.PickupLocationId = ParsePickupMethod(request.PickupMethod) == PickupMethod.SelfDelivery ? null : request.PickupLocationId;
         order.DropoffLocationId = request.DropoffLocationId;
         order.PickupMethod = ParsePickupMethod(request.PickupMethod);
+        order.ContractId = request.ContractId;
 
         // Thay hẳn toàn bộ danh sách dòng hàng cũ bằng danh sách mới — đơn giản
         // và an toàn hơn nhiều so với dò từng dòng để so sánh thêm/sửa/xóa,
@@ -213,6 +233,10 @@ public class TransportOrderService : ITransportOrderService
         var locationError = await ValidateLocationsAsync(order.PickupMethod.ToString(), order.PickupLocationId, order.DropoffLocationId, order.CustomerId);
         if (locationError is not null)
             return new OrderActionResult(false, locationError + " (Bấm Sửa đơn để chọn lại địa điểm.)");
+        // Hợp đồng có thể đã hết hạn / bị sửa trong lúc đơn còn nháp -> kiểm tra lại.
+        var contractError = await ValidateContractAsync(order.ContractId, order.CustomerId);
+        if (contractError is not null)
+            return new OrderActionResult(false, contractError + " (Bấm Sửa đơn để chọn hợp đồng khác hoặc bỏ trống.)");
 
         order.Status = TransportOrderStatus.Confirmed;
         await _db.SaveChangesAsync();
@@ -533,6 +557,40 @@ public class TransportOrderService : ITransportOrderService
         await _db.SaveChangesAsync();
     }
 
+    /// <summary>Hợp đồng của đơn (tuỳ chọn): phải tồn tại, của ĐÚNG khách hàng và đang hiệu lực
+    /// hôm nay (giờ VN) — không nhận đơn theo hợp đồng chưa bắt đầu / đã hết hạn.</summary>
+    private async Task<string?> ValidateContractAsync(int? contractId, int customerId)
+    {
+        if (contractId is null) return null;
+        var contract = await _db.Contracts
+            .Where(c => c.Id == contractId.Value)
+            .Select(c => new { c.Code, c.CustomerId, c.StartDate, c.EndDate })
+            .FirstOrDefaultAsync();
+        if (contract is null) return "Hợp đồng đã chọn không tồn tại (có thể vừa bị xóa) — chọn lại hợp đồng.";
+        if (contract.CustomerId != customerId)
+            return $"Hợp đồng {contract.Code} không phải hợp đồng của khách hàng này.";
+        return Contract.GetStatus(contract.StartDate, contract.EndDate, VnClock.Today) switch
+        {
+            ContractStatus.Upcoming => $"Hợp đồng {contract.Code} chưa có hiệu lực (bắt đầu {contract.StartDate:dd/MM/yyyy}).",
+            ContractStatus.Expired => $"Hợp đồng {contract.Code} đã hết hạn ngày {contract.EndDate:dd/MM/yyyy}.",
+            _ => null,
+        };
+    }
+
+    public async Task<List<OrderContractOptionDto>> GetContractOptionsAsync(int customerId)
+    {
+        var today = VnClock.Today;
+        var contracts = await _db.Contracts
+            .Where(c => c.CustomerId == customerId)
+            .OrderByDescending(c => c.StartDate)
+            .Select(c => new { c.Id, c.Code, c.StartDate, c.EndDate, PriceListName = c.PriceList != null ? c.PriceList.Name : null })
+            .ToListAsync();
+        return contracts
+            .Where(c => Contract.GetStatus(c.StartDate, c.EndDate, today) == ContractStatus.Active)
+            .Select(c => new OrderContractOptionDto(c.Id, c.Code, c.StartDate, c.EndDate, c.PriceListName))
+            .ToList();
+    }
+
     /// <summary>Điểm giao (và điểm lấy, nếu công ty cử xe đi lấy) BẮT BUỘC chọn
     /// từ danh mục Địa điểm — địa chỉ gõ tay không có tọa độ, khiến bản đồ, ước
     /// tính quãng đường/số ngày chạy và nhiên liệu đều không tính được.</summary>
@@ -675,13 +733,19 @@ public class TransportOrderService : ITransportOrderService
         order.PickupPoint, order.DropoffPoint, order.CommittedDeliveryDate, order.PublicTrackingToken,
         order.CargoLines.Select(c => new CargoLineDto(
             c.CargoType, c.PackageCount, c.WeightKg, c.VolumeM3, c.IsFragile, c.IsHazmat, c.QtyTotal)).ToList(),
-        order.Trips.Select(t => new TripSummaryDto(
-            t.Id, t.Vehicle.PlateNumber, t.DriverEmployee.FullName, t.Status.ToString(),
-            t.TripLines.Sum(tl => tl.QtyPlanned), t.LegType.ToString())).ToList(),
+        order.Trips.Select(t =>
+        {
+            var route = TripRouteText.For(t.LegType, t.Warehouse?.Name,
+                order.PickupLocation?.Name, order.PickupPoint, order.DropoffLocation?.Name, order.DropoffPoint);
+            return new TripSummaryDto(
+                t.Id, t.Vehicle.PlateNumber, t.DriverEmployee.FullName, t.Status.ToString(),
+                t.TripLines.Sum(tl => tl.QtyPlanned), t.LegType.ToString(), route.From, route.To);
+        }).ToList(),
         order.PickupLocation?.Lat, order.PickupLocation?.Lng,
         order.DropoffLocation?.Lat, order.DropoffLocation?.Lng,
         order.PickupMethod.ToString(), order.CustomerId, order.WarehouseId, order.Warehouse.Name,
         order.PickupLocationId, order.DropoffLocationId,
-        order.Warehouse.Lat, order.Warehouse.Lng
+        order.Warehouse.Lat, order.Warehouse.Lng,
+        order.ContractId, order.Contract?.Code
     );
 }

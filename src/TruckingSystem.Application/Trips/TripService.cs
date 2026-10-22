@@ -118,6 +118,9 @@ public class TripService : ITripService
             }
 
             var deadline = DeliveryDeadlineRules.Evaluate(t, tripsByOrder[t.TransportOrderId], t.TransportOrder.CommittedDeliveryDate, todayVn);
+            var route = TripRouteText.For(t.LegType, t.Warehouse?.Name,
+                t.TransportOrder.PickupLocation?.Name, t.TransportOrder.PickupPoint,
+                t.TransportOrder.DropoffLocation?.Name, t.TransportOrder.DropoffPoint);
 
             return new TripListItemDto(
                 t.Id, t.TransportOrder.Code, t.Vehicle.PlateNumber, t.DriverEmployee.FullName,
@@ -127,7 +130,8 @@ public class TripService : ITripService
                 t.EstimatedDistanceKm.HasValue && t.EstimatedDurationMinutes.HasValue,
                 AwaitingReceipt(t),
                 deadline.Deadline, deadline.LatestStart, deadline.Text, deadline.Level.ToString(),
-                t.PlannedStartDate, t.Warehouse?.Name);
+                t.PlannedStartDate, t.Warehouse?.Name,
+                route.From, route.To);
         }).ToList();
     }
 
@@ -169,7 +173,7 @@ public class TripService : ITripService
         // Chặng Delivery: hàng đã được KHO XÁC NHẬN XUẤT trước đó (TripIssueService) — không tự xuất
         // nữa (xuất kho là việc của nhân viên kho). Kiểm tra LẠI sau khi đã giành dòng chuyến: đúng lúc
         // đó kho vừa bấm "Hoàn tác xuất" (cũng khóa dòng chuyến) thì dừng, không chạy khi xe rỗng.
-        if (trip.LegType == TripLegType.Delivery && await NotIssuedTextAsync(trip.Id) is { } notIssued)
+        if (trip.LegType == TripLegType.Delivery && trip.WarehouseId.HasValue && await NotIssuedTextAsync(trip.Id) is { } notIssued)
             return new TripActionResult(false, $"Kho chưa xác nhận xuất đủ hàng cho chuyến #{trip.Id} ({notIssued}) — chưa thể bắt đầu.");
 
         trip.Status = TripStatus.InProgress;
@@ -686,6 +690,8 @@ WHERE ""Id"" = {tripId}");
         var stockReason = await GetStockBlockReasonAsync(trip);
         if (stockReason is null)
         {
+            // Chuyến dữ liệu cũ không gắn kho: không có gì để xuất — không chặn.
+            if (!trip.WarehouseId.HasValue) return null;
             // Đủ hàng trong kho nhưng KHO CHƯA XÁC NHẬN XUẤT cho chuyến này (soạn hàng + bốc lên xe).
             var notIssued = await NotIssuedTextAsync(trip.Id);
             return notIssued is null ? null
@@ -776,8 +782,14 @@ WHERE ""Id"" = {tripId}");
 
         var driver = await _db.DriverProfiles
             .Where(dp => dp.EmployeeId == trip.DriverEmployeeId)
-            .Select(dp => new { dp.LicenseExpiryDate, dp.LicenseClass, dp.HealthCertExpiryDate, EmpStatus = dp.Employee.Status, dp.Employee.FullName,
-                                PositionName = dp.Employee.Position != null ? dp.Employee.Position.Name : null })
+            .Select(dp => new {
+                dp.LicenseExpiryDate,
+                dp.LicenseClass,
+                dp.HealthCertExpiryDate,
+                EmpStatus = dp.Employee.Status,
+                dp.Employee.FullName,
+                PositionName = dp.Employee.Position != null ? dp.Employee.Position.Name : null
+            })
             .FirstOrDefaultAsync();
         if (driver is null) return "Tài xế của chuyến này chưa có hồ sơ tài xế.";
         if (driver.EmpStatus != EmployeeStatus.Active)
@@ -1410,7 +1422,7 @@ WHERE ""Id"" = {tripId}");
                 // liệu từ phiên bản cũ) thì không xuất lại lần 2 — tránh báo "không
                 // đủ tồn kho" dù hàng thật ra đã được xuất cho chính chuyến này.
                 var alreadyIssued = await _db.GoodsIssues
-                    .Where(g => g.TripId == trip.Id && g.CargoLineId == line.CargoLineId)
+                    .Where(g => g.TripId == trip.Id && g.CargoLineId == line.CargoLineId && g.ReversedAt == null)
                     .SumAsync(g => (decimal?)g.QtyIssued) ?? 0m;
                 var qtyToIssue = line.QtyPlanned - alreadyIssued;
                 if (qtyToIssue <= 0) continue;
@@ -1602,8 +1614,17 @@ WHERE ""Id"" = {tripId}");
         var driverPositionIds = await DriverPositionRules.DriverPositionIdsAsync(_db);
         var drivers = await _db.DriverProfiles
             .OrderBy(dp => dp.Employee.FullName)
-            .Select(dp => new { dp.EmployeeId, dp.Employee.FullName, dp.Employee.Code, EmpStatus = dp.Employee.Status, dp.Employee.PositionId,
-                                dp.LicenseExpiryDate, dp.LicenseClass, dp.WarehouseId, dp.HealthCertExpiryDate })
+            .Select(dp => new {
+                dp.EmployeeId,
+                dp.Employee.FullName,
+                dp.Employee.Code,
+                EmpStatus = dp.Employee.Status,
+                dp.Employee.PositionId,
+                dp.LicenseExpiryDate,
+                dp.LicenseClass,
+                dp.WarehouseId,
+                dp.HealthCertExpiryDate
+            })
             .ToListAsync();
         var driverOptions = new List<ReassignOptionDto>();
         foreach (var d in drivers)
@@ -1763,7 +1784,7 @@ WHERE ""Id"" = {tripId}");
         foreach (var line in trip.TripLines)
         {
             var alreadyIssued = await _db.GoodsIssues
-                .Where(g => g.TripId == trip.Id && g.CargoLineId == line.CargoLineId)
+                .Where(g => g.TripId == trip.Id && g.CargoLineId == line.CargoLineId && g.ReversedAt == null)
                 .SumAsync(g => (decimal?)g.QtyIssued) ?? 0m;
             var qtyToIssue = line.QtyPlanned - alreadyIssued;
             if (qtyToIssue > 0)

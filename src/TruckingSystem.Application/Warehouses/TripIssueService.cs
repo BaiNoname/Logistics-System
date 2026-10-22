@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using TruckingSystem.Application.Common;
 using TruckingSystem.Application.Common.Interfaces;
 using TruckingSystem.Domain.Enums;
 
@@ -11,7 +12,7 @@ public record TripIssueLineDto(int TripId, int TransportOrderId, string OrderCod
     string DriverName, string PlateNumber, DateTime? PlannedStartDate,
     string TripState, bool CanIssue, bool CanUndo, string? BlockReason,
     int CargoLineId, string CargoType, decimal QtyPlanned, decimal QtyIssued, decimal QtyPending, decimal QtyOnHand,
-    string BinsText);
+    string BinsText, string Destination = "—"); // điểm giao của chuyến (xe chở hàng đi đâu)
 
 public interface ITripIssueService
 {
@@ -44,8 +45,15 @@ public class TripIssueService : ITripIssueService
             .Where(t => t.WarehouseId == warehouseId && t.LegType == TripLegType.Delivery && t.Status == TripStatus.Planned)
             .Select(t => new
             {
-                t.Id, t.TransportOrderId, OrderCode = t.TransportOrder.Code, CustomerName = t.TransportOrder.Customer.Name,
-                DriverName = t.DriverEmployee.FullName, t.Vehicle.PlateNumber, t.PlannedStartDate,
+                t.Id,
+                t.TransportOrderId,
+                OrderCode = t.TransportOrder.Code,
+                CustomerName = t.TransportOrder.Customer.Name,
+                DriverName = t.DriverEmployee.FullName,
+                t.Vehicle.PlateNumber,
+                t.PlannedStartDate,
+                DropoffName = t.TransportOrder.DropoffLocation != null ? t.TransportOrder.DropoffLocation.Name : null,
+                t.TransportOrder.DropoffPoint,
             })
             .ToListAsync();
         if (trips.Count == 0) return new List<TripIssueLineDto>();
@@ -88,8 +96,15 @@ public class TripIssueService : ITripIssueService
             var tLines = lines.Where(l => l.TripId == t.Id).Select(l =>
             {
                 var done = issued.FirstOrDefault(i => i.TripId == t.Id && i.CargoLineId == l.CargoLineId)?.Qty ?? 0;
-                return new { l.CargoLineId, l.CargoType, l.QtyPlanned, Issued = done, Pending = Math.Max(0, l.QtyPlanned - done),
-                             OnHand = stock.TryGetValue(l.CargoLineId, out var q) ? q : 0 };
+                return new
+                {
+                    l.CargoLineId,
+                    l.CargoType,
+                    l.QtyPlanned,
+                    Issued = done,
+                    Pending = Math.Max(0, l.QtyPlanned - done),
+                    OnHand = stock.TryGetValue(l.CargoLineId, out var q) ? q : 0
+                };
             }).ToList();
             var anyIssued = tLines.Any(l => l.Issued > 0);
             var allIssued = tLines.All(l => l.Pending <= 0);
@@ -108,7 +123,8 @@ public class TripIssueService : ITripIssueService
                 result.Add(new TripIssueLineDto(t.Id, t.TransportOrderId, t.OrderCode, t.CustomerName, t.DriverName, t.PlateNumber,
                     t.PlannedStartDate, state, !allIssued && reason is null, anyIssued, reason,
                     l.CargoLineId, l.CargoType, l.QtyPlanned, l.Issued, l.Pending, l.OnHand,
-                    bins.TryGetValue(l.CargoLineId, out var b) ? b : "—"));
+                    bins.TryGetValue(l.CargoLineId, out var b) ? b : "—",
+                    TripRouteText.For(TripLegType.Delivery, null, null, null, t.DropoffName, t.DropoffPoint).To));
         }
         // Chuyến xuất phát sớm nhất lên đầu.
         return result.OrderBy(r => r.PlannedStartDate ?? DateTime.MaxValue).ThenBy(r => r.TripId).ThenBy(r => r.CargoLineId).ToList();

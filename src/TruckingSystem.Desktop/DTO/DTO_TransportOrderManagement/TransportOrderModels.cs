@@ -21,6 +21,8 @@ public class TransportOrderListItem
     /// <summary>Hạn giao (giờ VN) và kho trung chuyển — API danh sách đơn trả về, để lọc.</summary>
     public DateTime? CommittedDeliveryDate { get; set; }
     public string? WarehouseName { get; set; }
+    /// <summary>Mã hợp đồng của đơn (null = đơn không theo hợp đồng).</summary>
+    public string? ContractCode { get; set; }
 
     /// <summary>"CompanyPickup" / "SelfDelivery" — chỉ API danh sách đơn theo kho trả về.</summary>
     public string PickupMethod { get; set; } = "CompanyPickup";
@@ -57,6 +59,29 @@ public class TripSummaryItem
     public decimal QtyPlanned { get; set; }
     /// <summary>Pickup / Delivery / Return.</summary>
     public string LegType { get; set; } = "";
+    /// <summary>Điểm đi -> điểm đến của chặng.</summary>
+    public string? FromName { get; set; }
+    public string? ToName { get; set; }
+}
+
+/// <summary>Hợp đồng chọn được cho đơn (của đúng khách, đang hiệu lực).</summary>
+public class OrderContractOption
+{
+    public int Id { get; set; }
+    public string Code { get; set; } = "";
+    public DateTime StartDate { get; set; }
+    public DateTime? EndDate { get; set; }
+    public string? PriceListName { get; set; }
+    /// <summary>Đơn cũ đang gắn hợp đồng nay không còn hiệu lực — vẫn hiện để giữ nguyên khi sửa.</summary>
+    public bool Inactive { get; set; }
+
+    public override string ToString()
+    {
+        if (Id == 0) return Code; // dòng "(Không theo hợp đồng)"
+        var period = $"{StartDate:dd/MM/yyyy} – {(EndDate is { } e ? e.ToString("dd/MM/yyyy") : "không thời hạn")}";
+        var price = string.IsNullOrWhiteSpace(PriceListName) ? "" : $" · bảng giá {PriceListName}";
+        return Inactive ? $"{Code} (không còn hiệu lực)" : $"{Code} ({period}){price}";
+    }
 }
 
 public class TransportOrderDetailItem
@@ -84,6 +109,8 @@ public class TransportOrderDetailItem
     public string WarehouseName { get; set; } = "";
     public int? PickupLocationId { get; set; }
     public int? DropoffLocationId { get; set; }
+    public int? ContractId { get; set; }
+    public string? ContractCode { get; set; }
 }
 
 /// <summary>Kết quả thao tác Xác nhận/Hủy đơn.</summary>
