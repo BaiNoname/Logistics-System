@@ -57,7 +57,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
         /// <summary>🙋 Nhận hàng KHÁCH TỰ MANG TỚI kho (đơn "Khách tự mang tới").</summary>
         private void BtnManualStock_Click(object? sender, EventArgs e) => OpenManualStock(ManualStockMode.Receive);
 
-        /// <summary>📤 Xuất hàng tồn của đơn đã Hoàn tất / Đã hủy + hoàn tác + lịch sử nhập/xuất.</summary>
+        /// <summary>📋 Tồn kho theo đơn + lịch sử nhập/xuất (xuất tay chỉ cho hàng sót của đơn Hoàn tất / Đã hủy).</summary>
         private void BtnIssueStock_Click(object? sender, EventArgs e) => OpenManualStock(ManualStockMode.Issue);
 
         private void OpenManualStock(ManualStockMode mode)
@@ -91,6 +91,24 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             _ = UpdatePendingCountAsync();
         }
 
+        /// <summary>📤 Xuất kho theo chuyến giao — soạn hàng, bốc lên xe, xác nhận xuất (bắt buộc trước khi xe chạy).</summary>
+        private void BtnTripIssues_Click(object? sender, EventArgs e)
+        {
+            if (_api is null || cboWarehouse.SelectedItem is not WarehouseListItem warehouse)
+            {
+                MessageBox.Show(FindForm(), "Vui lòng chọn 1 kho trước.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+            using var f = new TripIssuesForm(_api, warehouse.Id, warehouse.Name);
+            f.ShowDialog(FindForm());
+            if (f.ChangedAny)
+            {
+                _ = LoadZonesAsync(); // vẽ lại % các ô vừa lấy hàng ra / xếp lại
+                _ = LoadCargoLinesForSuggestAsync();
+            }
+            _ = UpdatePendingCountAsync();
+        }
+
         private int _pendingCountLoadId;
 
         /// <summary>Nút "📦 Nhập hàng từ chuyến" hiện luôn SỐ DÒNG đang chờ nhập của kho đang chọn —
@@ -105,6 +123,11 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                 var lines = await new TruckingSystem.Desktop.SERVICE_WarehouseManagement.PendingReceiptApiService(_api.Connection).GetPendingAsync(warehouseId);
                 if (IsDisposed || loadId != _pendingCountLoadId) return;
                 btnPendingReceipts.Text = lines.Count > 0 ? $"{baseText} ({lines.Count} chờ)" : baseText;
+                // Số chuyến giao SẴN SÀNG xuất (hàng đã nhập kho đủ, chờ kho soạn + bốc lên xe).
+                var issueLines = await new TruckingSystem.Desktop.SERVICE_WarehouseManagement.TripIssueApiService(_api.Connection).GetAsync(warehouseId);
+                if (IsDisposed || loadId != _pendingCountLoadId) return;
+                var ready = issueLines.Where(l => l.CanIssue).Select(l => l.TripId).Distinct().Count();
+                btnTripIssues.Text = ready > 0 ? $"📤 Xuất kho theo chuyến ({ready} chờ)" : "📤 Xuất kho theo chuyến";
             }
             catch
             {

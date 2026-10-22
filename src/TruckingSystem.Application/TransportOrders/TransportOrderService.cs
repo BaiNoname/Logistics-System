@@ -309,6 +309,17 @@ public class TransportOrderService : ITransportOrderService
                 && t.Status is TripStatus.InProgress or TripStatus.PendingConfirmation or TripStatus.Completed))
             return new OrderActionResult(false, "Đã có xe xuất kho và đang/đã giao hàng — không thể hủy đơn nữa.");
 
+        // Kho đã XÁC NHẬN XUẤT (hàng đã bốc lên xe) cho chuyến giao CHƯA chạy -> hàng đang nằm trên xe,
+        // không còn trong kho: hủy lúc này sẽ tính sai chuyến Trả hàng / trả khách. Hoàn tác xuất trước.
+        var loadedTripIds = await _db.GoodsIssues
+            .Where(g => g.TransportOrderId == order.Id && g.TripId != null && g.ReversedAt == null
+                        && g.Trip!.LegType == TripLegType.Delivery && g.Trip.Status == TripStatus.Planned)
+            .Select(g => g.TripId!.Value).Distinct().ToListAsync();
+        if (loadedTripIds.Count > 0)
+            return new OrderActionResult(false,
+                $"Kho đã xuất hàng lên xe cho chuyến giao #{string.Join(", #", loadedTripIds)} (xe chưa chạy) — vào màn Kho → 📤 Xuất kho theo chuyến, " +
+                "bấm Hoàn tác xuất (dỡ hàng về kệ) rồi mới hủy đơn.");
+
         // CHẶN nếu có chuyến Lấy hàng đang "Chờ xác nhận": tài xế đã chở hàng về
         // kho nhưng hàng CHƯA được nhập (nhập kho chỉ xảy ra lúc Duyệt). Hủy lúc
         // này sẽ làm hàng nằm ở kho mà hệ thống không ghi nhận, cũng không tạo
