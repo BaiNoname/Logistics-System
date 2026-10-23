@@ -30,7 +30,7 @@ public class EmployeeService : IEmployeeService
                 e.Position != null ? e.Position.Name : null,
                 e.Status.ToString(),
                 driverEmployeeIds.Contains(e.Id),
-                e.IdentityCardNo, e.Address, e.TerminationDate))
+                e.IdentityCardNo, e.Address, e.TerminationDate, e.DateOfBirth, e.Gender.HasValue ? e.Gender.Value.ToString() : null))
             .ToListAsync();
     }
 
@@ -120,6 +120,8 @@ public class EmployeeService : IEmployeeService
 
     public async Task<EmployeeActionResult> CreateAsync(CreateEmployeeRequest request)
     {
+        var personalError = ValidatePersonalDetails(request.DateOfBirth, request.Gender, out var gender);
+        if (personalError is not null) return new(false, personalError);
         var validation = await ValidateAsync(request.Code, request.FullName, request.DepartmentId, request.PositionId);
         if (validation is not null) return new EmployeeActionResult(false, validation);
         var hireDate = request.HireDate?.Date ?? DateTime.UtcNow;
@@ -130,6 +132,8 @@ public class EmployeeService : IEmployeeService
         {
             Code = request.Code.Trim(),
             FullName = request.FullName.Trim(),
+            DateOfBirth = request.DateOfBirth?.Date,
+            Gender = gender,
             Phone = NullIfWhiteSpace(request.Phone),
             IdentityCardNo = NullIfWhiteSpace(request.IdentityCardNo),
             Address = NullIfWhiteSpace(request.Address),
@@ -150,6 +154,8 @@ public class EmployeeService : IEmployeeService
         var employee = await _db.Employees.FindAsync(id);
         if (employee is null) return new EmployeeActionResult(false, "Không tìm thấy nhân viên.");
 
+        var personalError = ValidatePersonalDetails(request.DateOfBirth, request.Gender, out var gender);
+        if (personalError is not null) return new(false, personalError);
         var validation = await ValidateAsync(request.Code, request.FullName, request.DepartmentId, request.PositionId, id);
         if (validation is not null) return new EmployeeActionResult(false, validation);
         if (!Enum.TryParse<EmployeeStatus>(request.Status, true, out var status))
@@ -167,6 +173,12 @@ public class EmployeeService : IEmployeeService
 
         employee.Code = request.Code.Trim();
         employee.FullName = request.FullName.Trim();
+        // Older clients omit both fields; an empty gender allows clearing both values.
+        if (request.DateOfBirth.HasValue || request.Gender is not null)
+        {
+            employee.DateOfBirth = request.DateOfBirth?.Date;
+            employee.Gender = gender;
+        }
         employee.Phone = NullIfWhiteSpace(request.Phone);
         // Keep these fields when older clients omit them; an empty string clears the value.
         if (request.IdentityCardNo is not null)
@@ -179,6 +191,18 @@ public class EmployeeService : IEmployeeService
 
         await _db.SaveChangesAsync();
         return new EmployeeActionResult(true, null);
+    }
+
+    private static string? ValidatePersonalDetails(DateTime? dateOfBirth, string? value, out EmployeeGender? gender)
+    {
+        gender = null;
+        if (!Employee.IsValidDateOfBirth(dateOfBirth, TruckingSystem.Application.Common.VnClock.Today))
+            return "Ngày sinh phải từ năm 1900 đến ngày hiện tại.";
+        if (string.IsNullOrWhiteSpace(value)) return null;
+        if (!Enum.TryParse<EmployeeGender>(value.Trim(), true, out var parsed) || !Enum.IsDefined(parsed))
+            return "Giới tính không hợp lệ. Chọn Nam, Nữ hoặc Khác.";
+        gender = parsed;
+        return null;
     }
 
     private async Task<string?> ValidateAsync(string code, string fullName, int? departmentId, int? positionId, int? excludedId = null)

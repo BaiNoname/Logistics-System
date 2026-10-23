@@ -40,6 +40,7 @@ public interface IApplicationDbContext
     DbSet<CustomerContact> CustomerContacts { get; }
     DbSet<Location> Locations { get; }
     DbSet<Contract> Contracts { get; }
+    DbSet<ContractAppendix> ContractAppendices { get; }
     DbSet<PriceList> PriceLists { get; }
     DbSet<TariffRule> TariffRules { get; }
     DbSet<SalesOrder> SalesOrders { get; }

@@ -4,6 +4,12 @@ namespace TruckingSystem.Domain.Entities;
 
 public class PriceList : BaseEntity
 {
+    public void EnsureTariffRulesEditable()
+    {
+        if (Status != PriceListStatus.Active)
+            throw new InvalidOperationException("Chi tiết giá chỉ được xem khi bảng giá không còn đang áp dụng.");
+    }
+
     public static void Validate(string? name, DateTime effectiveDate)
     {
         if (string.IsNullOrWhiteSpace(name))
@@ -14,6 +20,9 @@ public class PriceList : BaseEntity
 
     public string Name { get; set; } = string.Empty;
     public DateTime EffectiveDate { get; set; }
+    public PriceListStatus Status { get; set; } = PriceListStatus.Active;
 
     public ICollection<TariffRule> TariffRules { get; set; } = new List<TariffRule>();
 }
+
+public enum PriceListStatus { Active, Inactive, Expired }

@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using TruckingSystem.Application.Common.Interfaces;
+using TruckingSystem.Application.Pricing;
 using TruckingSystem.Domain.Entities;
 
 namespace TruckingSystem.Application.Contracts;
@@ -10,8 +11,12 @@ public class ContractService(IApplicationDbContext db) : IContractService
     {
         Customers = await db.Customers.AsNoTracking().OrderBy(c => c.Name)
             .Select(c => new ContractOptionDto { Id = c.Id, Name = c.Name }).ToListAsync(),
-        PriceLists = await db.PriceLists.AsNoTracking().OrderBy(p => p.Name)
+        PriceLists = await db.PriceLists.AsNoTracking().Where(p => p.Status == PriceListStatus.Active).OrderBy(p => p.Name)
             .Select(p => new ContractOptionDto { Id = p.Id, Name = p.Name }).ToListAsync(),
+        TariffRules = await db.TariffRules.AsNoTracking().Where(r => r.PriceList.Status == PriceListStatus.Active)
+            .OrderBy(r => r.VehicleType).ThenBy(r => r.Id)
+            .Select(r => new TariffRuleDto(r.Id, r.PriceListId, r.VehicleType, r.PricePerKm,
+                r.PricePerTon, r.SurchargeFragile, r.SurchargeHazmat)).ToListAsync(),
     };
 
     public async Task<ContractListItemDto> CreateAsync(SaveContractRequest request)
@@ -19,14 +24,14 @@ public class ContractService(IApplicationDbContext db) : IContractService
         Validate(request);
         if (!await db.Customers.AnyAsync(c => c.Id == request.CustomerId))
             throw new ArgumentException("Khách hàng không tồn tại.");
-        if (request.PriceListId.HasValue && !await db.PriceLists.AnyAsync(p => p.Id == request.PriceListId))
-            throw new ArgumentException("Bảng giá không tồn tại.");
+        await ValidatePriceListAsync(request.PriceListId);
+        await ValidateTariffRuleAsync(request.PriceListId, request.TariffRuleId);
         // ponytail: Kiểm tra mã tại ứng dụng; thêm unique index khi cần chống tạo trùng đồng thời.
         if (await db.Contracts.AnyAsync(c => c.Code == request.Code.Trim()))
             throw new ArgumentException("Mã hợp đồng đã tồn tại.");
 
         var contract = new TruckingSystem.Domain.Entities.Contract();
-        Apply(contract, request);
+        Apply(contract, request, request.TariffRuleId);
         db.Contracts.Add(contract);
         await db.SaveChangesAsync();
         return (await GetByIdAsync(contract.Id))!;
@@ -39,20 +44,41 @@ public class ContractService(IApplicationDbContext db) : IContractService
         if (contract is null) return false;
         if (!await db.Customers.AnyAsync(c => c.Id == request.CustomerId))
             throw new ArgumentException("Khách hàng không tồn tại.");
-        if (request.PriceListId.HasValue && !await db.PriceLists.AnyAsync(p => p.Id == request.PriceListId))
-            throw new ArgumentException("Bảng giá không tồn tại.");
+        await ValidatePriceListAsync(request.PriceListId, contract.PriceListId);
+        var tariffRuleId = request.TariffRuleId ?? (request.PriceListId == contract.PriceListId ? contract.TariffRuleId : null);
+        await ValidateTariffRuleAsync(request.PriceListId, tariffRuleId, contract.TariffRuleId);
         if (await db.Contracts.AnyAsync(c => c.Id != id && c.Code == request.Code.Trim()))
             throw new ArgumentException("Mã hợp đồng đã tồn tại.");
         if (contract.CustomerId != request.CustomerId && await db.SalesOrders.AnyAsync(o => o.ContractId == id))
             throw new ArgumentException("Không thể đổi khách hàng của hợp đồng đã được đơn hàng sử dụng.");
 
-        Apply(contract, request);
+        Apply(contract, request, tariffRuleId);
         contract.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync();
         return true;
     }
 
-    private static void Apply(TruckingSystem.Domain.Entities.Contract contract, SaveContractRequest request)
+    private async Task ValidatePriceListAsync(int? priceListId, int? currentPriceListId = null)
+    {
+        if (!priceListId.HasValue) return;
+        var priceList = await db.PriceLists.AsNoTracking().FirstOrDefaultAsync(p => p.Id == priceListId);
+        if (priceList is null) throw new ArgumentException("Bảng giá không tồn tại.");
+        if (priceList.Status != PriceListStatus.Active && priceListId != currentPriceListId)
+            throw new ArgumentException("Chỉ được chọn bảng giá đang áp dụng.");
+    }
+
+    private async Task ValidateTariffRuleAsync(int? priceListId, int? tariffRuleId, int? currentTariffRuleId = null)
+    {
+        if (!tariffRuleId.HasValue) return;
+        var rule = await db.TariffRules.AsNoTracking().Where(r => r.Id == tariffRuleId)
+            .Select(r => new { r.PriceListId, r.PriceList.Status }).FirstOrDefaultAsync();
+        if (rule is null || rule.PriceListId != priceListId)
+            throw new ArgumentException("Bảng giá phải là một dòng chi tiết thuộc loại hợp đồng đã chọn.");
+        if (rule.Status != PriceListStatus.Active && tariffRuleId != currentTariffRuleId)
+            throw new ArgumentException("Chỉ được chọn chi tiết thuộc bảng giá đang áp dụng.");
+    }
+
+    private static void Apply(TruckingSystem.Domain.Entities.Contract contract, SaveContractRequest request, int? tariffRuleId)
     {
         contract.CustomerId = request.CustomerId;
         contract.Code = request.Code.Trim();
@@ -60,6 +86,7 @@ public class ContractService(IApplicationDbContext db) : IContractService
         contract.EndDate = request.EndDate?.Date;
         contract.Terms = string.IsNullOrWhiteSpace(request.Terms) ? null : request.Terms.Trim();
         contract.PriceListId = request.PriceListId;
+        contract.TariffRuleId = tariffRuleId;
     }
 
     private static void Validate(SaveContractRequest request)
@@ -87,6 +114,8 @@ public class ContractService(IApplicationDbContext db) : IContractService
         if (contract is null) return false;
         if (await db.SalesOrders.AnyAsync(o => o.ContractId == id))
             throw new InvalidOperationException("Không thể xóa hợp đồng đã được đơn hàng sử dụng.");
+        if (await db.ContractAppendices.AnyAsync(a => a.ContractId == id))
+            throw new InvalidOperationException("Không thể xóa hợp đồng đang có phụ lục.");
 
         db.Contracts.Remove(contract);
         try { await db.SaveChangesAsync(); }
@@ -97,7 +126,7 @@ public class ContractService(IApplicationDbContext db) : IContractService
         return true;
     }
 
-    private static IQueryable<ContractListItemDto> ProjectContracts(IQueryable<Contract> contracts)
+    private IQueryable<ContractListItemDto> ProjectContracts(IQueryable<Contract> contracts)
         => contracts
             .Select(c => new ContractListItemDto
             {
@@ -110,6 +139,12 @@ public class ContractService(IApplicationDbContext db) : IContractService
                 Terms = c.Terms,
                 PriceListName = c.PriceList == null ? null : c.PriceList.Name,
                 PriceListId = c.PriceListId,
+                TariffRule = c.TariffRule == null ? null : new TariffRuleDto(c.TariffRule.Id, c.TariffRule.PriceListId,
+                    c.TariffRule.VehicleType, c.TariffRule.PricePerKm, c.TariffRule.PricePerTon,
+                    c.TariffRule.SurchargeFragile, c.TariffRule.SurchargeHazmat),
+                AppendixCodes = db.ContractAppendices.Where(a => a.ContractId == c.Id)
+                    .OrderByDescending(a => a.IssueDate).ThenByDescending(a => a.Id)
+                    .Select(a => a.Code).Take(1).ToList(),
                 CreatedAt = c.CreatedAt,
                 UpdatedAt = c.UpdatedAt,
             });

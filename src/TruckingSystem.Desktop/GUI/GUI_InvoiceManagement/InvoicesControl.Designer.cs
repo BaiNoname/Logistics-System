@@ -16,6 +16,9 @@ namespace TruckingSystem.Desktop.GUI_InvoiceManagement
         {
             lblTitle = new Label();
             btnRefresh = new Button();
+            btnCreate = Common.Theme.MakePrimaryButton("Lập hóa đơn", 154, 40);
+            btnCreate.Name = "btnCreate";
+            btnCreate.Click += BtnCreate_Click;
             lblNote = new Label();
             lblStatus = new Label();
             grid = new DataGridView();
@@ -57,7 +60,7 @@ namespace TruckingSystem.Desktop.GUI_InvoiceManagement
             lblNote.Name = "lblNote";
             lblNote.Size = new Size(776, 25);
             lblNote.TabIndex = 2;
-            lblNote.Text = "(Chức năng tạo hóa đơn tự động đang trong quá trình hoàn thiện — hiện chỉ hiển thị danh sách)";
+            lblNote.Text = "Lập hóa đơn nháp cho đơn đã hoàn thành và chưa có hóa đơn.";
             // 
             // lblStatus
             // 
@@ -88,6 +91,33 @@ namespace TruckingSystem.Desktop.GUI_InvoiceManagement
             Controls.Add(lblNote);
             Controls.Add(lblStatus);
             Controls.Add(grid);
+            var root = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 5,
+                Padding = new Padding(8), BackColor = Common.Theme.ContentBg
+            };
+            root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+            var toolbar = new FlowLayoutPanel { AutoSize = true, Dock = DockStyle.Fill, WrapContents = true };
+            btnRefresh.Size = btnCreate.Size;
+            toolbar.Controls.Add(btnCreate);
+            toolbar.Controls.Add(btnRefresh);
+            lblTitle.AutoSize = true;
+            lblNote.ForeColor = Common.Theme.TextSecondary;
+            lblNote.AutoSize = true;
+            lblNote.Dock = DockStyle.Fill;
+            lblStatus.Dock = DockStyle.Fill;
+            grid.Dock = DockStyle.Fill;
+            root.Controls.Add(lblTitle, 0, 0);
+            root.Controls.Add(lblNote, 0, 1);
+            root.Controls.Add(toolbar, 0, 2);
+            root.Controls.Add(lblStatus, 0, 3);
+            root.Controls.Add(grid, 0, 4);
+            Controls.Add(root);
             Margin = new Padding(3, 3, 3, 3);
             Name = "InvoicesControl";
             Size = new Size(1418, 568);
@@ -100,6 +130,7 @@ namespace TruckingSystem.Desktop.GUI_InvoiceManagement
 
         private System.Windows.Forms.Label lblTitle;
         private System.Windows.Forms.Button btnRefresh;
+        private System.Windows.Forms.Button btnCreate;
         private System.Windows.Forms.Label lblNote;
         private System.Windows.Forms.Label lblStatus;
         private System.Windows.Forms.DataGridView grid;

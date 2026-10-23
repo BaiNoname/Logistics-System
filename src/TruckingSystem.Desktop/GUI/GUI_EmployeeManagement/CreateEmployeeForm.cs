@@ -19,6 +19,8 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
         public CreateEmployeeForm()
         {
             InitializeComponent();
+            dtpDateOfBirth.MaxDate = DateTime.UtcNow.AddHours(7).Date;
+            dtpDateOfBirth.Checked = false;
             dtpHireDate.Value = DateTime.UtcNow.AddHours(7).Date;
             dtpTerminationDate.Checked = false;
             cboEmployeeStatus.DataSource = new[]
@@ -44,6 +46,10 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             _positionId = employee.PositionId;
             txtCode.Text = employee.Code;
             txtFullName.Text = employee.FullName;
+            dtpDateOfBirth.Value = employee.DateOfBirth ?? dtpDateOfBirth.MaxDate;
+            dtpDateOfBirth.Checked = employee.DateOfBirth.HasValue;
+            rdoMale.Checked = employee.Gender == "Male";
+            rdoFemale.Checked = employee.Gender == "Female";
             txtPhone.Text = employee.Phone ?? "";
             txtIdentityCardNo.Text = employee.IdentityCardNo ?? "";
             txtAddress.Text = employee.Address ?? "";
@@ -96,8 +102,19 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
                 lblStatus.Text = "Vui lòng chọn ít nhất 1 phòng ban hoặc chức danh.";
                 return;
             }
+            if (!rdoMale.Checked && !rdoFemale.Checked)
+            {
+                lblStatus.Text = "Vui lòng chọn giới tính Nam hoặc Nữ.";
+                return;
+            }
             if (_api is null) return;
 
+            if (!TruckingSystem.Domain.Entities.Employee.IsValidDateOfBirth(
+                dtpDateOfBirth.Checked ? dtpDateOfBirth.Value.Date : null, DateTime.UtcNow.AddHours(7).Date))
+            {
+                lblStatus.Text = "Ngày sinh phải từ năm 1900 đến ngày hiện tại.";
+                return;
+            }
             if (dtpTerminationDate.Checked && dtpTerminationDate.Value.Date < dtpHireDate.Value.Date)
             {
                 lblStatus.Text = "Ngày nghỉ việc không được trước ngày vào làm.";
@@ -114,9 +131,11 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
                 int? deptId = cboDept.SelectedValue is int selectedDeptId && selectedDeptId > 0 ? selectedDeptId : null;
                 int? posId = cboPos.SelectedValue is int selectedPosId && selectedPosId > 0 ? selectedPosId : null;
                 var status = (string)cboEmployeeStatus.SelectedValue!;
+                DateTime? dateOfBirth = dtpDateOfBirth.Checked ? dtpDateOfBirth.Value.Date : null;
+                var gender = rdoMale.Checked ? "Male" : "Female";
                 var result = _employeeId.HasValue
-                    ? await _api.Employees.UpdateEmployeeAsync(_employeeId.Value, txtCode.Text.Trim(), txtFullName.Text.Trim(), txtPhone.Text.Trim(), deptId, posId, status, txtIdentityCardNo.Text.Trim(), txtAddress.Text.Trim(), dtpHireDate.Value.Date, dtpTerminationDate.Checked ? dtpTerminationDate.Value.Date : null)
-                    : await _api.Employees.CreateEmployeeAsync(txtCode.Text.Trim(), txtFullName.Text.Trim(), txtPhone.Text.Trim(), deptId, posId, txtIdentityCardNo.Text.Trim(), txtAddress.Text.Trim(), dtpHireDate.Value.Date, dtpTerminationDate.Checked ? dtpTerminationDate.Value.Date : null);
+                    ? await _api.Employees.UpdateEmployeeAsync(_employeeId.Value, txtCode.Text.Trim(), txtFullName.Text.Trim(), txtPhone.Text.Trim(), deptId, posId, status, txtIdentityCardNo.Text.Trim(), txtAddress.Text.Trim(), dtpHireDate.Value.Date, dtpTerminationDate.Checked ? dtpTerminationDate.Value.Date : null, dateOfBirth, gender)
+                    : await _api.Employees.CreateEmployeeAsync(txtCode.Text.Trim(), txtFullName.Text.Trim(), txtPhone.Text.Trim(), deptId, posId, txtIdentityCardNo.Text.Trim(), txtAddress.Text.Trim(), dtpHireDate.Value.Date, dtpTerminationDate.Checked ? dtpTerminationDate.Value.Date : null, dateOfBirth, gender);
 
                 if (!result.Success)
                 {

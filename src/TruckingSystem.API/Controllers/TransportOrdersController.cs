@@ -32,6 +32,11 @@ public class TransportOrdersController : ControllerBase
     public async Task<ActionResult<List<string>>> GetCargoTypes()
         => Ok(await _service.GetCargoTypeSuggestionsAsync());
 
+    /// <summary>Hợp đồng đang hiệu lực của khách — dropdown "Hợp đồng" trên form tạo / sửa đơn.</summary>
+    [HttpGet("contract-options")]
+    public async Task<ActionResult<List<OrderContractOptionDto>>> GetContractOptions([FromQuery] int customerId)
+        => Ok(await _service.GetContractOptionsAsync(customerId));
+
     [HttpGet("{id:int}")]
     public async Task<ActionResult<TransportOrderDetailDto>> GetById(int id)
     {

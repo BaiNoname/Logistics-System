@@ -4,6 +4,7 @@ public interface IPricingService
 {
     Task<List<PriceListDto>> GetPriceListsAsync();
     Task<PriceListDto> CreatePriceListAsync(SavePriceListRequest request);
+    Task<PriceListDto?> CopyPriceListAsync(int id, CopyPriceListRequest request);
     Task<bool> UpdatePriceListAsync(int id, SavePriceListRequest request);
     Task<bool> DeletePriceListAsync(int id);
     Task<List<TariffRuleDto>> GetTariffRulesAsync(int priceListId);

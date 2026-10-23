@@ -18,4 +18,17 @@ public record CustomerBusinessCardInfo(
     string? Phone,
     string? TaxCode,
     string? CustomerType,
-    string? Address);
+    string? Address)
+{
+    public string? FullName { get; init; }
+    public string? Company { get; init; }
+    public string? Title { get; init; }
+    public string? Email { get; init; }
+    public string? Website { get; init; }
+    public string? RawResponse { get; init; }
+    public string? ErrorMessage { get; init; }
+
+    public bool HasExtractedFields() => new[]
+        { Name, Phone, TaxCode, CustomerType, Address, FullName, Company, Title, Email, Website }
+        .Any(value => !string.IsNullOrWhiteSpace(value));
+}

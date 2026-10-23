@@ -242,6 +242,9 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.Property<DateTime>("StartDate")
                         .HasColumnType("timestamp without time zone");
 
+                    b.Property<int?>("TariffRuleId")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Terms")
                         .HasColumnType("text");
 
@@ -254,7 +257,52 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     b.HasIndex("PriceListId");
 
+                    b.HasIndex("TariffRuleId");
+
                     b.ToTable("Contracts");
+                });
+
+            modelBuilder.Entity("TruckingSystem.Domain.Entities.ContractAppendix", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int>("ContractId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime>("EffectiveDate")
+                        .HasColumnType("date");
+
+                    b.Property<DateTime>("IssueDate")
+                        .HasColumnType("date");
+
+                    b.Property<int>("TariffRuleId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.HasIndex("ContractId");
+
+                    b.HasIndex("TariffRuleId");
+
+                    b.ToTable("ContractAppendices");
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.Customer", b =>
@@ -488,12 +536,18 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp without time zone");
 
+                    b.Property<DateTime?>("DateOfBirth")
+                        .HasColumnType("date");
+
                     b.Property<int?>("DepartmentId")
                         .HasColumnType("integer");
 
                     b.Property<string>("FullName")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<int?>("Gender")
+                        .HasColumnType("integer");
 
                     b.Property<DateTime>("HireDate")
                         .HasColumnType("timestamp without time zone");
@@ -1421,6 +1475,9 @@ namespace TruckingSystem.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp without time zone");
 
@@ -1698,6 +1755,9 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.Property<DateTime?>("CommittedDeliveryDate")
                         .HasColumnType("timestamp without time zone");
 
+                    b.Property<int?>("ContractId")
+                        .HasColumnType("integer");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp without time zone");
 
@@ -1750,6 +1810,8 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     b.HasIndex("Code")
                         .IsUnique();
+
+                    b.HasIndex("ContractId");
 
                     b.HasIndex("CustomerId");
 
@@ -2524,9 +2586,35 @@ namespace TruckingSystem.Infrastructure.Migrations
                         .WithMany()
                         .HasForeignKey("PriceListId");
 
+                    b.HasOne("TruckingSystem.Domain.Entities.TariffRule", "TariffRule")
+                        .WithMany()
+                        .HasForeignKey("TariffRuleId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("Customer");
 
                     b.Navigation("PriceList");
+
+                    b.Navigation("TariffRule");
+                });
+
+            modelBuilder.Entity("TruckingSystem.Domain.Entities.ContractAppendix", b =>
+                {
+                    b.HasOne("TruckingSystem.Domain.Entities.Contract", "Contract")
+                        .WithMany()
+                        .HasForeignKey("ContractId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("TruckingSystem.Domain.Entities.TariffRule", "TariffRule")
+                        .WithMany()
+                        .HasForeignKey("TariffRuleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Contract");
+
+                    b.Navigation("TariffRule");
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.CustomerContact", b =>
@@ -2914,6 +3002,11 @@ namespace TruckingSystem.Infrastructure.Migrations
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.TransportOrder", b =>
                 {
+                    b.HasOne("TruckingSystem.Domain.Entities.Contract", "Contract")
+                        .WithMany()
+                        .HasForeignKey("ContractId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("TruckingSystem.Domain.Entities.Customer", "Customer")
                         .WithMany("TransportOrders")
                         .HasForeignKey("CustomerId")
@@ -2939,6 +3032,8 @@ namespace TruckingSystem.Infrastructure.Migrations
                         .HasForeignKey("WarehouseId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("Contract");
 
                     b.Navigation("Customer");
 

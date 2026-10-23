@@ -17,6 +17,12 @@ public class TransportOrder : BaseEntity
     public int CustomerId { get; set; }
     public Customer Customer { get; set; } = null!;
 
+    /// <summary>Hợp đồng mà đơn này chạy theo (tuỳ chọn — khách lẻ không có hợp đồng). Phải là
+    /// hợp đồng CỦA ĐÚNG khách hàng và còn hiệu lực lúc tạo / xác nhận đơn. Bên hóa đơn dùng để
+    /// biết đơn tính tiền theo bảng giá của hợp đồng nào, đối soát / doanh thu theo hợp đồng.</summary>
+    public int? ContractId { get; set; }
+    public Contract? Contract { get; set; }
+
     public string PickupPoint { get; set; } = string.Empty;
     public string DropoffPoint { get; set; } = string.Empty;
 

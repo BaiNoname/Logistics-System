@@ -11,7 +11,8 @@ public record CreateTransportOrderRequest(
     List<CargoLineDto> CargoLines,
     int? PickupLocationId = null,
     int? DropoffLocationId = null,
-    string PickupMethod = "CompanyPickup" // "CompanyPickup" | "SelfDelivery"
+    string PickupMethod = "CompanyPickup", // "CompanyPickup" | "SelfDelivery"
+    int? ContractId = null                 // hợp đồng của khách (tuỳ chọn)
 );
 
 /// <summary>Sửa đơn — CHỈ cho phép khi đơn còn ở trạng thái Draft (chưa xác
@@ -24,7 +25,8 @@ public record UpdateTransportOrderRequest(
     List<CargoLineDto> CargoLines,
     int? PickupLocationId = null,
     int? DropoffLocationId = null,
-    string PickupMethod = "CompanyPickup"
+    string PickupMethod = "CompanyPickup",
+    int? ContractId = null
 );
 
 public record TransportOrderListItemDto(
@@ -32,12 +34,17 @@ public record TransportOrderListItemDto(
     decimal ProgressPercent, string PickupPoint, string DropoffPoint, string PublicTrackingToken,
     int ActiveTripCount = 0, // số chuyến chưa hủy — Desktop dùng để khóa nút "Chia xe" khi đơn đã chia rồi
     DateTime? CommittedDeliveryDate = null, // hạn giao (giờ VN) — để lọc "quá hạn / sắp tới hạn"
-    string? WarehouseName = null            // kho trung chuyển — để lọc theo kho
+    string? WarehouseName = null,           // kho trung chuyển — để lọc theo kho
+    string? ContractCode = null             // mã hợp đồng (null = đơn không theo hợp đồng)
 );
 
 /// <summary>LegType: Pickup / Delivery / Return — cùng 1 lô hàng đi qua nhiều chặng, nên
 /// cộng "số lượng chở" của mọi chuyến sẽ ra gấp đôi/gấp ba; Desktop hiện cột Chặng.</summary>
-public record TripSummaryDto(int Id, string VehiclePlate, string DriverName, string Status, decimal QtyPlanned, string LegType = "Delivery");
+public record TripSummaryDto(int Id, string VehiclePlate, string DriverName, string Status, decimal QtyPlanned, string LegType = "Delivery",
+    string? FromName = null, string? ToName = null); // điểm đi -> điểm đến của chặng (xem TripRouteText)
+
+/// <summary>Hợp đồng chọn được cho đơn: của đúng khách hàng, đang hiệu lực hôm nay.</summary>
+public record OrderContractOptionDto(int Id, string Code, DateTime StartDate, DateTime? EndDate, string? PriceListName);
 
 /// <summary>Kết quả của các thao tác đổi trạng thái đơn (Xác nhận/Hủy) — không
 /// trả nguyên TransportOrderDetailDto vì Desktop chỉ cần biết có thành công
@@ -55,5 +62,6 @@ public record TransportOrderDetailDto(
     double? PickupLat, double? PickupLng, double? DropoffLat, double? DropoffLng,
     string PickupMethod, int CustomerId, int WarehouseId, string WarehouseName,
     int? PickupLocationId = null, int? DropoffLocationId = null, // để form Sửa đơn chọn đúng Địa điểm theo Id
-    double? WarehouseLat = null, double? WarehouseLng = null    // lộ trình đơn đi QUA kho trung chuyển
+    double? WarehouseLat = null, double? WarehouseLng = null,   // lộ trình đơn đi QUA kho trung chuyển
+    int? ContractId = null, string? ContractCode = null          // hợp đồng của đơn (tuỳ chọn)
 );

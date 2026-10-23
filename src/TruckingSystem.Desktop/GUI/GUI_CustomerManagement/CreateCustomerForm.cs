@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using TruckingSystem.Desktop.Common;
+using TruckingSystem.Desktop.DTO_CustomerManagement;
 namespace TruckingSystem.Desktop.GUI_CustomerManagement
 {
     /// <summary>Logic xử lý — giao diện nằm ở CreateCustomerForm.Designer.cs.</summary>
@@ -48,13 +49,19 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
                 return;
             }
             if (_api is null || !btnSave.Enabled) return;
+            if (cboType.SelectedItem is not ComboOption customerType)
+            {
+                lblStatus.Text = "Vui lòng chọn loại khách hàng Cá nhân hoặc Doanh nghiệp.";
+                cboType.Focus();
+                return;
+            }
 
             // Khóa nút Lưu trong lúc chờ server — bấm 2 lần trước đây tạo 2 khách hàng trùng.
             btnSave.Enabled = false;
             try
             {
                 var result = await _api.Customers.CreateCustomerAsync(
-                    txtName.Text.Trim(), txtPhone.Text.Trim(), txtTaxCode.Text.Trim(), ((ComboOption)cboType.SelectedItem!).Value,
+                    txtName.Text.Trim(), txtPhone.Text.Trim(), txtTaxCode.Text.Trim(), customerType.Value,
                     string.IsNullOrWhiteSpace(txtAddress.Text) ? null : txtAddress.Text.Trim(),
                     numCreditLimit.Value == 0 ? null : numCreditLimit.Value,
                     string.IsNullOrWhiteSpace(txtGoogleCalendarId.Text) ? null : txtGoogleCalendarId.Text.Trim());
@@ -84,12 +91,13 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
 
         private async void btnReadWithAi_Click(object? sender, EventArgs e)
         {
+            if (_cardScanCancellation is not null) return;
             using var dialog = new OpenFileDialog
             {
                 Title = "Chọn ảnh danh thiếp",
                 Filter = "Ảnh danh thiếp|*.jpg;*.jpeg;*.png"
             };
-            if (dialog.ShowDialog() != DialogResult.OK) return;
+            if (dialog.ShowDialog(this) != DialogResult.OK) return;
             if (_api is null)
             {
                 MessageBox.Show(this, "Không kết nối được dịch vụ khách hàng.", "Lỗi đọc danh thiếp", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -101,22 +109,13 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
             SetCardScanning(true);
             lblStatus.ForeColor = Color.FromArgb(100, 116, 139);
             lblStatus.Text = "Đang đọc danh thiếp...";
+            txtCardDetails.Clear();
             try
             {
+                LoadCardPreview(dialog.FileName);
                 var info = await _api.Customers.ReadBusinessCardAsync(dialog.FileName, scanCancellation.Token);
                 if (IsDisposed || Disposing) return;
-                if (!string.IsNullOrWhiteSpace(info.Name)) txtName.Text = info.Name;
-                if (!string.IsNullOrWhiteSpace(info.Phone)) txtPhone.Text = info.Phone;
-                if (!string.IsNullOrWhiteSpace(info.TaxCode)) txtTaxCode.Text = info.TaxCode;
-                if (!string.IsNullOrWhiteSpace(info.Address)) txtAddress.Text = info.Address;
-                if (!string.IsNullOrWhiteSpace(info.CustomerType))
-                {
-                    var type = info.CustomerType.Equals("Company", StringComparison.OrdinalIgnoreCase) ? "Company" :
-                        info.CustomerType.Equals("Individual", StringComparison.OrdinalIgnoreCase) ? "Individual" : null;
-                    if (type is not null) cboType.SelectedItem = type;
-                }
-                lblStatus.ForeColor = Color.FromArgb(22, 163, 74);
-                lblStatus.Text = "Đã đọc xong. Vui lòng kiểm tra thông tin.";
+                ApplyBusinessCardInfo(info);
             }
             catch (OperationCanceledException) when (scanCancellation.IsCancellationRequested) { }
             catch (Exception ex)
@@ -132,6 +131,40 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
                 _cardScanCancellation = null;
                 if (!IsDisposed && !Disposing) SetCardScanning(false);
             }
+        }
+
+        private void LoadCardPreview(string path)
+        {
+            using var file = File.OpenRead(path);
+            if (file.Length == 0 || file.Length > 10 * 1024 * 1024)
+                throw new ArgumentException("Vui lòng chọn ảnh danh thiếp không rỗng, tối đa 10 MB.");
+            using var source = Image.FromStream(file, false, true);
+            var preview = new Bitmap(source);
+            pictureCard.Image?.Dispose();
+            pictureCard.Image = preview;
+        }
+
+        private void ApplyBusinessCardInfo(CustomerBusinessCardInfoItem info)
+        {
+            txtCardDetails.Text = string.Join(Environment.NewLine, new[]
+            {
+                $"Họ và tên: {info.FullName}", $"Công ty: {info.Company}", $"Chức danh: {info.Title}",
+                $"Email: {info.Email}", $"Website: {info.Website}", $"Loại khách AI đọc được: {info.CustomerType}"
+            });
+            if (!string.IsNullOrWhiteSpace(info.Name)) txtName.Text = info.Name;
+            if (!string.IsNullOrWhiteSpace(info.Phone)) txtPhone.Text = info.Phone;
+            if (!string.IsNullOrWhiteSpace(info.TaxCode)) txtTaxCode.Text = info.TaxCode;
+            if (!string.IsNullOrWhiteSpace(info.Address)) txtAddress.Text = info.Address.ReplaceLineEndings(Environment.NewLine);
+            var warning = info.ErrorMessage;
+            if (!string.IsNullOrWhiteSpace(info.CustomerType))
+            {
+                cboType.SelectedItem = cboType.Items.Cast<ComboOption>()
+                    .FirstOrDefault(option => option.Value.Equals(info.CustomerType, StringComparison.OrdinalIgnoreCase));
+                if (cboType.SelectedItem is null)
+                    warning = string.Join(" ", new[] { warning, "Vui lòng chọn loại khách hàng Cá nhân hoặc Doanh nghiệp." }.Where(value => !string.IsNullOrWhiteSpace(value)));
+            }
+            lblStatus.ForeColor = warning is null ? Color.FromArgb(22, 163, 74) : Color.FromArgb(180, 83, 9);
+            lblStatus.Text = warning ?? "Đã đọc xong. Vui lòng kiểm tra thông tin.";
         }
 
         private void SetCardScanning(bool scanning)

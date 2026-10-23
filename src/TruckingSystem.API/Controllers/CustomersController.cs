@@ -81,7 +81,10 @@ public class CustomersController : ControllerBase
         await image.CopyToAsync(stream, cancellationToken);
         try
         {
-            return Ok(await _businessCardReader.ReadAsync(stream.ToArray(), image.ContentType, cancellationToken));
+            var result = await _businessCardReader.ReadAsync(stream.ToArray(), image.ContentType, cancellationToken);
+            return result.ErrorMessage is not null && !result.HasExtractedFields()
+                ? StatusCode(StatusCodes.Status502BadGateway, new { message = result.ErrorMessage, result.ErrorMessage, result.RawResponse })
+                : Ok(result);
         }
         catch (ArgumentException ex)
         {
@@ -89,7 +92,7 @@ public class CustomersController : ControllerBase
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            return StatusCode(StatusCodes.Status504GatewayTimeout, new { message = "NVIDIA phản hồi quá lâu. Vui lòng thử lại sau." });
+            return StatusCode(StatusCodes.Status504GatewayTimeout, new { message = "Gemini phản hồi quá lâu. Vui lòng thử lại sau." });
         }
         catch (HttpRequestException ex)
         {
