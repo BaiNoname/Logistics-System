@@ -47,6 +47,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
 
     // Nhóm C — Vận đơn & Hàng hóa
     public DbSet<TransportOrder> TransportOrders => Set<TransportOrder>();
+    public DbSet<DeliveryDeadlineChange> DeliveryDeadlineChanges => Set<DeliveryDeadlineChange>();
     public DbSet<CargoLine> CargoLines => Set<CargoLine>();
     public DbSet<TripLine> TripLines => Set<TripLine>();
 
@@ -127,6 +128,13 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
             .HasIndex(t => t.PublicTrackingToken)
             .IsUnique();
 
+        builder.Entity<DeliveryDeadlineChange>().HasOne(c => c.TransportOrder).WithMany(o => o.DeadlineChanges)
+            .HasForeignKey(c => c.TransportOrderId).OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<DeliveryDeadlineChange>().HasIndex(c => c.TransportOrderId);
+
+        builder.Entity<DeliveryDeadlineChange>().Property(c => c.VolumeM3AtChange).HasColumnType("numeric(18,4)");
+
         // ---- Tránh xóa dây chuyền (cascade delete) không mong muốn giữa Trip <-> Vehicle/Employee ----
         // Vì Vehicle/Employee là dữ liệu tham chiếu lâu dài, không nên bị xóa cascade
         // theo Trip. Nếu xóa Trip, không kéo theo xóa Vehicle/Employee.
@@ -163,6 +171,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
             .WithMany()
             .HasForeignKey(o => o.PickupLocationId)
             .OnDelete(DeleteBehavior.Restrict);
+
+
 
         builder.Entity<TransportOrder>()
             .HasOne(o => o.DropoffLocation)
@@ -310,5 +320,6 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
         builder.Entity<GoodsIssue>().Property<uint>("Version").IsRowVersion();
         builder.Entity<Vehicle>().Property<uint>("Version").IsRowVersion();
         builder.Entity<TransportOrder>().Property<uint>("Version").IsRowVersion();
+
     }
 }

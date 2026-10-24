@@ -34,8 +34,64 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             filterBar.AddChoice("customer", "Khách hàng", Array.Empty<string>());
             filterBar.AddChoice("warehouse", "Kho", Array.Empty<string>());
             filterBar.FilterChanged += (_, _) => BindGrid();
+            SetupModernLook();
 
             Load += async (_, _) => await LoadAsync();
+        }
+
+        private readonly KpiStrip _kpi = new();
+
+        /// <summary>Thẻ số liệu (bấm = lọc nhanh) + nhãn màu trạng thái / hạn giao + thanh tiến độ.</summary>
+        private void SetupModernLook()
+        {
+            _kpi.AddCard("all", "📦", "Tất cả đơn", Theme.Primary);
+            _kpi.AddCard("draft", "📝", "Nháp", GridDecor.AccentSlate, "status", "Nháp");
+            _kpi.AddCard("confirmed", "🧭", "Chờ chia xe", GridDecor.AccentTeal, "status", "Đã xác nhận", alert: true);
+            _kpi.AddCard("running", "🚚", "Đang vận chuyển", Theme.PrimaryDark, "status", "Đang vận chuyển");
+            _kpi.AddCard("overdue", "⏰", "Quá hạn giao", Theme.Danger, "deadline", DeadlineOverdue, alert: true);
+            _kpi.AddCard("done", "✅", "Hoàn tất", Theme.Success, "status", "Hoàn tất");
+            _kpi.BindFilter(filterBar);
+            KpiStrip.InsertRow(root, _kpi, 1);
+            // Cửa sổ thấp: giữ bảng tối thiểu ~8 dòng, thiếu chỗ thì cả màn có thanh cuộn kéo xuống.
+            ScrollFit.Enable(this, root, grid);
+
+            GridDecor.HoverRows(grid);
+            GridDecor.Pills(grid, "Trạng_thái", (text, _) => GridDecor.StatusTone(text));
+            GridDecor.Pills(grid, "Hạn_giao", (_, row) => OrderAt(row) is { } o ? DeadlineGroup(o) switch
+            {
+                DeadlineOverdue => GridDecor.Red,
+                DeadlineSoon => GridDecor.Amber,
+                _ => null,
+            } : null);
+            GridDecor.ProgressBars(grid, "Tiến_độ", row =>
+            {
+                if (OrderAt(row) is not { } o || o.Status is "Draft" or "Cancelled") return null;
+                var ratio = (double)o.ProgressPercent / 100.0;
+                return (ratio, $"{o.ProgressPercent:0.##}%", ratio >= 1 ? Theme.Success : Theme.Primary);
+            });
+        }
+
+        private TransportOrderListItem? OrderAt(int row)
+            => row >= 0 && row < grid.Rows.Count && grid.Rows[row].Cells["Id"].Value is int id
+                ? _orders.FirstOrDefault(o => o.Id == id) : null;
+
+        private void UpdateKpis()
+        {
+            _kpi.SetValue("all", _orders.Count, $"{_orders.Count(o => o.Status is "Draft" or "Confirmed" or "InProgress")} đơn đang xử lý");
+            _kpi.SetValue("draft", _orders.Count(o => o.Status == "Draft"), "chờ xác nhận với khách");
+            var confirmed = _orders.Where(o => o.Status == "Confirmed").ToList();
+            _kpi.SetValue("confirmed", confirmed.Count(o => o.ActiveTripCount == 0),
+                $"{confirmed.Count} đơn đã xác nhận");
+            var running = _orders.Where(o => o.Status == "InProgress").ToList();
+            _kpi.SetValue("running", running.Count,
+                running.Count == 0 ? "không có đơn đang chạy" : $"tiến độ TB {running.Average(o => (double)o.ProgressPercent):0}%",
+                running.Count == 0 ? 0 : running.Average(o => (double)o.ProgressPercent) / 100.0);
+            var soon = _orders.Count(o => DeadlineGroup(o) == DeadlineSoon && o.Status is not ("Done" or "Cancelled"));
+            _kpi.SetValue("overdue", _orders.Count(o => DeadlineGroup(o) == DeadlineOverdue), $"{soon} đơn tới hạn trong 3 ngày");
+            var closed = _orders.Count(o => o.Status is "Done" or "Cancelled");
+            _kpi.SetValue("done", _orders.Count(o => o.Status == "Done"),
+                $"{_orders.Count(o => o.Status == "Cancelled")} đơn đã hủy",
+                closed == 0 ? 0 : _orders.Count(o => o.Status == "Done") / (double)Math.Max(1, _orders.Count));
         }
 
         public TransportOrdersControl(ApiServices api) : this()
@@ -58,12 +114,14 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
         {
             if (_api is null) return;
             lblStatus.Text = "Đang tải...";
+            _kpi.Busy = true;
             try
             {
                 _orders = await _api.TransportOrders.GetTransportOrdersAsync();
                 filterBar.SetChoiceOptions("customer", _orders.Select(o => o.CustomerName));
                 filterBar.SetChoiceOptions("warehouse", _orders.Select(o => o.WarehouseName ?? ""));
                 BindGrid();
+                UpdateKpis();
                 lblStatus.Text = $"Tổng {_orders.Count} đơn hàng — chọn 1 dòng rồi bấm \"Chia xe\" để chạy thuật toán Greedy";
                 lblStatus.ForeColor = Theme.TextSecondary;
             }
@@ -72,6 +130,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                 lblStatus.Text = "Lỗi: " + ex.Message;
                 lblStatus.ForeColor = Theme.Danger;
             }
+            finally { _kpi.Busy = false; }
         }
 
         private const string DeadlineOverdue = "Quá hạn (chưa xong)";
@@ -89,6 +148,9 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
         }
 
         /// <summary>Đổ lưới theo bộ lọc (không gọi lại API).</summary>
+        /// <summary>Mở từ thông báo (nhấp đúp): bỏ các bộ lọc khác, lọc sẵn theo mã đơn.</summary>
+        public void FocusOn(string search) => filterBar.ShowOnlySearch(search);
+
         private void BindGrid()
         {
             var keepId = grid.CurrentRow?.Cells["Id"].Value as int?;

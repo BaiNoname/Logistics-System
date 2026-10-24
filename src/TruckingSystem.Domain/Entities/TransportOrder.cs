@@ -61,5 +61,6 @@ public class TransportOrder : BaseEntity
     public ICollection<Invoice> Invoices { get; set; } = new List<Invoice>();
     public ICollection<GoodsReceipt> GoodsReceipts { get; set; } = new List<GoodsReceipt>();
     public ICollection<GoodsIssue> GoodsIssues { get; set; } = new List<GoodsIssue>();
+    public ICollection<DeliveryDeadlineChange> DeadlineChanges { get; set; } = new List<DeliveryDeadlineChange>();
     public CustomerFeedback? Feedback { get; set; }
 }

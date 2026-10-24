@@ -21,6 +21,7 @@ public class NotificationService : INotificationService
     private const string PrefixDriverDoc = "🪪 ";
     private const string PrefixDeadline = "⏰ ";
     private const string PrefixTripBlocked = "🚫 ";
+    private const string PrefixReceiptWaiting = "📦 ";
 
     public const string CategoryTrip = "Chuyến chờ duyệt";
     public const string CategoryVehicleDoc = "Giấy tờ xe";
@@ -28,6 +29,7 @@ public class NotificationService : INotificationService
     public const string CategoryDriverDoc = "Giấy tờ tài xế";
     public const string CategoryDeadline = "Hạn giao";
     public const string CategoryTripBlocked = "Chuyến bị chặn";
+    public const string CategoryReceipt = "Chờ nhập kho";
     public const string CategoryOther = "Khác";
 
     private readonly IApplicationDbContext _db;
@@ -46,8 +48,15 @@ public class NotificationService : INotificationService
         if (title.StartsWith(PrefixDriverDoc)) return CategoryDriverDoc;
         if (title.StartsWith(PrefixDeadline)) return CategoryDeadline;
         if (title.StartsWith(PrefixTripBlocked)) return CategoryTripBlocked;
+        if (title.StartsWith(PrefixReceiptWaiting)) return CategoryReceipt;
         return CategoryOther;
     }
+
+    /// <summary>Thông báo gắn với 1 VIỆC mà hệ thống tự kiểm tra được đã làm xong hay chưa
+    /// (duyệt chuyến, nhập kho, gia hạn giấy tờ, đăng ký ca, chia xe/xuất phát...) -> chỉ
+    /// được coi là "Đã xử lý" khi việc đó THẬT SỰ xong, người dùng KHÔNG tự đánh dấu được.
+    /// Chỉ thông báo loại "Khác" (thông tin thuần) mới cho đánh dấu tay.</summary>
+    public static bool IsAutoTracked(string title) => GetCategory(title) != CategoryOther;
 
     private static bool IsSystemAlert(string title)
         => title.StartsWith(PrefixDocExpired) || title.StartsWith(PrefixDocSoon) || title.StartsWith(PrefixSchedule)
@@ -57,6 +66,7 @@ public class NotificationService : INotificationService
     {
         await SyncSystemAlertsAsync(userId);
         await AutoResolveTripPendingAsync();
+        await AutoResolveReceiptWaitingAsync();
 
         // Lấy CẢ thông báo riêng của user này LẪN thông báo CHUNG (UserId =
         // null, xem CreateBroadcastAsync) — ví dụ tài xế báo xong chuyến, cần
@@ -134,6 +144,41 @@ public class NotificationService : INotificationService
         if (changed) await _db.SaveChangesAsync();
     }
 
+    /// <summary>"📦 Chuyến #id đã về kho — chờ nhập kho": chỉ "Đã xử lý" khi hàng của chuyến đó
+    /// đã nhập kho HẾT (không còn dòng chờ nhập). Ngược lại, nếu đã lỡ đánh dấu ở bản cũ mà
+    /// hàng vẫn chưa nhập -> trả về "chưa xử lý" để không sót.</summary>
+    private async Task AutoResolveReceiptWaitingAsync()
+    {
+        var prefix = $"{PrefixReceiptWaiting}Chuyến #";
+        var rows = await _db.Notifications
+            .Where(n => n.UserId == null && n.Title.StartsWith(prefix))
+            .OrderByDescending(n => n.CreatedAt)
+            .Take(300)
+            .ToListAsync();
+        if (rows.Count == 0) return;
+
+        int? ParseTripId(string title)
+        {
+            var digits = new string(title.Substring(prefix.Length).TakeWhile(char.IsDigit).ToArray());
+            return int.TryParse(digits, out var id) ? id : null;
+        }
+
+        var tripIds = rows.Select(n => ParseTripId(n.Title)).Where(id => id.HasValue).Select(id => id!.Value).Distinct().ToList();
+        if (tripIds.Count == 0) return;
+        var waiting = await TruckingSystem.Application.Warehouses.PendingReceiptRules.LoadAsync(_db, l => tripIds.Contains(l.TripId));
+        var waitingTripIds = waiting.Select(w => w.TripId).ToHashSet();
+
+        var changed = false;
+        foreach (var n in rows)
+        {
+            var id = ParseTripId(n.Title);
+            if (!id.HasValue) continue;
+            var done = !waitingTripIds.Contains(id.Value);
+            if (n.IsRead != done) { n.IsRead = done; changed = true; }
+        }
+        if (changed) await _db.SaveChangesAsync();
+    }
+
     /// <summary>ĐỒNG BỘ cảnh báo tự sinh (giấy tờ xe + lịch tài xế) của user
     /// với tình trạng HIỆN TẠI:
     /// 1) Tính ra danh sách cảnh báo ĐÚNG lúc này (tiêu đề + nội dung cố định,
@@ -162,12 +207,18 @@ public class NotificationService : INotificationService
         var keptKeys = new HashSet<string>();
         var changed = false;
 
-        // Giữ lại ĐÚNG 1 bản cho mỗi cảnh báo còn hiệu lực (ưu tiên bản đã đọc,
-        // để không "sống lại" thành chưa đọc), xóa bản trùng + bản hết hiệu lực.
-        foreach (var n in existing.OrderByDescending(n => n.IsRead).ThenBy(n => n.CreatedAt))
+        // Giữ lại ĐÚNG 1 bản (bản cũ nhất — giữ nguyên thời điểm phát sinh) cho mỗi cảnh báo
+        // còn hiệu lực, xóa bản trùng + bản hết hiệu lực (= việc đã xử lý xong).
+        // Cảnh báo CÒN hiệu lực nghĩa là việc CHƯA làm -> luôn để "chưa xử lý" (IsRead = false),
+        // kể cả dữ liệu cũ đã lỡ bấm "đã đọc" ở bản trước — tránh bị sót việc.
+        foreach (var n in existing.OrderBy(n => n.CreatedAt))
         {
             var key = n.Title + "\n" + n.Message;
-            if (expectedKeys.Contains(key) && keptKeys.Add(key)) continue;
+            if (expectedKeys.Contains(key) && keptKeys.Add(key))
+            {
+                if (n.IsRead) { n.IsRead = false; changed = true; }
+                continue;
+            }
             _db.Notifications.Remove(n);
             changed = true;
         }
@@ -279,8 +330,9 @@ public class NotificationService : INotificationService
                 .GroupBy(g => g.TripId!.Value).Select(g => new { g.Key, Qty = g.Sum(x => x.QtyIssued) }).ToListAsync())
             .ToDictionary(x => x.Key, x => x.Qty);
         var orderOfTrip = await _db.Trips.Where(t => deliveryIds.Contains(t.Id)).ToDictionaryAsync(t => t.Id, t => t.TransportOrderId);
+        var deliveryOrderIds = orderOfTrip.Values.Distinct().ToList();
         var ordersWithOpenPickup = (await _db.Trips
-                .Where(t => orderOfTrip.Values.Contains(t.TransportOrderId) && t.LegType == TripLegType.Pickup
+                .Where(t => deliveryOrderIds.Contains(t.TransportOrderId) && t.LegType == TripLegType.Pickup
                             && t.Status != TripStatus.Cancelled && t.Status != TripStatus.Completed)
                 .Select(t => t.TransportOrderId).Distinct().ToListAsync()).ToHashSet();
 
@@ -457,16 +509,22 @@ public class NotificationService : INotificationService
             .ToList();
     }
 
-    public async Task MarkAsReadAsync(int notificationId, string userId)
+    /// <summary>Đánh dấu "Đã xử lý" bằng tay — CHỈ cho thông báo thông tin (loại "Khác").
+    /// Thông báo gắn với việc cụ thể tự chuyển "Đã xử lý" khi việc xong (xem IsAutoTracked)
+    /// -> trả về lỗi để người dùng vào làm việc đó thay vì đánh dấu cho qua rồi bị sót.</summary>
+    public async Task<string?> MarkAsReadAsync(int notificationId, string userId)
     {
         // Chỉ đánh dấu thông báo CỦA MÌNH hoặc thông báo chung — không đụng được
         // thông báo riêng của người khác.
         var notification = await _db.Notifications
             .FirstOrDefaultAsync(n => n.Id == notificationId && (n.UserId == userId || n.UserId == null));
-        if (notification is null) return;
+        if (notification is null) return "Không tìm thấy thông báo.";
+        if (IsAutoTracked(notification.Title))
+            return $"Thông báo loại \"{GetCategory(notification.Title)}\" sẽ TỰ chuyển sang Đã xử lý khi việc được làm xong — nhấp đúp để mở màn hình xử lý.";
 
         notification.IsRead = true;
         await _db.SaveChangesAsync();
+        return null;
     }
 
     public async Task MarkAllAsReadAsync(string userId)
@@ -475,7 +533,11 @@ public class NotificationService : INotificationService
         // đọc" sẽ bỏ sót đúng loại thông báo "tài xế báo xong chuyến, chờ duyệt".
         // Lưu ý: thông báo chung dùng CHUNG 1 cờ IsRead cho mọi người — 1 người đã
         // đọc thì người khác cũng thấy là đã đọc (chấp nhận được với quy mô đồ án).
-        var unread = await _db.Notifications.Where(n => (n.UserId == userId || n.UserId == null) && !n.IsRead).ToListAsync();
+        // CHỈ thông báo thông tin (loại "Khác") — việc cần làm thì không được đánh dấu hàng loạt.
+        var unread = (await _db.Notifications.Where(n => (n.UserId == userId || n.UserId == null) && !n.IsRead).ToListAsync())
+            .Where(n => !IsAutoTracked(n.Title))
+            .ToList();
+        if (unread.Count == 0) return;
         foreach (var n in unread) n.IsRead = true;
         await _db.SaveChangesAsync();
     }

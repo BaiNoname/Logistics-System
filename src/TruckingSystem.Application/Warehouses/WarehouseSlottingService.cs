@@ -345,7 +345,7 @@ public class WarehouseSlottingService : IWarehouseSlottingService
     {
         return await _db.Warehouses
             .Select(w => new WarehouseListItemDto(w.Id, w.Name, w.Address, w.CapacityM3, w.LengthMeters, w.WidthMeters, w.Lat, w.Lng,
-                w.DoorSide.HasValue ? w.DoorSide.Value.ToString() : null, w.DoorOffsetMeters))
+                w.DoorSide.HasValue ? w.DoorSide.Value.ToString() : null, w.DoorOffsetMeters, w.StorageFeePerM3PerDay))
             .ToListAsync();
     }
 
@@ -357,6 +357,8 @@ public class WarehouseSlottingService : IWarehouseSlottingService
         if (shapeError is not null) throw new InvalidOperationException(shapeError);
         var doorError = ValidateDoor(request.DoorSide, request.DoorOffsetMeters, request.LengthMeters, request.WidthMeters, out var doorSide);
         if (doorError is not null) throw new InvalidOperationException(doorError);
+        var feeError = ValidateStorageFee(request.StorageFeePerM3PerDay);
+        if (feeError is not null) throw new InvalidOperationException(feeError);
 
         var warehouse = new Warehouse
         {
@@ -369,12 +371,13 @@ public class WarehouseSlottingService : IWarehouseSlottingService
             Lng = request.Lng,
             DoorSide = doorSide,
             DoorOffsetMeters = doorSide.HasValue ? request.DoorOffsetMeters : null,
+            StorageFeePerM3PerDay = request.StorageFeePerM3PerDay,
         };
         _db.Warehouses.Add(warehouse);
         await _db.SaveChangesAsync();
 
         return new WarehouseListItemDto(warehouse.Id, warehouse.Name, warehouse.Address, warehouse.CapacityM3, warehouse.LengthMeters, warehouse.WidthMeters, warehouse.Lat, warehouse.Lng,
-            warehouse.DoorSide?.ToString(), warehouse.DoorOffsetMeters);
+            warehouse.DoorSide?.ToString(), warehouse.DoorOffsetMeters, warehouse.StorageFeePerM3PerDay);
     }
 
     public async Task<WarehouseActionResult> UpdateWarehouseAsync(int warehouseId, UpdateWarehouseRequest request)
@@ -402,6 +405,8 @@ public class WarehouseSlottingService : IWarehouseSlottingService
         // tường mới cũng bị chặn.
         var doorError = ValidateDoor(request.DoorSide, request.DoorOffsetMeters, request.LengthMeters, request.WidthMeters, out var doorSide);
         if (doorError is not null) return new WarehouseActionResult(false, doorError);
+        var feeError = ValidateStorageFee(request.StorageFeePerM3PerDay);
+        if (feeError is not null) return new WarehouseActionResult(false, feeError);
 
         // DỜI TỌA ĐỘ kho khi đang có chuyến CHẠY qua kho: xe đang trên đường sẽ bị điều hướng về
         // chỗ mới, số kế hoạch (km, số ngày) của chuyến lệch hẳn -> chặn. Chuyến CHƯA CHẠY thì
@@ -427,6 +432,8 @@ public class WarehouseSlottingService : IWarehouseSlottingService
         warehouse.Lng = request.Lng;
         warehouse.DoorSide = doorSide;
         warehouse.DoorOffsetMeters = doorSide.HasValue ? request.DoorOffsetMeters : null;
+        // Đổi giá chỉ áp dụng cho các lần dời hạn SAU này (mỗi lần dời đã chốt đơn giá lúc đổi).
+        warehouse.StorageFeePerM3PerDay = request.StorageFeePerM3PerDay;
 
         await _db.SaveChangesAsync();
         return new WarehouseActionResult(true, null);
@@ -941,6 +948,13 @@ public class WarehouseSlottingService : IWarehouseSlottingService
             return "Vui lòng tìm và CHỌN địa chỉ kho từ danh sách gợi ý (cần tọa độ để tính lộ trình, số ngày chuyến khi Chia xe).";
         if (length is null || width is null)
             return "Vui lòng nhập Chiều dài và Chiều rộng kho (mét) — dùng để vẽ sơ đồ kho và xếp khu vực.";
+        return null;
+    }
+
+    private static string? ValidateStorageFee(decimal fee)
+    {
+        if (fee < 0 || fee > 100_000_000m) return "Phí lưu kho phải từ 0 đến 100.000.000 đ/m³/ngày (0 = không tính phí).";
+        if (fee != Math.Round(fee, 0)) return "Phí lưu kho tính theo đồng — không nhập số lẻ.";
         return null;
     }
 

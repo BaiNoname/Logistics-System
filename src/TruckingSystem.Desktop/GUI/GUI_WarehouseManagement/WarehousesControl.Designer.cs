@@ -18,30 +18,30 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
         /// tính tay — sửa được bằng Designer.</summary>
         private void InitializeComponent()
         {
-            root = new System.Windows.Forms.TableLayoutPanel();
-            lblTitle = new System.Windows.Forms.Label();
-            toolbar = new System.Windows.Forms.FlowLayoutPanel();
-            lblChoose = new System.Windows.Forms.Label();
-            cboWarehouse = new System.Windows.Forms.ComboBox();
-            btnCreateWarehouse = new System.Windows.Forms.Button();
-            btnEditWarehouse = new System.Windows.Forms.Button();
-            btnManageZones = new System.Windows.Forms.Button();
-            btnDeleteWarehouse = new System.Windows.Forms.Button();
-            btnManualStock = new System.Windows.Forms.Button();
-            btnPendingReceipts = new System.Windows.Forms.Button();
-            btnTripIssues = new System.Windows.Forms.Button();
-            btnIssueStock = new System.Windows.Forms.Button();
-            lblStatus = new System.Windows.Forms.Label();
-            zonesPanel = new System.Windows.Forms.Panel();
-            testPanel = new System.Windows.Forms.TableLayoutPanel();
-            lblTestTitle = new System.Windows.Forms.Label();
-            lblCargoLineId = new System.Windows.Forms.Label();
-            lblQty = new System.Windows.Forms.Label();
-            cboOrderSuggest = new System.Windows.Forms.ComboBox();
-            cboCargoLineSuggest = new System.Windows.Forms.ComboBox();
-            numQty = new System.Windows.Forms.NumericUpDown();
-            btnSuggest = new System.Windows.Forms.Button();
-            lblResult = new System.Windows.Forms.Label();
+            root = new TableLayoutPanel();
+            lblTitle = new Label();
+            toolbar = new FlowLayoutPanel();
+            lblChoose = new Label();
+            cboWarehouse = new ComboBox();
+            btnCreateWarehouse = new Button();
+            btnEditWarehouse = new Button();
+            btnManageZones = new Button();
+            btnDeleteWarehouse = new Button();
+            btnPendingReceipts = new Button();
+            btnTripIssues = new Button();
+            btnManualStock = new Button();
+            btnIssueStock = new Button();
+            lblStatus = new Label();
+            zonesPanel = new Panel();
+            testPanel = new TableLayoutPanel();
+            lblTestTitle = new Label();
+            lblCargoLineId = new Label();
+            lblQty = new Label();
+            cboOrderSuggest = new ComboBox();
+            cboCargoLineSuggest = new ComboBox();
+            numQty = new NumericUpDown();
+            btnSuggest = new Button();
+            lblResult = new Label();
             root.SuspendLayout();
             toolbar.SuspendLayout();
             testPanel.SuspendLayout();
@@ -51,40 +51,41 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             // root
             // 
             root.ColumnCount = 1;
-            root.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             root.Controls.Add(lblTitle, 0, 0);
             root.Controls.Add(toolbar, 0, 1);
             root.Controls.Add(lblStatus, 0, 2);
             root.Controls.Add(zonesPanel, 0, 3);
             root.Controls.Add(testPanel, 0, 4);
-            root.Dock = System.Windows.Forms.DockStyle.Fill;
-            root.Margin = new System.Windows.Forms.Padding(0);
+            root.Dock = DockStyle.Fill;
+            root.Location = new Point(0, 0);
+            root.Margin = new Padding(0);
             root.Name = "root";
             root.RowCount = 5;
-            root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
-            root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
-            root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
-            root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+            root.RowStyles.Add(new RowStyle());
+            root.RowStyles.Add(new RowStyle());
+            root.RowStyles.Add(new RowStyle());
+            root.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            root.RowStyles.Add(new RowStyle());
+            root.Size = new Size(1800, 1050);
             root.TabIndex = 0;
-            root.Location = new System.Drawing.Point(0, 0);
-            root.Padding = new System.Windows.Forms.Padding(0);
-            root.Size = new System.Drawing.Size(1200, 700);
             // 
             // lblTitle
             // 
             lblTitle.AutoSize = true;
-            lblTitle.Font = new System.Drawing.Font("Segoe UI", 18F, System.Drawing.FontStyle.Bold);
-            lblTitle.ForeColor = System.Drawing.Color.FromArgb(15, 23, 42);
-            lblTitle.Margin = new System.Windows.Forms.Padding(0, 0, 0, 6);
+            lblTitle.Font = new Font("Segoe UI", 18F, FontStyle.Bold);
+            lblTitle.ForeColor = Color.FromArgb(15, 23, 42);
+            lblTitle.Location = new Point(0, 0);
+            lblTitle.Margin = new Padding(0, 0, 0, 9);
             lblTitle.Name = "lblTitle";
+            lblTitle.Size = new Size(322, 48);
             lblTitle.TabIndex = 0;
             lblTitle.Text = "Kho trung chuyển";
             // 
             // toolbar
             // 
             toolbar.AutoSize = true;
-            toolbar.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            toolbar.AutoSizeMode = AutoSizeMode.GrowAndShrink;
             toolbar.Controls.Add(lblChoose);
             toolbar.Controls.Add(cboWarehouse);
             toolbar.Controls.Add(btnCreateWarehouse);
@@ -95,213 +96,238 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             toolbar.Controls.Add(btnTripIssues);
             toolbar.Controls.Add(btnManualStock);
             toolbar.Controls.Add(btnIssueStock);
-            toolbar.Dock = System.Windows.Forms.DockStyle.Fill;
-            toolbar.Margin = new System.Windows.Forms.Padding(0);
+            toolbar.Dock = DockStyle.Fill;
+            toolbar.Location = new Point(0, 57);
+            toolbar.Margin = new Padding(0);
             toolbar.Name = "toolbar";
+            toolbar.Size = new Size(1800, 132);
             toolbar.TabIndex = 1;
-            toolbar.WrapContents = true;
             // 
             // lblChoose
             // 
-            lblChoose.Anchor = System.Windows.Forms.AnchorStyles.Left;
+            lblChoose.Anchor = AnchorStyles.Left;
             lblChoose.AutoSize = true;
-            lblChoose.Font = new System.Drawing.Font("Segoe UI", 10F);
-            lblChoose.Margin = new System.Windows.Forms.Padding(0, 0, 6, 8);
+            lblChoose.Font = new Font("Segoe UI", 10F);
+            lblChoose.Location = new Point(0, 13);
+            lblChoose.Margin = new Padding(0, 0, 9, 12);
             lblChoose.Name = "lblChoose";
+            lblChoose.Size = new Size(100, 28);
             lblChoose.TabIndex = 0;
             lblChoose.Text = "Chọn kho:";
             // 
             // cboWarehouse
             // 
-            cboWarehouse.Anchor = System.Windows.Forms.AnchorStyles.Left;
-            cboWarehouse.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            cboWarehouse.MinimumSize = new System.Drawing.Size(280, 0);
-            cboWarehouse.Margin = new System.Windows.Forms.Padding(0, 0, 16, 8);
+            cboWarehouse.Anchor = AnchorStyles.Left;
+            cboWarehouse.DropDownStyle = ComboBoxStyle.DropDownList;
+            cboWarehouse.Location = new Point(109, 9);
+            cboWarehouse.Margin = new Padding(0, 0, 24, 12);
+            cboWarehouse.MinimumSize = new Size(418, 0);
             cboWarehouse.Name = "cboWarehouse";
+            cboWarehouse.Size = new Size(418, 36);
             cboWarehouse.TabIndex = 1;
             // 
             // btnCreateWarehouse
             // 
             btnCreateWarehouse.AutoSize = true;
-            btnCreateWarehouse.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
-            btnCreateWarehouse.BackColor = System.Drawing.Color.FromArgb(37, 99, 235);
-            btnCreateWarehouse.Cursor = System.Windows.Forms.Cursors.Hand;
+            btnCreateWarehouse.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+            btnCreateWarehouse.BackColor = Color.FromArgb(37, 99, 235);
+            btnCreateWarehouse.Cursor = Cursors.Hand;
             btnCreateWarehouse.FlatAppearance.BorderSize = 0;
-            btnCreateWarehouse.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(29, 78, 216);
-            btnCreateWarehouse.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            btnCreateWarehouse.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
-            btnCreateWarehouse.ForeColor = System.Drawing.Color.White;
-            btnCreateWarehouse.Margin = new System.Windows.Forms.Padding(0, 0, 8, 8);
-            btnCreateWarehouse.MinimumSize = new System.Drawing.Size(0, 36);
+            btnCreateWarehouse.FlatAppearance.MouseOverBackColor = Color.FromArgb(29, 78, 216);
+            btnCreateWarehouse.FlatStyle = FlatStyle.Flat;
+            btnCreateWarehouse.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+            btnCreateWarehouse.ForeColor = Color.White;
+            btnCreateWarehouse.Location = new Point(551, 0);
+            btnCreateWarehouse.Margin = new Padding(0, 0, 12, 12);
+            btnCreateWarehouse.MinimumSize = new Size(0, 54);
             btnCreateWarehouse.Name = "btnCreateWarehouse";
-            btnCreateWarehouse.Padding = new System.Windows.Forms.Padding(10, 3, 10, 3);
+            btnCreateWarehouse.Padding = new Padding(15, 4, 15, 4);
+            btnCreateWarehouse.Size = new Size(223, 54);
             btnCreateWarehouse.TabIndex = 2;
             btnCreateWarehouse.Text = "➕ Thêm kho mới";
             btnCreateWarehouse.UseVisualStyleBackColor = false;
-            btnCreateWarehouse.Click += new System.EventHandler(this.BtnCreateWarehouse_Click);
+            btnCreateWarehouse.Click += BtnCreateWarehouse_Click;
             // 
             // btnEditWarehouse
             // 
             btnEditWarehouse.AutoSize = true;
-            btnEditWarehouse.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
-            btnEditWarehouse.BackColor = System.Drawing.Color.White;
-            btnEditWarehouse.Cursor = System.Windows.Forms.Cursors.Hand;
-            btnEditWarehouse.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            btnEditWarehouse.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
-            btnEditWarehouse.ForeColor = System.Drawing.Color.FromArgb(15, 23, 42);
-            btnEditWarehouse.Margin = new System.Windows.Forms.Padding(0, 0, 8, 8);
-            btnEditWarehouse.MinimumSize = new System.Drawing.Size(0, 36);
+            btnEditWarehouse.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+            btnEditWarehouse.BackColor = Color.White;
+            btnEditWarehouse.Cursor = Cursors.Hand;
+            btnEditWarehouse.FlatStyle = FlatStyle.Flat;
+            btnEditWarehouse.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+            btnEditWarehouse.ForeColor = Color.FromArgb(15, 23, 42);
+            btnEditWarehouse.Location = new Point(786, 0);
+            btnEditWarehouse.Margin = new Padding(0, 0, 12, 12);
+            btnEditWarehouse.MinimumSize = new Size(0, 54);
             btnEditWarehouse.Name = "btnEditWarehouse";
-            btnEditWarehouse.Padding = new System.Windows.Forms.Padding(10, 3, 10, 3);
+            btnEditWarehouse.Padding = new Padding(15, 4, 15, 4);
+            btnEditWarehouse.Size = new Size(164, 54);
             btnEditWarehouse.TabIndex = 3;
             btnEditWarehouse.Text = "✏️ Sửa kho";
             btnEditWarehouse.UseVisualStyleBackColor = false;
-            btnEditWarehouse.Click += new System.EventHandler(this.BtnEditWarehouse_Click);
+            btnEditWarehouse.Click += BtnEditWarehouse_Click;
             // 
             // btnManageZones
             // 
             btnManageZones.AutoSize = true;
-            btnManageZones.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
-            btnManageZones.BackColor = System.Drawing.Color.White;
-            btnManageZones.Cursor = System.Windows.Forms.Cursors.Hand;
-            btnManageZones.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(248, 250, 252);
-            btnManageZones.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            btnManageZones.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
-            btnManageZones.ForeColor = System.Drawing.Color.FromArgb(15, 23, 42);
-            btnManageZones.Margin = new System.Windows.Forms.Padding(0, 0, 8, 8);
-            btnManageZones.MinimumSize = new System.Drawing.Size(0, 36);
+            btnManageZones.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+            btnManageZones.BackColor = Color.White;
+            btnManageZones.Cursor = Cursors.Hand;
+            btnManageZones.FlatAppearance.MouseOverBackColor = Color.FromArgb(248, 250, 252);
+            btnManageZones.FlatStyle = FlatStyle.Flat;
+            btnManageZones.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+            btnManageZones.ForeColor = Color.FromArgb(15, 23, 42);
+            btnManageZones.Location = new Point(962, 0);
+            btnManageZones.Margin = new Padding(0, 0, 12, 12);
+            btnManageZones.MinimumSize = new Size(0, 54);
             btnManageZones.Name = "btnManageZones";
-            btnManageZones.Padding = new System.Windows.Forms.Padding(10, 3, 10, 3);
+            btnManageZones.Padding = new Padding(15, 4, 15, 4);
+            btnManageZones.Size = new Size(242, 54);
             btnManageZones.TabIndex = 4;
             btnManageZones.Text = "🏗️ Quản lý khu vực";
             btnManageZones.UseVisualStyleBackColor = false;
-            btnManageZones.Click += new System.EventHandler(this.BtnManageZones_Click);
+            btnManageZones.Click += BtnManageZones_Click;
             // 
             // btnDeleteWarehouse
             // 
             btnDeleteWarehouse.AutoSize = true;
-            btnDeleteWarehouse.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
-            btnDeleteWarehouse.BackColor = System.Drawing.Color.White;
-            btnDeleteWarehouse.Cursor = System.Windows.Forms.Cursors.Hand;
-            btnDeleteWarehouse.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(220, 38, 38);
-            btnDeleteWarehouse.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            btnDeleteWarehouse.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
-            btnDeleteWarehouse.ForeColor = System.Drawing.Color.FromArgb(220, 38, 38);
-            btnDeleteWarehouse.Margin = new System.Windows.Forms.Padding(0, 0, 8, 8);
-            btnDeleteWarehouse.MinimumSize = new System.Drawing.Size(0, 36);
+            btnDeleteWarehouse.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+            btnDeleteWarehouse.BackColor = Color.White;
+            btnDeleteWarehouse.Cursor = Cursors.Hand;
+            btnDeleteWarehouse.FlatAppearance.BorderColor = Color.FromArgb(220, 38, 38);
+            btnDeleteWarehouse.FlatStyle = FlatStyle.Flat;
+            btnDeleteWarehouse.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+            btnDeleteWarehouse.ForeColor = Color.FromArgb(220, 38, 38);
+            btnDeleteWarehouse.Location = new Point(1216, 0);
+            btnDeleteWarehouse.Margin = new Padding(0, 0, 12, 12);
+            btnDeleteWarehouse.MinimumSize = new Size(0, 54);
             btnDeleteWarehouse.Name = "btnDeleteWarehouse";
-            btnDeleteWarehouse.Padding = new System.Windows.Forms.Padding(10, 3, 10, 3);
+            btnDeleteWarehouse.Padding = new Padding(15, 4, 15, 4);
+            btnDeleteWarehouse.Size = new Size(165, 54);
             btnDeleteWarehouse.TabIndex = 5;
             btnDeleteWarehouse.Text = "🗑️ Xóa kho";
             btnDeleteWarehouse.UseVisualStyleBackColor = false;
-            btnDeleteWarehouse.Click += new System.EventHandler(this.BtnDeleteWarehouse_Click);
-            // 
-            // btnManualStock
-            // 
-            btnManualStock.AutoSize = true;
-            btnManualStock.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
-            btnManualStock.BackColor = System.Drawing.Color.FromArgb(37, 99, 235);
-            btnManualStock.Cursor = System.Windows.Forms.Cursors.Hand;
-            btnManualStock.FlatAppearance.BorderSize = 0;
-            btnManualStock.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            btnManualStock.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
-            btnManualStock.ForeColor = System.Drawing.Color.White;
-            btnManualStock.Margin = new System.Windows.Forms.Padding(0, 0, 8, 8);
-            btnManualStock.MinimumSize = new System.Drawing.Size(0, 36);
-            btnManualStock.Name = "btnManualStock";
-            btnManualStock.Padding = new System.Windows.Forms.Padding(10, 3, 10, 3);
-            btnManualStock.TabIndex = 7;
-            btnManualStock.Text = "🙋 Nhận hàng khách mang tới";
-            btnManualStock.UseVisualStyleBackColor = false;
-            btnManualStock.Click += new System.EventHandler(this.BtnManualStock_Click);
+            btnDeleteWarehouse.Click += BtnDeleteWarehouse_Click;
             // 
             // btnPendingReceipts
             // 
             btnPendingReceipts.AutoSize = true;
-            btnPendingReceipts.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
-            btnPendingReceipts.BackColor = System.Drawing.Color.FromArgb(217, 119, 6);
-            btnPendingReceipts.Cursor = System.Windows.Forms.Cursors.Hand;
+            btnPendingReceipts.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+            btnPendingReceipts.BackColor = Color.FromArgb(217, 119, 6);
+            btnPendingReceipts.Cursor = Cursors.Hand;
             btnPendingReceipts.FlatAppearance.BorderSize = 0;
-            btnPendingReceipts.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            btnPendingReceipts.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
-            btnPendingReceipts.ForeColor = System.Drawing.Color.White;
-            btnPendingReceipts.Margin = new System.Windows.Forms.Padding(0, 0, 8, 8);
-            btnPendingReceipts.MinimumSize = new System.Drawing.Size(0, 36);
+            btnPendingReceipts.FlatStyle = FlatStyle.Flat;
+            btnPendingReceipts.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+            btnPendingReceipts.ForeColor = Color.White;
+            btnPendingReceipts.Location = new Point(1393, 0);
+            btnPendingReceipts.Margin = new Padding(0, 0, 12, 12);
+            btnPendingReceipts.MinimumSize = new Size(0, 54);
             btnPendingReceipts.Name = "btnPendingReceipts";
-            btnPendingReceipts.Padding = new System.Windows.Forms.Padding(10, 3, 10, 3);
+            btnPendingReceipts.Padding = new Padding(15, 4, 15, 4);
+            btnPendingReceipts.Size = new Size(291, 54);
             btnPendingReceipts.TabIndex = 6;
             btnPendingReceipts.Text = "📦 Nhập hàng từ chuyến";
             btnPendingReceipts.UseVisualStyleBackColor = false;
-            btnPendingReceipts.Click += new System.EventHandler(this.BtnPendingReceipts_Click);
-            //
-            // btnTripIssues — xuất kho theo chuyến giao (soạn hàng, bốc lên xe, xác nhận xuất)
-            //
+            btnPendingReceipts.Click += BtnPendingReceipts_Click;
+            // 
+            // btnTripIssues
+            // 
             btnTripIssues.AutoSize = true;
-            btnTripIssues.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
-            btnTripIssues.BackColor = System.Drawing.Color.FromArgb(22, 163, 74);
-            btnTripIssues.Cursor = System.Windows.Forms.Cursors.Hand;
+            btnTripIssues.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+            btnTripIssues.BackColor = Color.FromArgb(22, 163, 74);
+            btnTripIssues.Cursor = Cursors.Hand;
             btnTripIssues.FlatAppearance.BorderSize = 0;
-            btnTripIssues.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            btnTripIssues.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
-            btnTripIssues.ForeColor = System.Drawing.Color.White;
-            btnTripIssues.Margin = new System.Windows.Forms.Padding(0, 0, 8, 8);
-            btnTripIssues.MinimumSize = new System.Drawing.Size(0, 36);
+            btnTripIssues.FlatStyle = FlatStyle.Flat;
+            btnTripIssues.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+            btnTripIssues.ForeColor = Color.White;
+            btnTripIssues.Location = new Point(0, 66);
+            btnTripIssues.Margin = new Padding(0, 0, 12, 12);
+            btnTripIssues.MinimumSize = new Size(0, 54);
             btnTripIssues.Name = "btnTripIssues";
-            btnTripIssues.Padding = new System.Windows.Forms.Padding(10, 3, 10, 3);
+            btnTripIssues.Padding = new Padding(15, 4, 15, 4);
+            btnTripIssues.Size = new Size(294, 54);
             btnTripIssues.TabIndex = 6;
             btnTripIssues.Text = "📤 Xuất kho theo chuyến";
             btnTripIssues.UseVisualStyleBackColor = false;
-            btnTripIssues.Click += new System.EventHandler(this.BtnTripIssues_Click);
+            btnTripIssues.Click += BtnTripIssues_Click;
             // 
-            // btnIssueStock — xuất hàng tồn của đơn đã Hoàn tất / Hủy + hoàn tác + lịch sử nhập/xuất
+            // btnManualStock
+            // 
+            btnManualStock.AutoSize = true;
+            btnManualStock.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+            btnManualStock.BackColor = Color.FromArgb(37, 99, 235);
+            btnManualStock.Cursor = Cursors.Hand;
+            btnManualStock.FlatAppearance.BorderSize = 0;
+            btnManualStock.FlatStyle = FlatStyle.Flat;
+            btnManualStock.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+            btnManualStock.ForeColor = Color.White;
+            btnManualStock.Location = new Point(306, 66);
+            btnManualStock.Margin = new Padding(0, 0, 12, 12);
+            btnManualStock.MinimumSize = new Size(0, 54);
+            btnManualStock.Name = "btnManualStock";
+            btnManualStock.Padding = new Padding(15, 4, 15, 4);
+            btnManualStock.Size = new Size(344, 54);
+            btnManualStock.TabIndex = 7;
+            btnManualStock.Text = "🙋 Nhận hàng khách mang tới";
+            btnManualStock.UseVisualStyleBackColor = false;
+            btnManualStock.Click += BtnManualStock_Click;
+            // 
+            // btnIssueStock
             // 
             btnIssueStock.AutoSize = true;
-            btnIssueStock.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
-            btnIssueStock.BackColor = System.Drawing.Color.White;
-            btnIssueStock.Cursor = System.Windows.Forms.Cursors.Hand;
-            btnIssueStock.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(203, 213, 225);
-            btnIssueStock.FlatAppearance.BorderSize = 1;
-            btnIssueStock.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            btnIssueStock.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
-            btnIssueStock.ForeColor = System.Drawing.Color.FromArgb(15, 23, 42);
-            btnIssueStock.Margin = new System.Windows.Forms.Padding(0, 0, 8, 8);
-            btnIssueStock.MinimumSize = new System.Drawing.Size(0, 36);
+            btnIssueStock.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+            btnIssueStock.BackColor = Color.White;
+            btnIssueStock.Cursor = Cursors.Hand;
+            btnIssueStock.FlatAppearance.BorderColor = Color.FromArgb(203, 213, 225);
+            btnIssueStock.FlatStyle = FlatStyle.Flat;
+            btnIssueStock.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+            btnIssueStock.ForeColor = Color.FromArgb(15, 23, 42);
+            btnIssueStock.Location = new Point(662, 66);
+            btnIssueStock.Margin = new Padding(0, 0, 12, 12);
+            btnIssueStock.MinimumSize = new Size(0, 54);
             btnIssueStock.Name = "btnIssueStock";
-            btnIssueStock.Padding = new System.Windows.Forms.Padding(10, 3, 10, 3);
+            btnIssueStock.Padding = new Padding(15, 4, 15, 4);
+            btnIssueStock.Size = new Size(239, 54);
             btnIssueStock.TabIndex = 8;
             btnIssueStock.Text = "📋 Tồn kho & lịch sử";
             btnIssueStock.UseVisualStyleBackColor = false;
-            btnIssueStock.Click += new System.EventHandler(this.BtnIssueStock_Click);
+            btnIssueStock.Click += BtnIssueStock_Click;
             // 
             // lblStatus
             // 
-            lblStatus.Anchor = System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
+            lblStatus.Anchor = AnchorStyles.Left | AnchorStyles.Right;
             lblStatus.AutoSize = true;
-            lblStatus.Font = new System.Drawing.Font("Segoe UI", 9F);
-            lblStatus.ForeColor = System.Drawing.Color.FromArgb(100, 116, 139);
-            lblStatus.Margin = new System.Windows.Forms.Padding(0, 0, 0, 6);
+            lblStatus.Font = new Font("Segoe UI", 9F);
+            lblStatus.ForeColor = Color.FromArgb(100, 116, 139);
+            lblStatus.Location = new Point(0, 189);
+            lblStatus.Margin = new Padding(0, 0, 0, 9);
             lblStatus.Name = "lblStatus";
+            lblStatus.Size = new Size(1800, 25);
             lblStatus.TabIndex = 2;
             // 
             // zonesPanel
             // 
             zonesPanel.AutoScroll = true;
-            zonesPanel.BackColor = System.Drawing.Color.White;
-            zonesPanel.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            zonesPanel.Dock = System.Windows.Forms.DockStyle.Fill;
-            zonesPanel.Margin = new System.Windows.Forms.Padding(0, 0, 0, 10);
+            zonesPanel.BackColor = Color.White;
+            zonesPanel.BorderStyle = BorderStyle.FixedSingle;
+            zonesPanel.Dock = DockStyle.Fill;
+            zonesPanel.Location = new Point(0, 223);
+            zonesPanel.Margin = new Padding(0, 0, 0, 15);
             zonesPanel.Name = "zonesPanel";
+            zonesPanel.Size = new Size(1800, 594);
             zonesPanel.TabIndex = 3;
             // 
             // testPanel
             // 
             testPanel.AutoSize = true;
-            testPanel.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            testPanel.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+            testPanel.BackColor = Color.White;
             testPanel.ColumnCount = 4;
-            testPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 55F));
-            testPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 45F));
-            testPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.AutoSize));
-            testPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.AutoSize));
+            testPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 55F));
+            testPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 45F));
+            testPanel.ColumnStyles.Add(new ColumnStyle());
+            testPanel.ColumnStyles.Add(new ColumnStyle());
             testPanel.Controls.Add(lblTestTitle, 0, 0);
             testPanel.Controls.Add(lblCargoLineId, 0, 1);
             testPanel.Controls.Add(lblQty, 2, 1);
@@ -310,129 +336,146 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             testPanel.Controls.Add(numQty, 2, 2);
             testPanel.Controls.Add(btnSuggest, 3, 2);
             testPanel.Controls.Add(lblResult, 0, 3);
-            testPanel.Dock = System.Windows.Forms.DockStyle.Fill;
-            testPanel.Margin = new System.Windows.Forms.Padding(0);
+            testPanel.Dock = DockStyle.Fill;
+            testPanel.Location = new Point(0, 832);
+            testPanel.Margin = new Padding(0);
             testPanel.Name = "testPanel";
+            testPanel.Padding = new Padding(30, 21, 30, 21);
             testPanel.RowCount = 4;
-            testPanel.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
-            testPanel.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
-            testPanel.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
-            testPanel.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
-            testPanel.SetColumnSpan(lblTestTitle, 4);
-            testPanel.SetColumnSpan(lblCargoLineId, 2);
-            testPanel.SetColumnSpan(lblQty, 2);
-            testPanel.SetColumnSpan(lblResult, 4);
+            testPanel.RowStyles.Add(new RowStyle());
+            testPanel.RowStyles.Add(new RowStyle());
+            testPanel.RowStyles.Add(new RowStyle());
+            testPanel.RowStyles.Add(new RowStyle());
+            testPanel.Size = new Size(1800, 218);
             testPanel.TabIndex = 4;
-            testPanel.BackColor = System.Drawing.Color.White;
-            testPanel.Padding = new System.Windows.Forms.Padding(20, 14, 20, 14);
             // 
             // lblTestTitle
             // 
-            lblTestTitle.Anchor = System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
+            lblTestTitle.Anchor = AnchorStyles.Left | AnchorStyles.Right;
             lblTestTitle.AutoSize = true;
-            lblTestTitle.Font = new System.Drawing.Font("Segoe UI", 13F, System.Drawing.FontStyle.Bold);
-            lblTestTitle.ForeColor = System.Drawing.Color.FromArgb(15, 23, 42);
-            lblTestTitle.Margin = new System.Windows.Forms.Padding(0, 0, 0, 8);
+            testPanel.SetColumnSpan(lblTestTitle, 4);
+            lblTestTitle.Font = new Font("Segoe UI", 13F, FontStyle.Bold);
+            lblTestTitle.ForeColor = Color.FromArgb(15, 23, 42);
+            lblTestTitle.Location = new Point(30, 21);
+            lblTestTitle.Margin = new Padding(0, 0, 0, 12);
             lblTestTitle.Name = "lblTestTitle";
+            lblTestTitle.Size = new Size(1740, 36);
             lblTestTitle.TabIndex = 0;
-            lblTestTitle.Text = "🧪  Kiểm tra thuật toán Best-Fit — CHỈ GỢI Ý vị trí lưu trữ (không nhập kho)";
+            lblTestTitle.Text = "\U0001f9ea  Kiểm tra thuật toán Best-Fit — CHỈ GỢI Ý vị trí lưu trữ (không nhập kho)";
             // 
             // lblCargoLineId
             // 
-            lblCargoLineId.Anchor = System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
+            lblCargoLineId.Anchor = AnchorStyles.Left | AnchorStyles.Right;
             lblCargoLineId.AutoSize = true;
-            lblCargoLineId.Font = new System.Drawing.Font("Segoe UI", 9F);
-            lblCargoLineId.ForeColor = System.Drawing.Color.FromArgb(100, 116, 139);
-            lblCargoLineId.Margin = new System.Windows.Forms.Padding(0, 0, 12, 4);
+            testPanel.SetColumnSpan(lblCargoLineId, 2);
+            lblCargoLineId.Font = new Font("Segoe UI", 9F);
+            lblCargoLineId.ForeColor = Color.FromArgb(100, 116, 139);
+            lblCargoLineId.Location = new Point(30, 69);
+            lblCargoLineId.Margin = new Padding(0, 0, 18, 6);
             lblCargoLineId.Name = "lblCargoLineId";
+            lblCargoLineId.Size = new Size(1318, 25);
             lblCargoLineId.TabIndex = 1;
             lblCargoLineId.Text = "Chọn đơn hàng → dòng hàng cần thử xếp vị trí:";
             // 
             // lblQty
             // 
-            lblQty.Anchor = System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
+            lblQty.Anchor = AnchorStyles.Left | AnchorStyles.Right;
             lblQty.AutoSize = true;
-            lblQty.Font = new System.Drawing.Font("Segoe UI", 9F);
-            lblQty.ForeColor = System.Drawing.Color.FromArgb(100, 116, 139);
-            lblQty.Margin = new System.Windows.Forms.Padding(0, 0, 12, 4);
+            testPanel.SetColumnSpan(lblQty, 2);
+            lblQty.Font = new Font("Segoe UI", 9F);
+            lblQty.ForeColor = Color.FromArgb(100, 116, 139);
+            lblQty.Location = new Point(1366, 69);
+            lblQty.Margin = new Padding(0, 0, 18, 6);
             lblQty.Name = "lblQty";
+            lblQty.Size = new Size(386, 25);
             lblQty.TabIndex = 2;
             lblQty.Text = "Số lượng cần xếp:";
             // 
             // cboOrderSuggest
             // 
-            cboOrderSuggest.Dock = System.Windows.Forms.DockStyle.Fill;
-            cboOrderSuggest.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            cboOrderSuggest.Margin = new System.Windows.Forms.Padding(0, 0, 10, 8);
+            cboOrderSuggest.Dock = DockStyle.Fill;
+            cboOrderSuggest.DropDownStyle = ComboBoxStyle.DropDownList;
+            cboOrderSuggest.Location = new Point(30, 100);
+            cboOrderSuggest.Margin = new Padding(0, 0, 15, 12);
             cboOrderSuggest.Name = "cboOrderSuggest";
+            cboOrderSuggest.Size = new Size(720, 36);
             cboOrderSuggest.TabIndex = 3;
             // 
             // cboCargoLineSuggest
             // 
-            cboCargoLineSuggest.Dock = System.Windows.Forms.DockStyle.Fill;
-            cboCargoLineSuggest.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            cboCargoLineSuggest.Margin = new System.Windows.Forms.Padding(0, 0, 20, 8);
+            cboCargoLineSuggest.Dock = DockStyle.Fill;
+            cboCargoLineSuggest.DropDownStyle = ComboBoxStyle.DropDownList;
+            cboCargoLineSuggest.Location = new Point(765, 100);
+            cboCargoLineSuggest.Margin = new Padding(0, 0, 30, 12);
             cboCargoLineSuggest.Name = "cboCargoLineSuggest";
+            cboCargoLineSuggest.Size = new Size(571, 36);
             cboCargoLineSuggest.TabIndex = 4;
             // 
             // numQty
             // 
-            numQty.Anchor = System.Windows.Forms.AnchorStyles.Left;
+            numQty.Anchor = AnchorStyles.Left;
             numQty.DecimalPlaces = 2;
+            numQty.Location = new Point(1366, 108);
+            numQty.Margin = new Padding(0, 0, 30, 12);
             numQty.Maximum = new decimal(new int[] { 999999, 0, 0, 0 });
             numQty.Minimum = new decimal(new int[] { 1, 0, 0, 65536 });
-            numQty.Value = new decimal(new int[] { 2, 0, 0, 0 });
-            numQty.Margin = new System.Windows.Forms.Padding(0, 0, 20, 8);
             numQty.Name = "numQty";
+            numQty.Size = new Size(180, 34);
             numQty.TabIndex = 5;
+            numQty.Value = new decimal(new int[] { 2, 0, 0, 0 });
             // 
             // btnSuggest
             // 
-            btnSuggest.Anchor = System.Windows.Forms.AnchorStyles.Left;
+            btnSuggest.Anchor = AnchorStyles.Left;
             btnSuggest.AutoSize = true;
-            btnSuggest.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
-            btnSuggest.BackColor = System.Drawing.Color.FromArgb(37, 99, 235);
-            btnSuggest.Cursor = System.Windows.Forms.Cursors.Hand;
+            btnSuggest.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+            btnSuggest.BackColor = Color.FromArgb(37, 99, 235);
+            btnSuggest.Cursor = Cursors.Hand;
             btnSuggest.FlatAppearance.BorderSize = 0;
-            btnSuggest.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(29, 78, 216);
-            btnSuggest.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            btnSuggest.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
-            btnSuggest.ForeColor = System.Drawing.Color.White;
-            btnSuggest.Margin = new System.Windows.Forms.Padding(0, 0, 0, 8);
-            btnSuggest.MinimumSize = new System.Drawing.Size(0, 34);
+            btnSuggest.FlatAppearance.MouseOverBackColor = Color.FromArgb(29, 78, 216);
+            btnSuggest.FlatStyle = FlatStyle.Flat;
+            btnSuggest.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+            btnSuggest.ForeColor = Color.White;
+            btnSuggest.Location = new Point(1576, 100);
+            btnSuggest.Margin = new Padding(0, 0, 0, 12);
+            btnSuggest.MinimumSize = new Size(0, 51);
             btnSuggest.Name = "btnSuggest";
-            btnSuggest.Padding = new System.Windows.Forms.Padding(10, 2, 10, 2);
+            btnSuggest.Padding = new Padding(15, 3, 15, 3);
+            btnSuggest.Size = new Size(193, 51);
             btnSuggest.TabIndex = 6;
             btnSuggest.Text = "🔍  Gợi ý vị trí";
             btnSuggest.UseVisualStyleBackColor = false;
-            btnSuggest.Click += new System.EventHandler(this.BtnSuggest_Click);
+            btnSuggest.Click += BtnSuggest_Click;
             // 
             // lblResult
             // 
-            lblResult.Anchor = System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
+            lblResult.Anchor = AnchorStyles.Left | AnchorStyles.Right;
             lblResult.AutoSize = true;
-            lblResult.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
-            lblResult.Margin = new System.Windows.Forms.Padding(0, 4, 0, 0);
+            testPanel.SetColumnSpan(lblResult, 4);
+            lblResult.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+            lblResult.Location = new Point(30, 169);
+            lblResult.Margin = new Padding(0, 6, 0, 0);
             lblResult.Name = "lblResult";
+            lblResult.Size = new Size(1740, 28);
             lblResult.TabIndex = 7;
             // 
             // WarehousesControl
             // 
-            AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
-            AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
-            BackColor = System.Drawing.Color.FromArgb(241, 245, 249);
+            AutoScaleDimensions = new SizeF(144F, 144F);
+            AutoScaleMode = AutoScaleMode.Dpi;
+            BackColor = Color.FromArgb(241, 245, 249);
             Controls.Add(root);
+            Margin = new Padding(6);
             Name = "WarehousesControl";
-            Size = new System.Drawing.Size(1200, 700);
-            ((System.ComponentModel.ISupportInitialize)numQty).EndInit();
-            testPanel.ResumeLayout(false);
-            testPanel.PerformLayout();
-            toolbar.ResumeLayout(false);
-            toolbar.PerformLayout();
+            Size = new Size(1800, 1050);
             root.ResumeLayout(false);
             root.PerformLayout();
+            toolbar.ResumeLayout(false);
+            toolbar.PerformLayout();
+            testPanel.ResumeLayout(false);
+            testPanel.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)numQty).EndInit();
             ResumeLayout(false);
-            PerformLayout();
         }
 
         #endregion

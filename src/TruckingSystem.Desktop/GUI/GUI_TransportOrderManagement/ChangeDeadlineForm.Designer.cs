@@ -21,6 +21,9 @@
             lblCurrent = new System.Windows.Forms.Label();
             lblNewDate = new System.Windows.Forms.Label();
             dtNewDate = new System.Windows.Forms.DateTimePicker();
+            lblRequester = new System.Windows.Forms.Label();
+            cboRequester = new System.Windows.Forms.ComboBox();
+            lblFee = new System.Windows.Forms.Label();
             lblHint = new System.Windows.Forms.Label();
             lblReason = new System.Windows.Forms.Label();
             txtReason = new System.Windows.Forms.TextBox();
@@ -41,11 +44,14 @@
             root.Controls.Add(lblCurrent, 0, 1);
             root.Controls.Add(lblNewDate, 0, 2);
             root.Controls.Add(dtNewDate, 1, 2);
-            root.Controls.Add(lblHint, 1, 3);
-            root.Controls.Add(lblReason, 0, 4);
-            root.Controls.Add(txtReason, 1, 4);
-            root.Controls.Add(lblStatus, 0, 5);
-            root.Controls.Add(buttonBar, 0, 6);
+            root.Controls.Add(lblRequester, 0, 3);
+            root.Controls.Add(cboRequester, 1, 3);
+            root.Controls.Add(lblFee, 1, 4);
+            root.Controls.Add(lblHint, 1, 5);
+            root.Controls.Add(lblReason, 0, 6);
+            root.Controls.Add(txtReason, 1, 6);
+            root.Controls.Add(lblStatus, 0, 7);
+            root.Controls.Add(buttonBar, 0, 8);
             root.SetColumnSpan(lblTitle, 2);
             root.SetColumnSpan(lblCurrent, 2);
             root.SetColumnSpan(lblStatus, 2);
@@ -53,7 +59,9 @@
             root.Dock = System.Windows.Forms.DockStyle.Fill;
             root.Name = "root";
             root.Padding = new System.Windows.Forms.Padding(20, 16, 20, 16);
-            root.RowCount = 7;
+            root.RowCount = 9;
+            root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+            root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
             root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
             root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
             root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
@@ -105,6 +113,34 @@
             dtNewDate.MinimumSize = new System.Drawing.Size(160, 0);
             dtNewDate.Name = "dtNewDate";
             dtNewDate.TabIndex = 3;
+            //
+            // lblRequester
+            //
+            lblRequester.Anchor = System.Windows.Forms.AnchorStyles.Left;
+            lblRequester.AutoSize = true;
+            lblRequester.Font = new System.Drawing.Font("Segoe UI", 10F);
+            lblRequester.Margin = new System.Windows.Forms.Padding(0, 4, 12, 4);
+            lblRequester.Name = "lblRequester";
+            lblRequester.Text = "Bên yêu cầu: *";
+            //
+            // cboRequester
+            //
+            cboRequester.Anchor = System.Windows.Forms.AnchorStyles.Left;
+            cboRequester.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            cboRequester.Font = new System.Drawing.Font("Segoe UI", 10F);
+            cboRequester.Margin = new System.Windows.Forms.Padding(0, 4, 0, 4);
+            cboRequester.MinimumSize = new System.Drawing.Size(260, 0);
+            cboRequester.Name = "cboRequester";
+            //
+            // lblFee
+            //
+            lblFee.Anchor = System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
+            lblFee.AutoSize = true;
+            lblFee.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Bold);
+            lblFee.ForeColor = System.Drawing.Color.FromArgb(100, 116, 139);
+            lblFee.Margin = new System.Windows.Forms.Padding(0, 0, 0, 8);
+            lblFee.Name = "lblFee";
+            lblFee.Text = "";
             //
             // lblHint
             //
@@ -208,7 +244,7 @@
             AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
             BackColor = System.Drawing.Color.White;
             CancelButton = btnClose;
-            ClientSize = new System.Drawing.Size(560, 340);
+            ClientSize = new System.Drawing.Size(600, 420);
             Controls.Add(root);
             MinimumSize = new System.Drawing.Size(480, 320);
             Name = "ChangeDeadlineForm";
@@ -228,6 +264,9 @@
         private System.Windows.Forms.Label lblCurrent;
         private System.Windows.Forms.Label lblNewDate;
         private System.Windows.Forms.DateTimePicker dtNewDate;
+        private System.Windows.Forms.Label lblRequester;
+        private System.Windows.Forms.ComboBox cboRequester;
+        private System.Windows.Forms.Label lblFee;
         private System.Windows.Forms.Label lblHint;
         private System.Windows.Forms.Label lblReason;
         private System.Windows.Forms.TextBox txtReason;

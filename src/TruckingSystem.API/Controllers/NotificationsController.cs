@@ -1,4 +1,4 @@
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TruckingSystem.Application.Notifications;
@@ -34,8 +34,8 @@ public class NotificationsController : ControllerBase
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
-        await _service.MarkAsReadAsync(id, userId);
-        return Ok();
+        var error = await _service.MarkAsReadAsync(id, userId);
+        return error is null ? Ok() : BadRequest(new { message = error });
     }
 
     [HttpPost("mark-all-read")]

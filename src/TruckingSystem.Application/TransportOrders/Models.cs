@@ -53,7 +53,19 @@ public record OrderActionResult(bool Success, string? Message);
 
 /// <summary>Đổi hạn giao cam kết của đơn ĐÃ XÁC NHẬN / ĐANG CHẠY (khách xin dời, thỏa thuận lùi
 /// hạn...) — bắt buộc ghi lý do, hệ thống ghi nhật ký hạn cũ -> hạn mới.</summary>
-public record ChangeDeadlineRequest(DateTime NewDeliveryDate, string Reason);
+public record ChangeDeadlineRequest(DateTime NewDeliveryDate, string Reason,
+    string? RequestedBy = null); // "Customer" | "Company" — BẮT BUỘC chọn (khách dời trễ -> tính phí lưu kho)
+
+/// <summary>Phí lưu kho ƯỚC TÍNH khi đổi hạn giao (hiện ngay trên hộp đổi hạn để báo khách).</summary>
+public record StorageFeePreviewDto(int DelayDays, decimal VolumeM3, decimal RatePerM3PerDay, decimal EstimatedFee, string Note);
+
+/// <summary>1 lần đổi hạn giao + phí lưu kho của lần đó (tính theo số ngày hàng THỰC SỰ còn trong kho).</summary>
+public record StorageFeeLineDto(DateTime ChangedAt, DateTime? OldDate, DateTime NewDate, string RequestedBy, string Reason,
+    string? ChangedBy, int DelayDays, decimal RatePerM3PerDay, decimal EstimatedFee, int ChargedDays, decimal ChargedM3Days, decimal Fee);
+
+/// <summary>PHÍ LƯU KHO của đơn (do khách dời hạn giao) — Total đưa vào hóa đơn (phần hóa đơn).
+/// IsFinal = hàng đã rời kho hết (số đã chốt); false = tạm tính tới hôm nay.</summary>
+public record StorageFeeDto(int TransportOrderId, decimal TotalFee, bool IsFinal, string Note, List<StorageFeeLineDto> Changes);
 
 public record TransportOrderDetailDto(
     int Id, string Code, string CustomerName, string Status, decimal ProgressPercent,

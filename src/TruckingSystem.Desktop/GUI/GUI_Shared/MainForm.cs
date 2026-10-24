@@ -176,7 +176,17 @@ namespace TruckingSystem.Desktop.GUI_Shared
         {
             if (_api is null) return;
             using var f = new TruckingSystem.Desktop.GUI_NotificationManagement.NotificationsForm(_api);
-            f.ShowDialog(this);
+            if (f.ShowDialog(this) != DialogResult.OK || f.SelectedTarget is not { } target) return;
+
+            var (navText, build) = TruckingSystem.Desktop.GUI_NotificationManagement.NotificationNavigator.Resolve(_api, target);
+            var navButton = _navButtons.FirstOrDefault(b => b.Text.TrimEnd().EndsWith(navText));
+            if (navButton is null)
+            {
+                MessageBox.Show(this, $"Tài khoản của bạn không có quyền vào màn \"{navText}\" để xử lý việc này.",
+                    "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+            NavigateTo(navButton, build);
         }
 
         private void NavigateTo(Button navButton, Func<Control> buildControl)

@@ -40,6 +40,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
         public CreateOrderForm()
         {
             InitializeComponent();
+            Anim.FadeIn(this); // cửa sổ hiện dần lên
 
             // Hạn giao BẮT BUỘC (server cũng kiểm tra). Khi chọn xong địa điểm + kho, hệ thống ước
             // tính số ngày chạy và GỢI Ý hạn giao (người dùng vẫn chỉnh theo yêu cầu của khách).

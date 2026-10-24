@@ -17,8 +17,13 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
         public OrderDetailForm()
         {
             InitializeComponent();
+            Anim.FadeIn(this);
             Theme.StyleGrid(gridCargo);
             Theme.StyleGrid(gridTrips);
+            GridDecor.HoverRows(gridTrips);
+            GridDecor.Pills(gridTrips, "Trạng_thái", (text, _) => GridDecor.StatusTone(text));
+            GridDecor.Pills(gridTrips, "Chặng", (text, _) => text.Contains("Lấy") ? GridDecor.Teal
+                : text.Contains("Giao") ? GridDecor.Blue : GridDecor.Violet);
             dtPlannedStart.MinDate = DateTime.Today;
             dtPlannedStart.MaxDate = DateTime.Today.AddDays(3); // khớp server: chia xe trước tối đa 3 ngày
             dtPlannedStart.Value = DateTime.Today; // mặc định xuất phát hôm nay
@@ -52,6 +57,8 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                 lblInfo.Text = $"Trạng thái: {TruckingSystem.Desktop.GUI_Shared.ReportFormat.OrderStatus(order.Status)}   |   Tiến độ: {order.ProgressPercent}%   |   " +
                                $"{order.PickupPoint} → {order.DropoffPoint}   |   Hạn giao: " +
                                (order.CommittedDeliveryDate is { } due ? due.ToString("dd/MM/yyyy") : "⚠️ chưa có hạn");
+
+                _ = LoadStorageFeeAsync(order);
 
                 _trackingUrl = $"{_api.Connection.BaseUrl}/track.html?token={order.PublicTrackingToken}";
                 lblTrackingLink.Text = "🔗 Link theo dõi công khai (bấm để copy): " + _trackingUrl;
@@ -100,6 +107,41 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             {
                 lblResult.Text = "Lỗi tải chi tiết đơn: " + ex.Message;
                 lblResult.ForeColor = Theme.Danger;
+            }
+        }
+
+        private readonly ToolTip _feeTip = new() { AutoPopDelay = 20000, InitialDelay = 200 };
+
+        /// <summary>💰 Phí lưu kho: bảng từng lần đổi hạn giao (bên yêu cầu, số ngày tính phí, m³, đơn giá) + tổng.</summary>
+        private void BtnStorageFee_Click(object? sender, EventArgs e)
+        {
+            if (_api is null || _currentOrder is null) return;
+            using var f = new StorageFeeForm(_api, _currentOrder);
+            f.ShowDialog(FindForm());
+        }
+
+        /// <summary>PHÍ LƯU KHO do khách dời hạn giao — hiện ngay dòng thông tin đơn (rê chuột để xem từng lần
+        /// đổi hạn). Không có lần dời nào do khách thì không hiện gì.</summary>
+        private async Task LoadStorageFeeAsync(TransportOrderDetailItem order)
+        {
+            if (_api is null) return;
+            try
+            {
+                var fee = await _api.TransportOrders.GetStorageFeeAsync(order.Id);
+                if (IsDisposed || _currentOrder?.Id != order.Id || fee.Changes.Count == 0) return;
+                var lines = fee.Changes.Select(c =>
+                    $"• {c.ChangedAt.ToLocalTime():dd/MM HH:mm} — {c.RequestedBy} yêu cầu: " +
+                    $"{(c.OldDate is { } o ? o.ToString("dd/MM") : "(chưa có)")} → {c.NewDate:dd/MM}" +
+                    (c.Fee > 0 ? $" — {c.ChargedDays} ngày, {c.ChargedM3Days:0.##} m³·ngày × {c.RatePerM3PerDay:N0} đ = {c.Fee:N0} đ"
+                               : c.RequestedBy == "Khách hàng" && c.DelayDays > 0 ? " — chưa phát sinh (hàng chưa nằm kho trong các ngày dời)" : " — không tính phí") +
+                    $"\n   Lý do: {c.Reason}");
+                _feeTip.SetToolTip(lblInfo, $"PHÍ LƯU KHO DO KHÁCH DỜI HẠN GIAO\n{string.Join("\n", lines)}\n\n{fee.Note}");
+                if (fee.TotalFee > 0 || fee.Changes.Any(c => c.RequestedBy == "Khách hàng"))
+                    lblInfo.Text += $"   |   💰 Phí lưu kho (khách dời hạn): {fee.TotalFee:N0} đ{(fee.IsFinal ? "" : " (tạm tính)")} — rê chuột xem chi tiết";
+            }
+            catch
+            {
+                // Không lấy được phí lưu kho không chặn màn chi tiết đơn.
             }
         }
 

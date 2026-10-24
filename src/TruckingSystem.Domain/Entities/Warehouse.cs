@@ -34,6 +34,10 @@ public class Warehouse : BaseEntity
     /// (theo chiều rộng).</summary>
     public decimal? DoorOffsetMeters { get; set; }
 
+    /// <summary>PHÍ LƯU KHO (đồng / m³ / ngày) — tính cho khách khi KHÁCH yêu cầu dời hạn giao trễ hơn
+    /// (hàng phải nằm kho thêm). 0 = kho không tính phí lưu kho.</summary>
+    public decimal StorageFeePerM3PerDay { get; set; }
+
 
 
     public ICollection<GoodsReceipt> GoodsReceipts { get; set; } = new List<GoodsReceipt>();

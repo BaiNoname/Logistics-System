@@ -46,7 +46,80 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             // Kéo cửa sổ sang màn hình khác DPI -> vẽ lại sơ đồ theo tỉ lệ pixel mới.
             DpiChangedAfterParent += (_, _) => _ = LoadZonesAsync();
 
-            Load += async (_, _) => { await LoadWarehousesAsync(); await LoadOrdersForSuggestAsync(); };
+            SetupModernLook();
+            Load += async (_, _) =>
+            {
+                await LoadWarehousesAsync();
+                await LoadOrdersForSuggestAsync();
+                OpenPendingReceiptsIfRequested();
+            };
+        }
+
+        private string? _openPendingReceiptsFor;
+
+        /// <summary>Mở từ thông báo "📦 Chuyến #id đã về kho X — chờ nhập kho": tải xong danh sách
+        /// kho thì chọn đúng kho X và mở luôn "📦 Nhập hàng từ chuyến". Tên kho rỗng (thông báo cũ)
+        /// -> giữ kho đang chọn.</summary>
+        public void OpenPendingReceiptsOnLoad(string? warehouseName) => _openPendingReceiptsFor = warehouseName ?? "";
+
+        private void OpenPendingReceiptsIfRequested()
+        {
+            if (_openPendingReceiptsFor is not string name) return;
+            _openPendingReceiptsFor = null;
+            if (name.Length > 0 && cboWarehouse.DataSource is IEnumerable<WarehouseListItem> list)
+            {
+                var match = list.FirstOrDefault(w => string.Equals(w.Name, name, StringComparison.OrdinalIgnoreCase));
+                if (match != null) cboWarehouse.SelectedItem = match;
+            }
+            BeginInvoke(new Action(() => BtnPendingReceipts_Click(this, EventArgs.Empty)));
+        }
+
+        // ------------------------------------------------------------ thẻ số liệu kho + hiệu ứng ô kệ
+
+        private readonly KpiStrip _kpi = new();
+        private readonly List<Panel> _binCells = new(); // các ô kệ đang vẽ — để chạy hiệu ứng "dâng hàng"
+        private double _binFill = 1;                     // 0 → 1: phần đã dùng của ô dâng dần lên khi vẽ sơ đồ
+        private System.Windows.Forms.Timer? _binFillTimer;
+
+        /// <summary>Hàng thẻ: việc chờ của kho (bấm để mở) + tình trạng sức chứa của kho đang xem.</summary>
+        private void SetupModernLook()
+        {
+            _kpi.AddCard("receipts", "📦", "Chờ nhập kho", Theme.Warning, alert: true,
+                onClick: () => BtnPendingReceipts_Click(this, EventArgs.Empty));
+            _kpi.AddCard("issues", "📤", "Chờ xuất kho", GridDecor.AccentViolet, alert: true,
+                onClick: () => BtnTripIssues_Click(this, EventArgs.Empty));
+            _kpi.AddCard("used", "📊", "Sức chứa đã dùng (%)", Theme.Primary);
+            _kpi.AddCard("full", "🟥", "Ô kệ gần đầy (≥ 85%)", Theme.Danger);
+            _kpi.AddCard("empty", "🟩", "Ô kệ còn trống", Theme.Success);
+            KpiStrip.InsertRow(root, _kpi, 1);
+            // Cửa sổ thấp: giữ sơ đồ kho cao tối thiểu ~320 px, thiếu chỗ thì cả màn cuộn xuống được.
+            ScrollFit.Enable(this, root, zonesPanel, LogicalToDeviceUnits(320));
+        }
+
+        /// <summary>Số liệu sức chứa của kho đang xem (tính từ dữ liệu sơ đồ vừa tải).</summary>
+        private void UpdateCapacityKpis(List<StorageBinItem> bins)
+        {
+            var capacity = bins.Sum(b => b.CapacityM3);
+            var used = bins.Sum(b => Math.Min(b.CurrentUsedM3, b.CapacityM3));
+            var ratio = capacity <= 0 ? 0.0 : (double)(used / capacity);
+            _kpi.SetValue("used", (int)Math.Round(ratio * 100), $"{used:0.#} / {capacity:0.#} m³", ratio);
+            var full = bins.Count(b => b.CapacityM3 > 0 && b.CurrentUsedM3 / b.CapacityM3 >= 0.85m);
+            _kpi.SetValue("full", full, $"trên tổng {bins.Count} ô kệ");
+            var empty = bins.Count(b => b.CurrentUsedM3 <= 0);
+            _kpi.SetValue("empty", empty, bins.Count == 0 ? "kho chưa có ô kệ" : $"{empty * 100 / bins.Count}% số ô",
+                bins.Count == 0 ? 0 : empty / (double)bins.Count);
+        }
+
+        /// <summary>Phần đã dùng của các ô kệ dâng từ 0 lên đúng % (~0,7 giây) mỗi lần vẽ sơ đồ.</summary>
+        private void AnimateBinFill()
+        {
+            _binFillTimer?.Dispose();
+            _binFill = 0;
+            _binFillTimer = Anim.Tween(this, 700, p =>
+            {
+                _binFill = p;
+                foreach (var c in _binCells) if (!c.IsDisposed) c.Invalidate();
+            }, () => _binFillTimer = null);
         }
 
         public WarehousesControl(ApiServices api) : this()
@@ -123,11 +196,15 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                 var lines = await new TruckingSystem.Desktop.SERVICE_WarehouseManagement.PendingReceiptApiService(_api.Connection).GetPendingAsync(warehouseId);
                 if (IsDisposed || loadId != _pendingCountLoadId) return;
                 btnPendingReceipts.Text = lines.Count > 0 ? $"{baseText} ({lines.Count} chờ)" : baseText;
+                var receiptTrips = lines.Select(l => l.TripId).Distinct().Count();
+                _kpi.SetValue("receipts", receiptTrips, receiptTrips == 0 ? "không có hàng chờ lên kệ" : $"{lines.Count} dòng hàng — bấm để nhập");
                 // Số chuyến giao SẴN SÀNG xuất (hàng đã nhập kho đủ, chờ kho soạn + bốc lên xe).
                 var issueLines = await new TruckingSystem.Desktop.SERVICE_WarehouseManagement.TripIssueApiService(_api.Connection).GetAsync(warehouseId);
                 if (IsDisposed || loadId != _pendingCountLoadId) return;
                 var ready = issueLines.Where(l => l.CanIssue).Select(l => l.TripId).Distinct().Count();
                 btnTripIssues.Text = ready > 0 ? $"📤 Xuất kho theo chuyến ({ready} chờ)" : "📤 Xuất kho theo chuyến";
+                var waitingTrips = issueLines.Select(l => l.TripId).Distinct().Count();
+                _kpi.SetValue("issues", ready, ready == 0 ? $"{waitingTrips} chuyến giao chưa chạy" : $"sẵn sàng xuất / {waitingTrips} chuyến — bấm để mở");
             }
             catch
             {
@@ -243,6 +320,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                 zonesPanel.AutoScrollMinSize = new Size(canvasWidth, canvasHeight);
 
                 // Tải HẾT dữ liệu trước rồi mới vẽ — và chỉ vẽ nếu đây vẫn là lượt tải mới nhất.
+                _kpi.Busy = true;
                 var zones = await _api.Warehouses.GetZonesAsync(warehouseId);
                 var binsByZone = new List<(WarehouseZoneItem Zone, List<StorageBinItem> Bins)>();
                 foreach (var zone in zones)
@@ -252,6 +330,8 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                 }
                 if (loadId != _zonesLoadId || IsDisposed) return;
                 zonesPanel.Controls.Clear();
+                _binCells.Clear();
+                UpdateCapacityKpis(binsByZone.SelectMany(z => z.Bins).ToList());
                 // Left/Top của control con trong Panel AutoScroll tính theo KHUNG NHÌN (đã trừ phần
                 // đang cuộn) -> đưa thanh cuộn về gốc trước khi đặt khu/ô theo tọa độ canvas, vẽ xong
                 // mới trả lại vị trí cuộn cũ (không thì sơ đồ vẽ lại bị lệch đúng bằng đoạn đã cuộn).
@@ -264,6 +344,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                 AddWarehouseWalls(canvasWidth, canvasHeight);
                 _currentHasDoor = AddDoorMarker(warehouse, canvasWidth, canvasHeight);
                 zonesPanel.AutoScrollPosition = new Point(-scroll.X, -scroll.Y);
+                AnimateBinFill();
 
                 var missingSize = warehouse.LengthMeters is null || warehouse.WidthMeters is null;
                 var warnings = new List<string>();
@@ -277,6 +358,10 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                 if (loadId != _zonesLoadId || IsDisposed) return;
                 lblStatus.Text = "Lỗi: " + ex.Message;
                 lblStatus.ForeColor = Theme.Danger;
+            }
+            finally
+            {
+                if (loadId == _zonesLoadId && !IsDisposed) _kpi.Busy = false;
             }
         }
 
@@ -429,7 +514,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                 {
                     if (pct <= 0) return;
                     var usedColor = pct >= 0.85 ? Theme.Danger : Theme.Warning; // gần đầy -> đỏ đậm hơn, còn lại -> vàng cam
-                    var usedHeight = (int)(cell.Height * pct);
+                    var usedHeight = (int)(cell.Height * pct * _binFill);       // dâng dần lên khi vừa vẽ sơ đồ
                     var usedRect = new Rectangle(0, cell.Height - usedHeight, cell.Width, usedHeight);
                     using var brush = new SolidBrush(usedColor);
                     e.Graphics.FillRectangle(brush, usedRect);
@@ -456,6 +541,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
 
                 // Click vào Ô (kể cả phần chưa có Label che lên) -> mở Sửa vị trí ngay
                 cell.Click += async (_, _) => await OpenEditBinAsync(bin, zone);
+                _binCells.Add(cell);
 
                 var tooltip = new ToolTip { AutoPopDelay = 15000, InitialDelay = 300 }; // để đủ lâu đọc hết danh sách hàng bên trong
                 var tooltipText = $"{bin.Code}\nĐã dùng: {bin.CurrentUsedM3:0.##}/{bin.CapacityM3} m³ ({pct:P0})\nTải tối đa: {bin.MaxWeightKg} kg\n" +

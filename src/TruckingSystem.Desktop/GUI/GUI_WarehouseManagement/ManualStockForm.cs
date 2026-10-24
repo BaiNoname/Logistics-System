@@ -42,6 +42,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
         public ManualStockForm()
         {
             InitializeComponent();
+            Anim.FadeIn(this); // cửa sổ hiện dần lên
             cboOrder.SelectedIndexChanged += async (_, _) => await OnOrderChangedAsync();
             cboCargoLine.SelectedIndexChanged += async (_, _) =>
             {

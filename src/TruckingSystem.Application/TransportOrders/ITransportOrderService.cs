@@ -25,4 +25,10 @@ public interface ITransportOrderService
     /// <summary>Đổi / bổ sung hạn giao cho đơn Đã xác nhận hoặc Đang chạy (đơn Nháp sửa qua
     /// Sửa đơn). Bắt buộc lý do, không chọn ngày đã qua, ghi nhật ký người đổi.</summary>
     Task<OrderActionResult> ChangeDeadlineAsync(int id, ChangeDeadlineRequest request, string? userId, string? userName);
+
+    /// <summary>Phí lưu kho ước tính nếu đổi hạn giao (hiện trên hộp Đổi hạn giao trước khi lưu).</summary>
+    Task<StorageFeePreviewDto?> PreviewStorageFeeAsync(int id, DateTime newDate, string? requestedBy);
+
+    /// <summary>Phí lưu kho của đơn do KHÁCH dời hạn giao (từng lần đổi + tổng) — đưa vào hóa đơn.</summary>
+    Task<StorageFeeDto?> GetStorageFeeAsync(int id);
 }

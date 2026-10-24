@@ -138,3 +138,40 @@ public class AllocateVehiclesResult
     /// <summary>Chưa chia vì không kịp hạn giao — hỏi người dùng rồi gọi lại với acceptLate.</summary>
     public bool NeedsLateConfirmation { get; set; }
 }
+
+/// <summary>Phí lưu kho ước tính khi đổi hạn giao.</summary>
+public class StorageFeePreviewItem
+{
+    public int DelayDays { get; set; }
+    public decimal VolumeM3 { get; set; }
+    public decimal RatePerM3PerDay { get; set; }
+    public decimal EstimatedFee { get; set; }
+    public string Note { get; set; } = "";
+}
+
+/// <summary>1 lần đổi hạn giao + phí lưu kho của lần đó.</summary>
+public class StorageFeeLineItem
+{
+    public DateTime ChangedAt { get; set; }
+    public DateTime? OldDate { get; set; }
+    public DateTime NewDate { get; set; }
+    public string RequestedBy { get; set; } = "";
+    public string Reason { get; set; } = "";
+    public string? ChangedBy { get; set; }
+    public int DelayDays { get; set; }
+    public decimal RatePerM3PerDay { get; set; }
+    public decimal EstimatedFee { get; set; }
+    public int ChargedDays { get; set; }
+    public decimal ChargedM3Days { get; set; }
+    public decimal Fee { get; set; }
+}
+
+/// <summary>Phí lưu kho của đơn do khách dời hạn giao.</summary>
+public class StorageFeeItem
+{
+    public int TransportOrderId { get; set; }
+    public decimal TotalFee { get; set; }
+    public bool IsFinal { get; set; }
+    public string Note { get; set; } = "";
+    public List<StorageFeeLineItem> Changes { get; set; } = new();
+}

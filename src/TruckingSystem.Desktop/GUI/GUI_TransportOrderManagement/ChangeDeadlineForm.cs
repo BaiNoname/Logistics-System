@@ -19,6 +19,50 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
         public ChangeDeadlineForm()
         {
             InitializeComponent();
+            Anim.FadeIn(this);
+            // Bên yêu cầu BẮT BUỘC chọn (không chọn sẵn): khách xin dời trễ hơn -> khách chịu phí lưu kho.
+            cboRequester.Items.Add(new ComboOption("Customer", "👤 Khách hàng (tính phí lưu kho)"));
+            cboRequester.Items.Add(new ComboOption("Company", "🏢 Công ty (không tính phí)"));
+            _feeTimer.Tick += async (_, _) => { _feeTimer.Stop(); await LoadFeePreviewAsync(); };
+            cboRequester.SelectedIndexChanged += (_, _) => RequestFeePreview();
+            dtNewDate.ValueChanged += (_, _) => RequestFeePreview();
+            FormClosed += (_, _) => _feeTimer.Dispose();
+        }
+
+        private readonly System.Windows.Forms.Timer _feeTimer = new() { Interval = 350 };
+        private int _feeVersion;
+
+        private void RequestFeePreview()
+        {
+            _feeTimer.Stop();
+            _feeTimer.Start();
+        }
+
+        /// <summary>Phí lưu kho ƯỚC TÍNH theo hạn mới + bên yêu cầu (server tính: m³ hàng đang trong kho ×
+        /// số ngày dời × đơn giá kho) — để báo khách ngay trước khi lưu.</summary>
+        private async Task LoadFeePreviewAsync()
+        {
+            if (_api is null || _order is null) return;
+            if (cboRequester.SelectedItem is not ComboOption requester)
+            {
+                lblFee.Text = "Chọn bên yêu cầu: khách xin dời trễ hơn hạn cũ thì tính phí lưu kho cho số ngày dời thêm.";
+                lblFee.ForeColor = Theme.TextSecondary;
+                return;
+            }
+            var version = ++_feeVersion;
+            lblFee.Text = "💰 Đang tính phí lưu kho...";
+            lblFee.ForeColor = Theme.TextSecondary;
+            try
+            {
+                var p = await _api.TransportOrders.PreviewStorageFeeAsync(_order.Id, dtNewDate.Value.Date, requester.Value);
+                if (IsDisposed || version != _feeVersion) return;
+                lblFee.Text = (p.EstimatedFee > 0 ? "💰 " : "ℹ️ ") + p.Note;
+                lblFee.ForeColor = p.EstimatedFee > 0 ? Theme.Warning : Theme.TextSecondary;
+            }
+            catch (Exception ex)
+            {
+                if (!IsDisposed && version == _feeVersion) lblFee.Text = "Không tính được phí lưu kho: " + ex.Message;
+            }
         }
 
         public ChangeDeadlineForm(ApiServices api, TransportOrderDetailItem order) : this()
@@ -30,7 +74,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                 ? $"Hạn giao hiện tại: {due:dd/MM/yyyy}"
                 : "Hạn giao hiện tại: ⚠️ chưa có (đơn cũ) — chọn hạn giao để bổ sung.";
             dtNewDate.Value = order.CommittedDeliveryDate is { } d && d.Date >= DateTime.Today ? d.Date : DateTime.Today.AddDays(1);
-            Load += async (_, _) => await LoadEstimateAsync();
+            Load += async (_, _) => { await LoadEstimateAsync(); await LoadFeePreviewAsync(); };
         }
 
         /// <summary>Tham khảo: tuyến chạy khoảng bao nhiêu ngày (đơn chưa chia xe -> giao sớm nhất ngày nào).</summary>
@@ -63,6 +107,12 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                 ShowError("Hạn giao mới không được là ngày đã qua.");
                 return;
             }
+            if (cboRequester.SelectedItem is not ComboOption requester)
+            {
+                ShowError("Vui lòng chọn Bên yêu cầu đổi hạn (Khách hàng / Công ty).");
+                cboRequester.Focus();
+                return;
+            }
             if (reason.Length < 5)
             {
                 ShowError("Vui lòng ghi lý do đổi hạn giao (ít nhất 5 ký tự) — VD \"Khách đề nghị dời ngày nhận\".");
@@ -73,7 +123,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             btnSave.Enabled = false;
             try
             {
-                var result = await _api.TransportOrders.ChangeDeadlineAsync(_order.Id, newDate, reason);
+                var result = await _api.TransportOrders.ChangeDeadlineAsync(_order.Id, newDate, reason, requester.Value);
                 if (result.Success)
                 {
                     ResultMessage = result.Message;

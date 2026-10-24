@@ -34,7 +34,45 @@ namespace TruckingSystem.Desktop.GUI_DriverManagement
             filterBar.AddChoice("warning", "Cảnh báo", new[] { WarnYes, WarnNo });
             filterBar.AddChoice("warehouse", "Kho", Array.Empty<string>());
             filterBar.FilterChanged += (_, _) => BindGrid();
+            SetupModernLook();
             Load += async (_, _) => await LoadAsync();
+        }
+
+        private readonly KpiStrip _kpi = new();
+
+        /// <summary>Thẻ số liệu tài xế (bấm = lọc nhanh) + nhãn màu trạng thái / hồ sơ.</summary>
+        private void SetupModernLook()
+        {
+            _kpi.AddCard("all", "🧑", "Tổng tài xế", Theme.Primary);
+            _kpi.AddCard("ready", "🟢", "Sẵn sàng hôm nay", Theme.Success, "availability", "Sẵn sàng");
+            _kpi.AddCard("busy", "🚚", "Đang chạy chuyến", Theme.PrimaryDark, "availability", "Đang làm");
+            _kpi.AddCard("notready", "⏸️", "Chưa sẵn sàng", GridDecor.AccentSlate, "availability", "Không sẵn sàng");
+            _kpi.AddCard("license", "🪪", "Bằng lái sắp hết hạn", Theme.Warning, "profile", "Bằng lái sắp hết hạn", alert: true);
+            _kpi.AddCard("warn", "⚠️", "Cần lưu ý", Theme.Danger, "warning", WarnYes, alert: true);
+            _kpi.BindFilter(filterBar);
+            KpiStrip.InsertRow(root, _kpi, 1);
+            // Cửa sổ thấp: giữ bảng tối thiểu ~8 dòng, thiếu chỗ thì cả màn có thanh cuộn kéo xuống.
+            ScrollFit.Enable(this, root, grid);
+
+            GridDecor.HoverRows(grid);
+            GridDecor.Pills(grid, "Trạng_thái", (text, _) => GridDecor.StatusTone(text));
+            GridDecor.Pills(grid, "Hồ_sơ", (text, _) => GridDecor.StatusTone(text));
+        }
+
+        private void UpdateKpis()
+        {
+            var withProfile = _drivers.Count(d => d.HasProfile);
+            _kpi.SetValue("all", _drivers.Count, $"{withProfile} người đã có hồ sơ",
+                _drivers.Count == 0 ? 0 : withProfile / (double)_drivers.Count);
+            var ready = _drivers.Count(d => d.Availability == "Sẵn sàng");
+            _kpi.SetValue("ready", ready, "có ngày làm hôm nay, giấy tờ còn hạn",
+                _drivers.Count == 0 ? 0 : ready / (double)_drivers.Count);
+            _kpi.SetValue("busy", _drivers.Count(d => d.Availability == "Đang làm"), "đang có chuyến chưa xong");
+            _kpi.SetValue("notready", _drivers.Count(d => d.Availability == "Không sẵn sàng"),
+                $"{_drivers.Count(d => !d.HasProfile)} chưa có hồ sơ");
+            _kpi.SetValue("license", _drivers.Count(d => d.ProfileStatus == "Bằng lái sắp hết hạn"),
+                $"{_drivers.Count(d => d.ProfileStatus == "Bằng lái hết hạn")} đã hết hạn");
+            _kpi.SetValue("warn", _drivers.Count(d => !string.IsNullOrEmpty(d.Warning)), "xem cột Cảnh báo");
         }
 
         private const string WarnYes = "Có cảnh báo";
@@ -44,6 +82,9 @@ namespace TruckingSystem.Desktop.GUI_DriverManagement
         private static string WarehouseText(DriverListItem d) => !d.HasProfile ? "—" : d.WarehouseName ?? AnyWarehouse;
 
         /// <summary>Đổ lưới theo bộ lọc, giữ dòng đang chọn.</summary>
+        /// <summary>Mở từ thông báo (nhấp đúp): bỏ các bộ lọc khác, lọc sẵn theo mã tài xế.</summary>
+        public void FocusOn(string search) => filterBar.ShowOnlySearch(search);
+
         private void BindGrid(int? selectEmployeeId = null)
         {
             selectEmployeeId ??= Selected()?.EmployeeId;
@@ -164,11 +205,13 @@ namespace TruckingSystem.Desktop.GUI_DriverManagement
             selectEmployeeId ??= Selected()?.EmployeeId;
             lblStatus.Text = "Đang tải...";
             lblStatus.ForeColor = Theme.TextSecondary;
+            _kpi.Busy = true;
             try
             {
                 _drivers = await _api.Drivers.GetDriversAsync();
                 filterBar.SetChoiceOptions("warehouse", _drivers.Select(WarehouseText));
                 BindGrid(selectEmployeeId);
+                UpdateKpis();
 
                 var noProfile = _drivers.Count(d => !d.HasProfile);
                 var warned = _drivers.Count(d => !string.IsNullOrEmpty(d.Warning));
@@ -185,39 +228,15 @@ namespace TruckingSystem.Desktop.GUI_DriverManagement
                 lblStatus.Text = "Lỗi: " + ex.Message;
                 lblStatus.ForeColor = Theme.Danger;
             }
+            finally { _kpi.Busy = false; }
         }
 
         private void Grid_CellFormatting(object? sender, DataGridViewCellFormattingEventArgs e)
         {
+            // Trạng thái / Hồ sơ vẽ thành nhãn màu (GridDecor.Pills) — ở đây chỉ còn tô cột Cảnh báo.
             if (e.Value is null || e.CellStyle is null) return;
-            var col = grid.Columns[e.ColumnIndex].Name;
-            var text = e.Value.ToString();
-
-            if (col == "Trạng_thái")
-            {
-                e.CellStyle.ForeColor = text switch
-                {
-                    "Sẵn sàng" => Theme.Success,
-                    "Đang làm" => Theme.Warning,
-                    "Không sẵn sàng" => Theme.Danger,
-                    _ => Theme.TextSecondary,
-                };
-                e.CellStyle.Font = new Font(grid.Font, FontStyle.Bold);
-            }
-            else if (col == "Hồ_sơ")
-            {
-                e.CellStyle.ForeColor = text switch
-                {
-                    "Đủ" => Theme.Success,
-                    "Bằng lái sắp hết hạn" => Theme.Warning,
-                    _ => Theme.Danger, // Chưa có hồ sơ / Bằng lái hết hạn
-                };
-                e.CellStyle.Font = new Font(grid.Font, FontStyle.Bold);
-            }
-            else if (col == "Cảnh_báo" && !string.IsNullOrEmpty(text))
-            {
+            if (grid.Columns[e.ColumnIndex].Name == "Cảnh_báo" && !string.IsNullOrEmpty(e.Value.ToString()))
                 e.CellStyle.ForeColor = Theme.Warning;
-            }
         }
     }
 }
