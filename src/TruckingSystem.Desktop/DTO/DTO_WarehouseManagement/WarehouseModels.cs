@@ -1,4 +1,4 @@
-namespace TruckingSystem.Desktop.DTO_WarehouseManagement
+﻿namespace TruckingSystem.Desktop.DTO_WarehouseManagement
 {
     public class WarehouseListItem
     {
@@ -11,6 +11,8 @@ namespace TruckingSystem.Desktop.DTO_WarehouseManagement
         /// <summary>"Top" / "Bottom" / "Left" / "Right" — null = kho chưa khai báo cửa.</summary>
         public string? DoorSide { get; set; }
         public decimal? DoorOffsetMeters { get; set; }
+        /// <summary>Phí lưu kho (đ/m³/ngày) khi khách dời hạn giao; 0 = không tính.</summary>
+        public decimal StorageFeePerM3PerDay { get; set; }
         public double? Lat { get; set; }
         public double? Lng { get; set; }
 

@@ -30,6 +30,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             this.btnConfirm = new System.Windows.Forms.Button();
             this.btnCancel = new System.Windows.Forms.Button();
             this.btnChangeDeadline = new System.Windows.Forms.Button();
+            this.btnStorageFee = new System.Windows.Forms.Button();
             this.lblPlannedStart = new System.Windows.Forms.Label();
             this.dtPlannedStart = new System.Windows.Forms.DateTimePicker();
             this.btnAllocate = new System.Windows.Forms.Button();
@@ -143,6 +144,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             this.actionBar.Controls.Add(this.btnEdit);
             this.actionBar.Controls.Add(this.btnConfirm);
             this.actionBar.Controls.Add(this.btnChangeDeadline);
+            this.actionBar.Controls.Add(this.btnStorageFee);
             this.actionBar.Controls.Add(this.btnCancel);
             this.actionBar.Controls.Add(this.lblPlannedStart);
             this.actionBar.Controls.Add(this.dtPlannedStart);
@@ -212,6 +214,25 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             this.btnChangeDeadline.Text = "📅 Đổi hạn giao";
             this.btnChangeDeadline.UseVisualStyleBackColor = false;
             this.btnChangeDeadline.Click += new System.EventHandler(this.BtnChangeDeadline_Click);
+            //
+            // btnStorageFee — xem phí lưu kho do khách dời hạn giao
+            //
+            this.btnStorageFee.AutoSize = true;
+            this.btnStorageFee.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            this.btnStorageFee.BackColor = System.Drawing.Color.White;
+            this.btnStorageFee.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.btnStorageFee.FlatAppearance.BorderSize = 1;
+            this.btnStorageFee.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(248, 250, 252);
+            this.btnStorageFee.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnStorageFee.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            this.btnStorageFee.ForeColor = System.Drawing.Color.FromArgb(15, 23, 42);
+            this.btnStorageFee.Margin = new System.Windows.Forms.Padding(0, 0, 8, 8);
+            this.btnStorageFee.MinimumSize = new System.Drawing.Size(0, 36);
+            this.btnStorageFee.Name = "btnStorageFee";
+            this.btnStorageFee.Padding = new System.Windows.Forms.Padding(10, 2, 10, 2);
+            this.btnStorageFee.Text = "💰 Phí lưu kho";
+            this.btnStorageFee.UseVisualStyleBackColor = false;
+            this.btnStorageFee.Click += new System.EventHandler(this.BtnStorageFee_Click);
             //
             // btnCancel
             //
@@ -333,6 +354,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
         private System.Windows.Forms.Button btnConfirm;
         private System.Windows.Forms.Button btnCancel;
         private System.Windows.Forms.Button btnChangeDeadline;
+        private System.Windows.Forms.Button btnStorageFee;
         private System.Windows.Forms.Label lblPlannedStart;
         private System.Windows.Forms.DateTimePicker dtPlannedStart;
         private System.Windows.Forms.Button btnAllocate;

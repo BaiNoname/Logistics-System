@@ -47,3 +47,4 @@ public enum ZoneType { Normal, Fragile, Hazmat }
 /// gốc (0,0) ở góc trên-trái. Top: Y = 0 · Bottom: Y = chiều rộng ·
 /// Left: X = 0 · Right: X = chiều dài.</summary>
 public enum WallSide { Top, Bottom, Left, Right }
+public enum DeadlineChangeRequester { Company, Customer }

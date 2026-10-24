@@ -46,6 +46,7 @@ public interface IApplicationDbContext
     DbSet<SalesOrder> SalesOrders { get; }
 
     DbSet<TransportOrder> TransportOrders { get; }
+    DbSet<DeliveryDeadlineChange> DeliveryDeadlineChanges { get; }
     DbSet<CargoLine> CargoLines { get; }
     DbSet<TripLine> TripLines { get; }
 

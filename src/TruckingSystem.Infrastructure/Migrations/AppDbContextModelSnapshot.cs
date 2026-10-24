@@ -414,6 +414,58 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.ToTable("CustomerFeedbacks");
                 });
 
+            modelBuilder.Entity("TruckingSystem.Domain.Entities.DeliveryDeadlineChange", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ChangedByUserName")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<int>("DelayDays")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("EstimatedFee")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime>("NewDate")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime?>("OldDate")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("RequestedBy")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("StorageFeePerM3PerDay")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<int>("TransportOrderId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<decimal>("VolumeM3AtChange")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TransportOrderId");
+
+                    b.ToTable("DeliveryDeadlineChanges");
+                });
+
             modelBuilder.Entity("TruckingSystem.Domain.Entities.Department", b =>
                 {
                     b.Property<int>("Id")
@@ -2269,6 +2321,9 @@ namespace TruckingSystem.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<decimal>("StorageFeePerM3PerDay")
+                        .HasColumnType("numeric(18,2)");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp without time zone");
 
@@ -2634,6 +2689,17 @@ namespace TruckingSystem.Infrastructure.Migrations
                         .WithOne("Feedback")
                         .HasForeignKey("TruckingSystem.Domain.Entities.CustomerFeedback", "TransportOrderId")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("TransportOrder");
+                });
+
+            modelBuilder.Entity("TruckingSystem.Domain.Entities.DeliveryDeadlineChange", b =>
+                {
+                    b.HasOne("TruckingSystem.Domain.Entities.TransportOrder", "TransportOrder")
+                        .WithMany("DeadlineChanges")
+                        .HasForeignKey("TransportOrderId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("TransportOrder");
@@ -3280,6 +3346,8 @@ namespace TruckingSystem.Infrastructure.Migrations
             modelBuilder.Entity("TruckingSystem.Domain.Entities.TransportOrder", b =>
                 {
                     b.Navigation("CargoLines");
+
+                    b.Navigation("DeadlineChanges");
 
                     b.Navigation("Feedback");
 

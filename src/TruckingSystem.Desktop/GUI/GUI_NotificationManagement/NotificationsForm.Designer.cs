@@ -21,7 +21,8 @@ namespace TruckingSystem.Desktop.GUI_NotificationManagement
             lblTitle = new System.Windows.Forms.Label();
             buttonBar = new System.Windows.Forms.FlowLayoutPanel();
             btnRefresh = new System.Windows.Forms.Button();
-            btnMarkAllRead = new System.Windows.Forms.Button();
+            btnOpen = new System.Windows.Forms.Button();
+            btnMarkDone = new System.Windows.Forms.Button();
             filters = new System.Windows.Forms.TableLayoutPanel();
             lblCategory = new System.Windows.Forms.Label();
             cboCategory = new System.Windows.Forms.ComboBox();
@@ -77,7 +78,8 @@ namespace TruckingSystem.Desktop.GUI_NotificationManagement
             buttonBar.AutoSize = true;
             buttonBar.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
             buttonBar.Controls.Add(btnRefresh);
-            buttonBar.Controls.Add(btnMarkAllRead);
+            buttonBar.Controls.Add(btnOpen);
+            buttonBar.Controls.Add(btnMarkDone);
             buttonBar.Margin = new System.Windows.Forms.Padding(0, 0, 0, 10);
             buttonBar.Name = "buttonBar";
             buttonBar.TabIndex = 1;
@@ -101,23 +103,44 @@ namespace TruckingSystem.Desktop.GUI_NotificationManagement
             btnRefresh.UseVisualStyleBackColor = false;
             btnRefresh.Click += new System.EventHandler(this.BtnRefresh_Click);
             //
-            // btnMarkAllRead
+            // btnOpen
             //
-            btnMarkAllRead.AutoSize = true;
-            btnMarkAllRead.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
-            btnMarkAllRead.BackColor = System.Drawing.Color.White;
-            btnMarkAllRead.Cursor = System.Windows.Forms.Cursors.Hand;
-            btnMarkAllRead.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            btnMarkAllRead.Font = new System.Drawing.Font("Segoe UI", 9.75F);
-            btnMarkAllRead.ForeColor = System.Drawing.Color.FromArgb(15, 23, 42);
-            btnMarkAllRead.Margin = new System.Windows.Forms.Padding(0);
-            btnMarkAllRead.MinimumSize = new System.Drawing.Size(0, 34);
-            btnMarkAllRead.Name = "btnMarkAllRead";
-            btnMarkAllRead.Padding = new System.Windows.Forms.Padding(10, 2, 10, 2);
-            btnMarkAllRead.TabIndex = 2;
-            btnMarkAllRead.Text = "✅ Đánh dấu tất cả đã đọc";
-            btnMarkAllRead.UseVisualStyleBackColor = false;
-            btnMarkAllRead.Click += new System.EventHandler(this.BtnMarkAllRead_Click);
+            btnOpen.AutoSize = true;
+            btnOpen.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            btnOpen.BackColor = System.Drawing.Color.FromArgb(37, 99, 235);
+            btnOpen.Cursor = System.Windows.Forms.Cursors.Hand;
+            btnOpen.Enabled = false;
+            btnOpen.FlatAppearance.BorderSize = 0;
+            btnOpen.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            btnOpen.Font = new System.Drawing.Font("Segoe UI", 9.75F, System.Drawing.FontStyle.Bold);
+            btnOpen.ForeColor = System.Drawing.Color.White;
+            btnOpen.Margin = new System.Windows.Forms.Padding(0, 0, 8, 0);
+            btnOpen.MinimumSize = new System.Drawing.Size(0, 34);
+            btnOpen.Name = "btnOpen";
+            btnOpen.Padding = new System.Windows.Forms.Padding(10, 2, 10, 2);
+            btnOpen.TabIndex = 2;
+            btnOpen.Text = "↗ Mở màn xử lý";
+            btnOpen.UseVisualStyleBackColor = false;
+            btnOpen.Click += new System.EventHandler(this.BtnOpen_Click);
+            //
+            // btnMarkDone
+            //
+            btnMarkDone.AutoSize = true;
+            btnMarkDone.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            btnMarkDone.BackColor = System.Drawing.Color.White;
+            btnMarkDone.Cursor = System.Windows.Forms.Cursors.Hand;
+            btnMarkDone.Enabled = false;
+            btnMarkDone.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            btnMarkDone.Font = new System.Drawing.Font("Segoe UI", 9.75F);
+            btnMarkDone.ForeColor = System.Drawing.Color.FromArgb(15, 23, 42);
+            btnMarkDone.Margin = new System.Windows.Forms.Padding(0);
+            btnMarkDone.MinimumSize = new System.Drawing.Size(0, 34);
+            btnMarkDone.Name = "btnMarkDone";
+            btnMarkDone.Padding = new System.Windows.Forms.Padding(10, 2, 10, 2);
+            btnMarkDone.TabIndex = 3;
+            btnMarkDone.Text = "✔ Đánh dấu đã xử lý";
+            btnMarkDone.UseVisualStyleBackColor = false;
+            btnMarkDone.Click += new System.EventHandler(this.BtnMarkDone_Click);
             //
             // filters
             //
@@ -187,7 +210,7 @@ namespace TruckingSystem.Desktop.GUI_NotificationManagement
             txtSearch.Font = new System.Drawing.Font("Segoe UI", 9F);
             txtSearch.Margin = new System.Windows.Forms.Padding(0);
             txtSearch.Name = "txtSearch";
-            txtSearch.PlaceholderText = "🔍 Tìm theo biển số, tên tài xế, mã chuyến...";
+            txtSearch.PlaceholderText = "🔍 Tìm theo biển số, tên tài xế, mã chuyến, mã đơn...";
             txtSearch.TabIndex = 7;
             //
             // lblStatus
@@ -207,7 +230,8 @@ namespace TruckingSystem.Desktop.GUI_NotificationManagement
             grid.Margin = new System.Windows.Forms.Padding(0);
             grid.Name = "grid";
             grid.TabIndex = 9;
-            grid.CellClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.Grid_CellClick);
+            grid.CellDoubleClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.Grid_CellDoubleClick);
+            grid.SelectionChanged += new System.EventHandler(this.Grid_SelectionChanged);
             //
             // NotificationsForm
             //
@@ -237,7 +261,8 @@ namespace TruckingSystem.Desktop.GUI_NotificationManagement
         private System.Windows.Forms.TableLayoutPanel filters;
         private System.Windows.Forms.Label lblTitle;
         private System.Windows.Forms.Button btnRefresh;
-        private System.Windows.Forms.Button btnMarkAllRead;
+        private System.Windows.Forms.Button btnOpen;
+        private System.Windows.Forms.Button btnMarkDone;
         private System.Windows.Forms.Label lblCategory;
         private System.Windows.Forms.ComboBox cboCategory;
         private System.Windows.Forms.Label lblReadState;

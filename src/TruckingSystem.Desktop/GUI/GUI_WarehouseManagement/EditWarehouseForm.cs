@@ -52,6 +52,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             SetSafe(numCapacity, warehouse.CapacityM3 ?? 0);
             SetSafe(numLength, warehouse.LengthMeters ?? 0);
             SetSafe(numWidth, warehouse.WidthMeters ?? 0);
+            SetSafe(numStorageFee, warehouse.StorageFeePerM3PerDay);
 
             // Nạp lại vị trí cửa đã khai báo (nếu có)
             cboDoorSide.SelectedIndex = WarehouseDoorHelper.ToIndex(warehouse.DoorSide);
@@ -158,7 +159,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                     numLength.Value == 0 ? null : numLength.Value,
                     numWidth.Value == 0 ? null : numWidth.Value,
                     lat, lng,
-                    doorSide, doorOffset);
+                    doorSide, doorOffset, numStorageFee.Value);
 
                 if (!result.Success)
                 {

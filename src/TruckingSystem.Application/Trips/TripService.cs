@@ -260,9 +260,13 @@ public class TripService : ITripService
             try
             {
                 var waiting = await PendingReceiptRules.LoadAsync(_db, l => l.TripId == trip.Id);
+                // Tên kho trong tiêu đề -> nhấp đúp thông báo mở thẳng đúng kho để nhập.
+                var warehouseName = await _db.Warehouses.Where(w => w.Id == trip.WarehouseId).Select(w => w.Name).FirstOrDefaultAsync();
                 if (waiting.Count > 0)
                     await _notificationService.CreateBroadcastAsync(
-                        $"📦 Chuyến #{trip.Id} đã về kho — chờ nhập kho",
+                        string.IsNullOrWhiteSpace(warehouseName)
+                            ? $"📦 Chuyến #{trip.Id} đã về kho — chờ nhập kho"
+                            : $"📦 Chuyến #{trip.Id} đã về kho {warehouseName} — chờ nhập kho",
                         $"Hàng của chuyến lấy #{trip.Id} (đơn {trip.TransportOrder.Code}) đã về kho, còn chờ nhập {waiting.Sum(w => w.QtyPending):0.##}. " +
                         "Vào màn Kho → 📦 Nhập hàng từ chuyến để nhập (thủ công hoặc Best-Fit); nhập xong thì xuất kho ở 📤 Xuất kho theo chuyến, chặng Giao mới bắt đầu được.");
             }
@@ -782,14 +786,8 @@ WHERE ""Id"" = {tripId}");
 
         var driver = await _db.DriverProfiles
             .Where(dp => dp.EmployeeId == trip.DriverEmployeeId)
-            .Select(dp => new {
-                dp.LicenseExpiryDate,
-                dp.LicenseClass,
-                dp.HealthCertExpiryDate,
-                EmpStatus = dp.Employee.Status,
-                dp.Employee.FullName,
-                PositionName = dp.Employee.Position != null ? dp.Employee.Position.Name : null
-            })
+            .Select(dp => new { dp.LicenseExpiryDate, dp.LicenseClass, dp.HealthCertExpiryDate, EmpStatus = dp.Employee.Status, dp.Employee.FullName,
+                                PositionName = dp.Employee.Position != null ? dp.Employee.Position.Name : null })
             .FirstOrDefaultAsync();
         if (driver is null) return "Tài xế của chuyến này chưa có hồ sơ tài xế.";
         if (driver.EmpStatus != EmployeeStatus.Active)
@@ -1614,17 +1612,8 @@ WHERE ""Id"" = {tripId}");
         var driverPositionIds = await DriverPositionRules.DriverPositionIdsAsync(_db);
         var drivers = await _db.DriverProfiles
             .OrderBy(dp => dp.Employee.FullName)
-            .Select(dp => new {
-                dp.EmployeeId,
-                dp.Employee.FullName,
-                dp.Employee.Code,
-                EmpStatus = dp.Employee.Status,
-                dp.Employee.PositionId,
-                dp.LicenseExpiryDate,
-                dp.LicenseClass,
-                dp.WarehouseId,
-                dp.HealthCertExpiryDate
-            })
+            .Select(dp => new { dp.EmployeeId, dp.Employee.FullName, dp.Employee.Code, EmpStatus = dp.Employee.Status, dp.Employee.PositionId,
+                                dp.LicenseExpiryDate, dp.LicenseClass, dp.WarehouseId, dp.HealthCertExpiryDate })
             .ToListAsync();
         var driverOptions = new List<ReassignOptionDto>();
         foreach (var d in drivers)

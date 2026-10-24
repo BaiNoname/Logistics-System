@@ -26,16 +26,24 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
         public TripIssuesForm()
         {
             InitializeComponent();
+            Anim.FadeIn(this);
             Theme.StyleGrid(grid);
             GridLayout.FitColumns(grid);
             grid.DataBindingComplete += (_, _) =>
             {
                 if (grid.Columns["TripId"] is { } c) c.Visible = false;
-                foreach (DataGridViewRow row in grid.Rows)
-                    if (row.Cells["Tình_trạng"].Value is string st)
-                        row.Cells["Tình_trạng"].Style.ForeColor = st.StartsWith("🟢") ? Theme.Success
-                            : st.StartsWith("✅") ? Theme.Primary : st.StartsWith("⚠️") ? Theme.Danger : Theme.Warning;
             };
+            // Tình trạng = nhãn màu; "Đã xuất" = thanh tiến độ đã xuất / cần xuất của dòng hàng.
+            GridDecor.HoverRows(grid);
+            GridDecor.Pills(grid, "Tình_trạng", (text, _) => GridDecor.StatusTone(text));
+            GridDecor.ProgressBars(grid, "Đã_xuất", row =>
+            {
+                if (row < 0 || row >= grid.Rows.Count) return null;
+                if (grid.Rows[row].Cells["Đã_xuất"].Value is not decimal issued
+                    || grid.Rows[row].Cells["Cần_xuất"].Value is not decimal planned || planned <= 0) return null;
+                var ratio = (double)(issued / planned);
+                return (ratio, $"{issued:0.##} / {planned:0.##}", ratio >= 1 ? Theme.Success : GridDecor.AccentViolet);
+            });
             grid.SelectionChanged += (_, _) => UpdateSelection();
             issueFilter.AddChoice("state", "Tình trạng", new[] { StateReady, "🟡 Đã xuất một phần", StateDone, "📦 Chờ nhập kho", "⏳ Chờ chặng Lấy hàng", "⚠️ Kho không đủ hàng" });
             issueFilter.FilterChanged += (_, _) => BindGrid(SelectedTripId());

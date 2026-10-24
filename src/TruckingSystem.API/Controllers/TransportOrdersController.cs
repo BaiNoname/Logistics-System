@@ -82,6 +82,22 @@ public class TransportOrdersController : ControllerBase
         return result.Success ? Ok(result) : BadRequest(result);
     }
 
+    /// <summary>Phí lưu kho ƯỚC TÍNH nếu đổi hạn giao sang newDate (requestedBy = Customer / Company).</summary>
+    [HttpGet("{id:int}/storage-fee-preview")]
+    public async Task<ActionResult<StorageFeePreviewDto>> PreviewStorageFee(int id, [FromQuery] DateTime newDate, [FromQuery] string? requestedBy)
+    {
+        var result = await _service.PreviewStorageFeeAsync(id, newDate, requestedBy);
+        return result is null ? NotFound() : Ok(result);
+    }
+
+    /// <summary>PHÍ LƯU KHO của đơn do khách dời hạn giao — từng lần đổi hạn + tổng (phần hóa đơn dùng số này).</summary>
+    [HttpGet("{id:int}/storage-fee")]
+    public async Task<ActionResult<StorageFeeDto>> GetStorageFee(int id)
+    {
+        var result = await _service.GetStorageFeeAsync(id);
+        return result is null ? NotFound() : Ok(result);
+    }
+
     /// <summary>Đổi / bổ sung hạn giao cho đơn Đã xác nhận / Đang chạy (bắt buộc lý do, ghi nhật ký).</summary>
     [HttpPost("{id:int}/deadline")]
     public async Task<ActionResult<OrderActionResult>> ChangeDeadline(int id, ChangeDeadlineRequest request)

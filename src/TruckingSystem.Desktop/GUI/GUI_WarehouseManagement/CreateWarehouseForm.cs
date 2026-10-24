@@ -118,7 +118,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                     numLength.Value,
                     numWidth.Value,
                     _selectedAddress.Lat, _selectedAddress.Lng,
-                    doorSide, doorOffset);
+                    doorSide, doorOffset, numStorageFee.Value);
 
                 DialogResult = DialogResult.OK;
                 Close();

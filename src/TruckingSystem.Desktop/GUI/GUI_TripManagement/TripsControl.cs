@@ -18,6 +18,9 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
         // Đang chờ server (Bắt đầu / Ước tính...) -> khóa nút, chống bấm 2 lần gửi 2 yêu cầu.
         private bool _busy;
 
+        // Hàng thẻ số liệu ở đầu màn (bấm thẻ = lọc nhanh đúng nhóm đó).
+        private readonly KpiStrip _kpi = new();
+
         public TripsControl()
         {
             // Giao diện (vị trí, cỡ chữ, nút) nằm hết trong TripsControl.Designer.cs — bố cục tự co
@@ -27,17 +30,76 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
             GridLayout.FitColumns(grid); // cột vừa nội dung, nhiều cột thì cuộn ngang thay vì cắt chữ
             Load += (_, _) => Theme.UniformButtons(toolbar); // nút đều nhau, xuống dòng vẫn thẳng cột
             grid.DataBindingComplete += (_, _) => { if (grid.Columns["Id"] != null) grid.Columns["Id"]!.Visible = false; };
-            grid.CellFormatting += Grid_CellFormatting;
             grid.SelectionChanged += (_, _) => UpdateActionButtons();
 
-            // Bộ lọc (Common/FilterBar) — lọc ngay trên máy, không gọi lại API.
-            filterBar.AddChoice("status", "Trạng thái", new[] { "Đã lên kế hoạch", "Đang chạy", "🟡 Chờ xác nhận", "Hoàn tất", "Đã hủy" });
+            // Bộ lọc (Common/FilterBar) — lọc ngay trên máy, không gọi lại API. Trạng thái lọc theo
+            // ĐÚNG chữ đang hiện trên bảng (gồm các trạng thái chờ của chặng Giao).
+            filterBar.AddChoice("status", "Trạng thái", new[] { "Đã lên kế hoạch", WaitingPickupText, WaitingReceiptText, WaitingIssueText,
+                "Đang chạy", "🟡 Chờ xác nhận", "Hoàn tất", "Đã hủy" });
             filterBar.AddChoice("leg", "Chặng", new[] { "🔽 Lấy hàng", "🔼 Giao hàng", "🔙 Trả hàng" });
             filterBar.AddChoice("deadline", "Hạn giao", new[] { DlLate, DlWarn, DlOk, DlOnTime, DlDoneLate, DlNone });
             filterBar.AddChoice("start", "Xuất phát", new[] { StartToday, StartTomorrow, StartWeek, StartPast });
             filterBar.AddChoice("warehouse", "Kho", Array.Empty<string>());
             filterBar.FilterChanged += (_, _) => BindGrid();
+            SetupModernLook();
             Load += async (_, _) => await LoadAsync();
+        }
+
+        /// <summary>Thẻ số liệu + nhãn màu trạng thái + thanh tiến độ kho + sáng dòng khi rê chuột.</summary>
+        private void SetupModernLook()
+        {
+            _kpi.AddCard("all", "🛣️", "Tất cả chuyến", Theme.Primary);
+            _kpi.AddCard("today", "🗓️", "Xuất phát hôm nay", GridDecor.AccentTeal, "start", StartToday);
+            _kpi.AddCard("running", "🚚", "Đang chạy", Theme.PrimaryDark, "status", "Đang chạy");
+            _kpi.AddCard("approve", "📝", "Chờ duyệt", Theme.Warning, "status", "🟡 Chờ xác nhận", alert: true);
+            _kpi.AddCard("issue", "📤", "Chờ kho xuất", GridDecor.AccentViolet, "status", WaitingIssueText, alert: true);
+            _kpi.AddCard("late", "⏰", "Trễ hạn giao", Theme.Danger, "deadline", DlLate, alert: true);
+            _kpi.BindFilter(filterBar);
+            KpiStrip.InsertRow(root, _kpi, 1);
+            // Cửa sổ thấp: giữ bảng tối thiểu ~8 dòng, thiếu chỗ thì cả màn có thanh cuộn kéo xuống.
+            ScrollFit.Enable(this, root, grid);
+
+            GridDecor.HoverRows(grid);
+            GridDecor.Pills(grid, "Trạng_thái", (text, _) => GridDecor.StatusTone(text));
+            GridDecor.Pills(grid, "Chặng", (text, _) => text.Contains("Lấy") ? GridDecor.Teal
+                : text.Contains("Giao") ? GridDecor.Blue : GridDecor.Violet);
+            GridDecor.Pills(grid, "Tình_trạng_hạn", (_, row) => TripAt(row)?.DeadlineLevel switch
+            {
+                "Ok" or "DoneOnTime" => GridDecor.Green,
+                "Warning" => GridDecor.Amber,
+                "Late" or "DoneLate" => GridDecor.Red,
+                _ => null,
+            });
+            GridDecor.ProgressBars(grid, "Kho", row =>
+            {
+                var t = TripAt(row);
+                if (t is null || t.Status == "Cancelled" || !_progress.TryGetValue(t.Id, out var p) || p.QtyPlanned <= 0) return null;
+                var ratio = (double)(p.QtyDone / p.QtyPlanned);
+                var color = ratio >= 1 ? Theme.Success : t.LegType == "Pickup" ? GridDecor.AccentTeal : GridDecor.AccentViolet;
+                return (ratio, WarehouseText(t), color);
+            });
+        }
+
+        private TripListItem? TripAt(int row)
+            => row >= 0 && row < grid.Rows.Count && grid.Rows[row].Cells["Id"].Value is int id
+                ? _trips.FirstOrDefault(t => t.Id == id) : null;
+
+        /// <summary>Số trên các thẻ — tính từ dữ liệu đã tải (không gọi thêm API).</summary>
+        private void UpdateKpis()
+        {
+            var today = DateTime.Today;
+            var open = _trips.Count(t => t.Status is "Planned" or "InProgress" or "PendingConfirmation");
+            _kpi.SetValue("all", _trips.Count, $"{open} chuyến chưa xong");
+            var startToday = _trips.Where(t => t.PlannedStartDate?.Date == today).ToList();
+            _kpi.SetValue("today", startToday.Count, $"{startToday.Count(t => t.Status == "Planned")} chuyến chưa xuất phát");
+            var running = _trips.Where(t => t.Status == "InProgress").ToList();
+            _kpi.SetValue("running", running.Count,
+                $"{running.Count(t => t.LegType == "Pickup")} lấy · {running.Count(t => t.LegType == "Delivery")} giao · {running.Count(t => t.LegType == "Return")} trả");
+            _kpi.SetValue("approve", _trips.Count(t => t.Status == "PendingConfirmation"), "tài xế đã báo xong");
+            var waitingReceipt = _trips.Count(IsWaitingForReceipt);
+            _kpi.SetValue("issue", _trips.Count(IsWaitingForIssue), waitingReceipt > 0 ? $"+{waitingReceipt} chuyến chờ nhập kho" : "hàng đã nhập kho đủ");
+            var warn = _trips.Count(t => t.DeadlineLevel == "Warning");
+            _kpi.SetValue("late", _trips.Count(t => t.DeadlineLevel == "Late"), warn > 0 ? $"{warn} chuyến sắp tới mốc xuất phát" : "không có chuyến sắp trễ");
         }
 
         private const string DlLate = "🔴 Trễ / không còn kịp";
@@ -78,11 +140,25 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
         }
 
         /// <summary>Đổ lưới theo bộ lọc, giữ dòng đang chọn.</summary>
+        /// <summary>Mở từ thông báo: chỉ hiện + chọn sẵn chuyến #id (gõ "#15" vào ô tìm cũng lọc ĐÚNG #15).</summary>
+        public void FocusTrip(int tripId)
+        {
+            _focusTripId = tripId;
+            filterBar.ShowOnlySearch($"#{tripId}");
+        }
+
+        private int? _focusTripId;
+
         private void BindGrid()
         {
-            var keepId = GetSelectedTripId();
+            var keepId = _trips.Count > 0 && _focusTripId is int focus ? focus : GetSelectedTripId();
+            if (_trips.Count > 0) _focusTripId = null;
+            // "#15" -> đúng chuyến 15 (không lẫn #150, #151...).
+            var exactId = System.Text.RegularExpressions.Regex.Match(filterBar.SearchText, @"^#(\d+)$") is { Success: true } m
+                ? int.Parse(m.Groups[1].Value) : (int?)null;
             var rows = _trips.Where(t =>
-                    filterBar.Is("status", TranslateStatus(t.Status)) &&
+                    (exactId is null || t.Id == exactId) &&
+                    filterBar.Is("status", StatusText(t)) &&
                     filterBar.Is("leg", TranslateLegType(t.LegType)) &&
                     filterBar.Is("deadline", DeadlineGroup(t)) &&
                     MatchesStart(t, filterBar.Choice("start")) &&
@@ -111,46 +187,6 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
                 foreach (DataGridViewRow r in grid.Rows)
                     if (r.Cells["Id"].Value is int rid && rid == id) { grid.CurrentCell = r.Cells["Mã_đơn"]; break; }
             UpdateActionButtons();
-        }
-
-        /// <summary>Tô nổi bật dòng đang "Chờ xác nhận" (vàng đậm) — Dispatcher
-        /// dễ nhận ra ngay có chuyến cần Duyệt mà không phải đọc kỹ từng dòng.</summary>
-        private void Grid_CellFormatting(object? sender, DataGridViewCellFormattingEventArgs e)
-        {
-            if (grid.Columns[e.ColumnIndex].Name == "Kho" && e.Value is string kho)
-            {
-                e.CellStyle!.ForeColor = kho.StartsWith("✅") ? Theme.Success
-                    : kho.Contains("chờ nhập", StringComparison.OrdinalIgnoreCase) ? Theme.Warning
-                    : kho.StartsWith("📥") || kho.StartsWith("📤") ? Theme.Primary
-                    : Theme.TextSecondary;
-                return;
-            }
-            if (grid.Columns[e.ColumnIndex].Name == "Tình_trạng_hạn" && e.RowIndex >= 0 && e.RowIndex < grid.Rows.Count)
-            {
-                // Màu theo MỨC server trả về (không đoán theo chữ).
-                var level = grid.Rows[e.RowIndex].Cells["Id"].Value is int tripId
-                    ? _trips.FirstOrDefault(t => t.Id == tripId)?.DeadlineLevel : null;
-                e.CellStyle!.ForeColor = level switch
-                {
-                    "Ok" or "DoneOnTime" => Theme.Success,
-                    "Warning" => Theme.Warning,
-                    "Late" or "DoneLate" => Theme.Danger,
-                    _ => Theme.TextSecondary,
-                };
-                if (level is "Warning" or "Late") e.CellStyle.Font = new Font(grid.Font, FontStyle.Bold);
-                return;
-            }
-            if (grid.Columns[e.ColumnIndex].Name != "Trạng_thái" || e.Value is null) return;
-            if (e.Value.ToString() == "🟡 Chờ xác nhận")
-            {
-                e.CellStyle!.ForeColor = Theme.Warning;
-                e.CellStyle.Font = new Font(grid.Font, FontStyle.Bold);
-            }
-            else if (e.Value.ToString() is WaitingPickupText or WaitingReceiptText)
-            {
-                e.CellStyle!.ForeColor = Theme.TextSecondary;
-                e.CellStyle.Font = new Font(grid.Font, FontStyle.Italic);
-            }
         }
 
         public TripsControl(ApiServices api) : this()
@@ -574,6 +610,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
         {
             if (_api is null) return;
             lblStatus.Text = "Đang tải...";
+            _kpi.Busy = true;
             try
             {
                 _trips = await _api.Trips.GetTripsAsync();
@@ -581,6 +618,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
                 catch { _progress = new(); } // API cũ chưa có -> chỉ thiếu cột Kho, không chặn cả màn hình
                 filterBar.SetChoiceOptions("warehouse", _trips.Select(t => t.WarehouseName ?? ""));
                 BindGrid();
+                UpdateKpis();
                 var late = _trips.Count(t => t.DeadlineLevel == "Late");
                 var warn = _trips.Count(t => t.DeadlineLevel == "Warning");
                 lblStatus.Text = $"Tổng {_trips.Count} chuyến — chọn 1 dòng rồi bấm Bắt đầu/Hoàn tất để đổi trạng thái" +
@@ -592,6 +630,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
                 lblStatus.Text = "Lỗi: " + ex.Message;
                 lblStatus.ForeColor = Theme.Danger;
             }
+            finally { _kpi.Busy = false; }
         }
 
         private const string WaitingPickupText = "⏳ Chờ lấy hàng xong";
@@ -614,7 +653,9 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
             var verb = t.LegType == "Return" ? "xuất trả" : "xuất";
             if (planned > 0 && done >= planned) return $"✅ Đã {verb} {done:0.##}/{planned:0.##}";
             if (done > 0) return $"📤 Đã {verb} {done:0.##}/{planned:0.##}";
-            return t.LegType == "Return" ? $"Xuất khi trả xong (0/{planned:0.##})" : $"Xuất khi bắt đầu (0/{planned:0.##})";
+            return t.LegType == "Return" ? $"Xuất khi trả xong (0/{planned:0.##})"
+                : t.Status == "Planned" ? $"📤 Chờ kho xuất (0/{planned:0.##})"
+                : $"Chưa xuất (0/{planned:0.##})";
         }
 
         /// <summary>Chặng GIAO còn "Đã lên kế hoạch" nhưng đơn vẫn còn chặng LẤY
@@ -633,9 +674,18 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
         private bool IsWaitingForReceipt(TripListItem t)
             => t.AwaitingReceipt && !IsWaitingForPickup(t); // server tính (cùng quy tắc chặn Bắt đầu)
 
+        private const string WaitingIssueText = "📤 Chờ kho xuất";
+
+        /// <summary>Chặng GIAO chưa chạy, hàng đã nhập kho nhưng KHO CHƯA XÁC NHẬN XUẤT đủ lên xe
+        /// (màn Kho → 📤 Xuất kho theo chuyến) — server chặn Bắt đầu cho tới khi xuất xong.</summary>
+        private bool IsWaitingForIssue(TripListItem t)
+            => t.LegType == "Delivery" && t.Status == "Planned" && !IsWaitingForPickup(t) && !IsWaitingForReceipt(t)
+               && _progress.TryGetValue(t.Id, out var p) && p.QtyPlanned > 0 && p.QtyDone < p.QtyPlanned;
+
         private string StatusText(TripListItem t)
             => IsWaitingForPickup(t) ? WaitingPickupText
              : IsWaitingForReceipt(t) ? WaitingReceiptText
+             : IsWaitingForIssue(t) ? WaitingIssueText
              : TranslateStatus(t.Status);
 
         /// <summary>Bật/tắt TỪNG NÚT theo đúng trạng thái chuyến đang chọn — chỉ
@@ -661,7 +711,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
             var active = st is "Planned" or "InProgress";
 
             // Đang chờ server (_busy): giữ khóa các nút thao tác, kể cả khi đổi dòng chọn.
-            btnStart.Enabled = !_busy && trip is not null && st == "Planned" && !IsWaitingForPickup(trip) && !IsWaitingForReceipt(trip);
+            btnStart.Enabled = !_busy && trip is not null && st == "Planned" && !IsWaitingForPickup(trip) && !IsWaitingForReceipt(trip) && !IsWaitingForIssue(trip);
             btnComplete.Enabled = !_busy && st == "InProgress";
             btnApprove.Enabled = !_busy && st == "PendingConfirmation";
             btnReject.Enabled = !_busy && st == "PendingConfirmation";
@@ -688,6 +738,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
                 {
                     "Planned" when IsWaitingForPickup(trip) => "chờ chuyến lấy hàng của đơn hoàn tất mới bắt đầu được",
                     "Planned" when IsWaitingForReceipt(trip) => "hàng lấy về CHƯA nhập kho — nhập ở màn Kho → 📦 Nhập hàng từ chuyến rồi mới bắt đầu được",
+                    "Planned" when IsWaitingForIssue(trip) => "kho CHƯA xác nhận xuất hàng lên xe — màn Kho → 📤 Xuất kho theo chuyến, xuất xong mới bắt đầu được",
                     "Planned" => "có thể: Bắt đầu, Ước tính lộ trình, Đồng bộ lịch, gửi thông tin cho tài xế",
                     "InProgress" => "có thể: Hoàn tất, ghi Đổ xăng / Chi phí / Sự cố, theo dõi lộ trình",
                     "PendingConfirmation" => "tài xế đã báo xong — xem ảnh hàng / lộ trình rồi Duyệt hoặc Từ chối",

@@ -31,6 +31,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
         public PendingReceiptsForm()
         {
             InitializeComponent();
+            Anim.FadeIn(this); // cửa sổ hiện dần lên
             Theme.StyleGrid(gridPending);
             Theme.StyleGrid(gridBins);
             gridPending.DataBindingComplete += (_, _) =>

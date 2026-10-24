@@ -1,4 +1,4 @@
-namespace TruckingSystem.Application.Notifications;
+﻿namespace TruckingSystem.Application.Notifications;
 
 public interface INotificationService
 {
@@ -19,6 +19,8 @@ public interface INotificationService
     /// đã đọc thông báo "chờ duyệt" của chuyến đó.</summary>
     Task ResolveTripPendingAsync(int tripId);
 
-    Task MarkAsReadAsync(int notificationId, string userId);
+    /// <summary>Đánh dấu "Đã xử lý" bằng tay (chỉ thông báo loại "Khác"). Trả về null nếu
+    /// thành công, hoặc thông điệp lỗi.</summary>
+    Task<string?> MarkAsReadAsync(int notificationId, string userId);
     Task MarkAllAsReadAsync(string userId);
 }

@@ -13,9 +13,18 @@ namespace TruckingSystem.Desktop.SERVICE_TransportOrderManagement
         }
 
         /// <summary>Đổi / bổ sung hạn giao cho đơn Đã xác nhận / Đang chạy (bắt buộc lý do).</summary>
-        public Task<OrderActionResultItem> ChangeDeadlineAsync(int orderId, DateTime newDate, string reason)
+        public Task<OrderActionResultItem> ChangeDeadlineAsync(int orderId, DateTime newDate, string reason, string requestedBy)
             => _conn.PostAsync<OrderActionResultItem>($"/api/transport-orders/{orderId}/deadline",
-                new { newDeliveryDate = newDate.Date, reason })!;
+                new { newDeliveryDate = newDate.Date, reason, requestedBy })!;
+
+        /// <summary>Phí lưu kho ước tính nếu đổi hạn giao (requestedBy = Customer / Company).</summary>
+        public Task<StorageFeePreviewItem> PreviewStorageFeeAsync(int orderId, DateTime newDate, string requestedBy)
+            => _conn.GetAsync<StorageFeePreviewItem>(
+                $"/api/transport-orders/{orderId}/storage-fee-preview?newDate={newDate:yyyy-MM-dd}&requestedBy={requestedBy}")!;
+
+        /// <summary>Phí lưu kho của đơn do khách dời hạn giao (từng lần đổi + tổng).</summary>
+        public Task<StorageFeeItem> GetStorageFeeAsync(int orderId)
+            => _conn.GetAsync<StorageFeeItem>($"/api/transport-orders/{orderId}/storage-fee")!;
 
         /// <summary>Ước tính số ngày chạy của tuyến (Lấy hàng + Giao) — để gợi ý hạn giao khi tạo đơn.</summary>
         public async Task<int> EstimateRouteDaysAsync(int? pickupLocationId, int? dropoffLocationId, int warehouseId, string pickupMethod)

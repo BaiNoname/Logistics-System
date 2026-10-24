@@ -89,6 +89,10 @@ public class VehicleService : IVehicleService
         if (!fuelTypeOk) throw new InvalidOperationException($"Loại nhiên liệu \"{request.FuelType}\" không có trong danh mục.");
         var requiredError = RequiredFieldsError(request.VehicleType, fuelType, request.FuelConsumptionPer100Km);
         if (requiredError is not null) throw new InvalidOperationException(requiredError);
+        // Kho đóng quân (tuỳ chọn) phải tồn tại — trước đây Id sai rơi xuống lỗi khóa ngoại của
+        // database, báo câu chung chung "dữ liệu đang được dùng" rất khó hiểu.
+        if (request.WarehouseId is int newWh && !await _db.Warehouses.AnyAsync(w => w.Id == newWh))
+            throw new InvalidOperationException("Kho đóng quân đã chọn không tồn tại.");
         var capacityError = ValidateCapacity(request.CapacityQty, request.CapacityKg, request.CapacityM3, request.FuelConsumptionPer100Km);
         if (capacityError is not null) throw new InvalidOperationException(capacityError);
 
@@ -131,6 +135,8 @@ public class VehicleService : IVehicleService
         if (!fuelTypeOk) return new VehicleActionResult(false, $"Loại nhiên liệu \"{request.FuelType}\" không có trong danh mục.");
         var requiredError = RequiredFieldsError(request.VehicleType, fuelType, request.FuelConsumptionPer100Km);
         if (requiredError is not null) return new VehicleActionResult(false, requiredError);
+        if (request.WarehouseId is int newWh && newWh != vehicle.WarehouseId && !await _db.Warehouses.AnyAsync(w => w.Id == newWh))
+            return new VehicleActionResult(false, "Kho đóng quân đã chọn không tồn tại.");
 
         // Trạng thái "Đang chạy" do HỆ THỐNG quản lý (Chia xe đặt, hoàn tất/hủy
         // chuyến trả về) — không cho sửa tay, tránh xe bị "Rảnh" khi vẫn còn chuyến

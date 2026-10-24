@@ -178,6 +178,39 @@ namespace TruckingSystem.Desktop.Common
             _btnClear.Enabled = filtering;
         }
 
+        /// <summary>Chỉ lọc theo ĐÚNG 1 ô (các ô chọn khác về "Tất cả", giữ ô tìm nhanh) — dùng cho
+        /// thẻ số liệu (KpiStrip) bấm vào là xem ngay nhóm đó. key = null -> bỏ mọi ô chọn.</summary>
+        public void SetOnly(string? key, string? value)
+        {
+            _suppress = true;
+            try
+            {
+                foreach (var (k, c) in _choices)
+                {
+                    if (c.Items.Count == 0) continue;
+                    var idx = k == key && value is not null ? c.Items.IndexOf(value) : 0;
+                    c.SelectedIndex = idx >= 0 ? idx : 0;
+                }
+            }
+            finally { _suppress = false; }
+            RaiseChanged();
+        }
+
+        /// <summary>Bỏ mọi ô chọn về "Tất cả" và điền sẵn ô tìm — dùng khi mở màn hình từ
+        /// thông báo (nhấp đúp) để chỉ hiện đúng chuyến / đơn / xe / tài xế đó.</summary>
+        public void ShowOnlySearch(string text)
+        {
+            _suppress = true;
+            try
+            {
+                foreach (var c in _choices.Values) if (c.Items.Count > 0) c.SelectedIndex = 0;
+                _txtSearch.Text = text ?? "";
+            }
+            finally { _suppress = false; }
+            _searchTimer.Stop();
+            RaiseChanged();
+        }
+
         public void ClearFilters()
         {
             _suppress = true;

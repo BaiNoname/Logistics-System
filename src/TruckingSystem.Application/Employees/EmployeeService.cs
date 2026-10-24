@@ -105,6 +105,18 @@ public class EmployeeService : IEmployeeService
         var profileError = await ValidateDriverProfileAsync(employeeId, request.LicenseNumber, request.LicenseClass,
             request.LicenseExpiryDate, request.HealthCertExpiryDate, request.YearsOfExperience, request.WarehouseId);
         if (profileError is not null) return new EmployeeActionResult(false, profileError);
+        // CÙNG quy tắc với xe: tài xế còn chuyến chưa xong thì chưa đổi kho đóng quân.
+        if (request.WarehouseId != profile.WarehouseId)
+        {
+            var activeTripIds = await _db.Trips
+                .Where(t => t.DriverEmployeeId == employeeId
+                            && (t.Status == TripStatus.Planned || t.Status == TripStatus.InProgress || t.Status == TripStatus.PendingConfirmation))
+                .OrderBy(t => t.Id).Select(t => t.Id).Take(5).ToListAsync();
+            if (activeTripIds.Count > 0)
+                return new EmployeeActionResult(false,
+                    $"Tài xế còn chuyến chưa xong (#{string.Join(", #", activeTripIds)}) — chưa thể đổi kho đóng quân. " +
+                    "Đổi tài xế khác cho các chuyến chưa chạy (màn Chuyến → Đổi xe / tài xế) hoặc chờ chuyến xong.");
+        }
 
         profile.LicenseNumber = request.LicenseNumber.Trim().ToUpperInvariant();
         profile.LicenseClass = TruckingSystem.Application.Drivers.DriverLicenseRules.NormalizeClass(request.LicenseClass);
