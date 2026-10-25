@@ -1,4 +1,4 @@
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TruckingSystem.Application.Warehouses;
@@ -7,7 +7,9 @@ namespace TruckingSystem.API.Controllers;
 
 [ApiController]
 [Route("api/warehouses")]
-[Authorize]
+// Chỉ đúng các vai trò được vào màn này trên Desktop (trước đây [Authorize] trơn: tài khoản Tài xế /
+// Kế toán gọi thẳng API vẫn bắt đầu / duyệt / đổi xe chuyến, sửa xóa kho...).
+[Authorize(Roles = "Admin,Dispatcher,WarehouseStaff")]
 public class WarehousesController : ControllerBase
 {
     private readonly IWarehouseSlottingService _slottingService;

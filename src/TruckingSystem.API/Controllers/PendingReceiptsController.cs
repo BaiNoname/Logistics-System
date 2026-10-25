@@ -12,7 +12,9 @@ namespace TruckingSystem.API.Controllers;
 /// Luôn trả 200 kèm Success/Message (giống nhập tay) để Desktop hiện đúng lý do.</summary>
 [ApiController]
 [Route("api/warehouses/{warehouseId:int}/pending-receipts")]
-[Authorize]
+// Chỉ đúng các vai trò được vào màn này trên Desktop (trước đây [Authorize] trơn: tài khoản Tài xế /
+// Kế toán gọi thẳng API vẫn bắt đầu / duyệt / đổi xe chuyến, sửa xóa kho...).
+[Authorize(Roles = "Admin,Dispatcher,WarehouseStaff")]
 public class PendingReceiptsController : ControllerBase
 {
     private readonly IPendingReceiptService _pendingService;

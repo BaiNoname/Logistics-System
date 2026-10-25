@@ -359,6 +359,8 @@ public class WarehouseSlottingService : IWarehouseSlottingService
         if (doorError is not null) throw new InvalidOperationException(doorError);
         var feeError = ValidateStorageFee(request.StorageFeePerM3PerDay);
         if (feeError is not null) throw new InvalidOperationException(feeError);
+        var nameError = await DuplicateWarehouseNameErrorAsync(request.Name, excludeId: null);
+        if (nameError is not null) throw new InvalidOperationException(nameError);
 
         var warehouse = new Warehouse
         {
@@ -407,6 +409,18 @@ public class WarehouseSlottingService : IWarehouseSlottingService
         if (doorError is not null) return new WarehouseActionResult(false, doorError);
         var feeError = ValidateStorageFee(request.StorageFeePerM3PerDay);
         if (feeError is not null) return new WarehouseActionResult(false, feeError);
+        var nameError = await DuplicateWarehouseNameErrorAsync(request.Name, excludeId: warehouseId);
+        if (nameError is not null) return new WarehouseActionResult(false, nameError);
+
+        // Sức chứa kho không được NHỎ HƠN tổng sức chứa các vị trí đã khai bên trong (số liệu
+        // "% đã dùng" / sơ đồ kho sẽ vô lý: kho 100 m³ mà các ô cộng lại 300 m³).
+        if (request.CapacityM3 is decimal newCapacity)
+        {
+            var binsTotal = await BinsCapacityTotalAsync(warehouseId, excludeBinId: null);
+            if (newCapacity < binsTotal)
+                return new WarehouseActionResult(false,
+                    $"Sức chứa kho {newCapacity:0.##} m³ nhỏ hơn tổng sức chứa các vị trí đã có ({binsTotal:0.##} m³) — tăng sức chứa kho hoặc thu nhỏ / xóa bớt vị trí trước.");
+        }
 
         // DỜI TỌA ĐỘ kho khi đang có chuyến CHẠY qua kho: xe đang trên đường sẽ bị điều hướng về
         // chỗ mới, số kế hoạch (km, số ngày) của chuyến lệch hẳn -> chặn. Chuyến CHƯA CHẠY thì
@@ -552,6 +566,8 @@ public class WarehouseSlottingService : IWarehouseSlottingService
 
         var codeError = await ValidateBinCodeAsync(zone.WarehouseId, request.Code, excludeBinId: null);
         if (codeError is not null) throw new InvalidOperationException(codeError);
+        var capError = await BinsOverWarehouseCapacityErrorAsync(zone.WarehouseId, request.CapacityM3, excludeBinId: null);
+        if (capError is not null) throw new InvalidOperationException(capError);
 
         // CHẶN vị trí vượt ra NGOÀI ranh giới khu vực chứa nó — đúng thực tế
         // vật lý: 1 vị trí lưu trữ không thể to hơn hoặc tràn ra khỏi khu vực.
@@ -589,6 +605,34 @@ public class WarehouseSlottingService : IWarehouseSlottingService
         return new StorageBinDto(bin.Id, bin.Code, bin.CapacityM3, bin.CurrentUsedM3, bin.MaxWeightKg, bin.PosX, bin.PosY, bin.WidthMeters, bin.HeightMeters, bin.DistanceFromDoorMeters, new List<BinContentItemDto>());
     }
 
+    /// <summary>Tên kho KHÔNG trùng (không phân biệt hoa/thường) — tên kho hiện ở mọi danh sách chọn
+    /// (đơn, xe, tài xế, lọc theo kho) và trong thông báo; 2 kho cùng tên thì chọn nhầm kho.</summary>
+    private async Task<string?> DuplicateWarehouseNameErrorAsync(string? name, int? excludeId)
+    {
+        var n = (name ?? "").Trim().ToLower();
+        if (n.Length == 0) return null;
+        var exists = await _db.Warehouses.AnyAsync(w => (excludeId == null || w.Id != excludeId) && w.Name.Trim().ToLower() == n);
+        return exists ? $"Đã có kho tên \"{name!.Trim()}\" — đặt tên khác để không chọn nhầm kho." : null;
+    }
+
+    private async Task<decimal> BinsCapacityTotalAsync(int warehouseId, int? excludeBinId)
+        => await _db.StorageBins
+            .Where(b => b.WarehouseZone.WarehouseId == warehouseId && (excludeBinId == null || b.Id != excludeBinId))
+            .SumAsync(b => (decimal?)b.CapacityM3) ?? 0m;
+
+    /// <summary>Thêm / nới 1 vị trí không được làm tổng sức chứa các vị trí VƯỢT sức chứa của kho
+    /// (kho chưa khai sức chứa thì bỏ qua).</summary>
+    private async Task<string?> BinsOverWarehouseCapacityErrorAsync(int warehouseId, decimal newBinCapacity, int? excludeBinId)
+    {
+        var warehouseCapacity = await _db.Warehouses.Where(w => w.Id == warehouseId).Select(w => w.CapacityM3).FirstOrDefaultAsync();
+        if (warehouseCapacity is not decimal cap || cap <= 0) return null;
+        var others = await BinsCapacityTotalAsync(warehouseId, excludeBinId);
+        return others + newBinCapacity > cap
+            ? $"Tổng sức chứa các vị trí sẽ là {others + newBinCapacity:0.##} m³, vượt sức chứa kho {cap:0.##} m³ (còn trống để khai thêm {Math.Max(0, cap - others):0.##} m³). " +
+              "Giảm sức chứa vị trí hoặc tăng sức chứa kho (Sửa kho) trước."
+            : null;
+    }
+
     /// <summary>Mã vị trí phải có và KHÔNG trùng trong cùng 1 kho — mã dùng để
     /// thủ kho tìm hàng, trùng mã là lấy nhầm hàng.</summary>
     private async Task<string?> ValidateBinCodeAsync(int warehouseId, string? code, int? excludeBinId)
@@ -624,6 +668,11 @@ public class WarehouseSlottingService : IWarehouseSlottingService
         var zone = bin.WarehouseZone;
         var codeError = await ValidateBinCodeAsync(zone.WarehouseId, request.Code, excludeBinId: bin.Id);
         if (codeError is not null) return new WarehouseActionResult(false, codeError);
+        if (request.CapacityM3 > bin.CapacityM3)
+        {
+            var capError = await BinsOverWarehouseCapacityErrorAsync(zone.WarehouseId, request.CapacityM3, excludeBinId: bin.Id);
+            if (capError is not null) return new WarehouseActionResult(false, capError);
+        }
 
         if (request.PosX < 0 || request.PosY < 0 || request.PosX + request.WidthMeters > zone.WidthMeters || request.PosY + request.HeightMeters > zone.HeightMeters)
             return new WarehouseActionResult(false, $"Vị trí này vượt ra NGOÀI ranh giới khu vực \"{zone.Name}\" (khu vực rộng {zone.WidthMeters}m x {zone.HeightMeters}m) — chỉnh lại tọa độ/kích thước cho vừa trong khu vực.");

@@ -47,42 +47,91 @@ public class VietMapPlaceProvider : IPlaceSearchProvider
 
         var results = new List<PlaceSuggestionDto>();
 
-        using var doc = JsonDocument.Parse(body);
-        var root = doc.RootElement;
+        JsonDocument doc;
+        try { doc = JsonDocument.Parse(body); }
+        catch { return results; } // trả về không phải JSON (trang lỗi, hết hạn key...) -> không có gợi ý
 
-        if (!root.TryGetProperty("data", out var data)) return results;
-        if (!data.TryGetProperty("features", out var features) || features.ValueKind != JsonValueKind.Array) return results;
-
-        foreach (var feature in features.EnumerateArray())
+        using (doc)
         {
-            var refId = feature.TryGetProperty("Id", out var idEl) ? idEl.GetString() ?? "" : "";
-            if (string.IsNullOrEmpty(refId)) continue;
-
-            string name = "", address = "";
-            if (feature.TryGetProperty("properties", out var props))
+            // Chấp nhận cả 2 dạng trả về của VietMap: GeoJSON {data:{features:[...]}} (v1.1)
+            // và mảng phẳng [{ref_id, name, address, display, lat, lng}] (v3) — tên trường không
+            // phân biệt hoa/thường (trước đây đọc sai hoa/thường -> gợi ý hiện ra TRỐNG chữ).
+            var root = doc.RootElement;
+            IEnumerable<JsonElement> items = Enumerable.Empty<JsonElement>();
+            if (root.ValueKind == JsonValueKind.Array) items = root.EnumerateArray();
+            else if (root.ValueKind == JsonValueKind.Object)
             {
-                name = GetString(props, "name") ?? "";
-                address = GetString(props, "address") ?? GetString(props, "label") ?? "";
+                var data = Prop(root, "data");
+                if (data is { ValueKind: JsonValueKind.Array } arrData) items = arrData.EnumerateArray();
+                else if (data is { ValueKind: JsonValueKind.Object } objData && Prop(objData, "features") is { ValueKind: JsonValueKind.Array } feats)
+                    items = feats.EnumerateArray();
+                else if (Prop(root, "features") is { ValueKind: JsonValueKind.Array } rootFeats) items = rootFeats.EnumerateArray();
             }
 
-            double lat = 0, lng = 0;
-            if (feature.TryGetProperty("geometry", out var geom)
-                && geom.TryGetProperty("coordinates", out var coords)
-                && coords.ValueKind == JsonValueKind.Array)
+            foreach (var item in items)
             {
-                var arr = coords.EnumerateArray().ToList();
-                // GeoJSON chuẩn: [longitude, latitude] — NGƯỢC thứ tự so với cách nói thông thường
-                if (arr.Count >= 2)
+                if (item.ValueKind != JsonValueKind.Object) continue;
+                var props = Prop(item, "properties") is { ValueKind: JsonValueKind.Object } p ? p : item;
+
+                var refId = Str(item, "Id") ?? Str(item, "ref_id") ?? Str(props, "ref_id") ?? Str(props, "id") ?? "";
+
+                var name = Str(props, "name") ?? Str(props, "display") ?? Str(props, "label") ?? "";
+                var address = Str(props, "address") ?? Str(props, "label") ?? Str(props, "display") ?? "";
+                if (string.IsNullOrWhiteSpace(address))
+                    address = string.Join(", ", new[] { Str(props, "housenumber"), Str(props, "street"), Str(props, "locality"),
+                        Str(props, "county"), Str(props, "region") }.Where(x => !string.IsNullOrWhiteSpace(x)));
+                if (string.IsNullOrWhiteSpace(name) && string.IsNullOrWhiteSpace(address)) continue; // không có gì để hiện
+
+                double lat = 0, lng = 0;
+                if (Prop(item, "geometry") is { ValueKind: JsonValueKind.Object } geom
+                    && Prop(geom, "coordinates") is { ValueKind: JsonValueKind.Array } coords)
                 {
-                    lng = arr[0].GetDouble();
-                    lat = arr[1].GetDouble();
+                    var arr = coords.EnumerateArray().ToList();
+                    // GeoJSON chuẩn: [longitude, latitude] — NGƯỢC thứ tự so với cách nói thông thường
+                    if (arr.Count >= 2 && arr[0].ValueKind == JsonValueKind.Number && arr[1].ValueKind == JsonValueKind.Number)
+                    {
+                        lng = arr[0].GetDouble();
+                        lat = arr[1].GetDouble();
+                    }
                 }
-            }
+                if (lat == 0 && lng == 0)
+                {
+                    lat = Num(props, "lat") ?? Num(item, "lat") ?? 0;
+                    lng = Num(props, "lng") ?? Num(props, "lon") ?? Num(item, "lng") ?? 0;
+                }
 
-            results.Add(new PlaceSuggestionDto(refId, name, address, lat, lng));
+                // Không có RefId lẫn tọa độ thì không dùng được (không lấy chi tiết được).
+                if (string.IsNullOrEmpty(refId) && lat == 0 && lng == 0) continue;
+                results.Add(new PlaceSuggestionDto(refId, name.Trim(), address.Trim(), lat, lng));
+            }
         }
         return results;
     }
+
+    /// <summary>Đọc thuộc tính KHÔNG phân biệt hoa/thường.</summary>
+    private static JsonElement? Prop(JsonElement el, string name)
+    {
+        if (el.ValueKind != JsonValueKind.Object) return null;
+        if (el.TryGetProperty(name, out var v)) return v;
+        foreach (var p in el.EnumerateObject())
+            if (string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase)) return p.Value;
+        return null;
+    }
+
+    private static string? Str(JsonElement el, string name)
+        => Prop(el, name) is { } v ? v.ValueKind switch
+        {
+            JsonValueKind.String => string.IsNullOrWhiteSpace(v.GetString()) ? null : v.GetString(),
+            JsonValueKind.Number => v.GetRawText(),
+            _ => null,
+        } : null;
+
+    private static double? Num(JsonElement el, string name)
+        => Prop(el, name) is { } v
+            ? v.ValueKind == JsonValueKind.Number ? v.GetDouble()
+              : v.ValueKind == JsonValueKind.String && double.TryParse(v.GetString(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var d) ? d
+              : null
+            : null;
 
     /// <summary>DỰ PHÒNG — hiện KHÔNG dùng trong luồng chính (SearchAsync đã tự
     /// có tọa độ, không cần gọi thêm). Endpoint bên dưới CHƯA được xác nhận
@@ -107,19 +156,13 @@ public class VietMapPlaceProvider : IPlaceSearchProvider
         using var doc = JsonDocument.Parse(body);
         var root = doc.RootElement;
 
-        var lat = GetDouble(root, "lat");
-        var lng = GetDouble(root, "lng") ?? GetDouble(root, "lon");
+        var lat = Num(root, "lat");
+        var lng = Num(root, "lng") ?? Num(root, "lon");
         if (lat is null || lng is null) return null;
 
-        var name = GetString(root, "name") ?? GetString(root, "display") ?? "";
-        var address = GetString(root, "address") ?? GetString(root, "display") ?? "";
+        var name = Str(root, "name") ?? Str(root, "display") ?? "";
+        var address = Str(root, "display") ?? Str(root, "address") ?? "";
 
         return new PlaceDetailDto(name, address, lat.Value, lng.Value);
     }
-
-    private static string? GetString(JsonElement el, string prop)
-        => el.TryGetProperty(prop, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
-
-    private static double? GetDouble(JsonElement el, string prop)
-        => el.TryGetProperty(prop, out var v) && v.ValueKind is JsonValueKind.Number ? v.GetDouble() : null;
 }

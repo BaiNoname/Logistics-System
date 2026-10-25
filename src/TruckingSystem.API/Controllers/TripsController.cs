@@ -7,7 +7,9 @@ namespace TruckingSystem.API.Controllers;
 
 [ApiController]
 [Route("api/trips")]
-[Authorize]
+// Chỉ đúng các vai trò được vào màn này trên Desktop (trước đây [Authorize] trơn: tài khoản Tài xế /
+// Kế toán gọi thẳng API vẫn bắt đầu / duyệt / đổi xe chuyến, sửa xóa kho...).
+[Authorize(Roles = "Admin,Dispatcher")]
 public class TripsController : ControllerBase
 {
     private readonly ITripService _tripService;

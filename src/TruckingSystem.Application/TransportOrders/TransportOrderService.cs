@@ -305,6 +305,19 @@ public class TransportOrderService : ITransportOrderService
         await _db.SaveChangesAsync();
 
         var feeText = preview.EstimatedFee > 0 ? $"\n💰 {preview.Note}" : "";
+
+        // Hạn MỚI sớm hơn mà các chuyến đã chia không còn kịp -> báo ngay (không chặn: Vận hành có
+        // thể đã thỏa thuận, sẽ đổi xe / cho chạy sớm hơn). Cùng quy tắc với cột "Tình trạng hạn".
+        var orderTrips = await _db.Trips.Where(t => t.TransportOrderId == order.Id && t.Status != TripStatus.Cancelled).ToListAsync();
+        var lateTrips = orderTrips
+            .Where(t => t.Status is TripStatus.Planned or TripStatus.InProgress)
+            .Select(t => (Trip: t, Info: TruckingSystem.Application.Trips.DeliveryDeadlineRules.Evaluate(t, orderTrips, newDate, VnClock.Today)))
+            .Where(x => x.Info.Level == TruckingSystem.Application.Trips.DeliveryDeadlineRules.Level.Late)
+            .Select(x => $"#{x.Trip.Id}: {x.Info.Text}")
+            .ToList();
+        if (lateTrips.Count > 0)
+            feeText += $"\n⚠️ Với hạn mới, {lateTrips.Count} chuyến sẽ KHÔNG kịp: {string.Join("; ", lateTrips.Take(5))}. " +
+                       "Cho xe xuất phát sớm hơn / đổi xe-tài xế, hoặc báo khách.";
         return new OrderActionResult(true, (oldDate is null
             ? $"Đã bổ sung hạn giao {newDate:dd/MM/yyyy}."
             : $"Đã đổi hạn giao từ {oldDate:dd/MM/yyyy} sang {newDate:dd/MM/yyyy} (đã ghi nhật ký).") + feeText);

@@ -12,26 +12,22 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
     {
         private ApiServices? _api;
         private int _warehouseId;
-        private readonly System.Windows.Forms.Timer _debounceTimer = new() { Interval = 300 };
         private PlaceSuggestionItem? _newSelectedAddress; // null = giữ nguyên địa chỉ/tọa độ cũ
         private string? _oldAddress;
         private double? _oldLat, _oldLng;
-        private bool _suppressNextSearch = false;
+        private readonly PlaceSearchBinder _placeSearch;
 
         public EditWarehouseForm()
         {
             InitializeComponent();
 
-            txtSearch.TextChanged += (_, _) =>
+            // Ô tìm địa chỉ VietMap: gõ -> danh sách gợi ý -> BẤM 1 dòng -> địa chỉ + tọa độ MỚI.
+            // Không chọn dòng nào = giữ nguyên địa chỉ / tọa độ cũ.
+            _placeSearch = new PlaceSearchBinder(txtSearch, lstSuggestions, lblSelectedAddress, item =>
             {
-                if (_suppressNextSearch) { _suppressNextSearch = false; return; }
-                _newSelectedAddress = null;
-                lblSelectedAddress.Text = "";
-                _debounceTimer.Stop();
-                _debounceTimer.Start();
-            };
-            _debounceTimer.Tick += async (_, _) => { _debounceTimer.Stop(); await RunSearchAsync(); };
-            lstSuggestions.SelectedIndexChanged += (_, _) => SelectSuggestion();
+                _newSelectedAddress = item;
+                if (item is not null) lblStatus.Text = "";
+            });
 
             // Vị trí cửa: chọn tường trước, rồi mới nhập được khoảng cách dọc tường.
             WarehouseDoorHelper.FillSideCombo(cboDoorSide);
@@ -41,6 +37,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
         public EditWarehouseForm(ApiServices api, WarehouseListItem warehouse) : this()
         {
             _api = api;
+            _placeSearch.Api = api;
             _warehouseId = warehouse.Id;
             _oldAddress = warehouse.Address;
             _oldLat = warehouse.Lat;
@@ -58,49 +55,17 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             cboDoorSide.SelectedIndex = WarehouseDoorHelper.ToIndex(warehouse.DoorSide);
             numDoorOffset.Value = Math.Clamp(warehouse.DoorOffsetMeters ?? 0, numDoorOffset.Minimum, numDoorOffset.Maximum);
 
-            _suppressNextSearch = true;
-            txtSearch.Text = warehouse.Address ?? "";
+            _placeSearch.SetTextSilently(warehouse.Address ?? "");
             if (!string.IsNullOrEmpty(warehouse.Address))
             {
                 lblSelectedAddress.Text = warehouse.Lat.HasValue
                     ? $"✅ (địa chỉ hiện tại) {warehouse.Address}"
-                    : $"⚠️ (địa chỉ cũ, CHƯA có tọa độ) {warehouse.Address}";
+                    : $"⚠️ (địa chỉ cũ, CHƯA có tọa độ) {warehouse.Address} — gõ lại địa chỉ rồi BẤM chọn 1 dòng gợi ý để lấy tọa độ.";
                 lblSelectedAddress.ForeColor = warehouse.Lat.HasValue ? Theme.Success : Theme.Warning;
             }
         }
 
-        private async Task RunSearchAsync()
-        {
-            if (_api is null) return;
-            var text = txtSearch.Text.Trim();
-            if (text.Length < 2) { lstSuggestions.Items.Clear(); lstSuggestions.Visible = false; return; }
 
-            try
-            {
-                var results = await _api.Locations.SearchPlacesAsync(text);
-                lstSuggestions.Items.Clear();
-                foreach (var r in results) lstSuggestions.Items.Add(r);
-                lstSuggestions.Visible = results.Count > 0;
-            }
-            catch (Exception ex)
-            {
-                lblStatus.Text = "Lỗi tìm kiếm: " + ex.Message;
-            }
-        }
-
-        private void SelectSuggestion()
-        {
-            if (lstSuggestions.SelectedItem is not PlaceSuggestionItem suggestion) return;
-
-            _newSelectedAddress = suggestion;
-            lblSelectedAddress.Text = $"✅ {suggestion.Address}";
-            lblSelectedAddress.ForeColor = Theme.Success;
-            lstSuggestions.Visible = false;
-
-            _suppressNextSearch = true;
-            txtSearch.Text = suggestion.Address;
-            lblStatus.Text = "";
-        }
 
         private static void SetSafe(NumericUpDown n, decimal value)
         {

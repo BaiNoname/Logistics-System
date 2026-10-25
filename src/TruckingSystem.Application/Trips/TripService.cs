@@ -670,6 +670,10 @@ WHERE ""Id"" = {tripId}");
         var resourceReason = await GetVehicleDriverBlockReasonAsync(trip);
         if (resourceReason is not null) return resourceReason;
 
+        // Chặng TRẢ HÀNG: hàng chỉ trừ kho lúc chuyến hoàn tất — nhưng phải CÒN ĐỦ hàng trong kho
+        // ngay lúc xe chạy, nếu không tới lúc Duyệt mới báo "không đủ tồn kho" và chuyến kẹt ở
+        // Chờ xác nhận (hàng đã chở đi rồi mà kho không trừ được).
+        if (trip.LegType == TripLegType.Return) return await GetStockBlockReasonAsync(trip);
         if (trip.LegType != TripLegType.Delivery) return null;
 
         var pendingPickups = await _db.Trips
@@ -732,7 +736,7 @@ WHERE ""Id"" = {tripId}");
     /// đầu tiên: bắt đầu thất bại âm thầm, mọi điểm GPS bị bỏ, video kẹt hàng đợi.</summary>
     private async Task<string?> GetStockBlockReasonAsync(Trip trip)
     {
-        if (trip.LegType != TripLegType.Delivery || !trip.WarehouseId.HasValue) return null;
+        if (trip.LegType is not (TripLegType.Delivery or TripLegType.Return) || !trip.WarehouseId.HasValue) return null;
         var warehouseId = trip.WarehouseId.Value;
 
         var lines = await _db.TripLines
@@ -1194,7 +1198,10 @@ WHERE ""Id"" = {tripId}");
         // mốc đã qua (chuyến bị dời, VD chờ nhập kho) thì lấy 1 giờ nữa — không hiện lịch ở quá khứ.
         if (committedUtc is not null && order.CommittedDeliveryDate is { } committedVn && committedVn.TimeOfDay == TimeSpan.Zero)
             committedUtc = VnClock.VnToUtc(committedVn.Date.AddHours(8));
-        var anchorUtc = trip.LegType == TripLegType.Delivery ? committedUtc : null;
+        // Chặng Lấy hàng / Trả hàng chưa chạy: dùng NGÀY XUẤT PHÁT DỰ KIẾN chọn lúc Chia xe (8h sáng giờ VN)
+        // — trước đây rơi về "1 giờ nữa" nên lịch tài xế / khách hiện sai ngày khi chia xe trước vài ngày.
+        DateTime? plannedUtc = trip.PlannedStartDate is DateTime plannedVn ? VnClock.VnToUtc(plannedVn.Date.AddHours(8)) : null;
+        var anchorUtc = trip.LegType == TripLegType.Delivery ? committedUtc ?? plannedUtc : plannedUtc;
         if (anchorUtc is not null && anchorUtc < DateTime.UtcNow) anchorUtc = null;
         var startUtc = trip.StartTime ?? anchorUtc ?? DateTime.UtcNow.AddHours(1);
         var endUtc = trip.EndTime ?? startUtc.AddHours(2);

@@ -37,6 +37,11 @@ public class LocationService : ILocationService
         // chọn địa chỉ từ bản đồ; lưu vào sẽ làm lộ trình, quãng đường, số ngày chạy sai hẳn.
         if (lat == 0 && lng == 0)
             throw new InvalidOperationException("Tọa độ (0, 0) không hợp lệ — hãy chọn địa chỉ từ ô tìm kiếm bản đồ để lấy đúng tọa độ.");
+        // Tên địa điểm không trùng (không phân biệt hoa/thường) — tên hiện trong ô chọn Điểm lấy /
+        // Điểm giao của đơn; 2 địa điểm cùng tên thì dễ chọn nhầm chỗ, chuyến chạy sai địa chỉ.
+        var lowerName = name.ToLower();
+        if (await _db.Locations.AnyAsync(l => l.Name.Trim().ToLower() == lowerName))
+            throw new InvalidOperationException($"Đã có địa điểm tên \"{name}\" — đặt tên khác (VD thêm tên quận / tên khách).");
         if (request.CustomerId.HasValue && !await _db.Customers.AnyAsync(c => c.Id == request.CustomerId.Value))
             throw new InvalidOperationException("Khách hàng của địa điểm không tồn tại.");
 

@@ -10,24 +10,19 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
     public partial class CreateWarehouseForm : BaseForm
     {
         private ApiServices? _api;
-        private readonly System.Windows.Forms.Timer _debounceTimer = new() { Interval = 300 };
         private PlaceSuggestionItem? _selectedAddress;
-        private bool _suppressNextSearch = false;
+        private readonly PlaceSearchBinder _placeSearch;
 
         public CreateWarehouseForm()
         {
             InitializeComponent();
 
-            txtSearch.TextChanged += (_, _) =>
+            // Ô tìm địa chỉ VietMap: gõ -> danh sách gợi ý -> BẤM 1 dòng -> có địa chỉ + tọa độ.
+            _placeSearch = new PlaceSearchBinder(txtSearch, lstSuggestions, lblSelectedAddress, item =>
             {
-                if (_suppressNextSearch) { _suppressNextSearch = false; return; }
-                _selectedAddress = null;
-                lblSelectedAddress.Text = "";
-                _debounceTimer.Stop();
-                _debounceTimer.Start();
-            };
-            _debounceTimer.Tick += async (_, _) => { _debounceTimer.Stop(); await RunSearchAsync(); };
-            lstSuggestions.SelectedIndexChanged += (_, _) => SelectSuggestion();
+                _selectedAddress = item;
+                if (item is not null) lblStatus.Text = "";
+            });
 
             // Vị trí cửa: chọn tường trước, rồi mới nhập được khoảng cách dọc tường.
             WarehouseDoorHelper.FillSideCombo(cboDoorSide);
@@ -37,40 +32,10 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
         public CreateWarehouseForm(ApiServices api) : this()
         {
             _api = api;
+            _placeSearch.Api = api;
         }
 
-        private async Task RunSearchAsync()
-        {
-            if (_api is null) return;
-            var text = txtSearch.Text.Trim();
-            if (text.Length < 2) { lstSuggestions.Items.Clear(); lstSuggestions.Visible = false; return; }
 
-            try
-            {
-                var results = await _api.Locations.SearchPlacesAsync(text);
-                lstSuggestions.Items.Clear();
-                foreach (var r in results) lstSuggestions.Items.Add(r);
-                lstSuggestions.Visible = results.Count > 0;
-            }
-            catch (Exception ex)
-            {
-                lblStatus.Text = "Lỗi tìm kiếm: " + ex.Message;
-            }
-        }
-
-        private void SelectSuggestion()
-        {
-            if (lstSuggestions.SelectedItem is not PlaceSuggestionItem suggestion) return;
-
-            _selectedAddress = suggestion;
-            lblSelectedAddress.Text = $"✅ {suggestion.Address}";
-            lblSelectedAddress.ForeColor = Theme.Success;
-            lstSuggestions.Visible = false;
-
-            _suppressNextSearch = true;
-            txtSearch.Text = suggestion.Address;
-            lblStatus.Text = "";
-        }
 
         private async void BtnSave_Click(object? sender, EventArgs e)
         {
