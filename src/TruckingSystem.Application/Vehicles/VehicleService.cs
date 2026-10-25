@@ -213,6 +213,27 @@ public class VehicleService : IVehicleService
             return new VehicleActionResult(false,
                 $"Xe còn chuyến chưa xong (#{tripListText}) — chưa thể đổi kho đóng quân.");
 
+        // Đổi LOẠI XE / TẢI TRỌNG làm đổi hạng bằng lái cần có (VD 3,5 tấn -> 8 tấn cần hạng C, xe
+        // thường -> đầu kéo cần FC/CE). Tài xế đã được chia cho chuyến CHƯA CHẠY của xe phải còn
+        // lái được xe sau khi sửa — nếu không, chuyến bị chặn lúc xuất phát mà không ai biết trước.
+        var newVehicleType = request.VehicleType.Trim();
+        if (activeTripIds.Count > 0 &&
+            (request.CapacityKg != vehicle.CapacityKg || !string.Equals(newVehicleType, vehicle.VehicleType?.Trim(), StringComparison.OrdinalIgnoreCase)))
+        {
+            var plannedDrivers = await _db.Trips
+                .Where(t => t.VehicleId == id && t.Status == TripStatus.Planned)
+                .Select(t => new { t.Id, t.DriverEmployee.FullName, LicenseClass = t.DriverEmployee.DriverProfile != null ? t.DriverEmployee.DriverProfile.LicenseClass : null })
+                .ToListAsync();
+            var mismatch = plannedDrivers
+                .Select(t => new { t.Id, t.FullName, Reason = TruckingSystem.Application.Drivers.DriverLicenseRules.BlockReason(t.LicenseClass, request.CapacityKg, newVehicleType) })
+                .FirstOrDefault(t => t.Reason is not null);
+            if (mismatch is not null)
+                return new VehicleActionResult(false,
+                    $"Sau khi sửa, xe cần bằng lái {TruckingSystem.Application.Drivers.DriverLicenseRules.RequiredText(request.CapacityKg, newVehicleType)} — " +
+                    $"tài xế {mismatch.FullName} của chuyến chưa chạy #{mismatch.Id} không lái được ({mismatch.Reason}). " +
+                    "Đổi tài xế cho chuyến đó trước (màn Chuyến → Đổi xe / tài xế) rồi mới sửa xe.");
+        }
+
         vehicle.PlateNumber = plate;
         vehicle.VehicleType = request.VehicleType.Trim();
         vehicle.CapacityQty = request.CapacityQty;

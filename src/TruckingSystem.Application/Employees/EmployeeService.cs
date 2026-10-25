@@ -118,6 +118,31 @@ public class EmployeeService : IEmployeeService
                     "Đổi tài xế khác cho các chuyến chưa chạy (màn Chuyến → Đổi xe / tài xế) hoặc chờ chuyến xong.");
         }
 
+        // Hạng bằng / hạn bằng lái / giấy khám MỚI vẫn phải đáp ứng các chuyến CHƯA CHẠY đã chia cho tài xế.
+        var plannedTrips = await _db.Trips
+            .Where(t => t.DriverEmployeeId == employeeId && t.Status == TripStatus.Planned)
+            .Select(t => new { t.Id, t.PlannedStartDate, t.EstimatedDurationMinutes, t.Vehicle.PlateNumber, t.Vehicle.CapacityKg, t.Vehicle.VehicleType })
+            .ToListAsync();
+        if (plannedTrips.Count > 0)
+        {
+            var today = TruckingSystem.Application.Common.VnClock.Today;
+            var newClass = TruckingSystem.Application.Drivers.DriverLicenseRules.NormalizeClass(request.LicenseClass);
+            foreach (var t in plannedTrips.OrderBy(t => t.Id))
+            {
+                var from = t.PlannedStartDate is DateTime p && p.Date > today ? p.Date : today;
+                var lastDay = from.AddDays(Math.Max(1, (int)Math.Ceiling((t.EstimatedDurationMinutes ?? 0) / 480.0)) - 1);
+                string? reason = TruckingSystem.Application.Drivers.DriverLicenseRules.BlockReason(newClass, t.CapacityKg, t.VehicleType) is { } lic
+                    ? $"không lái được xe {t.PlateNumber} ({lic})"
+                    : request.LicenseExpiryDate.Date < lastDay ? $"bằng lái hết hạn {request.LicenseExpiryDate:dd/MM/yyyy}, trước khi chuyến xong ({lastDay:dd/MM/yyyy})"
+                    : request.HealthCertExpiryDate is DateTime hc && hc.Date < lastDay ? $"giấy khám sức khỏe hết hạn {hc:dd/MM/yyyy}, trước khi chuyến xong ({lastDay:dd/MM/yyyy})"
+                    : null;
+                if (reason is not null)
+                    return new EmployeeActionResult(false,
+                        $"Với thông tin mới, tài xế {reason} — chuyến chưa chạy #{t.Id} sẽ không xuất phát được. " +
+                        "Đổi tài xế cho chuyến đó trước (màn Chuyến → Đổi xe / tài xế) rồi mới lưu hồ sơ.");
+            }
+        }
+
         profile.LicenseNumber = request.LicenseNumber.Trim().ToUpperInvariant();
         profile.LicenseClass = TruckingSystem.Application.Drivers.DriverLicenseRules.NormalizeClass(request.LicenseClass);
         profile.LicenseExpiryDate = request.LicenseExpiryDate;

@@ -45,13 +45,8 @@ public class TripIssueService : ITripIssueService
             .Where(t => t.WarehouseId == warehouseId && t.LegType == TripLegType.Delivery && t.Status == TripStatus.Planned)
             .Select(t => new
             {
-                t.Id,
-                t.TransportOrderId,
-                OrderCode = t.TransportOrder.Code,
-                CustomerName = t.TransportOrder.Customer.Name,
-                DriverName = t.DriverEmployee.FullName,
-                t.Vehicle.PlateNumber,
-                t.PlannedStartDate,
+                t.Id, t.TransportOrderId, OrderCode = t.TransportOrder.Code, CustomerName = t.TransportOrder.Customer.Name,
+                DriverName = t.DriverEmployee.FullName, t.Vehicle.PlateNumber, t.PlannedStartDate,
                 DropoffName = t.TransportOrder.DropoffLocation != null ? t.TransportOrder.DropoffLocation.Name : null,
                 t.TransportOrder.DropoffPoint,
             })
@@ -96,15 +91,8 @@ public class TripIssueService : ITripIssueService
             var tLines = lines.Where(l => l.TripId == t.Id).Select(l =>
             {
                 var done = issued.FirstOrDefault(i => i.TripId == t.Id && i.CargoLineId == l.CargoLineId)?.Qty ?? 0;
-                return new
-                {
-                    l.CargoLineId,
-                    l.CargoType,
-                    l.QtyPlanned,
-                    Issued = done,
-                    Pending = Math.Max(0, l.QtyPlanned - done),
-                    OnHand = stock.TryGetValue(l.CargoLineId, out var q) ? q : 0
-                };
+                return new { l.CargoLineId, l.CargoType, l.QtyPlanned, Issued = done, Pending = Math.Max(0, l.QtyPlanned - done),
+                             OnHand = stock.TryGetValue(l.CargoLineId, out var q) ? q : 0 };
             }).ToList();
             var anyIssued = tLines.Any(l => l.Issued > 0);
             var allIssued = tLines.All(l => l.Pending <= 0);
@@ -135,6 +123,19 @@ public class TripIssueService : ITripIssueService
         await using var transaction = await _db.Database.BeginTransactionAsync();
         var (trip, error) = await LockAndCheckAsync(warehouseId, tripId);
         if (trip is null) return new WarehouseActionResult(false, error);
+
+        // Xe đang Bảo trì / Ngưng hoạt động thì không bốc hàng lên — chuyến không chạy được, hàng
+        // nằm trên xe hỏng (và chuyến đã xuất thì không Đổi xe được nữa). Đổi xe trước rồi xuất.
+        if (trip.VehicleStatus is VehicleStatus.UnderMaintenance or VehicleStatus.OutOfService)
+            return new WarehouseActionResult(false,
+                $"Xe {trip.Plate} đang {(trip.VehicleStatus == VehicleStatus.UnderMaintenance ? "Bảo trì" : "Ngưng hoạt động")} — chưa xuất hàng lên xe này. " +
+                "Đổi xe cho chuyến (màn Chuyến → Đổi xe / tài xế) hoặc chờ xe sửa xong.");
+        // Không bốc hàng lên xe quá sớm: hàng rời kho từ lúc xuất -> nằm trên xe nhiều ngày, xe bị giữ,
+        // và phí lưu kho (tính theo ngày hàng còn TRONG KHO) ngừng tính sớm hơn thực tế.
+        if (trip.PlannedStartDate is DateTime planned && planned.Date > VnClock.Today.AddDays(MaxIssueDaysBeforeStart))
+            return new WarehouseActionResult(false,
+                $"Chuyến #{tripId} dự kiến xuất phát {planned:dd/MM/yyyy} — chỉ xuất kho từ ngày {planned.Date.AddDays(-MaxIssueDaysBeforeStart):dd/MM/yyyy} " +
+                $"(trước ngày chạy tối đa {MaxIssueDaysBeforeStart} ngày).");
 
         var pendingPickup = await _db.Trips.AnyAsync(t => t.TransportOrderId == trip.TransportOrderId && t.LegType == TripLegType.Pickup
                                                           && t.Status != TripStatus.Cancelled && t.Status != TripStatus.Completed);
@@ -181,7 +182,10 @@ public class TripIssueService : ITripIssueService
         return new WarehouseActionResult(true, $"Đã hoàn tác xuất kho chuyến #{tripId} — hàng dỡ khỏi xe, trả về kệ:\n{result.Message}");
     }
 
-    private sealed record LockedTrip(int TransportOrderId, string Plate);
+    private sealed record LockedTrip(int TransportOrderId, string Plate, VehicleStatus VehicleStatus, DateTime? PlannedStartDate);
+
+    /// <summary>Số ngày được xuất (bốc hàng lên xe) TRƯỚC ngày xuất phát dự kiến.</summary>
+    private const int MaxIssueDaysBeforeStart = 1;
 
     /// <summary>KHÓA dòng chuyến (SELECT ... FOR UPDATE) rồi mới kiểm tra — Bắt đầu chuyến cũng cập
     /// nhật đúng dòng này, nên xuất / hoàn tác và bắt đầu chuyến không chen nhau.</summary>
@@ -189,13 +193,13 @@ public class TripIssueService : ITripIssueService
     {
         await _db.Database.ExecuteSqlInterpolatedAsync($"SELECT 1 FROM \"Trips\" WHERE \"Id\" = {tripId} FOR UPDATE");
         var trip = await _db.Trips.Where(t => t.Id == tripId)
-            .Select(t => new { t.LegType, t.Status, t.WarehouseId, t.TransportOrderId, t.Vehicle.PlateNumber })
+            .Select(t => new { t.LegType, t.Status, t.WarehouseId, t.TransportOrderId, t.Vehicle.PlateNumber, VehicleStatus = t.Vehicle.Status, t.PlannedStartDate })
             .FirstOrDefaultAsync();
         if (trip is null) return (null, "Không tìm thấy chuyến.");
         if (trip.LegType != TripLegType.Delivery) return (null, $"Chuyến #{tripId} không phải chuyến Giao hàng.");
         if (trip.WarehouseId != warehouseId) return (null, $"Chuyến #{tripId} xuất từ kho khác.");
         if (trip.Status != TripStatus.Planned)
             return (null, $"Chuyến #{tripId} không còn ở trạng thái chưa chạy (xe đã xuất phát / đã xong / đã hủy).");
-        return (new LockedTrip(trip.TransportOrderId, trip.PlateNumber), null);
+        return (new LockedTrip(trip.TransportOrderId, trip.PlateNumber, trip.VehicleStatus, trip.PlannedStartDate), null);
     }
 }
