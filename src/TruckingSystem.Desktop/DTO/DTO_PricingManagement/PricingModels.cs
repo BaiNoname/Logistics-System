@@ -5,8 +5,7 @@ public record PriceListItem(int Id, string Name, DateTime EffectiveDate, int Rul
     public string StatusText => Status switch
     {
         "Active" => "Đang áp dụng",
-        "Inactive" => "Ngừng áp dụng",
-        "Expired" => "Hết hạn",
+        "Inactive" or "Expired" => "Ngưng áp dụng",
         _ => Status,
     };
 }

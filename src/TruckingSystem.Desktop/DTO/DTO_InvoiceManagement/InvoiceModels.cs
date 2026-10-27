@@ -1,5 +1,11 @@
 namespace TruckingSystem.Desktop.DTO_InvoiceManagement
 {
+    public record InvoiceQuoteLine(string Description, decimal Quantity, decimal UnitPrice, decimal Amount);
+    public record InvoiceQuote(int TransportOrderId, string ContractCode, string? AppendixCode,
+        DateTime PricingDate, string VehicleType, decimal? DistanceKm, decimal WeightTons,
+        decimal? EstimatedFuelLiters, decimal OtherCosts, decimal TotalAmount,
+        List<InvoiceQuoteLine> Lines, string? Note);
+
     public class InvoiceOrderOption
     {
         public int Id { get; set; }

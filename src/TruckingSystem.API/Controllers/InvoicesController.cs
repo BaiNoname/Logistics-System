@@ -24,6 +24,15 @@ public class InvoicesController : ControllerBase
     public async Task<ActionResult<List<InvoiceOrderOptionDto>>> GetEligibleOrders()
         => Ok(await _service.GetEligibleOrdersAsync());
 
+    [HttpGet("orders/{orderId:int}/quote")]
+    public async Task<ActionResult<InvoiceQuoteDto>> GetQuote(int orderId)
+    {
+        try { return Ok(await _service.GetQuoteAsync(orderId)); }
+        catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+        catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
+        catch (InvalidOperationException ex) { return Conflict(new { message = ex.Message }); }
+    }
+
     [HttpPost]
     public async Task<ActionResult<InvoiceListItemDto>> Create(CreateInvoiceRequest request)
     {
