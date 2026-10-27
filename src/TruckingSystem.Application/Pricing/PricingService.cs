@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using TruckingSystem.Application.Common;
 using TruckingSystem.Application.Common.Interfaces;
 using TruckingSystem.Domain.Entities;
 
@@ -9,11 +10,11 @@ public class PricingService(IApplicationDbContext db) : IPricingService
     public Task<List<PriceListDto>> GetPriceListsAsync()
         => db.PriceLists.AsNoTracking().OrderByDescending(p => p.EffectiveDate).ThenBy(p => p.Name)
             .Select(p => new PriceListDto(p.Id, p.Name, p.EffectiveDate, p.TariffRules.Count,
-                db.Contracts.Count(c => c.PriceListId == p.Id), p.Status.ToString())).ToListAsync();
+                db.Contracts.Count(c => c.PriceListId == p.Id), p.Status == PriceListStatus.Active ? "Active" : "Inactive")).ToListAsync();
 
     public async Task<PriceListDto> CreatePriceListAsync(SavePriceListRequest request)
     {
-        PriceList.Validate(request.Name, request.EffectiveDate);
+        PriceList.Validate(request.Name, request.EffectiveDate, VnClock.Today);
         var status = ParseStatus(request.Status) ?? PriceListStatus.Active;
         var priceList = new PriceList { Name = request.Name.Trim(), EffectiveDate = request.EffectiveDate.Date, Status = status };
         db.PriceLists.Add(priceList);
@@ -26,11 +27,12 @@ public class PricingService(IApplicationDbContext db) : IPricingService
         var source = await db.PriceLists.Include(p => p.TariffRules)
             .FirstOrDefaultAsync(p => p.Id == id);
         if (source is null) return null;
-        PriceList.Validate(request.Name, source.EffectiveDate);
+        var today = VnClock.Today;
+        PriceList.Validate(request.Name, today, today);
         var copy = new PriceList
         {
             Name = request.Name.Trim(),
-            EffectiveDate = source.EffectiveDate,
+            EffectiveDate = today,
             Status = PriceListStatus.Active,
             TariffRules = source.TariffRules.Select(r => new TariffRule
             {
@@ -41,7 +43,7 @@ public class PricingService(IApplicationDbContext db) : IPricingService
                 SurchargeHazmat = r.SurchargeHazmat,
             }).ToList(),
         };
-        source.Status = PriceListStatus.Expired;
+        source.Status = PriceListStatus.Inactive;
         source.UpdatedAt = DateTime.UtcNow;
         db.PriceLists.Add(copy);
         await db.SaveChangesAsync();
@@ -50,13 +52,13 @@ public class PricingService(IApplicationDbContext db) : IPricingService
 
     public async Task<bool> UpdatePriceListAsync(int id, SavePriceListRequest request)
     {
-        PriceList.Validate(request.Name, request.EffectiveDate);
+        PriceList.Validate(request.Name, request.EffectiveDate, VnClock.Today);
         var status = ParseStatus(request.Status);
         var priceList = await db.PriceLists.FindAsync(id);
         if (priceList is null) return false;
         priceList.Name = request.Name.Trim();
         priceList.EffectiveDate = request.EffectiveDate.Date;
-        priceList.Status = status ?? priceList.Status;
+        priceList.Status = status ?? (priceList.Status == PriceListStatus.Active ? PriceListStatus.Active : PriceListStatus.Inactive);
         priceList.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync();
         return true;
@@ -135,8 +137,8 @@ public class PricingService(IApplicationDbContext db) : IPricingService
     {
         null => null,
         "Active" => PriceListStatus.Active,
-        "Inactive" => PriceListStatus.Inactive,
-        "Expired" => PriceListStatus.Expired,
+        // Older clients may still send the removed status.
+        "Inactive" or "Expired" => PriceListStatus.Inactive,
         _ => throw new ArgumentException("Trạng thái bảng giá không hợp lệ."),
     };
 

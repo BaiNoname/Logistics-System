@@ -23,6 +23,7 @@ appsettings.json
 AGENTS.md
 /tests/*
 /docs/*
+note.md
 # ==== Log/cache khác ====
 *.log
 *.tmp

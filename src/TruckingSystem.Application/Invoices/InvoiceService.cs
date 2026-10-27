@@ -35,6 +35,60 @@ public class InvoiceService : IInvoiceService
             .Select(o => new InvoiceOrderOptionDto(o.Id, o.Code, o.Customer.Name, o.PickupPoint, o.DropoffPoint))
             .ToListAsync();
 
+    public async Task<InvoiceQuoteDto> GetQuoteAsync(int orderId)
+    {
+        var order = await _db.TransportOrders.AsNoTracking()
+            .Include(o => o.Contract).ThenInclude(c => c!.TariffRule)
+            .Include(o => o.CargoLines)
+            .SingleOrDefaultAsync(o => o.Id == orderId)
+            ?? throw new KeyNotFoundException("Không tìm thấy đơn hàng.");
+        if (order.Status != TransportOrderStatus.Done)
+            throw new InvalidOperationException("Chỉ được lập hóa đơn cho đơn hàng đã hoàn thành.");
+        if (await _db.Invoices.AnyAsync(i => i.TransportOrderId == orderId && i.Status != InvoiceStatus.Cancelled))
+            throw new InvalidOperationException("Đơn hàng này đã có hóa đơn chưa hủy.");
+        var contract = order.Contract
+            ?? throw new InvalidOperationException("Đơn hàng chưa gắn hợp đồng, không thể tự tính hóa đơn.");
+        if (contract.CustomerId != order.CustomerId)
+            throw new InvalidOperationException("Hợp đồng không thuộc khách hàng của đơn.");
+
+        var trips = await _db.Trips.AsNoTracking().Include(t => t.Vehicle)
+            .Where(t => t.TransportOrderId == orderId && t.StartTime != null).ToListAsync();
+        if (trips.Count == 0)
+            throw new InvalidOperationException("Đơn hàng chưa có thời điểm bắt đầu vận chuyển.");
+        var pricingDate = trips.Min(t => t.StartTime!.Value).AddHours(7).Date;
+        if (Contract.GetStatus(contract.StartDate, contract.EndDate, pricingDate) != ContractStatus.Active)
+            throw new InvalidOperationException("Hợp đồng không có hiệu lực tại ngày bắt đầu vận chuyển.");
+        var appendix = await _db.ContractAppendices.AsNoTracking().Include(a => a.TariffRule)
+            .Where(a => a.ContractId == contract.Id && a.EffectiveDate <= pricingDate)
+            .OrderByDescending(a => a.EffectiveDate).ThenByDescending(a => a.IssueDate).ThenByDescending(a => a.Id)
+            .FirstOrDefaultAsync();
+        var tariff = appendix?.TariffRule ?? contract.TariffRule
+            ?? throw new InvalidOperationException("Hợp đồng/phụ lục chưa có chi tiết giá.");
+        var tripIds = trips.Select(t => t.Id).ToList();
+        var points = (await _db.Waypoints.AsNoTracking().Where(w => tripIds.Contains(w.TripId)).ToListAsync())
+            .ToLookup(w => w.TripId);
+        decimal? distance = 0m;
+        decimal? liters = 0m;
+        foreach (var trip in trips)
+        {
+            var km = InvoicePricing.DistanceKm(points[trip.Id]);
+            distance += km;
+            var consumption = trip.FuelConsumptionPer100KmAtStart ?? trip.Vehicle.FuelConsumptionPer100Km;
+            liters += consumption is > 0 ? km * consumption / 100m : null;
+        }
+        var source = $"HĐ {contract.Code}" + (appendix is null ? "" : $", PL {appendix.Code}")
+            + $", ngày áp dụng {pricingDate:dd/MM/yyyy}";
+        var lines = InvoicePricing.CalculateLines(order, tariff, distance, source);
+        var otherCosts = await _db.TripExpenses.Where(e => e.Trip.TransportOrderId == orderId)
+            .SumAsync(e => (decimal?)e.Amount) ?? 0m;
+        return new InvoiceQuoteDto(orderId, contract.Code, appendix?.Code, pricingDate, tariff.VehicleType,
+            distance, order.CargoLines.Sum(c => c.WeightKg) / 1000m, liters, otherCosts,
+            lines.Sum(l => l.Amount),
+            lines.Select(l => new InvoiceQuoteLineDto(l.Description, l.Quantity, l.UnitPrice, l.Amount)).ToList(),
+            distance is null ? "Chưa đủ GPS để tổng hợp quãng đường và nhiên liệu."
+                : liters is null ? "Chưa đủ định mức xe để ước tính nhiên liệu." : null);
+    }
+
     public async Task<InvoiceListItemDto> CreateAsync(CreateInvoiceRequest request)
     {
         if (request.DueDate < DateOnly.FromDateTime(VnClock.Today))
@@ -51,6 +105,14 @@ public class InvoiceService : IInvoiceService
             throw new InvalidOperationException("Đơn hàng này đã có hóa đơn chưa hủy.");
 
         var invoice = Invoice.Create(order, request.Amount);
+        var quote = await GetQuoteAsync(order.Id);
+        if (request.Amount != quote.TotalAmount)
+            throw new InvalidOperationException("Số tiền đã thay đổi hoặc không khớp hợp đồng/phụ lục. Vui lòng tải lại bảng tính trước khi lưu.");
+        invoice.TotalAmount = quote.TotalAmount;
+        invoice.Lines = quote.Lines.Select(l => new InvoiceLine
+        {
+            Description = l.Description, Quantity = l.Quantity, UnitPrice = l.UnitPrice, Amount = l.Amount
+        }).ToList();
         invoice.DueDate = request.DueDate?.ToDateTime(TimeOnly.MinValue);
         _db.Invoices.Add(invoice);
         await _db.SaveChangesAsync();

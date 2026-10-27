@@ -3,19 +3,9 @@ using TruckingSystem.Desktop.DTO_PricingManagement;
 
 namespace TruckingSystem.Desktop.GUI.GUI_PricingManagement;
 
-public class PricingControl : BaseUserControl
+public partial class PricingControl : BaseUserControl
 {
-    private readonly ApiServices _api;
-    private readonly TabControl _tabs = new() { Dock = DockStyle.Fill, AccessibleName = "Quản lý bảng giá" };
-    private readonly DataGridView _listsGrid = new() { Dock = DockStyle.Fill, AccessibleName = "Danh sách bảng giá" };
-    private readonly DataGridView _rulesGrid = new() { Dock = DockStyle.Fill, AccessibleName = "Chi tiết giá theo loại xe" };
-    private readonly ComboBox _priceList = new() { Width = 360, DropDownStyle = ComboBoxStyle.DropDownList, AccessibleName = "Bảng giá của chi tiết giá" };
-    private readonly Button _create = Theme.MakePrimaryButton("Thêm mới", 110);
-    private readonly Button _copy = Theme.MakeSecondaryButton("Tạo mới và sao chép", 200);
-    private readonly Button _edit = Theme.MakeSecondaryButton("Sửa", 85);
-    private readonly Button _delete = Theme.MakeSecondaryButton("Xóa", 85);
-    private readonly Button _refresh = Theme.MakeSecondaryButton("Làm mới", 100);
-    private readonly Label _status = new() { Dock = DockStyle.Fill, ForeColor = Theme.TextSecondary, TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true };
+    private readonly ApiServices _api = null!;
     private List<PriceListItem> _lists = new();
     private List<TariffRuleItem> _rules = new();
     private bool _busy;
@@ -28,62 +18,17 @@ public class PricingControl : BaseUserControl
     private TariffRuleItem? SelectedRule => _rulesGrid.CurrentRow?.DataBoundItem as TariffRuleItem;
     private bool CanEditRules => _rulesLoaded && CurrentList?.Status == "Active";
 
-    public PricingControl(ApiServices api)
+    public PricingControl()
     {
-        _api = api;
-        BackColor = Theme.ContentBg;
-        Padding = new Padding(20);
+        InitializeComponent();
         Theme.StyleGrid(_listsGrid);
         Theme.StyleGrid(_rulesGrid);
-        _listsGrid.AutoGenerateColumns = _rulesGrid.AutoGenerateColumns = false;
-        _listsGrid.Columns.AddRange(
-            new DataGridViewTextBoxColumn { DataPropertyName = "Name", HeaderText = "Tên bảng giá", FillWeight = 180 },
-            new DataGridViewTextBoxColumn { DataPropertyName = "EffectiveDate", HeaderText = "Ngày hiệu lực", DefaultCellStyle = new() { Format = "dd/MM/yyyy" } },
-            new DataGridViewTextBoxColumn { DataPropertyName = "StatusText", HeaderText = "Trạng thái" },
-            new DataGridViewTextBoxColumn { DataPropertyName = "RuleCount", HeaderText = "Số dòng giá" },
-            new DataGridViewTextBoxColumn { DataPropertyName = "ContractCount", HeaderText = "Số hợp đồng" });
-        _rulesGrid.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "VehicleType", HeaderText = "Loại xe", FillWeight = 140 });
-        foreach (var (property, header) in new[]
-        {
-            ("PricePerKm", "Giá/km (đ)"), ("PricePerTon", "Giá/tấn (đ)"),
-            ("SurchargeFragile", "Phụ phí dễ vỡ (đ)"), ("SurchargeHazmat", "Phụ phí nguy hiểm (đ)"),
-        })
-            _rulesGrid.Columns.Add(new DataGridViewTextBoxColumn
-            {
-                DataPropertyName = property, HeaderText = header,
-                DefaultCellStyle = new() { Format = "N2", Alignment = DataGridViewContentAlignment.MiddleRight },
-            });
+        UpdateActions();
+    }
 
-        var listsTab = new TabPage("Bảng giá") { BackColor = Color.White, Padding = new Padding(8) };
-        listsTab.Controls.Add(_listsGrid);
-        var rulesTab = new TabPage("Chi tiết giá") { BackColor = Color.White, Padding = new Padding(8) };
-        var rulesLayout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2 };
-        rulesLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        rulesLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        rulesLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        var filter = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, Padding = new Padding(0, 4, 0, 12) };
-        filter.Controls.Add(new Label { Text = "Bảng giá", AutoSize = true, Margin = new Padding(0, 6, 12, 0) });
-        filter.Controls.Add(_priceList);
-        rulesLayout.Controls.Add(filter, 0, 0);
-        rulesLayout.Controls.Add(_rulesGrid, 0, 1);
-        rulesTab.Controls.Add(rulesLayout);
-        _tabs.TabPages.AddRange(new[] { listsTab, rulesTab });
-        _tabs.SelectedIndex = 0;
-
-        var toolbar = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, WrapContents = true };
-        toolbar.Controls.Add(new Label { Text = "Quản lý bảng giá", Font = Theme.FontTitle, ForeColor = Theme.TextPrimary, AutoSize = true, Margin = new Padding(0, 0, 24, 12) });
-        toolbar.Controls.AddRange(new Control[] { _create, _copy, _edit, _delete, _refresh });
-        _delete.ForeColor = Theme.Danger;
-        var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3 };
-        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 36));
-        layout.Controls.Add(toolbar, 0, 0);
-        layout.Controls.Add(_tabs, 0, 1);
-        layout.Controls.Add(_status, 0, 2);
-        Controls.Add(layout);
-
+    public PricingControl(ApiServices api) : this()
+    {
+        _api = api;
         _create.Click += async (_, _) => await EditAsync(create: true);
         _copy.Click += async (_, _) => await CopyAsync();
         _edit.Click += async (_, _) => await EditAsync(create: false);
@@ -194,7 +139,7 @@ public class PricingControl : BaseUserControl
             else
             {
                 if (!CanEditRules || CurrentList is not { } list || !create && SelectedRule is null) return;
-                using var form = new TariffRuleForm(_api, list, create ? null : SelectedRule);
+                using var form = new TariffRuleForm(_api, list, _rules, create ? null : SelectedRule);
                 if (form.ShowDialog(FindForm()) == DialogResult.OK) await LoadAsync(list.Id);
             }
         }

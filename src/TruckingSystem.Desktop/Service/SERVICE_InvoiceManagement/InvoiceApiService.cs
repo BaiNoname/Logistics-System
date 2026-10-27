@@ -18,6 +18,9 @@ namespace TruckingSystem.Desktop.SERVICE_InvoiceManagement
         public Task<List<InvoiceOrderOption>> GetEligibleOrdersAsync()
             => _conn.GetAsync<List<InvoiceOrderOption>>("/api/invoices/eligible-orders")!;
 
+        public Task<InvoiceQuote?> GetQuoteAsync(int orderId)
+            => _conn.GetAsync<InvoiceQuote>($"/api/invoices/orders/{orderId}/quote");
+
         public Task<InvoiceListItem?> CreateAsync(int transportOrderId, decimal amount, DateTime? dueDate)
             => _conn.PostAsync<InvoiceListItem>("/api/invoices", new
             {

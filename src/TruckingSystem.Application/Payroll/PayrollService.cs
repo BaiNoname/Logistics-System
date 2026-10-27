@@ -105,7 +105,8 @@ public partial class PayrollService(IApplicationDbContext db) : IPayrollService
         var range = PayrollRules.PeriodRange(period!.Year, period.Month);
         var attendance = new MonthlyAttendance
         {
-            WorkFrom = range.From, WorkTo = range.To,
+            WorkFrom = range.From,
+            WorkTo = range.To,
             EmployeeId = employeeId,
             PayrollPeriodId = periodId,
             StandardDays = request.StandardDays,
