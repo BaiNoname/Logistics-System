@@ -218,7 +218,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                     return;
                 }
 
-                var lines = result.Trips.Select(a => $"  • Xe {a.VehiclePlate} — chở {a.QtyAssigned} (Chuyến #{a.TripId})");
+                var lines = result.Trips.Select(a => $"  • Xe {a.VehiclePlate} — chở {a.QtyAssigned:#,##0.##} (Chuyến #{a.TripId})");
                 var daysLine = result.EstimatedTripDays > 1 ? $"\n🕒 Dự kiến chuyến kéo dài ~{result.EstimatedTripDays} ngày (tuyến đường xa)." : "";
                 var summary = $"Đơn {orderCode}\n" +
                               $"Tổng cần chở: {result.TotalQtyToShip}  |  Đã gán: {result.TotalQtyAssigned}\n" +

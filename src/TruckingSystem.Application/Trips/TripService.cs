@@ -505,7 +505,7 @@ WHERE ""Id"" = {tripId}");
 
     // ================= App tài xế (đã có từ trước) =================
 
-    public async Task<ServiceResult> PingAsync(int tripId, GpsPingRequest request)
+    public async Task<ServiceResult> PingAsync(int tripId, GpsPingRequest request, string? publicTrackingBaseUrl = null)
     {
         var trip = await _db.Trips.FirstOrDefaultAsync(t => t.Id == tripId);
         if (trip is null) return new ServiceResult(false, "Không tìm thấy chuyến.");
@@ -531,6 +531,9 @@ WHERE ""Id"" = {tripId}");
         if (trip.Status == TripStatus.Planned)
         {
             var start = await StartAsync(tripId);
+            // App tự bắt đầu chuyến qua GPS -> lịch Google chuyển "Đang chạy" (xanh) ngay, không chờ báo xong.
+            if (start.Success && !string.IsNullOrWhiteSpace(publicTrackingBaseUrl))
+                await ResyncCalendarIfSyncedAsync(tripId, publicTrackingBaseUrl);
             if (!start.Success)
             {
                 // Ping khác (gửi cùng lúc) đã bắt đầu chuyến rồi -> vẫn ghi điểm GPS này.
@@ -1133,42 +1136,74 @@ WHERE ""Id"" = {tripId}");
 
     public async Task<CalendarSyncResultDto> SyncCalendarAsync(int tripId, string publicTrackingBaseUrl)
     {
-        var trip = await _db.Trips
-            .Include(t => t.TransportOrder).ThenInclude(o => o.Customer)
-            .Include(t => t.DriverEmployee).ThenInclude(e => e.DriverProfile)
-            .FirstOrDefaultAsync(t => t.Id == tripId);
-
+        var trip = await LoadTripForCalendarAsync(tripId);
         if (trip is null)
             return new CalendarSyncResultDto(false, "Không tìm thấy chuyến.", false, "Không tìm thấy chuyến.");
-        // Chuyến đã xong / đã hủy: không tạo lại sự kiện (Hủy đơn, Trả khách tại kho đã cố ý gỡ lịch).
-        if (trip.Status is TripStatus.Completed or TripStatus.Cancelled)
-        {
-            const string closed = "Chuyến đã hoàn tất hoặc đã hủy — không đồng bộ lại lịch (lịch tự cập nhật giờ thật khi chuyến bắt đầu / hoàn tất).";
-            return new CalendarSyncResultDto(false, closed, false, closed);
-        }
-        return await SyncCalendarCoreAsync(trip, publicTrackingBaseUrl, onlyExisting: false);
+        // Chuyến đã xong / đã hủy: chỉ CẬP NHẬT sự kiện đã có (đổi màu vàng / đỏ), không tạo mới.
+        return await SyncCalendarCoreAsync(trip, publicTrackingBaseUrl,
+            onlyExisting: trip.Status is TripStatus.Completed or TripStatus.Cancelled);
     }
 
-    /// <summary>Chuyến ĐÃ TỪNG đồng bộ lịch -> tự cập nhật lại giờ sự kiện khi chuyến bắt đầu /
-    /// hoàn tất (trước đây lịch giữ mãi giờ dự kiến cũ, VD chặng Giao bị dời vài ngày vì chờ
-    /// nhập kho mà lịch khách vẫn hiện ngày cũ). Chỉ cập nhật sự kiện đã có, không tạo mới;
-    /// lỗi Calendar không ảnh hưởng nghiệp vụ.</summary>
+    /// <summary>Chuyến ĐÃ TỪNG đồng bộ lịch -> TỰ cập nhật sự kiện mỗi khi chuyến đổi trạng thái
+    /// (bắt đầu, báo xong, duyệt / từ chối, hoàn tất, hủy, trả tại kho, đổi hạn giao): ngày, màu, nội dung.
+    /// Chỉ cập nhật sự kiện đã có, không tạo mới; lỗi Calendar không ảnh hưởng nghiệp vụ.</summary>
     public async Task ResyncCalendarIfSyncedAsync(int tripId, string publicTrackingBaseUrl)
     {
         try
         {
             if (!await _db.TripCalendarEvents.AnyAsync(e => e.TripId == tripId)) return;
-            // AsNoTracking: trạng thái / giờ đến nơi vừa ghi bằng ExecuteUpdate (TryClaimStatusAsync)
-            // -> bản chuyến đang được theo dõi trong cùng request còn giờ CŨ; phải đọc lại từ DB.
-            var trip = await _db.Trips.AsNoTracking()
-                .Include(t => t.TransportOrder).ThenInclude(o => o.Customer)
-                .Include(t => t.DriverEmployee).ThenInclude(e => e.DriverProfile)
-                .FirstOrDefaultAsync(t => t.Id == tripId);
-            if (trip is null || trip.Status == TripStatus.Cancelled) return;
+            var trip = await LoadTripForCalendarAsync(tripId);
+            if (trip is null) return;
             await SyncCalendarCoreAsync(trip, publicTrackingBaseUrl, onlyExisting: true);
         }
         catch { /* Calendar không phải nguồn dữ liệu chính */ }
     }
+
+    /// <summary>Đồng bộ lịch cho MỌI chuyến của 1 đơn (sau Chia xe / Hủy đơn).
+    /// createMissing = tạo sự kiện cho chuyến chưa có (chuyến còn chạy); onlyIfOrderSynced = chỉ tạo
+    /// khi đơn đã từng đồng bộ lịch (VD chuyến Trả hàng sinh ra lúc hủy đơn).</summary>
+    public async Task SyncOrderCalendarsAsync(int orderId, string publicTrackingBaseUrl, bool createMissing, bool onlyIfOrderSynced)
+    {
+        try
+        {
+            var tripIds = await _db.Trips.Where(t => t.TransportOrderId == orderId).Select(t => t.Id).ToListAsync();
+            if (tripIds.Count == 0) return;
+            var syncedIds = (await _db.TripCalendarEvents.Where(e => tripIds.Contains(e.TripId)).Select(e => e.TripId).ToListAsync()).ToHashSet();
+            var allowCreate = createMissing && (!onlyIfOrderSynced || syncedIds.Count > 0);
+            foreach (var id in tripIds)
+            {
+                var trip = await LoadTripForCalendarAsync(id);
+                if (trip is null) continue;
+                var closed = trip.Status is TripStatus.Completed or TripStatus.Cancelled;
+                if (!syncedIds.Contains(id) && (!allowCreate || closed)) continue;
+                try { await SyncCalendarCoreAsync(trip, publicTrackingBaseUrl, onlyExisting: !allowCreate || closed); }
+                catch { /* bỏ qua chuyến lỗi, đồng bộ tiếp chuyến khác */ }
+            }
+        }
+        catch { /* Calendar không phải nguồn dữ liệu chính */ }
+    }
+
+    /// <summary>Đọc lại chuyến từ DB (AsNoTracking: trạng thái / giờ vừa ghi bằng ExecuteUpdate) kèm đủ
+    /// thông tin để ghi lên lịch: đơn, khách, kho, địa điểm, xe, tài xế, hàng hóa.</summary>
+    private Task<Trip?> LoadTripForCalendarAsync(int tripId) => _db.Trips.AsNoTracking()
+        .Include(t => t.TransportOrder).ThenInclude(o => o.Customer)
+        .Include(t => t.TransportOrder).ThenInclude(o => o.PickupLocation)
+        .Include(t => t.TransportOrder).ThenInclude(o => o.DropoffLocation)
+        .Include(t => t.Warehouse)
+        .Include(t => t.Vehicle)
+        .Include(t => t.TripLines).ThenInclude(l => l.CargoLine)
+        .Include(t => t.DriverEmployee).ThenInclude(e => e.DriverProfile)
+        .FirstOrDefaultAsync(t => t.Id == tripId);
+
+    /// <summary>Màu sự kiện Google Calendar theo trạng thái chuyến (colorId chuẩn của Google).</summary>
+    private static (string ColorId, string Icon, string Text) CalendarStatus(TripStatus status) => status switch
+    {
+        TripStatus.InProgress => ("10", "🚚", "Đang chạy"),                          // Basil — xanh lá
+        TripStatus.PendingConfirmation => ("10", "🚚", "Tài xế đã báo xong — chờ duyệt"),
+        TripStatus.Completed => ("5", "✅", "Hoàn tất"),                             // Banana — vàng
+        TripStatus.Cancelled => ("11", "❌", "Đã hủy"),                              // Tomato — đỏ
+        _ => ("8", "⏳", "Chưa chạy"),                                               // Graphite — xám
+    };
 
     private async Task<CalendarSyncResultDto> SyncCalendarCoreAsync(Trip trip, string publicTrackingBaseUrl, bool onlyExisting)
     {
@@ -1186,39 +1221,75 @@ WHERE ""Id"" = {tripId}");
             TripLegType.Return => order.PickupPoint, // trả về đúng điểm đã lấy hàng ban đầu
             _ => order.DropoffPoint,
         };
+        var (from, to) = TripRouteText.For(trip.LegType, trip.Warehouse?.Name,
+            order.PickupLocation?.Name, order.PickupPoint, order.DropoffLocation?.Name, order.DropoffPoint);
 
-        // Ưu tiên giờ THẬT nếu chuyến đã/đang chạy; chưa chạy thì dùng hẹn giao
-        // của đơn làm mốc tạm; cuối cùng mới rơi về "1 giờ nữa" cho có giá trị
-        // hiển thị hợp lý trên Calendar (không để trống ngày giờ).
-        // Hạn giao cam kết lưu theo GIỜ VIỆT NAM (người dùng nhập) -> đổi sang UTC.
-        var committedUtc = order.CommittedDeliveryDate is { } committed ? VnClock.VnToUtc(committed) : (DateTime?)null;
-        // Hạn giao chỉ là mốc hợp lý cho chặng GIAO; chặng Lấy hàng / Trả hàng chưa chạy
-        // không lấy hạn giao làm giờ (trước đây chặng lấy hàng hiện đúng ngày hạn giao).
-        // Hạn giao thường chỉ có NGÀY (0h) -> đặt 8h sáng ngày đó (giờ VN), không phải nửa đêm;
-        // mốc đã qua (chuyến bị dời, VD chờ nhập kho) thì lấy 1 giờ nữa — không hiện lịch ở quá khứ.
-        if (committedUtc is not null && order.CommittedDeliveryDate is { } committedVn && committedVn.TimeOfDay == TimeSpan.Zero)
-            committedUtc = VnClock.VnToUtc(committedVn.Date.AddHours(8));
-        // Chặng Lấy hàng / Trả hàng chưa chạy: dùng NGÀY XUẤT PHÁT DỰ KIẾN chọn lúc Chia xe (8h sáng giờ VN)
-        // — trước đây rơi về "1 giờ nữa" nên lịch tài xế / khách hiện sai ngày khi chia xe trước vài ngày.
-        DateTime? plannedUtc = trip.PlannedStartDate is DateTime plannedVn ? VnClock.VnToUtc(plannedVn.Date.AddHours(8)) : null;
-        var anchorUtc = trip.LegType == TripLegType.Delivery ? committedUtc ?? plannedUtc : plannedUtc;
-        if (anchorUtc is not null && anchorUtc < DateTime.UtcNow) anchorUtc = null;
-        var startUtc = trip.StartTime ?? anchorUtc ?? DateTime.UtcNow.AddHours(1);
-        var endUtc = trip.EndTime ?? startUtc.AddHours(2);
+        // Hệ thống lập kế hoạch theo NGÀY (chưa có giờ xuất phát) -> sự kiện CẢ NGÀY, không bịa giờ:
+        //   Chưa chạy: từ ngày xuất phát dự kiến, dài đúng số ngày chuyến (8 giờ lái / ngày).
+        //   Đang chạy: từ ngày bắt đầu thật tới ngày dự kiến xong (quá hạn thì kéo tới hôm nay).
+        //   Hoàn tất: từ ngày bắt đầu thật tới ngày kết thúc thật. Giờ thật ghi trong nội dung.
+        var today = VnClock.Today;
+        var days = DeliveryDeadlineRules.DaysFor(new[] { trip });
+        DateTime? VnDate(DateTime? utc) => utc is DateTime u ? DeliveryDeadlineRules.UtcToVnDate(u) : null;
+        var plannedDay = trip.PlannedStartDate?.Date ?? today;
+        DateTime startDay, lastDay;
+        if (VnDate(trip.StartTime) is DateTime started)
+        {
+            startDay = started;
+            lastDay = VnDate(trip.EndTime) ?? (started.AddDays(days - 1) < today && trip.Status != TripStatus.Cancelled ? today : started.AddDays(days - 1));
+        }
+        else if (trip.Status == TripStatus.Completed && VnDate(trip.EndTime) is DateTime ended)
+        {
+            startDay = lastDay = ended; // trả khách tại kho: không chạy, đóng ngay
+        }
+        else
+        {
+            // Chưa chạy mà ngày dự kiến đã qua -> hiện từ hôm nay (vẫn còn phải chạy).
+            startDay = trip.Status == TripStatus.Planned && plannedDay < today ? today : plannedDay;
+            lastDay = startDay.AddDays(days - 1);
+        }
+        if (lastDay < startDay) lastDay = startDay;
 
+        var (colorId, icon, statusText) = CalendarStatus(trip.Status);
+        string F(DateTime? utc) => utc is DateTime u ? DateTime.SpecifyKind(u, DateTimeKind.Utc).AddHours(7).ToString("HH:mm dd/MM/yyyy") : "—";
         var trackingLink = $"{publicTrackingBaseUrl.TrimEnd('/')}/track.html?token={order.PublicTrackingToken}";
-        var description = $"Đơn hàng: {order.Code}\nChặng: {legText}\nĐịa điểm: {location}\n\n🔗 Theo dõi trực tiếp: {trackingLink}";
-        var title = $"🚚 {legText} — Đơn {order.Code}";
+        var cargo = string.Join("\n", trip.TripLines.Select(l => $"  • {l.CargoLine.CargoType}: {l.QtyPlanned:0.##}"));
+        var common =
+            $"Trạng thái: {icon} {statusText}\n" +
+            $"Chặng: {legText}\n" +
+            $"Từ: {from}\nĐến: {to}\n" +
+            $"Ngày xuất phát dự kiến: {plannedDay:dd/MM/yyyy} (~{days} ngày)\n" +
+            (order.CommittedDeliveryDate is DateTime due ? $"Hạn giao: {due:dd/MM/yyyy}\n" : "") +
+            (trip.StartTime.HasValue ? $"Bắt đầu thực tế: {F(trip.StartTime)}\n" : "") +
+            (trip.EndTime.HasValue ? $"Kết thúc thực tế: {F(trip.EndTime)}\n" : "") +
+            (trip.Status == TripStatus.Cancelled && !string.IsNullOrWhiteSpace(trip.CancelReason) ? $"Lý do hủy: {trip.CancelReason}\n" : "");
+
+        // Lịch TÀI XẾ: có MÃ CHUYẾN + địa chỉ máy chủ để nhập vào app tài xế.
+        var driverTitle = $"{icon} [Chuyến #{tripId}] {legText} — Đơn {order.Code}";
+        var driverDescription =
+            $"📱 MÃ CHUYẾN (nhập vào app tài xế): {tripId}\n" +
+            $"🌐 Server URL: {publicTrackingBaseUrl.TrimEnd('/')}\n\n" +
+            $"Đơn hàng: {order.Code} — {order.Customer.Name}\n" +
+            $"Xe: {trip.Vehicle?.PlateNumber ?? "—"}\n" +
+            common +
+            (cargo.Length > 0 ? $"Hàng hóa:\n{cargo}\n" : "") +
+            $"\n🔗 Theo dõi: {trackingLink}";
+        // Lịch KHÁCH HÀNG: không cần mã chuyến, có link theo dõi trực tiếp.
+        var customerTitle = $"{icon} {legText} — Đơn {order.Code}";
+        var customerDescription = $"Đơn hàng: {order.Code}\n" + common + $"\n🔗 Theo dõi trực tiếp: {trackingLink}";
+
+        var startUtc = DateTime.SpecifyKind(startDay, DateTimeKind.Utc);
+        var endUtcExclusive = DateTime.SpecifyKind(lastDay.AddDays(1), DateTimeKind.Utc);
 
         var driverCalendarId = trip.DriverEmployee.DriverProfile?.GoogleCalendarId;
         var (driverSynced, driverMessage) = string.IsNullOrWhiteSpace(driverCalendarId)
             ? (false, "Tài xế này chưa khai báo Google Calendar ID.")
-            : await SyncOneCalendarAsync(tripId, driverCalendarId!, title, description, startUtc, endUtc, location, onlyExisting);
+            : await SyncOneCalendarAsync(tripId, driverCalendarId!, driverTitle, driverDescription, startUtc, endUtcExclusive, location, colorId, onlyExisting);
 
         var customerCalendarId = order.Customer.GoogleCalendarId;
         var (customerSynced, customerMessage) = string.IsNullOrWhiteSpace(customerCalendarId)
             ? (false, "Khách hàng này chưa khai báo Google Calendar ID.")
-            : await SyncOneCalendarAsync(tripId, customerCalendarId!, title, description, startUtc, endUtc, location, onlyExisting);
+            : await SyncOneCalendarAsync(tripId, customerCalendarId!, customerTitle, customerDescription, startUtc, endUtcExclusive, location, colorId, onlyExisting);
 
         return new CalendarSyncResultDto(driverSynced, driverMessage, customerSynced, customerMessage);
     }
@@ -1232,14 +1303,15 @@ WHERE ""Id"" = {tripId}");
     /// này (vốn đã được thiết kế sẵn từ đầu đúng cho việc này, hỗ trợ mở rộng
     /// thêm loại lịch khác sau này mà không cần đổi schema Trip nữa).</summary>
     private async Task<(bool Success, string? Message)> SyncOneCalendarAsync(
-        int tripId, string calendarId, string title, string description, DateTime startUtc, DateTime endUtc, string? location,
-        bool onlyExisting = false)
+        int tripId, string calendarId, string title, string description, DateTime startDay, DateTime endDayExclusive, string? location,
+        string colorId, bool onlyExisting = false)
     {
         var existing = await _db.TripCalendarEvents.FirstOrDefaultAsync(e => e.TripId == tripId && e.CalendarId == calendarId);
         if (existing is null && onlyExisting) return (false, "Chưa đồng bộ lịch này trước đó — bỏ qua.");
 
         var result = await _calendarService.CreateOrUpdateEventAsync(new CalendarEventRequest(
-            calendarId, existing?.GoogleEventId, title, description, startUtc, endUtc, location));
+            calendarId, existing?.GoogleEventId, title, description, startDay, endDayExclusive, location,
+            AllDay: true, ColorId: colorId));
 
         if (!result.Success) return (false, result.Message);
 
@@ -1658,7 +1730,7 @@ WHERE ""Id"" = {tripId}");
             vehicles, drivers, null);
     }
 
-    public async Task<TripActionResult> ReassignAsync(int tripId, ReassignTripRequest request)
+    public async Task<TripActionResult> ReassignAsync(int tripId, ReassignTripRequest request, string? publicTrackingBaseUrl = null)
     {
         var orderId = await _db.Trips.Where(t => t.Id == tripId).Select(t => (int?)t.TransportOrderId).FirstOrDefaultAsync();
         if (orderId is null) return new TripActionResult(false, "Không tìm thấy chuyến.");
@@ -1717,22 +1789,47 @@ WHERE ""Id"" = {tripId}");
         await _db.SaveChangesAsync();
         await transaction.CommitAsync();
 
-        // Lịch Google cũ ghi xe/tài xế cũ -> gỡ (đồng bộ lại sau). Lỗi lịch không ảnh hưởng.
-        await RemoveCalendarEventsAsync(affectedIds);
+        // Lịch Google: gỡ sự kiện khỏi lịch TÀI XẾ CŨ, giữ lịch khách hàng; nếu chuyến đã từng đồng bộ thì
+        // tự tạo sự kiện cho TÀI XẾ MỚI (có mã chuyến để mở app) + cập nhật xe mới trên lịch khách.
+        var calendarNote = "";
+        try
+        {
+            if (await _db.TripCalendarEvents.AnyAsync(e => affectedIds.Contains(e.TripId)))
+            {
+                var keep = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                var newDriverCalendar = await _db.DriverProfiles.Where(dp => dp.EmployeeId == request.DriverEmployeeId)
+                    .Select(dp => dp.GoogleCalendarId).FirstOrDefaultAsync();
+                var customerCalendar = await _db.Trips.Where(t => t.Id == tripId)
+                    .Select(t => t.TransportOrder.Customer.GoogleCalendarId).FirstOrDefaultAsync();
+                if (!string.IsNullOrWhiteSpace(newDriverCalendar)) keep.Add(newDriverCalendar.Trim());
+                if (!string.IsNullOrWhiteSpace(customerCalendar)) keep.Add(customerCalendar.Trim());
+                await RemoveCalendarEventsAsync(affectedIds, keep);
+                if (!string.IsNullOrWhiteSpace(publicTrackingBaseUrl))
+                {
+                    foreach (var id in affectedIds)
+                        if (await LoadTripForCalendarAsync(id) is { } t)
+                            await SyncCalendarCoreAsync(t, publicTrackingBaseUrl, onlyExisting: false);
+                    calendarNote = " Lịch Google đã chuyển sang tài xế mới.";
+                }
+            }
+        }
+        catch { /* lịch không phải nguồn dữ liệu chính */ }
 
         return new TripActionResult(true,
             $"Đã đổi sang xe/tài xế mới cho chuyến #{string.Join(", #", affectedIds)}." +
-            " Nếu đã gửi link / đồng bộ lịch cho tài xế cũ, hãy gửi lại cho tài xế mới.");
+            (calendarNote.Length > 0 ? calendarNote : " Nếu đã gửi mã chuyến cho tài xế cũ, hãy gửi lại cho tài xế mới."));
     }
 
     /// <summary>Gỡ sự kiện Google Calendar của các chuyến (best-effort). CHỈ xóa bản ghi
     /// của sự kiện đã gỡ được trên Google — gỡ lỗi thì giữ bản ghi để lần sau gỡ lại /
     /// đồng bộ đè, không để sự kiện "mồ côi" mà hệ thống không còn biết.</summary>
-    private async Task RemoveCalendarEventsAsync(List<int> tripIds)
+    private async Task RemoveCalendarEventsAsync(List<int> tripIds, ISet<string>? keepCalendarIds = null)
     {
         try
         {
-            var events = await _db.TripCalendarEvents.Where(e => tripIds.Contains(e.TripId)).ToListAsync();
+            var events = (await _db.TripCalendarEvents.Where(e => tripIds.Contains(e.TripId)).ToListAsync())
+                .Where(e => keepCalendarIds is null || !keepCalendarIds.Contains(e.CalendarId.Trim()))
+                .ToList();
             var removed = new List<TripCalendarEvent>();
             foreach (var ev in events)
             {
@@ -1797,7 +1894,7 @@ WHERE ""Id"" = {tripId}");
         await ReleaseVehicleIfIdleAsync(trip);
         await _db.SaveChangesAsync();
         await transaction.CommitAsync();
-        await RemoveCalendarEventsAsync(new List<int> { trip.Id }); // chuyến không chạy nữa -> gỡ lịch tài xế
+        // Lịch Google: KHÔNG gỡ nữa — controller cập nhật sự kiện sang "Hoàn tất" (màu vàng).
         return new TripActionResult(true, "Đã trả hàng cho khách tại kho — chuyến trả hàng đóng lại, xe và tài xế được giải phóng.");
     }
 }

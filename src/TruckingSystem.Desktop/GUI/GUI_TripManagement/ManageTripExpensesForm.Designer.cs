@@ -24,7 +24,7 @@
             lblAmount = new System.Windows.Forms.Label();
             lblNote = new System.Windows.Forms.Label();
             cboType = new System.Windows.Forms.ComboBox();
-            numAmount = new System.Windows.Forms.NumericUpDown();
+            numAmount = new TruckingSystem.Desktop.Common.NumberBox();
             txtNote = new System.Windows.Forms.TextBox();
             btnAddExpense = new System.Windows.Forms.Button();
             btnDeleteExpense = new System.Windows.Forms.Button();
@@ -136,6 +136,7 @@
             numAmount.Maximum = new decimal(new int[] { 999999999, 0, 0, 0 });
             numAmount.Name = "numAmount";
             numAmount.TabIndex = 4;
+            numAmount.IsMoney = true;
             //
             // txtNote
             //
@@ -234,7 +235,7 @@
         private System.Windows.Forms.Label lblAmount;
         private System.Windows.Forms.Label lblNote;
         private System.Windows.Forms.ComboBox cboType;
-        private System.Windows.Forms.NumericUpDown numAmount;
+        private TruckingSystem.Desktop.Common.NumberBox numAmount;
         private System.Windows.Forms.TextBox txtNote;
         private System.Windows.Forms.Button btnAddExpense;
         private System.Windows.Forms.Button btnDeleteExpense;

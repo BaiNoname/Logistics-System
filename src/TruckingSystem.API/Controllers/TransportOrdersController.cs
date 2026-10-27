@@ -79,6 +79,9 @@ public class TransportOrdersController : ControllerBase
     public async Task<ActionResult<OrderActionResult>> Cancel(int id)
     {
         var result = await _service.CancelAsync(id);
+        // Lịch Google: các chuyến bị hủy chuyển màu ĐỎ (không xóa nữa); chuyến Trả hàng mới sinh ra được
+        // tạo sự kiện nếu đơn đã từng đồng bộ lịch.
+        if (result.Success) await _tripService.SyncOrderCalendarsAsync(id, PublicBaseUrl, createMissing: true, onlyIfOrderSynced: true);
         return result.Success ? Ok(result) : BadRequest(result);
     }
 
@@ -106,14 +109,8 @@ public class TransportOrdersController : ControllerBase
             User.FindFirstValue(ClaimTypes.NameIdentifier), User.FindFirstValue(ClaimTypes.Name));
         if (result.Success)
         {
-            // Lịch Google của chặng Giao chưa chạy lấy hạn giao làm mốc giờ -> đồng bộ lại (nếu đã đồng bộ).
-            var order = await _service.GetByIdAsync(id);
-            var baseUrl = $"{Request.Scheme}://{Request.Host}";
-            foreach (var trip in order?.Trips.Where(t => t.LegType == "Delivery" && t.Status == "Planned") ?? Enumerable.Empty<TripSummaryDto>())
-            {
-                try { await _tripService.ResyncCalendarIfSyncedAsync(trip.Id, baseUrl); }
-                catch { /* lịch không phải dữ liệu chính — không làm hỏng thao tác đổi hạn */ }
-            }
+            // Lịch Google ghi hạn giao trong nội dung sự kiện -> cập nhật các chuyến đã đồng bộ.
+            await _tripService.SyncOrderCalendarsAsync(id, PublicBaseUrl, createMissing: false, onlyIfOrderSynced: false);
         }
         return result.Success ? Ok(result) : BadRequest(result);
     }
@@ -132,6 +129,11 @@ public class TransportOrdersController : ControllerBase
     {
         var result = await _allocationService.AllocateAsync(id, acceptLate,
             User.FindFirstValue(ClaimTypes.NameIdentifier), User.FindFirstValue(ClaimTypes.Name), plannedStart);
+        // Chia xe xong -> TỰ tạo sự kiện lịch (màu xám "Chưa chạy") cho tài xế / khách đã khai Google Calendar ID:
+        // tài xế nhận ngay MÃ CHUYẾN để mở app, không phải chờ Vận hành bấm Đồng bộ lịch.
+        if (result.Success) await _tripService.SyncOrderCalendarsAsync(id, PublicBaseUrl, createMissing: true, onlyIfOrderSynced: false);
         return result.Success ? Ok(result) : BadRequest(result);
     }
+
+    private string PublicBaseUrl => PublicUrl.For(Request);
 }

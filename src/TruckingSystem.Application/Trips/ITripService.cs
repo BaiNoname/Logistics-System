@@ -1,4 +1,4 @@
-namespace TruckingSystem.Application.Trips;
+﻿namespace TruckingSystem.Application.Trips;
 
 public interface ITripService
 {
@@ -36,7 +36,7 @@ public interface ITripService
     Task<TripActionResult> DeleteFuelLogAsync(int fuelLogId);
 
     // ---- App tài xế (đã có từ trước, giữ nguyên chữ ký) ----
-    Task<ServiceResult> PingAsync(int tripId, GpsPingRequest request);
+    Task<ServiceResult> PingAsync(int tripId, GpsPingRequest request, string? publicTrackingBaseUrl = null);
 
     /// <summary>Tài xế báo "đã xong" — KHÔNG hoàn tất ngay, chuyển sang
     /// PendingConfirmation (Chờ xác nhận) và tạo thông báo cho Vận hành; Vận
@@ -80,6 +80,9 @@ public interface ITripService
     /// <summary>Chuyến đã từng đồng bộ lịch -> cập nhật lại giờ sự kiện (gọi sau Bắt đầu / Hoàn tất / Duyệt).</summary>
     Task ResyncCalendarIfSyncedAsync(int tripId, string publicTrackingBaseUrl);
 
+    /// <summary>Đồng bộ lịch cho mọi chuyến của 1 đơn (sau Chia xe / Hủy đơn).</summary>
+    Task SyncOrderCalendarsAsync(int orderId, string publicTrackingBaseUrl, bool createMissing, bool onlyIfOrderSynced);
+
     /// <summary>Kho vừa đổi tọa độ -> tính lại ước tính (km, thời gian) cho mọi chuyến CHƯA CHẠY đi qua kho.
     /// Trả về (số chuyến tính lại được, số chuyến không tính được).</summary>
     Task<(int Updated, int Failed)> RecalculatePlannedEstimatesForWarehouseAsync(int warehouseId);
@@ -100,7 +103,7 @@ public interface ITripService
     /// <summary>Danh sách xe / tài xế có thể thay cho chuyến chưa chạy (kèm lý do không dùng được).</summary>
     Task<ReassignOptionsDto> GetReassignOptionsAsync(int tripId);
     /// <summary>Đổi xe và/hoặc tài xế cho chuyến chưa chạy (kiểm tra lại đủ điều kiện như Chia xe).</summary>
-    Task<TripActionResult> ReassignAsync(int tripId, ReassignTripRequest request);
+    Task<TripActionResult> ReassignAsync(int tripId, ReassignTripRequest request, string? publicTrackingBaseUrl = null);
     /// <summary>Chuyến TRẢ HÀNG chưa chạy -> khách nhận lại hàng ngay tại kho: xuất kho,
     /// đóng chuyến, trả xe/tài xế (dùng khi xe của chuyến trả hàng không chạy được).</summary>
     Task<TripActionResult> ReturnAtWarehouseAsync(int tripId, string? userName);

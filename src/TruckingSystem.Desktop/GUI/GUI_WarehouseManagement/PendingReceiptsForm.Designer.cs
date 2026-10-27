@@ -28,7 +28,7 @@
             manualBar = new System.Windows.Forms.TableLayoutPanel();
             lblManualTitle = new System.Windows.Forms.Label();
             lblQty = new System.Windows.Forms.Label();
-            numQty = new System.Windows.Forms.NumericUpDown();
+            numQty = new TruckingSystem.Desktop.Common.NumberBox();
             lblManualHint = new System.Windows.Forms.Label();
             gridBins = new System.Windows.Forms.DataGridView();
             bottomBar = new System.Windows.Forms.TableLayoutPanel();
@@ -339,7 +339,7 @@
         private System.Windows.Forms.TableLayoutPanel manualBar;
         private System.Windows.Forms.Label lblManualTitle;
         private System.Windows.Forms.Label lblQty;
-        private System.Windows.Forms.NumericUpDown numQty;
+        private TruckingSystem.Desktop.Common.NumberBox numQty;
         private System.Windows.Forms.Label lblManualHint;
         private System.Windows.Forms.DataGridView gridBins;
         private System.Windows.Forms.TableLayoutPanel bottomBar;

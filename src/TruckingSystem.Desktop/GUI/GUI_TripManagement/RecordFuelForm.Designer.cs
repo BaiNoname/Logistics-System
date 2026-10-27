@@ -39,7 +39,7 @@ partial class RecordFuelForm
         lblProvider = new System.Windows.Forms.Label();
         cboProvider = new System.Windows.Forms.ComboBox();
         lblLiters = new System.Windows.Forms.Label();
-        numLiters = new System.Windows.Forms.NumericUpDown();
+        numLiters = new TruckingSystem.Desktop.Common.NumberBox();
         lblStationName = new System.Windows.Forms.Label();
         txtStationName = new System.Windows.Forms.TextBox();
         lblPrice = new System.Windows.Forms.Label();
@@ -454,7 +454,7 @@ partial class RecordFuelForm
     private System.Windows.Forms.Label lblProvider;
     private System.Windows.Forms.ComboBox cboProvider;
     private System.Windows.Forms.Label lblLiters;
-    private System.Windows.Forms.NumericUpDown numLiters;
+    private TruckingSystem.Desktop.Common.NumberBox numLiters;
     private System.Windows.Forms.Label lblStationName;
     private System.Windows.Forms.TextBox txtStationName;
     private System.Windows.Forms.Label lblPrice;

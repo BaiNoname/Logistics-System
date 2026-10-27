@@ -600,10 +600,8 @@ public class TransportOrderService : ITransportOrderService
 
         await transaction.CommitAsync();
 
-        // Gỡ sự kiện Google Calendar của các chuyến vừa hủy (khách/tài xế không còn thấy
-        // lịch giao hàng + link theo dõi của đơn đã hủy). Lỗi Calendar không chặn việc hủy.
-        try { await RemoveCalendarEventsAsync(cancelledTripIds); }
-        catch { /* đơn ĐÃ hủy xong (đã Commit) — lỗi dọn lịch không được biến thành "hủy thất bại" */ }
+        // Lịch Google: KHÔNG gỡ sự kiện nữa — controller cập nhật các chuyến vừa hủy sang màu ĐỎ "Đã hủy"
+        // (tài xế / khách vẫn thấy chuyến đã bị hủy thay vì sự kiện biến mất không rõ lý do).
 
         if (returnedAtWarehouse > 0)
         {
@@ -611,23 +609,6 @@ public class TransportOrderService : ITransportOrderService
             cancelNote = cancelNote is null ? "Đã hủy đơn. " + note : cancelNote + "\n" + note;
         }
         return new OrderActionResult(true, cancelNote);
-    }
-
-    private async Task RemoveCalendarEventsAsync(List<int> tripIds)
-    {
-        if (tripIds.Count == 0) return;
-        var events = await _db.TripCalendarEvents.Where(e => tripIds.Contains(e.TripId)).ToListAsync();
-        if (events.Count == 0) return;
-        // Chỉ xóa bản ghi của sự kiện đã gỡ ĐƯỢC trên Google (gỡ lỗi thì giữ để biết còn sót).
-        var removed = new List<TripCalendarEvent>();
-        foreach (var ev in events)
-        {
-            try { if (await _calendarService.DeleteEventAsync(ev.CalendarId, ev.GoogleEventId)) removed.Add(ev); }
-            catch { /* Calendar không phải nguồn dữ liệu chính */ }
-        }
-        if (removed.Count == 0) return;
-        _db.TripCalendarEvents.RemoveRange(removed);
-        await _db.SaveChangesAsync();
     }
 
     /// <summary>Hợp đồng của đơn (tuỳ chọn): phải tồn tại, của ĐÚNG khách hàng và đang hiệu lực

@@ -17,44 +17,44 @@ partial class ManualStockForm
     /// trạng thái / tiêu đề lịch sử + lọc + Hoàn tác / lưới lịch sử. 3 lưới chia phần cao còn lại theo %.</summary>
     private void InitializeComponent()
     {
-        root = new TableLayoutPanel();
-        lblTitle = new Label();
-        inputs = new TableLayoutPanel();
-        lblOrder = new Label();
-        lblCargoLine = new Label();
-        lblQty = new Label();
-        cboOrder = new ComboBox();
-        cboCargoLine = new ComboBox();
-        numQty = new NumericUpDown();
-        lblFlowTitle = new Label();
-        lblFlowSummary = new Label();
-        gridTrips = new DataGridView();
-        lblBinsTitle = new Label();
-        gridBins = new DataGridView();
-        actionBar = new TableLayoutPanel();
-        btnReceive = new Button();
-        btnIssue = new Button();
-        lblStatus = new Label();
-        historyBar = new TableLayoutPanel();
-        lblHistoryTitle = new Label();
-        chkAllOrders = new CheckBox();
-        btnReverse = new Button();
+        root = new System.Windows.Forms.TableLayoutPanel();
+        lblTitle = new System.Windows.Forms.Label();
+        inputs = new System.Windows.Forms.TableLayoutPanel();
+        lblOrder = new System.Windows.Forms.Label();
+        lblCargoLine = new System.Windows.Forms.Label();
+        lblQty = new System.Windows.Forms.Label();
+        cboOrder = new System.Windows.Forms.ComboBox();
+        cboCargoLine = new System.Windows.Forms.ComboBox();
+        numQty = new TruckingSystem.Desktop.Common.NumberBox();
+        lblFlowTitle = new System.Windows.Forms.Label();
+        lblFlowSummary = new System.Windows.Forms.Label();
+        gridTrips = new System.Windows.Forms.DataGridView();
+        lblBinsTitle = new System.Windows.Forms.Label();
+        gridBins = new System.Windows.Forms.DataGridView();
+        actionBar = new System.Windows.Forms.TableLayoutPanel();
+        btnReceive = new System.Windows.Forms.Button();
+        btnIssue = new System.Windows.Forms.Button();
+        lblStatus = new System.Windows.Forms.Label();
+        historyBar = new System.Windows.Forms.TableLayoutPanel();
+        lblHistoryTitle = new System.Windows.Forms.Label();
+        chkAllOrders = new System.Windows.Forms.CheckBox();
+        btnReverse = new System.Windows.Forms.Button();
         historyFilter = new TruckingSystem.Desktop.Common.FilterBar();
-        gridHistory = new DataGridView();
+        gridHistory = new System.Windows.Forms.DataGridView();
         root.SuspendLayout();
         inputs.SuspendLayout();
+        actionBar.SuspendLayout();
+        historyBar.SuspendLayout();
         ((System.ComponentModel.ISupportInitialize)numQty).BeginInit();
         ((System.ComponentModel.ISupportInitialize)gridTrips).BeginInit();
         ((System.ComponentModel.ISupportInitialize)gridBins).BeginInit();
-        actionBar.SuspendLayout();
-        historyBar.SuspendLayout();
         ((System.ComponentModel.ISupportInitialize)gridHistory).BeginInit();
         SuspendLayout();
         // 
         // root
         // 
         root.ColumnCount = 1;
-        root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        root.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
         root.Controls.Add(lblTitle, 0, 0);
         root.Controls.Add(inputs, 0, 1);
         root.Controls.Add(lblFlowTitle, 0, 2);
@@ -66,382 +66,329 @@ partial class ManualStockForm
         root.Controls.Add(historyBar, 0, 8);
         root.Controls.Add(historyFilter, 0, 9);
         root.Controls.Add(gridHistory, 0, 10);
-        root.Dock = DockStyle.Fill;
-        root.Location = new Point(0, 0);
-        root.Margin = new Padding(0);
+        root.Dock = System.Windows.Forms.DockStyle.Fill;
+        root.Margin = new System.Windows.Forms.Padding(0);
         root.Name = "root";
-        root.Padding = new Padding(30, 24, 30, 24);
         root.RowCount = 11;
-        root.RowStyles.Add(new RowStyle());
-        root.RowStyles.Add(new RowStyle());
-        root.RowStyles.Add(new RowStyle());
-        root.RowStyles.Add(new RowStyle());
-        root.RowStyles.Add(new RowStyle(SizeType.Percent, 25F));
-        root.RowStyles.Add(new RowStyle());
-        root.RowStyles.Add(new RowStyle(SizeType.Percent, 25F));
-        root.RowStyles.Add(new RowStyle());
-        root.RowStyles.Add(new RowStyle());
-        root.RowStyles.Add(new RowStyle());
-        root.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
-        root.Size = new Size(1650, 1140);
+        root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+        root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+        root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+        root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+        root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 25F));
+        root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+        root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 25F));
+        root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+        root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+        root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+        root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 50F));
         root.TabIndex = 0;
+        root.Padding = new System.Windows.Forms.Padding(20, 16, 20, 16);
+        root.Size = new System.Drawing.Size(1100, 760);
         // 
         // lblTitle
         // 
         lblTitle.AutoSize = true;
-        lblTitle.Font = new Font("Segoe UI", 13F, FontStyle.Bold);
-        lblTitle.ForeColor = Color.FromArgb(15, 23, 42);
-        lblTitle.Location = new Point(30, 24);
-        lblTitle.Margin = new Padding(0, 0, 0, 15);
+        lblTitle.Font = new System.Drawing.Font("Segoe UI", 13F, System.Drawing.FontStyle.Bold);
+        lblTitle.ForeColor = System.Drawing.Color.FromArgb(15, 23, 42);
+        lblTitle.Margin = new System.Windows.Forms.Padding(0, 0, 0, 10);
         lblTitle.Name = "lblTitle";
-        lblTitle.Size = new Size(416, 36);
         lblTitle.TabIndex = 0;
         lblTitle.Text = "📥📤 Nhập / Xuất kho thủ công";
         // 
         // inputs
         // 
         inputs.AutoSize = true;
-        inputs.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+        inputs.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
         inputs.ColumnCount = 3;
-        inputs.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40F));
-        inputs.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 45F));
-        inputs.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 15F));
+        inputs.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 40F));
+        inputs.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 45F));
+        inputs.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 15F));
         inputs.Controls.Add(lblOrder, 0, 0);
         inputs.Controls.Add(lblCargoLine, 1, 0);
         inputs.Controls.Add(lblQty, 2, 0);
         inputs.Controls.Add(cboOrder, 0, 1);
         inputs.Controls.Add(cboCargoLine, 1, 1);
         inputs.Controls.Add(numQty, 2, 1);
-        inputs.Dock = DockStyle.Fill;
-        inputs.Location = new Point(30, 75);
-        inputs.Margin = new Padding(0, 0, 0, 12);
+        inputs.Dock = System.Windows.Forms.DockStyle.Fill;
+        inputs.Margin = new System.Windows.Forms.Padding(0, 0, 0, 8);
         inputs.Name = "inputs";
         inputs.RowCount = 2;
-        inputs.RowStyles.Add(new RowStyle());
-        inputs.RowStyles.Add(new RowStyle());
-        inputs.Size = new Size(1590, 65);
+        inputs.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+        inputs.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
         inputs.TabIndex = 1;
         // 
         // lblOrder
         // 
-        lblOrder.Anchor = AnchorStyles.Left | AnchorStyles.Right;
+        lblOrder.Anchor = System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
         lblOrder.AutoSize = true;
-        lblOrder.Font = new Font("Segoe UI", 9F);
-        lblOrder.ForeColor = Color.FromArgb(100, 116, 139);
-        lblOrder.Location = new Point(0, 0);
-        lblOrder.Margin = new Padding(0, 0, 18, 6);
+        lblOrder.Font = new System.Drawing.Font("Segoe UI", 9F);
+        lblOrder.ForeColor = System.Drawing.Color.FromArgb(100, 116, 139);
+        lblOrder.Margin = new System.Windows.Forms.Padding(0, 0, 12, 4);
         lblOrder.Name = "lblOrder";
-        lblOrder.Size = new Size(618, 25);
         lblOrder.TabIndex = 0;
         lblOrder.Text = "Đơn vận chuyển";
         // 
         // lblCargoLine
         // 
-        lblCargoLine.Anchor = AnchorStyles.Left | AnchorStyles.Right;
+        lblCargoLine.Anchor = System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
         lblCargoLine.AutoSize = true;
-        lblCargoLine.Font = new Font("Segoe UI", 9F);
-        lblCargoLine.ForeColor = Color.FromArgb(100, 116, 139);
-        lblCargoLine.Location = new Point(636, 0);
-        lblCargoLine.Margin = new Padding(0, 0, 18, 6);
+        lblCargoLine.Font = new System.Drawing.Font("Segoe UI", 9F);
+        lblCargoLine.ForeColor = System.Drawing.Color.FromArgb(100, 116, 139);
+        lblCargoLine.Margin = new System.Windows.Forms.Padding(0, 0, 12, 4);
         lblCargoLine.Name = "lblCargoLine";
-        lblCargoLine.Size = new Size(697, 25);
         lblCargoLine.TabIndex = 1;
         lblCargoLine.Text = "Dòng hàng";
         // 
         // lblQty
         // 
-        lblQty.Anchor = AnchorStyles.Left | AnchorStyles.Right;
+        lblQty.Anchor = System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
         lblQty.AutoSize = true;
-        lblQty.Font = new Font("Segoe UI", 9F);
-        lblQty.ForeColor = Color.FromArgb(100, 116, 139);
-        lblQty.Location = new Point(1351, 0);
-        lblQty.Margin = new Padding(0, 0, 0, 6);
+        lblQty.Font = new System.Drawing.Font("Segoe UI", 9F);
+        lblQty.ForeColor = System.Drawing.Color.FromArgb(100, 116, 139);
+        lblQty.Margin = new System.Windows.Forms.Padding(0, 0, 0, 4);
         lblQty.Name = "lblQty";
-        lblQty.Size = new Size(239, 25);
         lblQty.TabIndex = 2;
         lblQty.Text = "Số lượng";
         // 
         // cboOrder
         // 
-        cboOrder.Dock = DockStyle.Fill;
-        cboOrder.DropDownStyle = ComboBoxStyle.DropDownList;
-        cboOrder.Location = new Point(0, 31);
-        cboOrder.Margin = new Padding(0, 0, 18, 0);
+        cboOrder.Dock = System.Windows.Forms.DockStyle.Fill;
+        cboOrder.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+        cboOrder.Margin = new System.Windows.Forms.Padding(0, 0, 12, 0);
         cboOrder.Name = "cboOrder";
-        cboOrder.Size = new Size(618, 36);
         cboOrder.TabIndex = 3;
         // 
         // cboCargoLine
         // 
-        cboCargoLine.Dock = DockStyle.Fill;
-        cboCargoLine.DropDownStyle = ComboBoxStyle.DropDownList;
-        cboCargoLine.Location = new Point(636, 31);
-        cboCargoLine.Margin = new Padding(0, 0, 18, 0);
+        cboCargoLine.Dock = System.Windows.Forms.DockStyle.Fill;
+        cboCargoLine.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+        cboCargoLine.Margin = new System.Windows.Forms.Padding(0, 0, 12, 0);
         cboCargoLine.Name = "cboCargoLine";
-        cboCargoLine.Size = new Size(697, 36);
         cboCargoLine.TabIndex = 4;
         // 
         // numQty
         // 
+        numQty.Dock = System.Windows.Forms.DockStyle.Fill;
         numQty.DecimalPlaces = 2;
-        numQty.Dock = DockStyle.Fill;
-        numQty.Location = new Point(1351, 31);
-        numQty.Margin = new Padding(0);
         numQty.Maximum = new decimal(new int[] { 999999, 0, 0, 0 });
+        numQty.Margin = new System.Windows.Forms.Padding(0);
         numQty.Name = "numQty";
-        numQty.Size = new Size(239, 34);
         numQty.TabIndex = 5;
         // 
         // lblFlowTitle
         // 
         lblFlowTitle.AutoSize = true;
-        lblFlowTitle.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
-        lblFlowTitle.Location = new Point(30, 152);
-        lblFlowTitle.Margin = new Padding(0, 0, 0, 6);
+        lblFlowTitle.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+        lblFlowTitle.Margin = new System.Windows.Forms.Padding(0, 0, 0, 4);
         lblFlowTitle.Name = "lblFlowTitle";
-        lblFlowTitle.Size = new Size(661, 28);
         lblFlowTitle.TabIndex = 2;
         lblFlowTitle.Text = "📊 Tình trạng hàng của đơn (dòng hàng đang chọn) và từng chuyến";
         // 
         // lblFlowSummary
         // 
-        lblFlowSummary.Anchor = AnchorStyles.Left | AnchorStyles.Right;
+        lblFlowSummary.Anchor = System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
         lblFlowSummary.AutoSize = true;
-        lblFlowSummary.BackColor = Color.FromArgb(241, 245, 249);
-        lblFlowSummary.Font = new Font("Segoe UI", 10F);
-        lblFlowSummary.Location = new Point(30, 186);
-        lblFlowSummary.Margin = new Padding(0, 0, 0, 9);
+        lblFlowSummary.BackColor = System.Drawing.Color.FromArgb(241, 245, 249);
+        lblFlowSummary.Font = new System.Drawing.Font("Segoe UI", 10F);
+        lblFlowSummary.Margin = new System.Windows.Forms.Padding(0, 0, 0, 6);
         lblFlowSummary.Name = "lblFlowSummary";
-        lblFlowSummary.Padding = new Padding(12, 6, 12, 6);
-        lblFlowSummary.Size = new Size(1590, 40);
+        lblFlowSummary.Padding = new System.Windows.Forms.Padding(8, 4, 8, 4);
         lblFlowSummary.TabIndex = 3;
         lblFlowSummary.Text = "Chọn 1 đơn để xem.";
         // 
         // gridTrips
         // 
-        gridTrips.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-        gridTrips.Dock = DockStyle.Fill;
-        gridTrips.Location = new Point(30, 235);
-        gridTrips.Margin = new Padding(0, 0, 0, 15);
+        gridTrips.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+        gridTrips.Dock = System.Windows.Forms.DockStyle.Fill;
+        gridTrips.Margin = new System.Windows.Forms.Padding(0, 0, 0, 10);
         gridTrips.Name = "gridTrips";
-        gridTrips.RowHeadersWidth = 62;
-        gridTrips.Size = new Size(1590, 150);
         gridTrips.TabIndex = 4;
         // 
         // lblBinsTitle
         // 
         lblBinsTitle.AutoSize = true;
-        lblBinsTitle.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
-        lblBinsTitle.Location = new Point(30, 400);
-        lblBinsTitle.Margin = new Padding(0, 0, 0, 6);
+        lblBinsTitle.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+        lblBinsTitle.Margin = new System.Windows.Forms.Padding(0, 0, 0, 4);
         lblBinsTitle.Name = "lblBinsTitle";
-        lblBinsTitle.Size = new Size(561, 28);
         lblBinsTitle.TabIndex = 5;
         lblBinsTitle.Text = "Chọn vị trí nhập (tùy chọn — để trống = tự động Best-Fit)";
         // 
         // gridBins
         // 
-        gridBins.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-        gridBins.Dock = DockStyle.Fill;
-        gridBins.Location = new Point(30, 434);
-        gridBins.Margin = new Padding(0, 0, 0, 15);
+        gridBins.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+        gridBins.Dock = System.Windows.Forms.DockStyle.Fill;
+        gridBins.Margin = new System.Windows.Forms.Padding(0, 0, 0, 10);
         gridBins.MultiSelect = false;
+        gridBins.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
         gridBins.Name = "gridBins";
-        gridBins.RowHeadersWidth = 62;
-        gridBins.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-        gridBins.Size = new Size(1590, 150);
         gridBins.TabIndex = 6;
         // 
         // actionBar
         // 
         actionBar.AutoSize = true;
-        actionBar.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+        actionBar.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
         actionBar.ColumnCount = 3;
-        actionBar.ColumnStyles.Add(new ColumnStyle());
-        actionBar.ColumnStyles.Add(new ColumnStyle());
-        actionBar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        actionBar.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.AutoSize));
+        actionBar.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.AutoSize));
+        actionBar.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
         actionBar.Controls.Add(btnReceive, 0, 0);
         actionBar.Controls.Add(btnIssue, 1, 0);
         actionBar.Controls.Add(lblStatus, 2, 0);
-        actionBar.Dock = DockStyle.Fill;
-        actionBar.Location = new Point(30, 599);
-        actionBar.Margin = new Padding(0, 0, 0, 15);
+        actionBar.Dock = System.Windows.Forms.DockStyle.Fill;
+        actionBar.Margin = new System.Windows.Forms.Padding(0, 0, 0, 10);
         actionBar.Name = "actionBar";
         actionBar.RowCount = 1;
-        actionBar.RowStyles.Add(new RowStyle());
-        actionBar.Size = new Size(1590, 57);
+        actionBar.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
         actionBar.TabIndex = 7;
         // 
         // btnReceive
         // 
-        btnReceive.Anchor = AnchorStyles.Left;
+        btnReceive.Anchor = System.Windows.Forms.AnchorStyles.Left;
         btnReceive.AutoSize = true;
-        btnReceive.AutoSizeMode = AutoSizeMode.GrowAndShrink;
-        btnReceive.BackColor = Color.FromArgb(22, 163, 74);
-        btnReceive.Cursor = Cursors.Hand;
+        btnReceive.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+        btnReceive.BackColor = System.Drawing.Color.FromArgb(22, 163, 74);
+        btnReceive.Cursor = System.Windows.Forms.Cursors.Hand;
         btnReceive.FlatAppearance.BorderSize = 0;
-        btnReceive.FlatStyle = FlatStyle.Flat;
-        btnReceive.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
-        btnReceive.ForeColor = Color.White;
-        btnReceive.Location = new Point(0, 0);
-        btnReceive.Margin = new Padding(0, 0, 12, 0);
-        btnReceive.MinimumSize = new Size(0, 57);
+        btnReceive.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+        btnReceive.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+        btnReceive.ForeColor = System.Drawing.Color.White;
+        btnReceive.Margin = new System.Windows.Forms.Padding(0, 0, 8, 0);
+        btnReceive.MinimumSize = new System.Drawing.Size(0, 38);
         btnReceive.Name = "btnReceive";
-        btnReceive.Padding = new Padding(15, 6, 15, 6);
-        btnReceive.Size = new Size(178, 57);
+        btnReceive.Padding = new System.Windows.Forms.Padding(10, 4, 10, 4);
         btnReceive.TabIndex = 0;
         btnReceive.Text = "📥 Nhập kho";
         btnReceive.UseVisualStyleBackColor = false;
-        btnReceive.Click += BtnReceive_Click;
+        btnReceive.Click += new System.EventHandler(this.BtnReceive_Click);
         // 
         // btnIssue
         // 
-        btnIssue.Anchor = AnchorStyles.Left;
+        btnIssue.Anchor = System.Windows.Forms.AnchorStyles.Left;
         btnIssue.AutoSize = true;
-        btnIssue.AutoSizeMode = AutoSizeMode.GrowAndShrink;
-        btnIssue.BackColor = Color.FromArgb(217, 119, 6);
-        btnIssue.Cursor = Cursors.Hand;
+        btnIssue.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+        btnIssue.BackColor = System.Drawing.Color.FromArgb(217, 119, 6);
+        btnIssue.Cursor = System.Windows.Forms.Cursors.Hand;
         btnIssue.FlatAppearance.BorderSize = 0;
-        btnIssue.FlatStyle = FlatStyle.Flat;
-        btnIssue.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
-        btnIssue.ForeColor = Color.White;
-        btnIssue.Location = new Point(190, 0);
-        btnIssue.Margin = new Padding(0, 0, 24, 0);
-        btnIssue.MinimumSize = new Size(0, 57);
+        btnIssue.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+        btnIssue.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+        btnIssue.ForeColor = System.Drawing.Color.White;
+        btnIssue.Margin = new System.Windows.Forms.Padding(0, 0, 16, 0);
+        btnIssue.MinimumSize = new System.Drawing.Size(0, 38);
         btnIssue.Name = "btnIssue";
-        btnIssue.Padding = new Padding(15, 6, 15, 6);
-        btnIssue.Size = new Size(171, 57);
+        btnIssue.Padding = new System.Windows.Forms.Padding(10, 4, 10, 4);
         btnIssue.TabIndex = 1;
         btnIssue.Text = "📤 Xuất kho";
         btnIssue.UseVisualStyleBackColor = false;
-        btnIssue.Click += BtnIssue_Click;
+        btnIssue.Click += new System.EventHandler(this.BtnIssue_Click);
         // 
         // lblStatus
         // 
-        lblStatus.Anchor = AnchorStyles.Left | AnchorStyles.Right;
+        lblStatus.Anchor = System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
         lblStatus.AutoSize = true;
-        lblStatus.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
-        lblStatus.Location = new Point(385, 14);
-        lblStatus.Margin = new Padding(0);
+        lblStatus.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+        lblStatus.Margin = new System.Windows.Forms.Padding(0);
         lblStatus.Name = "lblStatus";
-        lblStatus.Size = new Size(1205, 28);
         lblStatus.TabIndex = 2;
         // 
         // historyBar
         // 
         historyBar.AutoSize = true;
-        historyBar.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+        historyBar.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
         historyBar.ColumnCount = 3;
-        historyBar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-        historyBar.ColumnStyles.Add(new ColumnStyle());
-        historyBar.ColumnStyles.Add(new ColumnStyle());
+        historyBar.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
+        historyBar.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.AutoSize));
+        historyBar.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.AutoSize));
         historyBar.Controls.Add(lblHistoryTitle, 0, 0);
         historyBar.Controls.Add(chkAllOrders, 1, 0);
         historyBar.Controls.Add(btnReverse, 2, 0);
-        historyBar.Dock = DockStyle.Fill;
-        historyBar.Location = new Point(30, 671);
-        historyBar.Margin = new Padding(0, 0, 0, 9);
+        historyBar.Dock = System.Windows.Forms.DockStyle.Fill;
+        historyBar.Margin = new System.Windows.Forms.Padding(0, 0, 0, 6);
         historyBar.Name = "historyBar";
         historyBar.RowCount = 1;
-        historyBar.RowStyles.Add(new RowStyle());
-        historyBar.Size = new Size(1590, 51);
+        historyBar.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
         historyBar.TabIndex = 8;
         // 
         // lblHistoryTitle
         // 
-        lblHistoryTitle.Anchor = AnchorStyles.Left | AnchorStyles.Right;
+        lblHistoryTitle.Anchor = System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
         lblHistoryTitle.AutoSize = true;
-        lblHistoryTitle.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
-        lblHistoryTitle.Location = new Point(0, 11);
-        lblHistoryTitle.Margin = new Padding(0, 0, 18, 0);
+        lblHistoryTitle.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+        lblHistoryTitle.Margin = new System.Windows.Forms.Padding(0, 0, 12, 0);
         lblHistoryTitle.Name = "lblHistoryTitle";
-        lblHistoryTitle.Size = new Size(946, 28);
         lblHistoryTitle.TabIndex = 0;
         lblHistoryTitle.Text = "Lịch sử nhập/xuất kho";
         // 
         // chkAllOrders
         // 
-        chkAllOrders.Anchor = AnchorStyles.Left;
+        chkAllOrders.Anchor = System.Windows.Forms.AnchorStyles.Left;
         chkAllOrders.AutoSize = true;
-        chkAllOrders.Font = new Font("Segoe UI", 9F);
-        chkAllOrders.Location = new Point(964, 11);
-        chkAllOrders.Margin = new Padding(0, 0, 18, 0);
+        chkAllOrders.Font = new System.Drawing.Font("Segoe UI", 9F);
+        chkAllOrders.Margin = new System.Windows.Forms.Padding(0, 0, 12, 0);
         chkAllOrders.Name = "chkAllOrders";
-        chkAllOrders.Size = new Size(302, 29);
         chkAllOrders.TabIndex = 1;
         chkAllOrders.Text = "Hiện tất cả đơn (bỏ lọc theo đơn)";
         chkAllOrders.UseVisualStyleBackColor = true;
         // 
         // btnReverse
         // 
-        btnReverse.Anchor = AnchorStyles.Left;
+        btnReverse.Anchor = System.Windows.Forms.AnchorStyles.Left;
         btnReverse.AutoSize = true;
-        btnReverse.AutoSizeMode = AutoSizeMode.GrowAndShrink;
-        btnReverse.BackColor = Color.White;
-        btnReverse.Cursor = Cursors.Hand;
-        btnReverse.FlatAppearance.BorderColor = Color.FromArgb(220, 38, 38);
-        btnReverse.FlatStyle = FlatStyle.Flat;
-        btnReverse.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
-        btnReverse.ForeColor = Color.FromArgb(220, 38, 38);
-        btnReverse.Location = new Point(1284, 0);
-        btnReverse.Margin = new Padding(0);
-        btnReverse.MinimumSize = new Size(0, 51);
+        btnReverse.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+        btnReverse.BackColor = System.Drawing.Color.White;
+        btnReverse.Cursor = System.Windows.Forms.Cursors.Hand;
+        btnReverse.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(220, 38, 38);
+        btnReverse.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+        btnReverse.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+        btnReverse.ForeColor = System.Drawing.Color.FromArgb(220, 38, 38);
+        btnReverse.Margin = new System.Windows.Forms.Padding(0);
+        btnReverse.MinimumSize = new System.Drawing.Size(0, 34);
         btnReverse.Name = "btnReverse";
-        btnReverse.Padding = new Padding(15, 3, 15, 3);
-        btnReverse.Size = new Size(306, 51);
+        btnReverse.Padding = new System.Windows.Forms.Padding(10, 2, 10, 2);
         btnReverse.TabIndex = 2;
         btnReverse.Text = "↩️ Hoàn tác phiếu xuất tay";
         btnReverse.UseVisualStyleBackColor = false;
-        btnReverse.Click += BtnReverse_Click;
+        btnReverse.Click += new System.EventHandler(this.BtnReverse_Click);
         // 
-        // historyFilter
-        // 
-        historyFilter.AutoSize = true;
-        historyFilter.AutoSizeMode = AutoSizeMode.GrowAndShrink;
-        historyFilter.Dock = DockStyle.Fill;
-        historyFilter.Location = new Point(30, 731);
-        historyFilter.Margin = new Padding(0, 0, 0, 9);
+        // historyFilter — lọc lịch sử nhập/xuất (Nhập / Xuất, nguồn, tìm đơn / loại hàng / người)
+        //
+        historyFilter.Dock = System.Windows.Forms.DockStyle.Fill;
         historyFilter.Name = "historyFilter";
         historyFilter.SearchPlaceholder = "Mã đơn, loại hàng, người, ghi chú...";
-        historyFilter.Size = new Size(1590, 46);
         historyFilter.TabIndex = 9;
-        // 
+        //
         // gridHistory
         // 
-        gridHistory.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-        gridHistory.Dock = DockStyle.Fill;
-        gridHistory.Location = new Point(30, 786);
-        gridHistory.Margin = new Padding(0);
+        gridHistory.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+        gridHistory.Dock = System.Windows.Forms.DockStyle.Fill;
+        gridHistory.Margin = new System.Windows.Forms.Padding(0);
         gridHistory.Name = "gridHistory";
-        gridHistory.RowHeadersWidth = 62;
-        gridHistory.Size = new Size(1590, 330);
         gridHistory.TabIndex = 9;
         // 
         // ManualStockForm
         // 
-        AutoScaleDimensions = new SizeF(144F, 144F);
-        AutoScaleMode = AutoScaleMode.Dpi;
-        BackColor = Color.White;
-        ClientSize = new Size(1650, 1140);
+        AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
+        AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
+        BackColor = System.Drawing.Color.White;
+        ClientSize = new System.Drawing.Size(1100, 760);
         Controls.Add(root);
-        Margin = new Padding(6);
-        MinimumSize = new Size(1129, 722);
+        MinimumSize = new System.Drawing.Size(760, 500);
         Name = "ManualStockForm";
-        StartPosition = FormStartPosition.CenterParent;
+        StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
         Text = "Nhập / Xuất kho thủ công";
-        root.ResumeLayout(false);
-        root.PerformLayout();
-        inputs.ResumeLayout(false);
-        inputs.PerformLayout();
         ((System.ComponentModel.ISupportInitialize)numQty).EndInit();
         ((System.ComponentModel.ISupportInitialize)gridTrips).EndInit();
         ((System.ComponentModel.ISupportInitialize)gridBins).EndInit();
-        actionBar.ResumeLayout(false);
-        actionBar.PerformLayout();
+        ((System.ComponentModel.ISupportInitialize)gridHistory).EndInit();
         historyBar.ResumeLayout(false);
         historyBar.PerformLayout();
-        ((System.ComponentModel.ISupportInitialize)gridHistory).EndInit();
+        actionBar.ResumeLayout(false);
+        actionBar.PerformLayout();
+        inputs.ResumeLayout(false);
+        inputs.PerformLayout();
+        root.ResumeLayout(false);
+        root.PerformLayout();
         ResumeLayout(false);
+        PerformLayout();
     }
 
     #endregion
@@ -454,7 +401,7 @@ partial class ManualStockForm
     private System.Windows.Forms.Label lblQty;
     private System.Windows.Forms.ComboBox cboOrder;
     private System.Windows.Forms.ComboBox cboCargoLine;
-    private System.Windows.Forms.NumericUpDown numQty;
+    private TruckingSystem.Desktop.Common.NumberBox numQty;
     private System.Windows.Forms.Label lblFlowTitle;
     private System.Windows.Forms.Label lblFlowSummary;
     private System.Windows.Forms.DataGridView gridTrips;

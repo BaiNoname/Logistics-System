@@ -24,7 +24,7 @@
             lblDescription = new System.Windows.Forms.Label();
             txtDescription = new System.Windows.Forms.TextBox();
             lblCost = new System.Windows.Forms.Label();
-            numCost = new System.Windows.Forms.NumericUpDown();
+            numCost = new TruckingSystem.Desktop.Common.NumberBox();
             lblStatus = new System.Windows.Forms.Label();
             buttonBar = new System.Windows.Forms.FlowLayoutPanel();
             btnSave = new System.Windows.Forms.Button();
@@ -129,6 +129,7 @@
             numCost.Maximum = new decimal(new int[] { 999999999, 0, 0, 0 });
             numCost.Name = "numCost";
             numCost.TabIndex = 5;
+            numCost.IsMoney = true;
             //
             // lblStatus
             //
@@ -201,7 +202,7 @@
         private System.Windows.Forms.Label lblDescription;
         private System.Windows.Forms.TextBox txtDescription;
         private System.Windows.Forms.Label lblCost;
-        private System.Windows.Forms.NumericUpDown numCost;
+        private TruckingSystem.Desktop.Common.NumberBox numCost;
         private System.Windows.Forms.Button btnSave;
         private System.Windows.Forms.Label lblStatus;
         private System.Windows.Forms.TableLayoutPanel root;
