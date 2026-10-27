@@ -434,6 +434,9 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.Property<decimal>("EstimatedFee")
                         .HasColumnType("numeric(18,2)");
 
+                    b.Property<bool>("IsFeeOnly")
+                        .HasColumnType("boolean");
+
                     b.Property<DateTime>("NewDate")
                         .HasColumnType("timestamp without time zone");
 

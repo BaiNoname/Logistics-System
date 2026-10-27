@@ -101,6 +101,16 @@ public class TransportOrdersController : ControllerBase
         return result is null ? NotFound() : Ok(result);
     }
 
+    /// <summary>Ghi nhận BỔ SUNG phí lưu kho do khách chậm nhận hàng (không đổi hạn giao) — dùng được cả khi
+    /// đơn đã Hoàn tất / Đã hủy (nhân viên quên "Đổi hạn giao" lúc khách dời ngày).</summary>
+    [HttpPost("{id:int}/storage-fee-records")]
+    public async Task<ActionResult<OrderActionResult>> RecordStorageFee(int id, RecordStorageFeeRequest request)
+    {
+        var result = await _service.RecordStorageFeeAsync(id, request,
+            User.FindFirstValue(ClaimTypes.NameIdentifier), User.FindFirstValue(ClaimTypes.Name));
+        return result.Success ? Ok(result) : BadRequest(result);
+    }
+
     /// <summary>Đổi / bổ sung hạn giao cho đơn Đã xác nhận / Đang chạy (bắt buộc lý do, ghi nhật ký).</summary>
     [HttpPost("{id:int}/deadline")]
     public async Task<ActionResult<OrderActionResult>> ChangeDeadline(int id, ChangeDeadlineRequest request)
