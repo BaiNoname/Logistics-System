@@ -544,7 +544,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                 _binCells.Add(cell);
 
                 var tooltip = new ToolTip { AutoPopDelay = 15000, InitialDelay = 300 }; // để đủ lâu đọc hết danh sách hàng bên trong
-                var tooltipText = $"{bin.Code}\nĐã dùng: {bin.CurrentUsedM3:0.##}/{bin.CapacityM3} m³ ({pct:P0})\nTải tối đa: {bin.MaxWeightKg} kg\n" +
+                var tooltipText = $"{bin.Code}\nĐã dùng: {bin.CurrentUsedM3:#,##0.##}/{bin.CapacityM3:#,##0.##} m³ ({pct:P0})\nTải tối đa: {(bin.MaxWeightKg > 0 ? bin.MaxWeightKg.ToString("#,##0.##") + " kg" : "không giới hạn")}\n" +
                     (_currentHasDoor ? $"🚪 Cách cửa: {bin.DistanceFromDoorMeters:0.#} m (tự tính)\n" : "") + "\n" +
                     (bin.Contents.Count == 0
                         ? "(Trống — chưa có hàng)"

@@ -80,8 +80,15 @@ public class GoogleCalendarService : IGoogleCalendarService
             // hậu tố "Z" (VD: "2026-09-25T10:30:00.0000000Z") — đúng chuẩn
             // RFC3339 Google yêu cầu; nếu để Kind=Unspecified, "o" sẽ THIẾU
             // hậu tố timezone, Google có thể từ chối hoặc hiểu sai giờ.
-            Start = new EventDateTime { DateTimeRaw = DateTime.SpecifyKind(request.StartUtc, DateTimeKind.Utc).ToString("o"), TimeZone = "UTC" },
-            End = new EventDateTime { DateTimeRaw = DateTime.SpecifyKind(request.EndUtc, DateTimeKind.Utc).ToString("o"), TimeZone = "UTC" },
+            Start = request.AllDay
+                ? new EventDateTime { Date = request.StartUtc.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture) }
+                : new EventDateTime { DateTimeRaw = DateTime.SpecifyKind(request.StartUtc, DateTimeKind.Utc).ToString("o"), TimeZone = "UTC" },
+            // Sự kiện CẢ NGÀY: ngày kết thúc KHÔNG tính (Google quy ước) — người gọi truyền ngày sau ngày cuối.
+            End = request.AllDay
+                ? new EventDateTime { Date = request.EndUtc.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture) }
+                : new EventDateTime { DateTimeRaw = DateTime.SpecifyKind(request.EndUtc, DateTimeKind.Utc).ToString("o"), TimeZone = "UTC" },
+            // Màu theo trạng thái chuyến (8 xám = chưa chạy, 10 xanh = đang chạy, 5 vàng = hoàn tất, 11 đỏ = hủy).
+            ColorId = request.ColorId,
         };
 
         try

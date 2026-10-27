@@ -21,10 +21,10 @@
             lblCurrent = new System.Windows.Forms.Label();
             lblBreakdown = new System.Windows.Forms.Label();
             lblCapacity = new System.Windows.Forms.Label();
-            numCapacity = new System.Windows.Forms.NumericUpDown();
+            numCapacity = new TruckingSystem.Desktop.Common.NumberBox();
             chkSetMeasured = new System.Windows.Forms.CheckBox();
             measuredBar = new System.Windows.Forms.FlowLayoutPanel();
-            numMeasured = new System.Windows.Forms.NumericUpDown();
+            numMeasured = new TruckingSystem.Desktop.Common.NumberBox();
             btnFull = new System.Windows.Forms.Button();
             lblStatus = new System.Windows.Forms.Label();
             buttonBar = new System.Windows.Forms.FlowLayoutPanel();
@@ -271,10 +271,10 @@
         private System.Windows.Forms.Label lblCurrent;
         private System.Windows.Forms.Label lblBreakdown;
         private System.Windows.Forms.Label lblCapacity;
-        private System.Windows.Forms.NumericUpDown numCapacity;
+        private TruckingSystem.Desktop.Common.NumberBox numCapacity;
         private System.Windows.Forms.CheckBox chkSetMeasured;
         private System.Windows.Forms.FlowLayoutPanel measuredBar;
-        private System.Windows.Forms.NumericUpDown numMeasured;
+        private TruckingSystem.Desktop.Common.NumberBox numMeasured;
         private System.Windows.Forms.Button btnFull;
         private System.Windows.Forms.Label lblStatus;
         private System.Windows.Forms.FlowLayoutPanel buttonBar;

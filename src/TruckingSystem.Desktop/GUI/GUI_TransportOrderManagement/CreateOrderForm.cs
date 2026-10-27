@@ -98,6 +98,12 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             };
 
             gridCargoLines.AutoGenerateColumns = false;
+            // Số lượng / kg / m³ hiện đúng số đã nhập (500 -> "500", 1.500 -> "1,500"), không thêm số 0 thừa
+            // sau dấu thập phân (dễ đọc nhầm "500,000" thành năm trăm nghìn).
+            colPackageCount.DefaultCellStyle.Format = "#,##0";
+            colQtyTotal.DefaultCellStyle.Format = "#,##0.##";
+            colWeightKg.DefaultCellStyle.Format = "#,##0.##";
+            colVolumeM3.DefaultCellStyle.Format = "#,##0.####";
             gridCargoLines.DataSource = _cargoLines;
             btnRemoveCargoLine.Click += (_, _) => RemoveSelectedCargoLine();
 

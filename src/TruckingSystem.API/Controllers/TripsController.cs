@@ -57,18 +57,23 @@ public class TripsController : ControllerBase
     /// <summary>Đổi xe và/hoặc tài xế cho chuyến chưa chạy (gỡ chuyến bị kẹt).</summary>
     [HttpPost("{id:int}/reassign")]
     public async Task<ActionResult<TripActionResult>> Reassign(int id, ReassignTripRequest request)
-        => Ok(await _tripService.ReassignAsync(id, request));
+        => Ok(await _tripService.ReassignAsync(id, request, PublicBaseUrl)); // lịch chuyển sang tài xế mới
 
     /// <summary>Chuyến Trả hàng chưa chạy -> khách nhận lại hàng tại kho (xuất kho, đóng chuyến, trả xe).</summary>
     [HttpPost("{id:int}/return-at-warehouse")]
     public async Task<ActionResult<TripActionResult>> ReturnAtWarehouse(int id)
-        => Ok(await _tripService.ReturnAtWarehouseAsync(id, User.FindFirstValue(ClaimTypes.Name)));
+    {
+        var result = await _tripService.ReturnAtWarehouseAsync(id, User.FindFirstValue(ClaimTypes.Name));
+        if (result.Success) await _tripService.ResyncCalendarIfSyncedAsync(id, PublicBaseUrl); // lịch -> Hoàn tất (vàng)
+        return Ok(result);
+    }
 
     /// <summary>Vận hành TỪ CHỐI xác nhận của tài xế — đẩy chuyến quay lại Đang chạy.</summary>
     [HttpPost("{id:int}/reject-completion")]
     public async Task<ActionResult<TripActionResult>> RejectCompletion(int id)
     {
         var result = await _tripService.RejectCompletionAsync(id);
+        if (result.Success) await _tripService.ResyncCalendarIfSyncedAsync(id, PublicBaseUrl); // quay lại Đang chạy
         return Ok(result);
     }
 
@@ -151,12 +156,12 @@ public class TripsController : ControllerBase
     }
 
     /// <summary>Đồng bộ lịch chuyến lên Google Calendar của tài xế + khách hàng.</summary>
-    private string PublicBaseUrl => $"{Request.Scheme}://{Request.Host}";
+    private string PublicBaseUrl => PublicUrl.For(Request);
 
     [HttpPost("{id:int}/sync-calendar")]
     public async Task<ActionResult<CalendarSyncResultDto>> SyncCalendar(int id)
     {
-        var baseUrl = $"{Request.Scheme}://{Request.Host}";
+        var baseUrl = PublicUrl.For(Request);
         return Ok(await _tripService.SyncCalendarAsync(id, baseUrl));
     }
 
@@ -191,7 +196,7 @@ public class TripsController : ControllerBase
     [AllowAnonymous]
     public async Task<ActionResult<ServiceResult>> Ping(int id, GpsPingRequest request)
     {
-        var result = await _tripService.PingAsync(id, request);
+        var result = await _tripService.PingAsync(id, request, PublicBaseUrl); // GPS đầu tiên bắt đầu chuyến -> lịch "Đang chạy"
         return result.Success ? Ok(result) : NotFound(result);
     }
 

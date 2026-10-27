@@ -6,9 +6,11 @@ public record CalendarEventRequest(
     string? ExistingEventId, // có giá trị = CẬP NHẬT sự kiện cũ; null = TẠO MỚI
     string Title,
     string Description,
-    DateTime StartUtc,
-    DateTime EndUtc,
-    string? Location
+    DateTime StartUtc,     // AllDay = true: NGÀY bắt đầu (lấy phần ngày)
+    DateTime EndUtc,       // AllDay = true: NGÀY kết thúc (KHÔNG tính — ngày sau ngày cuối)
+    string? Location,
+    bool AllDay = false,
+    string? ColorId = null // màu sự kiện chuẩn Google: 8 xám, 10 xanh lá, 5 vàng, 11 đỏ
 );
 
 public record CalendarEventResult(bool Success, string? EventId, string? Message);
