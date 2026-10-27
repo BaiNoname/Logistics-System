@@ -34,6 +34,7 @@ namespace TruckingSystem.Desktop.GUI_Shared
         private ApiServices? _api;
         private readonly List<Button> _navButtons = new();
         private Button? _activeNavButton;
+        private NotificationBadge? _badge;
 
         public MainForm()
         {
@@ -46,6 +47,7 @@ namespace TruckingSystem.Desktop.GUI_Shared
             lblUser.Text = username;
             lblRole.Text = RoleText(api.Connection.Roles);
             BuildNavButtons();
+            _badge = new NotificationBadge(btnNotifications, api);
             NavigateTo(_navButtons[0], () => new DashboardControl(_api));
         }
 
@@ -176,7 +178,9 @@ namespace TruckingSystem.Desktop.GUI_Shared
         {
             if (_api is null) return;
             using var f = new TruckingSystem.Desktop.GUI_NotificationManagement.NotificationsForm(_api);
-            if (f.ShowDialog(this) != DialogResult.OK || f.SelectedTarget is not { } target) return;
+            var dialogResult = f.ShowDialog(this);
+            _ = _badge?.RefreshAsync(); // vừa xử lý xong việc nào thì số đỏ giảm ngay
+            if (dialogResult != DialogResult.OK || f.SelectedTarget is not { } target) return;
 
             var (navText, build) = TruckingSystem.Desktop.GUI_NotificationManagement.NotificationNavigator.Resolve(_api, target);
             var navButton = _navButtons.FirstOrDefault(b => b.Text.TrimEnd().EndsWith(navText));

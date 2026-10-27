@@ -113,11 +113,12 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
         private readonly ToolTip _feeTip = new() { AutoPopDelay = 20000, InitialDelay = 200 };
 
         /// <summary>💰 Phí lưu kho: bảng từng lần đổi hạn giao (bên yêu cầu, số ngày tính phí, m³, đơn giá) + tổng.</summary>
-        private void BtnStorageFee_Click(object? sender, EventArgs e)
+        private async void BtnStorageFee_Click(object? sender, EventArgs e)
         {
             if (_api is null || _currentOrder is null) return;
             using var f = new StorageFeeForm(_api, _currentOrder);
             f.ShowDialog(FindForm());
+            if (f.ChangedAny) await LoadAsync(); // vừa ghi nhận phí bổ sung -> cập nhật dòng "💰 Phí lưu kho"
         }
 
         /// <summary>PHÍ LƯU KHO do khách dời hạn giao — hiện ngay dòng thông tin đơn (rê chuột để xem từng lần

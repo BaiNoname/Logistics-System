@@ -30,4 +30,9 @@ public class DeliveryDeadlineChange : BaseEntity
     /// <summary>Số m³ hàng của đơn đang nằm trong kho lúc đổi + phí ước tính (để báo khách ngay).</summary>
     public decimal VolumeM3AtChange { get; set; }
     public decimal EstimatedFee { get; set; }
+
+    /// <summary>true = GHI NHẬN BỔ SUNG phí lưu kho (khách chậm nhận hàng mà nhân viên quên đổi hạn, kể cả
+    /// đơn đã Hoàn tất / Hủy): KHÔNG đổi hạn giao của đơn (tỉ lệ giao đúng hạn giữ nguyên), chỉ đánh dấu
+    /// khoảng OldDate+1 → NewDate là do khách để tính phí theo ngày hàng thực sự còn trong kho.</summary>
+    public bool IsFeeOnly { get; set; }
 }

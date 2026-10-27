@@ -26,6 +26,11 @@ namespace TruckingSystem.Desktop.SERVICE_TransportOrderManagement
         public Task<StorageFeeItem> GetStorageFeeAsync(int orderId)
             => _conn.GetAsync<StorageFeeItem>($"/api/transport-orders/{orderId}/storage-fee")!;
 
+        /// <summary>Ghi nhận BỔ SUNG phí lưu kho do khách chậm nhận hàng (không đổi hạn giao; cả đơn đã Hoàn tất / Hủy).</summary>
+        public Task<OrderActionResultItem> RecordStorageFeeAsync(int orderId, DateTime endDate, string reason)
+            => _conn.PostAsync<OrderActionResultItem>($"/api/transport-orders/{orderId}/storage-fee-records",
+                new { endDate = endDate.Date, reason })!;
+
         /// <summary>Ước tính số ngày chạy của tuyến (Lấy hàng + Giao) — để gợi ý hạn giao khi tạo đơn.</summary>
         public async Task<int> EstimateRouteDaysAsync(int? pickupLocationId, int? dropoffLocationId, int warehouseId, string pickupMethod)
         {

@@ -164,6 +164,24 @@ public class StorageFeeLineItem
     public int ChargedDays { get; set; }
     public decimal ChargedM3Days { get; set; }
     public decimal Fee { get; set; }
+
+    /// <summary>true = ghi nhận BỔ SUNG phí lưu kho (không đổi hạn giao).</summary>
+    public bool IsFeeOnly { get; set; }
+
+    /// <summary>Diễn giải ngắn, VD "28/10–29/10: 2 ngày × 5 m³ = 10 m³·ngày → 10 m³·ngày × 500.000 đ = 5.000.000 đ".</summary>
+    public string Formula { get; set; } = "";
+
+    /// <summary>Từng ngày trong khoảng khách xin dời (m³ còn trong kho, tiền ngày đó, hoặc lý do không tính).</summary>
+    public List<StorageFeeDayItem> Days { get; set; } = new();
+}
+
+/// <summary>1 ngày trong khoảng khách xin dời.</summary>
+public class StorageFeeDayItem
+{
+    public DateTime Day { get; set; }
+    public decimal VolumeM3 { get; set; }
+    public decimal Fee { get; set; }
+    public string? NotChargedReason { get; set; }
 }
 
 /// <summary>Phí lưu kho của đơn do khách dời hạn giao.</summary>
