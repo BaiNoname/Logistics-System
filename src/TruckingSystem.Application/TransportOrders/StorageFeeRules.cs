@@ -9,7 +9,9 @@ namespace TruckingSystem.Application.TransportOrders;
 ///  • Chỉ tính lần đổi do KHÁCH HÀNG yêu cầu và dời TRỄ hơn hạn cũ. Công ty yêu cầu (công ty trễ) = 0 đ.
 ///  • Ngày tính phí: từ ngày SAU hạn cũ tới hạn mới (tối đa = số ngày khách xin dời), và chỉ những ngày
 ///    hàng của đơn THỰC SỰ còn trong kho (xuất lên xe sớm hơn thì thôi tính).
-///  • Mỗi ngày: phí = số m³ hàng của đơn còn trong kho cuối ngày đó × đơn giá (đ/m³/ngày) của kho, đơn giá
+///  • Mỗi ngày: phí = số m³ hàng của đơn NẰM KHO TRONG NGÀY đó (lấy số lớn hơn giữa đầu ngày và cuối ngày —
+///    ngày XUẤT KHO vẫn tính vì hàng đã nằm kho qua đêm tới sáng hôm đó; ngày nhập mà còn tới cuối ngày cũng
+///    tính) × đơn giá (đ/m³/ngày) của kho, đơn giá
 ///    CHỐT lúc đổi hạn. Một ngày chỉ tính 1 lần (khách dời nhiều lần chồng ngày cũng không tính trùng).
 ///  • Hạn giao về sau bị rút ngắn lại thì những ngày sau hạn hiện tại không tính.</summary>
 public static class StorageFeeRules
@@ -75,7 +77,9 @@ public static class StorageFeeRules
                     }
                     if (d > today) { openWindow = true; dayRows.Add(new StorageFeeDayDto(d, 0, 0, "chưa tới ngày — sẽ tính nếu hàng còn nằm kho")); continue; }
                     if (chargedDays.Contains(d)) { dayRows.Add(new StorageFeeDayDto(d, 0, 0, "đã tính ở lần trước (không tính trùng)")); continue; }
-                    var v = Math.Round(VolumeAt(d), 4);
+                    // Hàng nằm kho TRONG NGÀY d: đầu ngày (= cuối ngày d-1) hoặc cuối ngày d. Trước đây chỉ lấy
+                    // cuối ngày -> khách dời đúng 1 ngày, hàng xuất lên xe đúng ngày hạn mới thì luôn ra 0 đ.
+                    var v = Math.Round(Math.Max(VolumeAt(d.AddDays(-1)), VolumeAt(d)), 4);
                     if (v <= 0) { dayRows.Add(new StorageFeeDayDto(d, 0, 0, "hàng không nằm trong kho")); continue; }
                     chargedDays.Add(d);
                     var dayFee = Math.Round(v * c.StorageFeePerM3PerDay, 0);

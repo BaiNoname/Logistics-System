@@ -81,7 +81,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                 var rate = customer.LastOrDefault()?.RatePerM3PerDay ?? 0;
                 kpi.SetValue("rate", (int)Math.Round(rate), rate > 0 ? "chốt lúc khách dời hạn / ghi nhận" : "kho chưa khai giá / không áp dụng");
                 lblNote.Text = (fee.Changes.Count == 0 ? "Đơn chưa đổi hạn giao lần nào. " : "") + fee.Note +
-                               "  Cách tính: mỗi ngày trong khoảng khách xin dời mà hàng còn nằm kho = m³ còn trong kho × đơn giá.";
+                               "  Cách tính: mỗi ngày trong khoảng khách xin dời mà hàng có nằm kho (kể cả ngày xuất kho) = m³ nằm kho trong ngày × đơn giá.";
                 lblNote.ForeColor = Theme.TextSecondary;
                 btnCopy.Enabled = customer.Count > 0;
             }
