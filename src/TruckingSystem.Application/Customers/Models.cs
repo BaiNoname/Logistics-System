@@ -2,9 +2,14 @@
 
 public record CustomerListItemDto(int Id, string Name, string? Phone, string CustomerType, string? TaxCode, string? Address, decimal? CreditLimit, string? GoogleCalendarId);
 
-public record CreateCustomerRequest(string Name, string? Phone, string? TaxCode, string CustomerType, string? Address, decimal? CreditLimit, string? GoogleCalendarId);
+public record CreateCustomerRequest(string Name, string? Phone, string? TaxCode, string CustomerType, string? Address, decimal? CreditLimit, string? GoogleCalendarId)
+{
+    public List<CreateCustomerContactRequest>? Contacts { get; init; }
+}
 
-/// <summary>Sửa thông tin khách hàng — cùng cấu trúc CreateCustomerRequest.</summary>
+public record CreateCustomerContactRequest(string Name, string? Phone, string? Position);
+
+/// <summary>Sửa thông tin khách hàng; người liên hệ được quản lý riêng.</summary>
 public record UpdateCustomerRequest(string Name, string? Phone, string? TaxCode, string CustomerType, string? Address, decimal? CreditLimit, string? GoogleCalendarId);
 
 public record CustomerActionResult(bool Success, string? Message);

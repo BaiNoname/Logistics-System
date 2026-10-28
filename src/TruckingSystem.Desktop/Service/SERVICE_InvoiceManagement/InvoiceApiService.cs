@@ -15,6 +15,9 @@ namespace TruckingSystem.Desktop.SERVICE_InvoiceManagement
         public Task<List<InvoiceListItem>> GetInvoicesAsync()
             => _conn.GetAsync<List<InvoiceListItem>>("/api/invoices")!;
 
+        public Task<InvoiceDetail?> GetDetailAsync(int id)
+            => _conn.GetAsync<InvoiceDetail>($"/api/invoices/{id}");
+
         public Task<List<InvoiceOrderOption>> GetEligibleOrdersAsync()
             => _conn.GetAsync<List<InvoiceOrderOption>>("/api/invoices/eligible-orders")!;
 

@@ -27,6 +27,18 @@ public class CustomerService : ICustomerService
         var validation = await ValidateAsync(request.Name, request.CustomerType, request.TaxCode, request.CreditLimit);
         if (validation is not null) return new CustomerActionResult(false, validation);
 
+        var contacts = request.Contacts ?? new List<CreateCustomerContactRequest>();
+        if (contacts.Count > 100)
+            return new CustomerActionResult(false, "Chỉ được thêm tối đa 100 người liên hệ cùng khách hàng.");
+        for (var i = 0; i < contacts.Count; i++)
+        {
+            var contact = contacts[i];
+            if (contact is null || string.IsNullOrWhiteSpace(contact.Name))
+                return new CustomerActionResult(false, $"Vui lòng nhập tên người liên hệ {i + 1}.");
+            if (!CustomerContact.IsValidPhoneNumber(contact.Phone?.Trim()))
+                return new CustomerActionResult(false, $"Số điện thoại người liên hệ {i + 1} không hợp lệ.");
+        }
+
         Enum.TryParse<CustomerType>(request.CustomerType, true, out var customerType);
         var customer = new Customer
         {
@@ -37,6 +49,10 @@ public class CustomerService : ICustomerService
             Address = NullIfWhiteSpace(request.Address),
             CreditLimit = request.CreditLimit,
             GoogleCalendarId = NullIfWhiteSpace(request.GoogleCalendarId),
+            Contacts = contacts.Select(c => new CustomerContact
+            {
+                Name = c.Name.Trim(), Phone = c.Phone!.Trim(), Position = NullIfWhiteSpace(c.Position)
+            }).ToList(),
         };
         _db.Customers.Add(customer);
         await _db.SaveChangesAsync();

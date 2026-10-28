@@ -27,6 +27,15 @@ public class InvoiceService : IInvoiceService
             .ToListAsync();
     }
 
+    public async Task<InvoiceDetailDto> GetDetailAsync(int id)
+        => await _db.Invoices.AsNoTracking()
+            .Where(i => i.Id == id)
+            .Select(i => new InvoiceDetailDto(i.Id, i.TransportOrder.Code, i.Customer.Name, i.TotalAmount,
+                i.Lines.OrderBy(l => l.Id)
+                    .Select(l => new InvoiceQuoteLineDto(l.Description, l.Quantity, l.UnitPrice, l.Amount)).ToList()))
+            .SingleOrDefaultAsync()
+            ?? throw new KeyNotFoundException("Không tìm thấy hóa đơn.");
+
     public Task<List<InvoiceOrderOptionDto>> GetEligibleOrdersAsync()
         => _db.TransportOrders.AsNoTracking()
             .Where(o => o.Status == TransportOrderStatus.Done

@@ -1,5 +1,7 @@
 namespace TruckingSystem.Desktop.DTO_CustomerManagement
 {
+    public record CustomerContactInput(string Name, string Phone, string? Position);
+
     public class CustomerListItem
     {
         public int Id { get; set; }

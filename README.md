@@ -578,6 +578,10 @@ Khóa API cấu hình trong `appsettings.json` của API, không công khai tron
 - Khóa VietMap (routing + tile)
 
 ### 9.2. Cấu hình API — `TruckingSystem.API/appsettings.json`
+File `src/TruckingSystem.API/appsettings.json.example` chứa cấu hình mẫu; điền khóa và thông tin kết nối trên máy chạy API. File `appsettings.json` cục bộ được Git bỏ qua nên cập nhật mã nguồn không tự cập nhật cấu hình trên máy chủ khác.
+
+`VideoStorage:RootPath` và `DocumentStorage:RootPath` mặc định lần lượt là `Storage/TripVideos` và `Storage/VehicleDocuments`, tính từ thư mục làm việc của API. Đổi đường dẫn trên máy đã có dữ liệu cần chuyển cả các tệp hiện có sang nơi mới. `VideoStorage:SigningKey` để trống sẽ dùng `Jwt:Key`; thay khóa sẽ làm các liên kết video đã ký bằng khóa cũ hết hiệu lực. Phần `Nvidia` là cấu hình cũ, không được luồng quét danh thiếp hiện tại sử dụng.
+
 ```json
 {
   "ConnectionStrings": {

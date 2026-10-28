@@ -20,6 +20,13 @@ public class InvoicesController : ControllerBase
     public async Task<ActionResult<List<InvoiceListItemDto>>> GetAll()
         => Ok(await _service.GetAllAsync());
 
+    [HttpGet("{id:int}")]
+    public async Task<ActionResult<InvoiceDetailDto>> GetDetail(int id)
+    {
+        try { return Ok(await _service.GetDetailAsync(id)); }
+        catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+    }
+
     [HttpGet("eligible-orders")]
     public async Task<ActionResult<List<InvoiceOrderOptionDto>>> GetEligibleOrders()
         => Ok(await _service.GetEligibleOrdersAsync());

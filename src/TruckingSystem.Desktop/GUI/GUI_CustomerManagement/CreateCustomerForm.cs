@@ -1,4 +1,4 @@
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 using TruckingSystem.Desktop.Common;
 using TruckingSystem.Desktop.DTO_CustomerManagement;
 namespace TruckingSystem.Desktop.GUI_CustomerManagement
@@ -8,10 +8,20 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
     {
         private ApiServices? _api;
         private CancellationTokenSource? _cardScanCancellation;
+        private bool _saving;
+        private bool _contactsOpen;
+        private readonly List<(TableLayoutPanel Panel, TextBox Name, TextBox Phone, TextBox Position)> _contactInputs = new();
 
         public CreateCustomerForm()
         {
             InitializeComponent();
+            btnContacts.Click += (_, _) =>
+            {
+                _contactsOpen = !_contactsOpen;
+                UpdateContactSection();
+            };
+            numContacts.ValueChanged += (_, _) => UpdateContactSection();
+            FormClosing += (_, e) => e.Cancel = _saving;
             // Hiện tiếng Việt (khớp danh sách khách hàng), gửi đúng mã cho server.
             cboType.Items.AddRange(new object[]
             {
@@ -30,6 +40,51 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
         {
             _cardScanCancellation?.Cancel();
             base.OnFormClosed(e);
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _cardScanCancellation?.Cancel();
+                _cardScanCancellation = null;
+                pictureCard.Image?.Dispose();
+                pictureCard.Image = null;
+                components?.Dispose();
+            }
+            base.Dispose(disposing);
+        }
+
+        private static (TableLayoutPanel Panel, TextBox Name, TextBox Phone, TextBox Position) CreateContactFields(int number)
+        {
+            var panel = new TableLayoutPanel
+            {
+                Name = $"contactGroup{number}",
+                Dock = DockStyle.Top,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                ColumnCount = 2,
+                RowCount = 4,
+                Padding = new Padding(8),
+                Margin = new Padding(0, 0, 0, 8),
+                BackColor = Theme.ContentBg
+            };
+            panel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            for (var row = 0; row < 4; row++) panel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            var heading = new Label { Text = $"Người liên hệ {number}", AutoSize = true, Font = Theme.FontBold, Margin = new Padding(3, 0, 3, 8) };
+            panel.Controls.Add(heading, 0, 0);
+            panel.SetColumnSpan(heading, 2);
+            var name = new TextBox { Name = $"contactName{number}", AccessibleName = $"Họ tên người liên hệ {number}", Dock = DockStyle.Top, TabIndex = 0 };
+            var phone = new TextBox { Name = $"contactPhone{number}", AccessibleName = $"Số điện thoại người liên hệ {number}", Dock = DockStyle.Top, TabIndex = 1 };
+            var position = new TextBox { Name = $"contactPosition{number}", AccessibleName = $"Chức vụ người liên hệ {number}", Dock = DockStyle.Top, TabIndex = 2 };
+            panel.Controls.Add(new Label { Text = "Họ tên *", AutoSize = true, Anchor = AnchorStyles.Left }, 0, 1);
+            panel.Controls.Add(name, 1, 1);
+            panel.Controls.Add(new Label { Text = "Điện thoại *", AutoSize = true, Anchor = AnchorStyles.Left }, 0, 2);
+            panel.Controls.Add(phone, 1, 2);
+            panel.Controls.Add(new Label { Text = "Chức vụ", AutoSize = true, Anchor = AnchorStyles.Left }, 0, 3);
+            panel.Controls.Add(position, 1, 3);
+            return (panel, name, phone, position);
         }
 
         private async void BtnSave_Click(object? sender, EventArgs e)
@@ -55,16 +110,19 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
                 cboType.Focus();
                 return;
             }
+            var contacts = ReadContacts();
+            if (contacts is null) return;
 
             // Khóa nút Lưu trong lúc chờ server — bấm 2 lần trước đây tạo 2 khách hàng trùng.
-            btnSave.Enabled = false;
+            _saving = true;
+            btnSave.Enabled = btnReadWithAi.Enabled = scrollFields.Enabled = btnContacts.Enabled = contactsSidebar.Enabled = false;
             try
             {
                 var result = await _api.Customers.CreateCustomerAsync(
                     txtName.Text.Trim(), txtPhone.Text.Trim(), txtTaxCode.Text.Trim(), customerType.Value,
                     string.IsNullOrWhiteSpace(txtAddress.Text) ? null : txtAddress.Text.Trim(),
                     numCreditLimit.Value == 0 ? null : numCreditLimit.Value,
-                    string.IsNullOrWhiteSpace(txtGoogleCalendarId.Text) ? null : txtGoogleCalendarId.Text.Trim());
+                    string.IsNullOrWhiteSpace(txtGoogleCalendarId.Text) ? null : txtGoogleCalendarId.Text.Trim(), contacts);
                 if (IsDisposed || Disposing) return;
 
                 if (!result.Success)
@@ -74,6 +132,7 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
                     return;
                 }
 
+                _saving = false;
                 DialogResult = DialogResult.OK;
                 Close();
             }
@@ -85,8 +144,55 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
             }
             finally
             {
-                if (!IsDisposed) btnSave.Enabled = true;
+                _saving = false;
+                if (!IsDisposed) btnSave.Enabled = btnReadWithAi.Enabled = scrollFields.Enabled = btnContacts.Enabled = contactsSidebar.Enabled = true;
             }
+        }
+
+        private void UpdateContactSection()
+        {
+            var count = (int)numContacts.Value;
+            contactsList.SuspendLayout();
+            while (_contactInputs.Count < count)
+            {
+                var input = CreateContactFields(_contactInputs.Count + 1);
+                _contactInputs.Add(input);
+                contactsList.RowCount = _contactInputs.Count;
+                contactsList.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+                contactsList.Controls.Add(input.Panel, 0, _contactInputs.Count - 1);
+            }
+            for (var i = 0; i < _contactInputs.Count; i++)
+                _contactInputs[i].Panel.Visible = i < count;
+            contactsList.ResumeLayout(true);
+            contactsSidebar.Visible = _contactsOpen;
+            scanPanel.Visible = !_contactsOpen;
+            btnContacts.Text = $"{(_contactsOpen ? "Đóng người liên hệ" : "Người liên hệ")} ({count})";
+        }
+
+        private List<CustomerContactInput>? ReadContacts()
+        {
+            var contacts = new List<CustomerContactInput>();
+            for (var i = 0; i < (int)numContacts.Value; i++)
+            {
+                var input = _contactInputs[i];
+                var name = input.Name.Text.Trim();
+                var phone = input.Phone.Text.Trim();
+                if (name.Length == 0 || !CustomerContactForm.IsValidPhoneNumber(phone))
+                {
+                    _contactsOpen = true;
+                    UpdateContactSection();
+                    lblStatus.ForeColor = Theme.Danger;
+                    lblStatus.Text = name.Length == 0 ? $"Vui lòng nhập họ tên người liên hệ {i + 1}."
+                        : $"Số điện thoại người liên hệ {i + 1} không hợp lệ (ví dụ: 0901234567 hoặc +84 901234567).";
+                    var target = name.Length == 0 ? input.Name : input.Phone;
+                    contactsSidebar.ScrollControlIntoView(target);
+                    target.Focus();
+                    return null;
+                }
+                contacts.Add(new CustomerContactInput(name, phone,
+                    string.IsNullOrWhiteSpace(input.Position.Text) ? null : input.Position.Text.Trim()));
+            }
+            return contacts;
         }
 
         private async void btnReadWithAi_Click(object? sender, EventArgs e)
