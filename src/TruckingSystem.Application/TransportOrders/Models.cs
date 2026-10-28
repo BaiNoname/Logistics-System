@@ -61,7 +61,15 @@ public record StorageFeePreviewDto(int DelayDays, decimal VolumeM3, decimal Rate
 
 /// <summary>1 lần đổi hạn giao + phí lưu kho của lần đó (tính theo số ngày hàng THỰC SỰ còn trong kho).</summary>
 public record StorageFeeLineDto(DateTime ChangedAt, DateTime? OldDate, DateTime NewDate, string RequestedBy, string Reason,
-    string? ChangedBy, int DelayDays, decimal RatePerM3PerDay, decimal EstimatedFee, int ChargedDays, decimal ChargedM3Days, decimal Fee);
+    string? ChangedBy, int DelayDays, decimal RatePerM3PerDay, decimal EstimatedFee, int ChargedDays, decimal ChargedM3Days, decimal Fee,
+    bool IsFeeOnly = false, string Formula = "", List<StorageFeeDayDto>? Days = null);
+
+/// <summary>1 ngày trong khoảng khách xin dời: m³ hàng còn trong kho cuối ngày, phí ngày đó, hoặc lý do KHÔNG tính
+/// (hàng không nằm kho / đã tính ở lần trước / chưa tới ngày).</summary>
+public record StorageFeeDayDto(DateTime Day, decimal VolumeM3, decimal Fee, string? NotChargedReason);
+
+/// <summary>Ghi nhận BỔ SUNG phí lưu kho do khách (không đổi hạn giao): hàng nằm kho tới ngày EndDate.</summary>
+public record RecordStorageFeeRequest(DateTime EndDate, string Reason);
 
 /// <summary>PHÍ LƯU KHO của đơn (do khách dời hạn giao) — Total đưa vào hóa đơn (phần hóa đơn).
 /// IsFinal = hàng đã rời kho hết (số đã chốt); false = tạm tính tới hôm nay.</summary>

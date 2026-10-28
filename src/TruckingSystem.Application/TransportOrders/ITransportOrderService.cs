@@ -31,4 +31,7 @@ public interface ITransportOrderService
 
     /// <summary>Phí lưu kho của đơn do KHÁCH dời hạn giao (từng lần đổi + tổng) — đưa vào hóa đơn.</summary>
     Task<StorageFeeDto?> GetStorageFeeAsync(int id);
+
+    /// <summary>Ghi nhận BỔ SUNG phí lưu kho do khách (không đổi hạn giao) — cả đơn đã Hoàn tất / Hủy.</summary>
+    Task<OrderActionResult> RecordStorageFeeAsync(int id, RecordStorageFeeRequest request, string? userId, string? userName);
 }

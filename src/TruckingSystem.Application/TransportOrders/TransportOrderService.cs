@@ -323,6 +323,70 @@ public class TransportOrderService : ITransportOrderService
             : $"Đã đổi hạn giao từ {oldDate:dd/MM/yyyy} sang {newDate:dd/MM/yyyy} (đã ghi nhật ký).") + feeText);
     }
 
+    /// <summary>GHI NHẬN BỔ SUNG PHÍ LƯU KHO do khách (khách chậm nhận hàng mà nhân viên quên "Đổi hạn giao"),
+    /// dùng được cả khi đơn đã Hoàn tất / Đã hủy. KHÔNG đổi hạn giao của đơn (tỉ lệ giao đúng hạn giữ nguyên):
+    /// chỉ ghi 1 dòng lịch sử "khoảng từ ngày sau hạn giao tới EndDate là do khách" — phí tính như mọi lần
+    /// khác: mỗi ngày hàng THỰC SỰ còn trong kho × m³ × đơn giá kho (chốt lúc ghi nhận), không tính trùng ngày.</summary>
+    public async Task<OrderActionResult> RecordStorageFeeAsync(int id, RecordStorageFeeRequest request, string? userId, string? userName)
+    {
+        var order = await _db.TransportOrders.FirstOrDefaultAsync(o => o.Id == id);
+        if (order is null) return new OrderActionResult(false, "Không tìm thấy đơn.");
+        if (order.Status == TransportOrderStatus.Draft)
+            return new OrderActionResult(false, "Đơn còn Nháp — hàng chưa vào kho, không có phí lưu kho.");
+        if (order.CommittedDeliveryDate is not DateTime deadline)
+            return new OrderActionResult(false, "Đơn chưa có hạn giao — không xác định được từ ngày nào bắt đầu tính phí lưu kho.");
+
+        var reason = (request.Reason ?? "").Trim();
+        if (reason.Length < 5)
+            return new OrderActionResult(false, "Phải ghi lý do (ít nhất 5 ký tự) — VD \"Khách hẹn lại ngày nhận hàng, quên đổi hạn\".");
+        if (reason.Length > 500) reason = reason[..500];
+
+        var endDate = VnClock.ToVnWallClock(request.EndDate)!.Value.Date;
+        deadline = deadline.Date;
+        if (endDate <= deadline)
+            return new OrderActionResult(false, $"Ngày hàng nằm kho tới phải SAU hạn giao ({deadline:dd/MM/yyyy}) — trong hạn thì không tính phí lưu kho.");
+        if (endDate > VnClock.Today.AddDays(90))
+            return new OrderActionResult(false, "Ngày kết thúc quá xa (tối đa 90 ngày tới).");
+
+        var rate = await _db.Warehouses.Where(w => w.Id == order.WarehouseId).Select(w => w.StorageFeePerM3PerDay).FirstOrDefaultAsync();
+        if (rate <= 0)
+            return new OrderActionResult(false, "Kho của đơn chưa khai báo phí lưu kho (Sửa kho → Phí lưu kho) — chưa tính được.");
+        var volume = await StorageFeeRules.CurrentVolumeM3Async(_db, order.Id, order.WarehouseId);
+
+        _db.DeliveryDeadlineChanges.Add(new DeliveryDeadlineChange
+        {
+            TransportOrderId = order.Id,
+            OldDate = deadline,
+            NewDate = endDate,
+            RequestedBy = DeadlineChangeRequester.Customer,
+            Reason = reason,
+            ChangedByUserName = userName,
+            DelayDays = (endDate - deadline).Days,
+            StorageFeePerM3PerDay = rate,
+            VolumeM3AtChange = volume,
+            EstimatedFee = 0,
+            IsFeeOnly = true,
+        });
+        _db.AuditLogs.Add(new AuditLog
+        {
+            UserId = userId,
+            Action = "RecordStorageFee",
+            EntityName = nameof(TransportOrder),
+            EntityId = order.Id,
+            Detail = $"Ghi nhận bổ sung phí lưu kho đơn {order.Code} (không đổi hạn giao): khách chậm nhận hàng " +
+                     $"{deadline.AddDays(1):dd/MM/yyyy} → {endDate:dd/MM/yyyy}, đơn giá {rate:N0} đ/m³/ngày. Lý do: {reason}. " +
+                     $"Người ghi: {userName ?? "(không rõ)"}.",
+        });
+        await _db.SaveChangesAsync();
+
+        var fee = await StorageFeeRules.ComputeAsync(_db, order.Id);
+        var line = fee?.Changes.LastOrDefault();
+        return new OrderActionResult(true,
+            $"Đã ghi nhận phí lưu kho do khách cho các ngày {deadline.AddDays(1):dd/MM/yyyy} → {endDate:dd/MM/yyyy} (hạn giao giữ nguyên)." +
+            (line is null ? "" : $"\n💰 Lần này: {(string.IsNullOrEmpty(line.Formula) ? $"{line.Fee:N0} đ" : line.Formula)}") +
+            (fee is null ? "" : $"\nTổng phí lưu kho của đơn: {fee.TotalFee:N0} đ{(fee.IsFinal ? "" : " (tạm tính)")}."));
+    }
+
     private static DeadlineChangeRequester? ParseRequester(string? value)
         => Enum.TryParse<DeadlineChangeRequester>(value, true, out var r) && Enum.IsDefined(r) ? r : null;
 

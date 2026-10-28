@@ -21,9 +21,11 @@
             lblTitle = new System.Windows.Forms.Label();
             kpi = new TruckingSystem.Desktop.Common.KpiStrip();
             grid = new System.Windows.Forms.DataGridView();
+            txtDetail = new System.Windows.Forms.TextBox();
             lblNote = new System.Windows.Forms.Label();
             bottomBar = new System.Windows.Forms.TableLayoutPanel();
             btnCopy = new System.Windows.Forms.Button();
+            btnRecord = new System.Windows.Forms.Button();
             btnClose = new System.Windows.Forms.Button();
             root.SuspendLayout();
             bottomBar.SuspendLayout();
@@ -37,19 +39,21 @@
             root.Controls.Add(lblTitle, 0, 0);
             root.Controls.Add(kpi, 0, 1);
             root.Controls.Add(grid, 0, 2);
-            root.Controls.Add(lblNote, 0, 3);
-            root.Controls.Add(bottomBar, 0, 4);
+            root.Controls.Add(txtDetail, 0, 3);
+            root.Controls.Add(lblNote, 0, 4);
+            root.Controls.Add(bottomBar, 0, 5);
             root.Dock = System.Windows.Forms.DockStyle.Fill;
             root.Margin = new System.Windows.Forms.Padding(0);
             root.Name = "root";
             root.Padding = new System.Windows.Forms.Padding(16, 12, 16, 12);
-            root.RowCount = 5;
+            root.RowCount = 6;
             root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
             root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
-            root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 50F));
+            root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 50F));
             root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
             root.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
-            root.Size = new System.Drawing.Size(1100, 600);
+            root.Size = new System.Drawing.Size(1100, 760);
             root.TabIndex = 0;
             //
             // lblTitle
@@ -77,6 +81,20 @@
             grid.Name = "grid";
             grid.TabIndex = 2;
             //
+            // txtDetail — CHI TIẾT TỪNG NGÀY của mọi lần: m³ còn trong kho × đơn giá = tiền, ngày nào không tính và vì sao
+            //
+            txtDetail.BackColor = System.Drawing.Color.FromArgb(248, 250, 252);
+            txtDetail.Dock = System.Windows.Forms.DockStyle.Fill;
+            txtDetail.Font = new System.Drawing.Font("Consolas", 9.5F);
+            txtDetail.Margin = new System.Windows.Forms.Padding(0, 0, 0, 8);
+            txtDetail.MinimumSize = new System.Drawing.Size(0, 120);
+            txtDetail.Multiline = true;
+            txtDetail.Name = "txtDetail";
+            txtDetail.ReadOnly = true;
+            txtDetail.ScrollBars = System.Windows.Forms.ScrollBars.Both;
+            txtDetail.TabIndex = 3;
+            txtDetail.WordWrap = false;
+            //
             // lblNote — ghi chú cách tính / đã chốt hay tạm tính
             //
             lblNote.Anchor = System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
@@ -85,7 +103,7 @@
             lblNote.ForeColor = System.Drawing.Color.FromArgb(100, 116, 139);
             lblNote.Margin = new System.Windows.Forms.Padding(0, 0, 0, 8);
             lblNote.Name = "lblNote";
-            lblNote.TabIndex = 3;
+            lblNote.TabIndex = 4;
             lblNote.Text = "Đang tải...";
             //
             // bottomBar
@@ -97,13 +115,14 @@
             bottomBar.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
             bottomBar.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.AutoSize));
             bottomBar.Controls.Add(btnCopy, 0, 0);
+            bottomBar.Controls.Add(btnRecord, 1, 0);
             bottomBar.Controls.Add(btnClose, 2, 0);
             bottomBar.Dock = System.Windows.Forms.DockStyle.Fill;
             bottomBar.Margin = new System.Windows.Forms.Padding(0);
             bottomBar.Name = "bottomBar";
             bottomBar.RowCount = 1;
             bottomBar.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
-            bottomBar.TabIndex = 4;
+            bottomBar.TabIndex = 5;
             //
             // btnCopy — sao chép đoạn diễn giải gửi khách / kế toán
             //
@@ -127,6 +146,26 @@
             btnCopy.Enabled = false;
             btnCopy.Click += new System.EventHandler(this.BtnCopy_Click);
             //
+            // btnRecord — ghi nhận BỔ SUNG phí lưu kho do khách (quên đổi hạn, kể cả đơn đã Hoàn tất / Hủy)
+            //
+            btnRecord.Anchor = System.Windows.Forms.AnchorStyles.Left;
+            btnRecord.AutoSize = true;
+            btnRecord.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            btnRecord.BackColor = System.Drawing.Color.White;
+            btnRecord.Cursor = System.Windows.Forms.Cursors.Hand;
+            btnRecord.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(217, 119, 6);
+            btnRecord.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            btnRecord.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            btnRecord.ForeColor = System.Drawing.Color.FromArgb(180, 83, 9);
+            btnRecord.Margin = new System.Windows.Forms.Padding(0, 0, 8, 0);
+            btnRecord.MinimumSize = new System.Drawing.Size(0, 38);
+            btnRecord.Name = "btnRecord";
+            btnRecord.Padding = new System.Windows.Forms.Padding(10, 4, 10, 4);
+            btnRecord.TabIndex = 1;
+            btnRecord.Text = "➕ Ghi nhận phí lưu kho bổ sung";
+            btnRecord.UseVisualStyleBackColor = false;
+            btnRecord.Click += new System.EventHandler(this.BtnRecord_Click);
+            //
             // btnClose
             //
             btnClose.Anchor = System.Windows.Forms.AnchorStyles.Right;
@@ -143,7 +182,7 @@
             btnClose.MinimumSize = new System.Drawing.Size(0, 38);
             btnClose.Name = "btnClose";
             btnClose.Padding = new System.Windows.Forms.Padding(10, 4, 10, 4);
-            btnClose.TabIndex = 1;
+            btnClose.TabIndex = 2;
             btnClose.Text = "Đóng";
             btnClose.UseVisualStyleBackColor = false;
             //
@@ -153,10 +192,10 @@
             AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
             BackColor = System.Drawing.Color.White;
             CancelButton = btnClose;
-            ClientSize = new System.Drawing.Size(1100, 600);
+            ClientSize = new System.Drawing.Size(1100, 760);
             Controls.Add(root);
             MinimizeBox = false;
-            MinimumSize = new System.Drawing.Size(760, 460);
+            MinimumSize = new System.Drawing.Size(760, 560);
             Name = "StorageFeeForm";
             StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
             Text = "Phí lưu kho";
@@ -174,9 +213,11 @@
         private System.Windows.Forms.Label lblTitle;
         private TruckingSystem.Desktop.Common.KpiStrip kpi;
         private System.Windows.Forms.DataGridView grid;
+        private System.Windows.Forms.TextBox txtDetail;
         private System.Windows.Forms.Label lblNote;
         private System.Windows.Forms.TableLayoutPanel bottomBar;
         private System.Windows.Forms.Button btnCopy;
+        private System.Windows.Forms.Button btnRecord;
         private System.Windows.Forms.Button btnClose;
     }
 }
