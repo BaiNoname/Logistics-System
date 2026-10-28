@@ -30,6 +30,7 @@ namespace TruckingSystem.Desktop.Common
         private readonly Label _lblCount;
         private readonly FlowLayoutPanel _tailGroup;
         private readonly Dictionary<string, ComboBox> _choices = new();
+        private readonly Dictionary<string, DateTimePicker> _dates = new();
         private readonly System.Windows.Forms.Timer _searchTimer = new() { Interval = 250 };
         private bool _suppress;
 
@@ -46,6 +47,7 @@ namespace TruckingSystem.Desktop.Common
             var lblSearch = new Label { Text = "🔎", AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, 0, 4, 0) };
             _txtSearch = new TextBox
             {
+                Name = "txtSearch", AccessibleName = "Tìm kiếm",
                 PlaceholderText = "Tìm nhanh...",
                 Anchor = AnchorStyles.Left,
                 Margin = new Padding(0),
@@ -104,7 +106,7 @@ namespace TruckingSystem.Desktop.Common
         public void AddChoice(string key, string label, IEnumerable<string> options)
         {
             var lbl = new Label { Text = label + ":", AutoSize = true, ForeColor = Muted, Anchor = AnchorStyles.Left, Margin = new Padding(0, 0, 6, 0) };
-            var cbo = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Anchor = AnchorStyles.Left, Margin = new Padding(0) };
+            var cbo = new ComboBox { Name = key, AccessibleName = label, DropDownStyle = ComboBoxStyle.DropDownList, Anchor = AnchorStyles.Left, Margin = new Padding(0) };
             cbo.Items.Add(AllText);
             cbo.Items.AddRange(options.Distinct().Cast<object>().ToArray());
             cbo.SelectedIndex = 0;
@@ -115,6 +117,29 @@ namespace TruckingSystem.Desktop.Common
             _choices[key] = cbo;
             FitWidth(cbo);
         }
+
+        public void AddDate(string key, string label)
+        {
+            var picker = new DateTimePicker
+            {
+                Name = key, AccessibleName = label, Format = DateTimePickerFormat.Custom,
+                CustomFormat = "dd/MM/yyyy", ShowCheckBox = true,
+                Value = DateTime.UtcNow.AddHours(7).Date, Checked = false,
+                Width = 150, Anchor = AnchorStyles.Left, Margin = Padding.Empty
+            };
+            picker.ValueChanged += (_, _) => { if (!_suppress) RaiseChanged(); };
+            var group = Group(new Label
+            {
+                Text = label + ":", AutoSize = true, ForeColor = Muted,
+                Anchor = AnchorStyles.Left, Margin = new Padding(0, 0, 6, 0)
+            }, picker);
+            Controls.Add(group);
+            Controls.SetChildIndex(group, Controls.IndexOf(_tailGroup));
+            _dates.Add(key, picker);
+        }
+
+        public DateTime? Date(string key)
+            => _dates.TryGetValue(key, out var picker) && picker.Checked ? picker.Value.Date : null;
 
         /// <summary>Khối KHÔNG xuống dòng giữa chừng (nhãn luôn đi cùng ô của nó), các khối cách đều
         /// nhau, căn giữa theo chiều dọc.</summary>
@@ -172,7 +197,8 @@ namespace TruckingSystem.Desktop.Common
         /// <summary>Dòng đếm: "🔎 Đang hiện 12/80" khi đang lọc, "80 dòng" khi không.</summary>
         public void SetCount(int shown, int total)
         {
-            var filtering = SearchText.Length > 0 || _choices.Values.Any(c => c.SelectedIndex > 0);
+            var filtering = SearchText.Length > 0 || _choices.Values.Any(c => c.SelectedIndex > 0)
+                || _dates.Values.Any(d => d.Checked);
             _lblCount.Text = filtering ? $"🔎 Đang hiện {shown}/{total}" : $"{total} dòng";
             _lblCount.ForeColor = filtering ? Accent : Muted;
             _btnClear.Enabled = filtering;
@@ -185,6 +211,7 @@ namespace TruckingSystem.Desktop.Common
             _suppress = true;
             try
             {
+                foreach (var d in _dates.Values) d.Checked = false;
                 foreach (var (k, c) in _choices)
                 {
                     if (c.Items.Count == 0) continue;
@@ -203,6 +230,7 @@ namespace TruckingSystem.Desktop.Common
             _suppress = true;
             try
             {
+                foreach (var d in _dates.Values) d.Checked = false;
                 foreach (var c in _choices.Values) if (c.Items.Count > 0) c.SelectedIndex = 0;
                 _txtSearch.Text = text ?? "";
             }
@@ -216,6 +244,7 @@ namespace TruckingSystem.Desktop.Common
             _suppress = true;
             try
             {
+                foreach (var d in _dates.Values) d.Checked = false;
                 _txtSearch.Text = "";
                 foreach (var c in _choices.Values) if (c.Items.Count > 0) c.SelectedIndex = 0;
             }
