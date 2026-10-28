@@ -53,8 +53,8 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                 return;
             }
             btnSave.Enabled = true;
-            lblHint.Text = $"💰 Sẽ xét {(to - from).Days + 1} ngày: {from:dd/MM/yyyy} → {to:dd/MM/yyyy}. Mỗi ngày hàng của đơn còn trong kho " +
-                           "tính = m³ còn trong kho × đơn giá kho; ngày hàng đã xuất hoặc đã tính ở lần trước thì không tính.";
+            lblHint.Text = $"💰 Sẽ xét {(to - from).Days + 1} ngày: {from:dd/MM/yyyy} → {to:dd/MM/yyyy}. Mỗi ngày hàng của đơn có nằm kho " +
+                           "(kể cả ngày xuất kho) tính = m³ nằm kho × đơn giá kho; ngày hàng đã đi rồi hoặc đã tính ở lần trước thì không tính.";
         }
 
         private async void BtnSave_Click(object? sender, EventArgs e)
