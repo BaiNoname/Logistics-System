@@ -34,6 +34,9 @@ public class TripListItem
     /// <summary>Điểm đi -> điểm đến của chặng (Lấy: điểm lấy → kho; Giao: kho → điểm giao; Trả: kho → điểm lấy).</summary>
     public string? FromName { get; set; }
     public string? ToName { get; set; }
+    /// <summary>Ước tính lộ trình (tính tự động lúc Chia xe) — null = chưa tính được.</summary>
+    public decimal? EstimatedDistanceKm { get; set; }
+    public int? EstimatedDurationMinutes { get; set; }
 }
 
 public class TripActionResultItem

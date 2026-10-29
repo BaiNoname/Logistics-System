@@ -28,21 +28,26 @@ public class AuthController : ControllerBase
     public async Task<ActionResult<LoginResult>> Login(LoginRequest request)
     {
         var result = await _authService.LoginAsync(request);
-        try
+        // Chỉ ghi nhật ký đăng nhập THÀNH CÔNG (ai vào hệ thống, lúc nào, từ máy nào). Đăng nhập sai (gõ nhầm mật khẩu...)
+        // không ghi — không có giá trị đối chiếu, chỉ làm loãng nhật ký.
+        if (result.Success)
         {
-            var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
-            _db.AuditLogs.Add(new AuditLog
+            try
             {
-                Action = result.Success ? "Login" : "LoginFailed",
-                EntityName = "Account",
-                UserName = string.IsNullOrWhiteSpace(request.Username) ? null : request.Username.Trim(),
-                UserRole = result.Success && result.Roles is { Count: > 0 } ? string.Join(",", result.Roles) : null,
-                Detail = (result.Success ? "Đăng nhập thành công" : "Đăng nhập thất bại: " + result.Message) +
-                         (string.IsNullOrEmpty(ip) ? "" : $" — máy {ip}"),
-            });
-            await _db.SaveChangesAsync();
+                var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+                _db.AuditLogs.Add(new AuditLog
+                {
+                    Action = "Login",
+                    EntityName = "Account",
+                    UserName = string.IsNullOrWhiteSpace(request.Username) ? null : request.Username.Trim(),
+                    UserRole = result.Roles is { Count: > 0 } ? string.Join(",", result.Roles) : null,
+                    Detail = "Đăng nhập thành công" +
+                             (string.IsNullOrEmpty(ip) ? "" : $" — máy {ip}"),
+                });
+                await _db.SaveChangesAsync();
+            }
+            catch { /* ghi nhật ký lỗi không được chặn việc đăng nhập */ }
         }
-        catch { /* ghi nhật ký lỗi không được chặn việc đăng nhập */ }
         return result.Success ? Ok(result) : Unauthorized(result);
     }
 }

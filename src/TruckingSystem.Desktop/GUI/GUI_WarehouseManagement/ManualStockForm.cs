@@ -42,6 +42,8 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
         public ManualStockForm()
         {
             InitializeComponent();
+            // Chữ cho NHÂN VIÊN (không nêu tên thuật toán) — đặt bằng code, không sửa Designer.
+            lblBinsTitle.Text = "Chọn vị trí nhập (tùy chọn — để trống = hệ thống tự chọn vị trí)";
             Anim.FadeIn(this); // cửa sổ hiện dần lên
             cboOrder.SelectedIndexChanged += async (_, _) => await OnOrderChangedAsync();
             cboCargoLine.SelectedIndexChanged += async (_, _) =>
@@ -265,7 +267,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
 
                 var rows = new List<object>
                 {
-                    new { Id = 0, Vị_trí = "🤖 Tự động (Best-Fit)", Đã_dùng = "", Còn_trống_m3 = "", Cách_cửa_m = "" }
+                    new { Id = 0, Vị_trí = "🤖 Hệ thống tự chọn vị trí", Đã_dùng = "", Còn_trống_m3 = "", Cách_cửa_m = "" }
                 };
                 rows.AddRange(_availableBins.Select(b => (object)new
                 {
@@ -492,7 +494,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
 
             var confirm = MessageBox.Show(FindForm(),
                 $"Hoàn tác phiếu xuất tay {h.Qty:0.##} \"{h.CargoType}\" của đơn {h.OrderCode} ({ToVn(h.OccurredAt):dd/MM HH:mm})?\n\n" +
-                "Hàng sẽ được cộng lại vào tồn kho và xếp lại vào ô kệ (Best-Fit). Phiếu xuất vẫn được giữ trong lịch sử, đánh dấu \"đã hoàn tác\".",
+                "Hàng sẽ được cộng lại vào tồn kho và xếp lại vào ô kệ (hệ thống tự chọn vị trí). Phiếu xuất vẫn được giữ trong lịch sử, đánh dấu \"đã hoàn tác\".",
                 "Hoàn tác phiếu xuất tay", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
             if (confirm != DialogResult.Yes) return;
 

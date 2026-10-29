@@ -27,7 +27,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
 
         private OrderAction _actDetail = null!, _actEdit = null!, _actConfirm = null!, _actAllocate = null!,
             _actDeadline = null!, _actFee = null!, _actRecordFee = null!, _actRoute = null!,
-            _actCopyCode = null!, _actCopyLink = null!, _actCancel = null!;
+            _actCopyCode = null!, _actCopyLink = null!, _actCancel = null!, _actHistory = null!;
 
         private TransportOrderListItem? SelectedOrder
             => grid.CurrentRow?.Cells["Id"]?.Value is int id ? _orders.FirstOrDefault(o => o.Id == id) : null;
@@ -76,7 +76,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             _actDetail = new("📄  Xem chi tiết đơn", _ => true, _ => OpenDetailAsync());
             _actEdit = new("✏️  Sửa đơn", o => o.Status == "Draft", EditAsync);
             _actConfirm = new("✅  Xác nhận đơn", o => o.Status == "Draft", ConfirmAsync, o => o.Status == "Draft");
-            _actAllocate = new("🚚  Chia xe (Greedy)", o => !_allocating && o.Status == "Confirmed" && o.ActiveTripCount == 0,
+            _actAllocate = new("🚚  Chia xe tự động", o => !_allocating && o.Status == "Confirmed" && o.ActiveTripCount == 0,
                 _ => AllocateSelectedAsync(), o => o.Status is "Draft" or "Confirmed");
             _actDeadline = new("📅  Đổi hạn giao", o => o.Status is "Confirmed" or "InProgress", ChangeDeadlineAsync);
             _actFee = new("💰  Xem phí lưu kho (chi tiết từng ngày)", o => o.Status != "Draft", StorageFeeAsync);
@@ -93,6 +93,12 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                 var url = $"{_api!.Connection.BaseUrl}/track.html?token={o.PublicTrackingToken}";
                 Clipboard.SetText(url);
                 SetStatus("🔗 Đã sao chép link theo dõi: " + url, Theme.Success);
+                return Task.CompletedTask;
+            });
+            _actHistory = new("🕘  Lịch sử thay đổi (ai làm gì, lúc nào)", _ => true, o =>
+            {
+                using var f = new TruckingSystem.Desktop.GUI_AuditLogManagement.EntityHistoryForm(_api!, "TransportOrder", o.Id, "đơn " + o.Code);
+                f.ShowDialog(FindForm());
                 return Task.CompletedTask;
             });
             _actCancel = new("❌  Hủy đơn", o => o.Status is not ("Done" or "Cancelled"), CancelAsync);
@@ -134,6 +140,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
         private void AddToolItems(ToolStripItemCollection items)
         {
             AddItem(items, _actRoute);
+            AddItem(items, _actHistory);
             AddItem(items, _actCopyLink);
             AddItem(items, _actCopyCode);
         }

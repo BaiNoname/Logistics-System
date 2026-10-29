@@ -25,9 +25,21 @@ public sealed class AuditSaveChangesInterceptor : SaveChangesInterceptor
     {
         nameof(AuditLog), nameof(Notification), nameof(Waypoint), nameof(TripVideoSegment), nameof(TripCalendarEvent),
         nameof(WarehouseStock), nameof(StorageAssignment),
+        // Bản ghi phụ sinh TỰ ĐỘNG cùng 1 thao tác đã có dòng nhật ký riêng -> ghi nữa chỉ làm loãng:
+        //  • TripLine (dòng hàng của chuyến): tạo khi Chia xe (đã có dòng "Chia xe"), đổi trạng thái khi chuyến chạy / xong.
+        //  • TripCargoPhoto: mỗi ảnh tài xế chụp 1 dòng — đã có dòng "Đổi trạng thái chuyến" lúc tài xế báo xong.
+        //  • DeliveryDeadlineChange: đã có dòng ghi tay "Đổi hạn giao" / "Ghi nhận phí lưu kho" trên đơn.
+        nameof(TripLine), nameof(TripCargoPhoto), nameof(DeliveryDeadlineChange),
     };
 
-    private static readonly HashSet<string> SkippedProperties = new() { "Id", "CreatedAt", "UpdatedAt", "Version", "PasswordHash" };
+    /// <summary>Field hệ thống TỰ tính lại — đổi giá trị không phải do người thao tác, không ghi nhật ký:
+    /// m³ đã dùng của ô kệ (đổi theo mỗi phiếu nhập / xuất — phiếu đã được ghi), km / thời gian ước tính và tiền xăng
+    /// thực tế của chuyến (tự tính), mốc Từ chối (đã có dòng đổi trạng thái).</summary>
+    private static readonly HashSet<string> SkippedProperties = new()
+    {
+        "Id", "CreatedAt", "UpdatedAt", "Version", "PasswordHash",
+        "CurrentUsedM3", "EstimatedDistanceKm", "EstimatedDurationMinutes", "ActualFuelCost", "ConfirmRejectedAt",
+    };
 
     private readonly IHttpContextAccessor _http;
     private List<(EntityEntry Entry, AuditLog Log)>? _pendingAdded;
@@ -121,6 +133,7 @@ public sealed class AuditSaveChangesInterceptor : SaveChangesInterceptor
                     if (manual.Contains((type, entry.Entity.Id))) break;
                     var changed = entry.Properties.Where(p => p.IsModified && Show(p) && !Equals(p.OriginalValue, p.CurrentValue)).ToList();
                     if (changed.Count == 0) break;
+                    if (IsAutoVehicleStatus(type, changed)) break;
                     var action = changed.All(p => p.Metadata.Name == "Status") ? "StatusChange" : "Update";
                     logs.Add(NewLog(action, type, entry.Entity.Id, $"Sửa {Label(type)} {Title(entry, false)}".TrimEnd() +
                         Join(" · ", changed.Select(p => $"{PropLabel(p)}: {Fmt(p.OriginalValue)} → {Fmt(p.CurrentValue)}")), userId, userName, now));
@@ -130,6 +143,13 @@ public sealed class AuditSaveChangesInterceptor : SaveChangesInterceptor
         if (logs.Count > 0) context.Set<AuditLog>().AddRange(logs);
         if (_pendingAdded.Count == 0) _pendingAdded = null;
     }
+
+    /// <summary>Xe tự chuyển "Đang chạy" khi chuyến bắt đầu / về "Rảnh" khi chuyến xong — hệ thống tự làm theo chuyến
+    /// (chuyến đã có dòng đổi trạng thái riêng) -> không ghi. Đổi tay sang Bảo trì / Ngưng hoạt động vẫn ghi bình thường.</summary>
+    private static bool IsAutoVehicleStatus(string type, List<PropertyEntry> changed)
+        => type == nameof(Vehicle)
+           && changed.Count == 1 && changed[0].Metadata.Name == "Status"
+           && (Equals(changed[0].OriginalValue?.ToString(), "OnTrip") || Equals(changed[0].CurrentValue?.ToString(), "OnTrip"));
 
     /// <summary>Bản ghi MỚI đã có Id sau khi lưu -> thêm dòng nhật ký; trả về context nếu cần lưu phụ.</summary>
     private DbContext? TakeAdded(DbContext? context)
@@ -215,47 +235,135 @@ public sealed class AuditSaveChangesInterceptor : SaveChangesInterceptor
 
     private static readonly Dictionary<string, string> EntityLabels = new()
     {
-        ["TransportOrder"] = "đơn vận chuyển", ["CargoLine"] = "dòng hàng", ["Trip"] = "chuyến", ["TripLine"] = "dòng hàng của chuyến",
-        ["Vehicle"] = "xe", ["VehicleDocument"] = "giấy tờ xe", ["Warehouse"] = "kho", ["WarehouseZone"] = "khu vực kho",
-        ["StorageBin"] = "vị trí lưu trữ", ["GoodsReceipt"] = "phiếu nhập kho", ["GoodsIssue"] = "phiếu xuất kho",
-        ["Location"] = "địa điểm", ["DriverProfile"] = "hồ sơ tài xế", ["DriverSchedule"] = "lịch làm tài xế",
-        ["FuelLog"] = "lần đổ xăng", ["FuelProvider"] = "hãng nhiên liệu", ["FuelPriceHistory"] = "giá nhiên liệu",
-        ["TripExpense"] = "chi phí chuyến", ["IncidentReport"] = "sự cố", ["TripCargoPhoto"] = "ảnh hàng",
-        ["DeliveryDeadlineChange"] = "lịch sử đổi hạn giao", ["Customer"] = "khách hàng", ["CustomerContact"] = "liên hệ khách hàng",
-        ["Contract"] = "hợp đồng", ["PriceList"] = "bảng giá", ["TariffRule"] = "quy tắc giá", ["Invoice"] = "hóa đơn",
-        ["InvoiceLine"] = "dòng hóa đơn", ["Payment"] = "thanh toán", ["Employee"] = "nhân viên", ["EmployeeDocument"] = "giấy tờ nhân viên",
-        ["Department"] = "phòng ban", ["Position"] = "chức danh", ["CustomerFeedback"] = "đánh giá của khách",
+        ["TransportOrder"] = "đơn vận chuyển",
+        ["CargoLine"] = "dòng hàng",
+        ["Trip"] = "chuyến",
+        ["TripLine"] = "dòng hàng của chuyến",
+        ["Vehicle"] = "xe",
+        ["VehicleDocument"] = "giấy tờ xe",
+        ["Warehouse"] = "kho",
+        ["WarehouseZone"] = "khu vực kho",
+        ["StorageBin"] = "vị trí lưu trữ",
+        ["GoodsReceipt"] = "phiếu nhập kho",
+        ["GoodsIssue"] = "phiếu xuất kho",
+        ["Location"] = "địa điểm",
+        ["DriverProfile"] = "hồ sơ tài xế",
+        ["DriverSchedule"] = "lịch làm tài xế",
+        ["FuelLog"] = "lần đổ xăng",
+        ["FuelProvider"] = "hãng nhiên liệu",
+        ["FuelPriceHistory"] = "giá nhiên liệu",
+        ["TripExpense"] = "chi phí chuyến",
+        ["IncidentReport"] = "sự cố",
+        ["TripCargoPhoto"] = "ảnh hàng",
+        ["DeliveryDeadlineChange"] = "lịch sử đổi hạn giao",
+        ["Customer"] = "khách hàng",
+        ["CustomerContact"] = "liên hệ khách hàng",
+        ["Contract"] = "hợp đồng",
+        ["PriceList"] = "bảng giá",
+        ["TariffRule"] = "quy tắc giá",
+        ["Invoice"] = "hóa đơn",
+        ["InvoiceLine"] = "dòng hóa đơn",
+        ["Payment"] = "thanh toán",
+        ["Employee"] = "nhân viên",
+        ["EmployeeDocument"] = "giấy tờ nhân viên",
+        ["Department"] = "phòng ban",
+        ["Position"] = "chức danh",
+        ["CustomerFeedback"] = "đánh giá của khách",
     };
 
     private static readonly Dictionary<string, string> PropLabels = new()
     {
-        ["Status"] = "Trạng thái", ["Code"] = "Mã", ["Name"] = "Tên", ["FullName"] = "Họ tên", ["Address"] = "Địa chỉ",
-        ["CommittedDeliveryDate"] = "Hạn giao", ["PickupPoint"] = "Điểm lấy", ["DropoffPoint"] = "Điểm giao", ["PickupMethod"] = "Cách lấy hàng",
-        ["CustomerId"] = "Khách hàng #", ["ContractId"] = "Hợp đồng #", ["WarehouseId"] = "Kho #", ["TransportOrderId"] = "Đơn #",
-        ["VehicleId"] = "Xe #", ["DriverEmployeeId"] = "Tài xế #", ["TripId"] = "Chuyến #", ["CargoLineId"] = "Dòng hàng #",
-        ["LegType"] = "Chặng", ["StartTime"] = "Giờ bắt đầu", ["EndTime"] = "Giờ kết thúc", ["PlannedStartDate"] = "Ngày xuất phát",
-        ["CancelReason"] = "Lý do hủy", ["PlateNumber"] = "Biển số", ["VehicleType"] = "Loại xe", ["CapacityKg"] = "Tải trọng (kg)",
-        ["CapacityQty"] = "Sức chứa", ["FuelType"] = "Nhiên liệu", ["FuelTankCapacityLiters"] = "Dung tích bình (L)",
-        ["FuelLevelLiters"] = "Mức nhiên liệu (L)", ["StorageFeePerM3PerDay"] = "Phí lưu kho (đ/m³/ngày)", ["QtyReceived"] = "SL nhập",
-        ["QtyIssued"] = "SL xuất", ["QtyTotal"] = "Số lượng", ["QtyPlanned"] = "SL kế hoạch", ["QtyDelivered"] = "SL đã giao",
-        ["Liters"] = "Số lít", ["Cost"] = "Chi phí", ["Amount"] = "Số tiền", ["Note"] = "Ghi chú", ["Description"] = "Mô tả",
-        ["Type"] = "Loại", ["Reason"] = "Lý do", ["ExpiryDate"] = "Hết hạn", ["IssueDate"] = "Ngày cấp", ["DocType"] = "Loại giấy tờ",
-        ["LicenseNumber"] = "Số bằng lái", ["LicenseClass"] = "Hạng bằng", ["LicenseExpiryDate"] = "Bằng lái hết hạn",
-        ["HealthCertExpiryDate"] = "Giấy khám SK hết hạn", ["CargoType"] = "Loại hàng", ["WeightKg"] = "Khối lượng (kg)",
-        ["VolumeM3"] = "Thể tích (m³)", ["PackageCount"] = "Số kiện", ["ProgressPercent"] = "Tiến độ (%)",
-        ["ReversedAt"] = "Hoàn tác lúc", ["ReversedByUserName"] = "Người hoàn tác", ["PerformedByUserName"] = "Người thực hiện",
-        ["LengthMeters"] = "Dài (m)", ["WidthMeters"] = "Rộng (m)", ["HeightMeters"] = "Cao (m)", ["PosX"] = "Vị trí X", ["PosY"] = "Vị trí Y",
-        ["CapacityM3"] = "Sức chứa (m³)", ["MaxWeightKg"] = "Tải tối đa (kg)", ["ZoneType"] = "Loại khu", ["Lat"] = "Vĩ độ", ["Lng"] = "Kinh độ",
-        ["Phone"] = "Điện thoại", ["Email"] = "Email",
+        ["Status"] = "Trạng thái",
+        ["Code"] = "Mã",
+        ["Name"] = "Tên",
+        ["FullName"] = "Họ tên",
+        ["Address"] = "Địa chỉ",
+        ["CommittedDeliveryDate"] = "Hạn giao",
+        ["PickupPoint"] = "Điểm lấy",
+        ["DropoffPoint"] = "Điểm giao",
+        ["PickupMethod"] = "Cách lấy hàng",
+        ["CustomerId"] = "Khách hàng #",
+        ["ContractId"] = "Hợp đồng #",
+        ["WarehouseId"] = "Kho #",
+        ["TransportOrderId"] = "Đơn #",
+        ["VehicleId"] = "Xe #",
+        ["DriverEmployeeId"] = "Tài xế #",
+        ["TripId"] = "Chuyến #",
+        ["CargoLineId"] = "Dòng hàng #",
+        ["LegType"] = "Chặng",
+        ["StartTime"] = "Giờ bắt đầu",
+        ["EndTime"] = "Giờ kết thúc",
+        ["PlannedStartDate"] = "Ngày xuất phát",
+        ["CancelReason"] = "Lý do hủy",
+        ["PlateNumber"] = "Biển số",
+        ["VehicleType"] = "Loại xe",
+        ["CapacityKg"] = "Tải trọng (kg)",
+        ["CapacityQty"] = "Sức chứa",
+        ["FuelType"] = "Nhiên liệu",
+        ["FuelTankCapacityLiters"] = "Dung tích bình (L)",
+        ["FuelLevelLiters"] = "Mức nhiên liệu (L)",
+        ["StorageFeePerM3PerDay"] = "Phí lưu kho (đ/m³/ngày)",
+        ["QtyReceived"] = "SL nhập",
+        ["QtyIssued"] = "SL xuất",
+        ["QtyTotal"] = "Số lượng",
+        ["QtyPlanned"] = "SL kế hoạch",
+        ["QtyDelivered"] = "SL đã giao",
+        ["Liters"] = "Số lít",
+        ["Cost"] = "Chi phí",
+        ["Amount"] = "Số tiền",
+        ["Note"] = "Ghi chú",
+        ["Description"] = "Mô tả",
+        ["Type"] = "Loại",
+        ["Reason"] = "Lý do",
+        ["ExpiryDate"] = "Hết hạn",
+        ["IssueDate"] = "Ngày cấp",
+        ["DocType"] = "Loại giấy tờ",
+        ["LicenseNumber"] = "Số bằng lái",
+        ["LicenseClass"] = "Hạng bằng",
+        ["LicenseExpiryDate"] = "Bằng lái hết hạn",
+        ["HealthCertExpiryDate"] = "Giấy khám SK hết hạn",
+        ["CargoType"] = "Loại hàng",
+        ["WeightKg"] = "Khối lượng (kg)",
+        ["VolumeM3"] = "Thể tích (m³)",
+        ["PackageCount"] = "Số kiện",
+        ["ProgressPercent"] = "Tiến độ (%)",
+        ["ReversedAt"] = "Hoàn tác lúc",
+        ["ReversedByUserName"] = "Người hoàn tác",
+        ["PerformedByUserName"] = "Người thực hiện",
+        ["LengthMeters"] = "Dài (m)",
+        ["WidthMeters"] = "Rộng (m)",
+        ["HeightMeters"] = "Cao (m)",
+        ["PosX"] = "Vị trí X",
+        ["PosY"] = "Vị trí Y",
+        ["CapacityM3"] = "Sức chứa (m³)",
+        ["MaxWeightKg"] = "Tải tối đa (kg)",
+        ["ZoneType"] = "Loại khu",
+        ["Lat"] = "Vĩ độ",
+        ["Lng"] = "Kinh độ",
+        ["Phone"] = "Điện thoại",
+        ["Email"] = "Email",
     };
 
     private static readonly Dictionary<string, string> EnumLabels = new()
     {
-        ["Draft"] = "Nháp", ["Confirmed"] = "Đã xác nhận", ["InProgress"] = "Đang chạy", ["Done"] = "Hoàn tất", ["Cancelled"] = "Đã hủy",
-        ["Planned"] = "Đã lên kế hoạch", ["Completed"] = "Hoàn tất", ["PendingConfirmation"] = "Chờ xác nhận",
-        ["Available"] = "Rảnh", ["OnTrip"] = "Đang chạy chuyến", ["UnderMaintenance"] = "Bảo trì", ["OutOfService"] = "Ngưng hoạt động",
-        ["Pickup"] = "Lấy hàng", ["Delivery"] = "Giao hàng", ["Return"] = "Trả hàng",
-        ["CompanyPickup"] = "Công ty đi lấy", ["SelfDelivery"] = "Khách tự mang tới",
-        ["Customer"] = "Khách hàng", ["Company"] = "Công ty",
+        ["Draft"] = "Nháp",
+        ["Confirmed"] = "Đã xác nhận",
+        ["InProgress"] = "Đang chạy",
+        ["Done"] = "Hoàn tất",
+        ["Cancelled"] = "Đã hủy",
+        ["Planned"] = "Đã lên kế hoạch",
+        ["Completed"] = "Hoàn tất",
+        ["PendingConfirmation"] = "Chờ xác nhận",
+        ["Available"] = "Rảnh",
+        ["OnTrip"] = "Đang chạy chuyến",
+        ["UnderMaintenance"] = "Bảo trì",
+        ["OutOfService"] = "Ngưng hoạt động",
+        ["Pickup"] = "Lấy hàng",
+        ["Delivery"] = "Giao hàng",
+        ["Return"] = "Trả hàng",
+        ["CompanyPickup"] = "Công ty đi lấy",
+        ["SelfDelivery"] = "Khách tự mang tới",
+        ["Customer"] = "Khách hàng",
+        ["Company"] = "Công ty",
     };
 }

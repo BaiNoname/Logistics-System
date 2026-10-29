@@ -97,6 +97,62 @@ namespace TruckingSystem.Desktop.DTO_AuditLogManagement
             return text.Length == 0 ? code : char.ToUpper(text[0], CultureInfo.GetCultureInfo("vi-VN")) + text[1..];
         }
 
+        public static string UserText(AuditLogItem l) => string.IsNullOrWhiteSpace(l.UserName) ? SystemText : l.UserName!;
+
+        public static string EntityText(AuditLogItem l) => Entity(l.EntityName) + (l.EntityId.HasValue ? $" #{l.EntityId}" : "");
+
+        /// <summary>Màu "viên thuốc" của cột Hành động (dùng chung màn Nhật ký và cửa sổ Lịch sử thay đổi).</summary>
+        public static TruckingSystem.Desktop.Common.GridDecor.Tone PillTone(string action) => Tone(action) switch
+        {
+            "green" => TruckingSystem.Desktop.Common.GridDecor.Green,
+            "red" => TruckingSystem.Desktop.Common.GridDecor.Red,
+            "violet" => TruckingSystem.Desktop.Common.GridDecor.Violet,
+            "slate" => TruckingSystem.Desktop.Common.GridDecor.Slate,
+            "blue" => TruckingSystem.Desktop.Common.GridDecor.Blue,
+            _ => TruckingSystem.Desktop.Common.GridDecor.Amber,
+        };
+
+        /// <summary>Nội dung ô "Chi tiết" của 1 dòng nhật ký: dòng đầu (thời gian, người + vai trò, hành động, đối tượng),
+        /// rồi MỖI THAY ĐỔI 1 DÒNG ("Trạng thái: A → B"); nội dung JSON -> "Tên: giá trị".</summary>
+        public static string DetailText(AuditLogItem log)
+        {
+            var lines = new List<string>
+            {
+                $"🕒 {log.Timestamp.ToLocalTime():dd/MM/yyyy HH:mm:ss}    👤 {UserText(log)}" +
+                (string.IsNullOrWhiteSpace(log.UserName) ? "" : $" ({string.Join(", ", Roles(log))})") +
+                $"    {Action(log.Action)}    📁 {EntityText(log)}",
+                "",
+            };
+            var detail = log.Detail ?? "(không có nội dung)";
+            var json = JsonLines(detail);
+            if (json is not null)
+            {
+                lines.Add("Thông tin ghi nhận:");
+                lines.AddRange(json.Select(p => "   • " + p));
+            }
+            else
+            {
+                var cut = detail.IndexOf(" — ", StringComparison.Ordinal);
+                if (cut > 0)
+                {
+                    lines.Add(detail[..cut]);
+                    lines.AddRange(detail[(cut + 3)..].Split(" · ").Select(p => "   • " + PrettyPart(p)));
+                }
+                else lines.Add(detail);
+            }
+            return string.Join(Environment.NewLine, lines);
+        }
+
+        /// <summary>1 dòng tóm tắt nội dung (cột "Nội dung" khi xuất Excel): phần đầu + các thay đổi nối " · ".</summary>
+        public static string DetailSummary(AuditLogItem log)
+        {
+            var json = JsonLines(log.Detail);
+            if (json is not null) return string.Join(" · ", json);
+            var d = log.Detail ?? "";
+            var cut = d.IndexOf(" — ", StringComparison.Ordinal);
+            return cut > 0 ? d[..cut] + ": " + string.Join(" · ", d[(cut + 3)..].Split(" · ").Select(PrettyPart)) : d;
+        }
+
         /// <summary>Làm rõ 1 mảnh chi tiết cho người dùng: "máy ::1" (địa chỉ IP lúc đăng nhập) -> "Đăng nhập từ: chính máy
         /// chủ (localhost)" / "Đăng nhập từ máy có địa chỉ IP 192.168.1.20".</summary>
         public static string PrettyPart(string part)

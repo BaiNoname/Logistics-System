@@ -25,7 +25,10 @@ public record TripListItemDto(
     string? WarehouseName = null,
     // Điểm đi -> điểm đến của chặng (TripRouteText) — để nhìn danh sách biết chuyến chạy từ đâu tới đâu.
     string? FromName = null,
-    string? ToName = null
+    string? ToName = null,
+    // Ước tính lộ trình (VietMap, tính tự động lúc Chia xe) — hiện ở thẻ "Chuyến đang chọn".
+    decimal? EstimatedDistanceKm = null,
+    int? EstimatedDurationMinutes = null
 );
 
 public record TripActionResult(bool Success, string? Message);

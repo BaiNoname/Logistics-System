@@ -36,8 +36,8 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
                                       btnQuickEstimate, btnSyncCalendar, btnDriverInfo })
                 toolbar.Controls.Remove(b);
             BuildRowMenu();
-            _btnCost = GroupButton("⛽ Chi phí && nhiên liệu ▾", AddCostItems, "Ghi xăng, ước tính nhiên liệu, chi phí khác, sự cố của chuyến đang chọn");
-            _btnInfo = GroupButton("ℹ️ Thông tin && công cụ ▾", AddInfoItems, "Ảnh hàng, ước tính lộ trình, link cho tài xế, đồng bộ Google Calendar");
+            _btnCost = GroupButton("⛽ Chi phí && nhiên liệu ▾", AddCostItems, "Ghi xăng (kèm so sánh với ước tính), chi phí khác, sự cố của chuyến đang chọn");
+            _btnInfo = GroupButton("ℹ️ Thông tin && công cụ ▾", AddInfoItems, "Ảnh hàng, link cho tài xế, lịch sử thay đổi");
             // Thứ tự: Làm mới · Bắt đầu/Hoàn tất/Duyệt/Từ chối · Đổi xe · Trả tại kho · Xem lộ trình · Chi phí ▾ · Thông tin ▾
             toolbar.Controls.SetChildIndex(btnViewRoute, toolbar.Controls.Count - 1);
             toolbar.Controls.Add(_btnCost);
@@ -108,8 +108,8 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
 
         private void AddCostItems(ToolStripItemCollection items)
         {
+            // "Ước tính nhiên liệu" gộp vào cửa sổ Ghi xăng (dòng so sánh ước tính / thực tế) — bớt 1 mục.
             Add(items, "⛽  Ghi xăng / xem lịch sử đổ xăng", btnFuel, BtnFuel_Click);
-            Add(items, "📊  Ước tính nhiên liệu (so với thực tế)", btnFuelEstimate, BtnFuelEstimate_Click);
             items.Add(new ToolStripSeparator());
             Add(items, "💰  Chi phí khác (cầu đường, bốc xếp...)", btnExpenses, BtnExpenses_Click);
             Add(items, "⚠️  Sự cố", btnIncidents, BtnIncidents_Click);
@@ -118,10 +118,25 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
         private void AddInfoItems(ToolStripItemCollection items)
         {
             Add(items, "📷  Ảnh hàng tài xế chụp", btnCargoPhotos, BtnCargoPhotos_Click);
-            Add(items, "📏  Ước tính lộ trình (km, thời gian)", btnQuickEstimate, BtnQuickEstimate_Click);
-            items.Add(new ToolStripSeparator());
             Add(items, "📱  Lấy link / mã chuyến cho tài xế", btnDriverInfo, BtnDriverInfo_Click);
-            Add(items, "🗓️  Đồng bộ Google Calendar", btnSyncCalendar, BtnSyncCalendar_Click);
+            // km / thời gian ước tính đã tự tính lúc Chia xe và hiện ở thẻ "Chuyến đang chọn" -> chỉ hiện mục này khi
+            // lúc chia xe chưa tính được (VD mạng / VietMap lỗi) để tính lại.
+            Add(items, "📏  Tính lại km / thời gian (lúc chia xe chưa tính được)", btnQuickEstimate, BtnQuickEstimate_Click,
+                t => t is { HasEstimate: false });
+            // "Đồng bộ Google Calendar": server tự đồng bộ khi chia xe / đổi xe / đổi trạng thái -> bỏ khỏi menu
+            // (nút kỹ thuật, nhân viên không cần biết).
+            items.Add(new ToolStripSeparator());
+            var history = new ToolStripMenuItem("🕘  Lịch sử thay đổi (ai làm gì, lúc nào)");
+            history.Click += (_, _) => ShowHistory();
+            items.Add(history);
+        }
+
+        /// <summary>🕘 Nhật ký của chuyến đang chọn + nhiên liệu, chi phí, sự cố, phiếu nhập/xuất của chuyến.</summary>
+        private void ShowHistory()
+        {
+            if (_api is null || GetSelectedTripId() is not int id) return;
+            using var f = new TruckingSystem.Desktop.GUI_AuditLogManagement.EntityHistoryForm(_api, "Trip", id, $"chuyến #{id}");
+            f.ShowDialog(FindForm());
         }
 
         /// <summary>Nút trên thanh + menu thả xuống RIÊNG của nút (cùng các mục với nhóm trong menu chuột phải),

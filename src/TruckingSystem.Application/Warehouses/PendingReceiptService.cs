@@ -94,7 +94,7 @@ public class PendingReceiptService : IPendingReceiptService
 
         await transaction.CommitAsync();
         return new ReceiveGoodsResult(true,
-            $"Đã nhập kho (Best-Fit) toàn bộ hàng của chuyến #{tripId}:\n" + string.Join("\n", lines),
+            $"Đã nhập kho tự động toàn bộ hàng của chuyến #{tripId}:\n" + string.Join("\n", lines),
             allBins.Distinct().ToList());
     }
 

@@ -502,7 +502,7 @@ public class TransportOrderService : ITransportOrderService
         if (waitingReceipt.Count > 0)
             return new OrderActionResult(false,
                 "Chuyến lấy hàng " + PendingReceiptRules.Describe(waitingReceipt) +
-                " đã về kho nhưng hàng CHƯA NHẬP KHO. Hãy nhập kho trước (màn Kho → 📦 Nhập hàng từ chuyến — thủ công hoặc Best-Fit), " +
+                " đã về kho nhưng hàng CHƯA NHẬP KHO. Hãy nhập kho trước (màn Kho → 📦 Nhập hàng từ chuyến — tự chọn vị trí hoặc để hệ thống tự xếp), " +
                 "rồi mới hủy đơn — hàng trong kho sẽ được trả lại khách khi hủy.");
 
         // Chuyến Lấy hàng đang chạy: vẫn cho hủy, nhưng báo lại để điều phối gọi

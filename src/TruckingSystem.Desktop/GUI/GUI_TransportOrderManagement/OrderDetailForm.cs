@@ -17,6 +17,13 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
         public OrderDetailForm()
         {
             InitializeComponent();
+            // Chữ cho NHÂN VIÊN (không nêu tên thuật toán) — đặt bằng code, không sửa Designer.
+            btnAllocate.Text = "🚚  Chia xe tự động";
+            // Đổi hạn giao / Phí lưu kho đã có ở màn danh sách (nút "📅 Hạn giao và phí lưu kho ▾" + chuột phải) -> ẩn ở
+            // đây cho gọn, màn chi tiết chủ yếu để XEM. Tổng phí lưu kho vẫn hiện ở dòng thông tin (rê chuột xem từng lần dời hạn).
+            // Ẩn bằng code, không sửa Designer; actionBar là FlowLayoutPanel nên các nút còn lại tự dồn lại.
+            btnChangeDeadline.Visible = false;
+            btnStorageFee.Visible = false;
             Anim.FadeIn(this);
             Theme.StyleGrid(gridCargo);
             Theme.StyleGrid(gridTrips);

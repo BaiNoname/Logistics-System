@@ -29,6 +29,10 @@ namespace TruckingSystem.Desktop.SERVICE_AuditLogManagement
             return _conn.GetAsync<List<AuditLogItem>>("/api/audit-logs?" + string.Join("&", query))!;
         }
 
+        /// <summary>Lịch sử thay đổi của 1 đơn / chuyến / xe (entityName: TransportOrder | Trip | Vehicle).</summary>
+        public Task<List<AuditLogItem>> GetHistoryAsync(string entityName, int entityId)
+            => _conn.GetAsync<List<AuditLogItem>>($"/api/audit-logs/history?entityName={Uri.EscapeDataString(entityName)}&entityId={entityId}")!;
+
         public Task<List<string>> GetDistinctActionsAsync()
             => _conn.GetAsync<List<string>>("/api/audit-logs/actions")!;
 

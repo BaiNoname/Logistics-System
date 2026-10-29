@@ -32,6 +32,10 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
         /// màn Chuyến, Đơn vận chuyển). Chuột phải chọn luôn đúng dòng dưới con trỏ.</summary>
         private void SetupRowActions()
         {
+            // Thanh trên chỉ giữ việc hay làm: Thêm xe + Giấy tờ xe. "Sửa xe" = nhấp đúp / chuột phải, "Nhiên liệu trong
+            // bình" ít dùng -> chỉ ở chuột phải (bớt nút trùng).
+            btnEdit.Visible = false;
+            btnFuelLevel.Visible = false;
             grid.CellDoubleClick += (s, e) => { if (e.RowIndex >= 0) BtnEdit_Click(s, e); };
 
             var menu = new ContextMenuStrip();
@@ -41,9 +45,14 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
             docs.Click += BtnDocuments_Click;
             var fuel = new ToolStripMenuItem("⛽  Nhiên liệu trong bình");
             fuel.Click += BtnFuelLevel_Click;
+            var history = new ToolStripMenuItem("🕘  Lịch sử thay đổi (ai làm gì, lúc nào)");
+            history.Click += (_, _) => ShowHistory();
             var refresh = new ToolStripMenuItem("🔄  Làm mới danh sách") { ShortcutKeyDisplayString = "F5" };
             refresh.Click += BtnRefresh_Click;
-            menu.Items.AddRange(new ToolStripItem[] { edit, new ToolStripSeparator(), docs, fuel, new ToolStripSeparator(), refresh });
+            menu.Items.AddRange(new ToolStripItem[]
+            {
+                edit, new ToolStripSeparator(), docs, fuel, history, new ToolStripSeparator(), refresh,
+            });
             ModernMenu.Apply(menu);
             menu.Opening += (_, e) => { if (grid.CurrentRow is null) e.Cancel = true; };
             grid.ContextMenuStrip = menu;
@@ -56,6 +65,15 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
                 else grid.Rows[e.RowIndex].Selected = true;
             };
             grid.KeyDown += (_, e) => { if (e.KeyCode == Keys.F5) { e.Handled = true; _ = LoadAsync(); } };
+        }
+
+        /// <summary>🕘 Nhật ký của xe đang chọn + giấy tờ xe (ai sửa trạng thái, biển số, gia hạn giấy tờ...).</summary>
+        private void ShowHistory()
+        {
+            if (_api is null || grid.CurrentRow?.Cells["Id"]?.Value is not int id) return;
+            var plate = _vehicles.FirstOrDefault(v => v.Id == id)?.PlateNumber ?? $"#{id}";
+            using var f = new TruckingSystem.Desktop.GUI_AuditLogManagement.EntityHistoryForm(_api, "Vehicle", id, "xe " + plate);
+            f.ShowDialog(FindForm());
         }
 
         /// <summary>Nhãn màu trạng thái / giấy tờ + thanh nhiên liệu. (Bỏ hàng 6 thẻ số liệu theo góp ý GVHD — số cần

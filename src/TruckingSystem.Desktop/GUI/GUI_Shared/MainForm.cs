@@ -62,7 +62,7 @@ namespace TruckingSystem.Desktop.GUI_Shared
             {
                 ("📊", "Tổng quan", new[] { "Admin", "Dispatcher", "Accountant", "WarehouseStaff" }, () => new DashboardControl(_api)),
                 ("📦", "Đơn vận chuyển", new[] { "Admin", "Dispatcher" }, () => new TransportOrdersControl(_api)),
-                ("🛣️", "Chuyến (Trip)", new[] { "Admin", "Dispatcher" }, () => new TripsControl(_api)),
+                ("🛣️", "Chuyến xe", new[] { "Admin", "Dispatcher" }, () => new TripsControl(_api)),
                 ("⛽", "Nhiên liệu", new[] { "Admin", "Accountant" }, () => new FuelManagementControl(_api)),
                 ("📍", "Địa điểm", new[] { "Admin", "Dispatcher" }, () => new LocationsControl(_api)),
                 ("🚚", "Đội xe", new[] { "Admin", "Dispatcher" }, () => new VehiclesControl(_api)),
@@ -81,10 +81,30 @@ namespace TruckingSystem.Desktop.GUI_Shared
                 ("⚙️", "Hệ Thống", new[] { "Admin" }, () => new SystemControl(_api)),
             };
 
+            // MENU CHIA NHÓM (Vận hành / Tài nguyên / Kinh doanh / Nhân sự / Hệ thống) — mỗi nhóm có tiêu đề nhỏ.
+            // Mục được xếp theo nhóm (giữ thứ tự trong mảng ở trên), nhóm không có mục nào được quyền xem thì ẩn
+            // luôn tiêu đề. Thêm mục mới vào mảng trên là tự vào đúng nhóm theo NavGroup (không khớp -> "Hệ thống").
+            var visible = navItems
+                .Select((item, index) => (Item: item, Index: index, Group: NavGroup(item.Text)))
+                .Where(x => _api.Connection.IsInRole(x.Item.Roles))
+                .OrderBy(x => Array.IndexOf(NavGroupOrder, x.Group))
+                .ThenBy(x => x.Index)
+                .ToList();
+
             navPanel.SuspendLayout();
-            foreach (var item in navItems)
+            string? currentGroup = null;
+            foreach (var (item, _, group) in visible)
             {
-                if (!_api.Connection.IsInRole(item.Roles)) continue;
+                if (group != currentGroup)
+                {
+                    currentGroup = group;
+                    if (group.Length > 0)
+                    {
+                        var header = MakeNavHeader(group);
+                        navPanel.Controls.Add(header);
+                        _navHeaders.Add(header);
+                    }
+                }
 
                 var btn = MakeNavButton(item.Icon, item.Text);
                 btn.Click += (_, _) => NavigateTo(btn, item.Build);
@@ -94,6 +114,38 @@ namespace TruckingSystem.Desktop.GUI_Shared
             navPanel.ResumeLayout(true);
             ResizeNavButtons();
         }
+
+        private readonly List<Label> _navHeaders = new();
+
+        /// <summary>Thứ tự nhóm trên menu trái; "" = mục đứng riêng trên cùng (Tổng quan).</summary>
+        private static readonly string[] NavGroupOrder = { "", "VẬN HÀNH", "TÀI NGUYÊN", "KINH DOANH", "NHÂN SỰ", "HỆ THỐNG" };
+
+        /// <summary>Mục menu thuộc nhóm nào (theo tên hiển thị).</summary>
+        private static string NavGroup(string text)
+        {
+            var t = string.Join(" ", text.Split(' ', StringSplitOptions.RemoveEmptyEntries));
+            if (t == "Tổng quan") return "";
+            if (t is "Đơn vận chuyển" or "Chuyến xe" or "Chuyến (Trip)" or "Kho trung chuyển") return "VẬN HÀNH";
+            if (t is "Đội xe" or "Tài xế" or "Nguồn lực theo kho" or "Địa điểm" or "Nhiên liệu") return "TÀI NGUYÊN";
+            if (t is "Khách hàng" or "Hợp đồng" or "Phụ lục hợp đồng" or "Bảng giá" or "Hóa đơn") return "KINH DOANH";
+            if (t == "Nhân viên" || t.Contains("lương", StringComparison.OrdinalIgnoreCase)) return "NHÂN SỰ";
+            return "HỆ THỐNG";
+        }
+
+        /// <summary>Tiêu đề nhóm: chữ nhỏ in hoa màu xám, không bấm được.</summary>
+        private Label MakeNavHeader(string text) => new()
+        {
+            Text = text,
+            AutoSize = false,
+            Width = NavButtonWidth(),
+            Height = LogicalToDeviceUnits(26),
+            TextAlign = ContentAlignment.BottomLeft,
+            Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
+            ForeColor = ColorTranslator.FromHtml("#64748B"),
+            BackColor = Theme.SidebarBg,
+            Padding = new Padding(LogicalToDeviceUnits(12), 0, 0, LogicalToDeviceUnits(2)),
+            Margin = new Padding(0, LogicalToDeviceUnits(8), 0, 0),
+        };
 
         private Button MakeNavButton(string icon, string text)
         {
@@ -129,6 +181,11 @@ namespace TruckingSystem.Desktop.GUI_Shared
             {
                 btn.Width = width;
                 btn.Height = height;
+            }
+            foreach (var header in _navHeaders)
+            {
+                header.Width = width;
+                header.Height = LogicalToDeviceUnits(26);
             }
         }
 

@@ -55,6 +55,49 @@ public class AuditLogService : IAuditLogService
             .ToListAsync();
     }
 
+    public async Task<List<AuditLogDto>?> GetHistoryAsync(string entityName, int entityId)
+    {
+        var related = new List<(string Name, List<int> Ids)>();
+        switch (entityName)
+        {
+            case "TransportOrder":
+                related.Add(("TransportOrder", new() { entityId }));
+                related.Add(("Trip", await _db.Trips.Where(t => t.TransportOrderId == entityId).Select(t => t.Id).ToListAsync()));
+                related.Add(("CargoLine", await _db.CargoLines.Where(x => x.TransportOrderId == entityId).Select(x => x.Id).ToListAsync()));
+                related.Add(("DeliveryDeadlineChange", await _db.DeliveryDeadlineChanges.Where(x => x.TransportOrderId == entityId).Select(x => x.Id).ToListAsync()));
+                related.Add(("GoodsReceipt", await _db.GoodsReceipts.Where(x => x.TransportOrderId == entityId).Select(x => x.Id).ToListAsync()));
+                related.Add(("GoodsIssue", await _db.GoodsIssues.Where(x => x.TransportOrderId == entityId).Select(x => x.Id).ToListAsync()));
+                break;
+            case "Trip":
+                related.Add(("Trip", new() { entityId }));
+                related.Add(("FuelLog", await _db.FuelLogs.Where(x => x.TripId == entityId).Select(x => x.Id).ToListAsync()));
+                related.Add(("TripExpense", await _db.TripExpenses.Where(x => x.TripId == entityId).Select(x => x.Id).ToListAsync()));
+                related.Add(("IncidentReport", await _db.IncidentReports.Where(x => x.TripId == entityId).Select(x => x.Id).ToListAsync()));
+                related.Add(("TripLine", await _db.TripLines.Where(x => x.TripId == entityId).Select(x => x.Id).ToListAsync()));
+                related.Add(("GoodsReceipt", await _db.GoodsReceipts.Where(x => x.TripId == entityId).Select(x => x.Id).ToListAsync()));
+                related.Add(("GoodsIssue", await _db.GoodsIssues.Where(x => x.TripId == entityId).Select(x => x.Id).ToListAsync()));
+                break;
+            case "Vehicle":
+                related.Add(("Vehicle", new() { entityId }));
+                related.Add(("VehicleDocument", await _db.VehicleDocuments.Where(x => x.VehicleId == entityId).Select(x => x.Id).ToListAsync()));
+                break;
+            default:
+                return null;
+        }
+
+        var result = new List<AuditLogDto>();
+        foreach (var (name, ids) in related.Where(r => r.Ids.Count > 0))
+        {
+            var idsN = ids.Select(i => (int?)i).ToList();
+            result.AddRange(await _db.AuditLogs
+                .Where(a => a.EntityName == name && idsN.Contains(a.EntityId))
+                .OrderByDescending(a => a.Timestamp).Take(500)
+                .Select(a => new AuditLogDto(a.Id, a.Action, a.EntityName, a.EntityId, a.Detail, a.Timestamp, a.UserName, a.UserRole))
+                .ToListAsync());
+        }
+        return result.OrderByDescending(a => a.Timestamp).ThenByDescending(a => a.Id).Take(1000).ToList();
+    }
+
     /// <summary>Giá trị lọc "người thao tác" cho các dòng do HỆ THỐNG tự ghi (không có người đăng nhập).</summary>
     public const string SystemUser = "(Hệ thống)";
 

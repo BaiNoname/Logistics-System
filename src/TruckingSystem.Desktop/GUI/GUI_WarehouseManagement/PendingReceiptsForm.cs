@@ -31,6 +31,10 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
         public PendingReceiptsForm()
         {
             InitializeComponent();
+            // Chữ cho NHÂN VIÊN (không nêu tên thuật toán) — đặt bằng code, không sửa Designer.
+            lblInfo.Text = "Xe Lấy hàng đã về kho (đã duyệt) nhưng hàng CHƯA lên kệ. Chọn 1 dòng rồi nhập: TỰ ĐỘNG cả chuyến (hệ thống tự chọn vị trí), hoặc THỦ CÔNG — tự chọn vị trí + số lượng (nhập nhiều lần để chia nhiều vị trí). Chặng Giao của đơn chỉ bắt đầu được khi hàng đã nhập kho đủ.";
+            btnAutoTrip.Text = "🤖 Nhập TỰ ĐỘNG cả chuyến";
+            lblManualHint.Text = "Chọn vị trí bên dưới (chỉ hiện vị trí ĐÚNG khu theo tính chất hàng). Dòng đầu = để hệ thống tự chọn vị trí cho riêng số lượng này.";
             Anim.FadeIn(this); // cửa sổ hiện dần lên
             Theme.StyleGrid(gridPending);
             Theme.StyleGrid(gridBins);
@@ -162,7 +166,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                 _bins = bins;
                 var rows = new List<object>
                 {
-                    new { Id = 0, Vị_trí = "🤖 Best-Fit tự chọn (có thể chia nhiều vị trí)", Đã_dùng = "", Còn_trống_m3 = "", Tải_tối_đa_kg = "", Cách_cửa_m = "" }
+                    new { Id = 0, Vị_trí = "🤖 Hệ thống tự chọn vị trí (có thể chia nhiều vị trí)", Đã_dùng = "", Còn_trống_m3 = "", Tải_tối_đa_kg = "", Cách_cửa_m = "" }
                 };
                 rows.AddRange(_bins.Select(b => (object)new
                 {
@@ -192,7 +196,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             btnManual.Enabled = !_busy && line is not null && line.QtyPending > 0;
             numQty.Enabled = !_busy && line is not null;
             btnRefresh.Enabled = !_busy;
-            btnAutoTrip.Text = line is null ? "🤖 Nhập TỰ ĐỘNG cả chuyến (Best-Fit)" : $"🤖 Nhập TỰ ĐỘNG cả chuyến #{line.TripId} (Best-Fit)";
+            btnAutoTrip.Text = line is null ? "🤖 Nhập TỰ ĐỘNG cả chuyến" : $"🤖 Nhập TỰ ĐỘNG cả chuyến #{line.TripId}";
         }
 
         private void SetBusy(bool busy)
@@ -218,7 +222,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
 
             var tripLines = _pending.Where(p => p.TripId == line.TripId).ToList();
             var confirm = MessageBox.Show(this,
-                $"Nhập TỰ ĐỘNG (Best-Fit) toàn bộ hàng còn chờ của chuyến #{line.TripId} (đơn {line.OrderCode})?\n\n" +
+                $"Nhập TỰ ĐỘNG (hệ thống tự xếp vị trí) toàn bộ hàng còn chờ của chuyến #{line.TripId} (đơn {line.OrderCode})?\n\n" +
                 string.Join("\n", tripLines.Select(p => $"• {p.CargoType}: {p.QtyPending:0.##}")) +
                 "\n\nHệ thống tự chọn vị trí phù hợp (có thể chia nhiều vị trí). Nếu 1 dòng không xếp được thì không nhập dòng nào.",
                 "Nhập kho tự động", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
@@ -259,7 +263,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             if (qty > line.QtyPending) { ShowStatus($"Chỉ còn chờ nhập {line.QtyPending:0.##}.", Theme.Warning); return; }
 
             int? binId = gridBins.CurrentRow?.Cells["Id"]?.Value is int id && id != 0 ? id : null;
-            var binText = binId is null ? "vị trí do Best-Fit tự chọn" : $"vị trí {_bins.FirstOrDefault(b => b.Id == binId)?.Code}";
+            var binText = binId is null ? "vị trí do hệ thống tự chọn" : $"vị trí {_bins.FirstOrDefault(b => b.Id == binId)?.Code}";
             var confirm = MessageBox.Show(this,
                 $"Nhập {qty:0.##} \"{line.CargoType}\" của chuyến #{line.TripId} vào {binText}?" +
                 (qty < line.QtyPending ? $"\n\nSau khi nhập còn chờ {line.QtyPending - qty:0.##} — nhập tiếp vào vị trí khác." : ""),

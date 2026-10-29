@@ -123,7 +123,7 @@ public class VehicleAllocationService : IVehicleAllocationService
             if (missing.Count > 0)
                 return new AllocateVehiclesResponse(false, totalQtyToShip, 0, new(),
                     "Đơn khách tự mang hàng tới kho: hàng CHƯA nhập kho đủ — " + string.Join("; ", missing) +
-                    ". Khi khách mang hàng tới, vào màn Kho → 🙋 Nhận hàng khách mang tới để nhập (tự chọn vị trí hoặc Tự động Best-Fit) đủ số lượng rồi mới Chia xe.");
+                    ". Khi khách mang hàng tới, vào màn Kho → 🙋 Nhận hàng khách mang tới để nhập (tự chọn vị trí hoặc để hệ thống tự xếp) đủ số lượng rồi mới Chia xe.");
         }
 
         // BỌC TOÀN BỘ phần còn lại trong 1 TRANSACTION DUY NHẤT — Chia xe cho
@@ -486,7 +486,7 @@ public class VehicleAllocationService : IVehicleAllocationService
             Action = "AllocateVehicles",
             EntityName = nameof(TransportOrder),
             EntityId = order.Id,
-            Detail = $"Thuật toán Greedy đã gán {results.Count} xe, tổng {totalAssigned}/{totalQtyToShip}." +
+            Detail = $"Chia xe tự động: gán {results.Count} xe, tổng {totalAssigned}/{totalQtyToShip}." +
                      (isCompanyPickup ? " (2 chặng Pickup+Delivery)" : " (1 chặng Delivery)"),
         });
 
