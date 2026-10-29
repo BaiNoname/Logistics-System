@@ -24,22 +24,44 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
             filterBar.AddChoice("warehouse", "Kho", Array.Empty<string>());
             filterBar.FilterChanged += (_, _) => BindGrid();
             SetupModernLook();
+            SetupRowActions();
             Load += async (_, _) => await LoadAsync();
         }
 
-        private readonly KpiStrip _kpi = new();
+        /// <summary>Nhấp đúp 1 xe = mở form Sửa xe; chuột phải = menu Sửa xe / Giấy tờ xe / Nhiên liệu (cùng kiểu
+        /// màn Chuyến, Đơn vận chuyển). Chuột phải chọn luôn đúng dòng dưới con trỏ.</summary>
+        private void SetupRowActions()
+        {
+            grid.CellDoubleClick += (s, e) => { if (e.RowIndex >= 0) BtnEdit_Click(s, e); };
 
-        /// <summary>Thẻ số liệu đội xe (bấm = lọc nhanh) + nhãn màu trạng thái / giấy tờ + thanh nhiên liệu.</summary>
+            var menu = new ContextMenuStrip();
+            var edit = new ToolStripMenuItem("✏️  Sửa xe") { ShortcutKeyDisplayString = "Nhấp đúp", Font = new Font("Segoe UI", 10F, FontStyle.Bold) };
+            edit.Click += BtnEdit_Click;
+            var docs = new ToolStripMenuItem("📄  Giấy tờ xe");
+            docs.Click += BtnDocuments_Click;
+            var fuel = new ToolStripMenuItem("⛽  Nhiên liệu trong bình");
+            fuel.Click += BtnFuelLevel_Click;
+            var refresh = new ToolStripMenuItem("🔄  Làm mới danh sách") { ShortcutKeyDisplayString = "F5" };
+            refresh.Click += BtnRefresh_Click;
+            menu.Items.AddRange(new ToolStripItem[] { edit, new ToolStripSeparator(), docs, fuel, new ToolStripSeparator(), refresh });
+            ModernMenu.Apply(menu);
+            menu.Opening += (_, e) => { if (grid.CurrentRow is null) e.Cancel = true; };
+            grid.ContextMenuStrip = menu;
+
+            grid.CellMouseDown += (_, e) =>
+            {
+                if (e.Button != MouseButtons.Right || e.RowIndex < 0) return;
+                var col = Math.Max(0, e.ColumnIndex);
+                if (grid.Rows[e.RowIndex].Cells[col].Visible) grid.CurrentCell = grid.Rows[e.RowIndex].Cells[col];
+                else grid.Rows[e.RowIndex].Selected = true;
+            };
+            grid.KeyDown += (_, e) => { if (e.KeyCode == Keys.F5) { e.Handled = true; _ = LoadAsync(); } };
+        }
+
+        /// <summary>Nhãn màu trạng thái / giấy tờ + thanh nhiên liệu. (Bỏ hàng 6 thẻ số liệu theo góp ý GVHD — số cần
+        /// chú ý gom vào 1 dòng ngắn SummaryText; lọc nhanh dùng bộ lọc Trạng thái / Giấy tờ / Nhiên liệu trên bảng.)</summary>
         private void SetupModernLook()
         {
-            _kpi.AddCard("all", "🚛", "Tổng số xe", Theme.Primary);
-            _kpi.AddCard("free", "🟢", "Xe rảnh", Theme.Success, "status", "Rảnh");
-            _kpi.AddCard("ontrip", "🚚", "Đang chạy", Theme.PrimaryDark, "status", "Đang chạy");
-            _kpi.AddCard("maint", "🔧", "Bảo trì", Theme.Warning, "status", "Bảo trì");
-            _kpi.AddCard("docs", "📄", "Giấy tờ thiếu / hết hạn", Theme.Danger, "docs", DocsBlocked, alert: true);
-            _kpi.AddCard("fuel", "⛽", "Nhiên liệu thấp", GridDecor.AccentViolet, "fuel", FuelLow, alert: true);
-            _kpi.BindFilter(filterBar);
-            KpiStrip.InsertRow(root, _kpi, 1);
             // Cửa sổ thấp: giữ bảng tối thiểu ~8 dòng, thiếu chỗ thì cả màn có thanh cuộn kéo xuống.
             ScrollFit.Enable(this, root, grid);
 
@@ -60,21 +82,17 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
             => row >= 0 && row < grid.Rows.Count && grid.Rows[row].Cells["Id"].Value is int id
                 ? _vehicles.FirstOrDefault(v => v.Id == id) : null;
 
-        private void UpdateKpis()
+        /// <summary>1 dòng tóm tắt thay cho 6 thẻ số liệu: tổng số xe + CHỈ những việc cần chú ý (có số > 0).</summary>
+        private string SummaryText()
         {
-            var docsOk = _vehicles.Count(v => v.DocumentBlockReason is null);
-            _kpi.SetValue("all", _vehicles.Count, $"{docsOk} xe đủ giấy tờ",
-                _vehicles.Count == 0 ? 0 : docsOk / (double)_vehicles.Count);
-            var free = _vehicles.Where(v => v.Status == "Available").ToList();
-            _kpi.SetValue("free", free.Count, $"{free.Count(v => v.DocumentBlockReason is null)} xe chia được ngay");
-            _kpi.SetValue("ontrip", _vehicles.Count(v => v.Status == "OnTrip"),
-                _vehicles.Count == 0 ? "" : $"{_vehicles.Count(v => v.Status == "OnTrip") * 100 / _vehicles.Count}% đội xe đang làm việc",
-                _vehicles.Count == 0 ? 0 : _vehicles.Count(v => v.Status == "OnTrip") / (double)_vehicles.Count);
-            _kpi.SetValue("maint", _vehicles.Count(v => v.Status == "UnderMaintenance"),
-                $"{_vehicles.Count(v => v.Status == "OutOfService")} xe ngưng hoạt động");
-            _kpi.SetValue("docs", _vehicles.Count - docsOk, "không được chia xe / xuất phát");
-            _kpi.SetValue("fuel", _vehicles.Count(v => MatchesFuel(v, FuelLow)),
-                $"{_vehicles.Count(v => v.FuelCurrentLiters is null)} xe chưa khai mức bình");
+            var parts = new List<string> { $"Tổng {_vehicles.Count} xe" };
+            void Add(int n, string text) { if (n > 0) parts.Add($"{text}: {n}"); }
+            Add(_vehicles.Count(v => v.Status == "Available" && v.DocumentBlockReason is null), "🟢 rảnh, chia được ngay");
+            Add(_vehicles.Count(v => v.Status == "OnTrip"), "🚚 đang chạy");
+            Add(_vehicles.Count(v => v.Status == "UnderMaintenance"), "🔧 bảo trì");
+            Add(_vehicles.Count(v => v.DocumentBlockReason is not null), "📄 giấy tờ thiếu / hết hạn");
+            Add(_vehicles.Count(v => MatchesFuel(v, FuelLow)), "⛽ nhiên liệu thấp");
+            return string.Join("   ·   ", parts) + "   —   nhấp đúp 1 xe để sửa, chuột phải để xem thêm thao tác";
         }
 
         private const string DocsOk = "✅ Hợp lệ";
@@ -194,21 +212,20 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
         {
             if (_api is null) return;
             lblStatus.Text = "Đang tải...";
-            _kpi.Busy = true;
+            lblStatus.ForeColor = Theme.TextSecondary;
             try
             {
                 _vehicles = await _api.Vehicles.GetVehiclesAsync();
                 filterBar.SetChoiceOptions("warehouse", _vehicles.Select(v => v.WarehouseName ?? AnyWarehouse));
                 BindGrid();
-                UpdateKpis();
-                lblStatus.Text = $"Tổng {_vehicles.Count} xe — chọn 1 dòng rồi bấm Sửa để chỉnh sửa";
+                lblStatus.Text = SummaryText();
+                lblStatus.ForeColor = _vehicles.Any(v => v.DocumentBlockReason is not null) ? Theme.Danger : Theme.TextSecondary;
             }
             catch (Exception ex)
             {
                 lblStatus.Text = "Lỗi: " + ex.Message;
                 lblStatus.ForeColor = Theme.Danger;
             }
-            finally { _kpi.Busy = false; }
         }
 
         private static string TranslateStatus(string s) => s switch

@@ -24,7 +24,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
         private ApiServices? _api;
         // Đếm lượt tải: đổi kho nhanh -> lượt tải CŨ trả về muộn KHÔNG được vẽ đè (trước đây
         // sơ đồ có thể lẫn khu của 2 kho).
-        private int _zonesLoadId, _ordersLoadId, _linesLoadId;
+        private int _zonesLoadId;
 
         public WarehousesControl()
         {
@@ -39,9 +39,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                 System.Reflection.BindingFlags.SetProperty | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic,
                 null, zonesPanel, new object[] { true });
 
-            cboWarehouse.SelectedIndexChanged += async (_, _) => { await LoadZonesAsync(); await LoadOrdersForSuggestAsync(); await UpdatePendingCountAsync(); };
-            cboOrderSuggest.SelectedIndexChanged += async (_, _) => await LoadCargoLinesForSuggestAsync();
-            cboCargoLineSuggest.SelectedIndexChanged += CboCargoLineSuggest_SelectedIndexChanged;
+            cboWarehouse.SelectedIndexChanged += async (_, _) => { await LoadZonesAsync(); await UpdatePendingCountAsync(); };
 
             // Kéo cửa sổ sang màn hình khác DPI -> vẽ lại sơ đồ theo tỉ lệ pixel mới.
             DpiChangedAfterParent += (_, _) => _ = LoadZonesAsync();
@@ -50,7 +48,6 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             Load += async (_, _) =>
             {
                 await LoadWarehousesAsync();
-                await LoadOrdersForSuggestAsync();
                 OpenPendingReceiptsIfRequested();
             };
         }
@@ -60,7 +57,14 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
         /// <summary>Mở từ thông báo "📦 Chuyến #id đã về kho X — chờ nhập kho": tải xong danh sách
         /// kho thì chọn đúng kho X và mở luôn "📦 Nhập hàng từ chuyến". Tên kho rỗng (thông báo cũ)
         /// -> giữ kho đang chọn.</summary>
-        public void OpenPendingReceiptsOnLoad(string? warehouseName) => _openPendingReceiptsFor = warehouseName ?? "";
+        /// <param name="tripIssues">true: mở "📤 Xuất kho theo chuyến" (thông báo "chờ kho … xuất hàng") thay cho Nhập hàng.</param>
+        public void OpenPendingReceiptsOnLoad(string? warehouseName, bool tripIssues = false)
+        {
+            _openPendingReceiptsFor = warehouseName ?? "";
+            _openTripIssues = tripIssues;
+        }
+
+        private bool _openTripIssues;
 
         private void OpenPendingReceiptsIfRequested()
         {
@@ -71,43 +75,98 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                 var match = list.FirstOrDefault(w => string.Equals(w.Name, name, StringComparison.OrdinalIgnoreCase));
                 if (match != null) cboWarehouse.SelectedItem = match;
             }
-            BeginInvoke(new Action(() => BtnPendingReceipts_Click(this, EventArgs.Empty)));
+            var issues = _openTripIssues;
+            BeginInvoke(new Action(() =>
+            {
+                if (issues) BtnTripIssues_Click(this, EventArgs.Empty);
+                else BtnPendingReceipts_Click(this, EventArgs.Empty);
+            }));
         }
 
         // ------------------------------------------------------------ thẻ số liệu kho + hiệu ứng ô kệ
 
-        private readonly KpiStrip _kpi = new();
         private readonly List<Panel> _binCells = new(); // các ô kệ đang vẽ — để chạy hiệu ứng "dâng hàng"
         private double _binFill = 1;                     // 0 → 1: phần đã dùng của ô dâng dần lên khi vẽ sơ đồ
         private System.Windows.Forms.Timer? _binFillTimer;
+        private string _capacityText = "";               // "đã dùng 45% (12 / 27 m³) · 2 ô gần đầy · 5 ô trống"
+        private Button? _btnManage;
 
-        /// <summary>Hàng thẻ: việc chờ của kho (bấm để mở) + tình trạng sức chứa của kho đang xem.</summary>
+        /// <summary>Bố cục gọn (góp ý GVHD):
+        ///  • Bỏ hàng 5 thẻ số liệu — số chờ nhập / chờ xuất đã hiện ngay trên 2 nút "(n chờ)"; sức chứa gom vào dòng
+        ///    trạng thái phía trên sơ đồ.
+        ///  • Thanh nút chỉ giữ VIỆC HẰNG NGÀY của nhân viên kho: Nhập hàng từ chuyến · Xuất kho theo chuyến ·
+        ///    Nhận hàng khách mang tới · Tồn kho & lịch sử. Việc QUẢN TRỊ kho (thêm / sửa / xóa kho, khu vực)
+        ///    gom vào 1 nút thả xuống "⚙️ Quản lý kho ▾".
+        ///  • Bỏ khung "Kiểm tra Best-Fit" (chỉ để thử thuật toán) — sơ đồ kho được rộng chỗ hơn.</summary>
         private void SetupModernLook()
         {
-            _kpi.AddCard("receipts", "📦", "Chờ nhập kho", Theme.Warning, alert: true,
-                onClick: () => BtnPendingReceipts_Click(this, EventArgs.Empty));
-            _kpi.AddCard("issues", "📤", "Chờ xuất kho", GridDecor.AccentViolet, alert: true,
-                onClick: () => BtnTripIssues_Click(this, EventArgs.Empty));
-            _kpi.AddCard("used", "📊", "Sức chứa đã dùng (%)", Theme.Primary);
-            _kpi.AddCard("full", "🟥", "Ô kệ gần đầy (≥ 85%)", Theme.Danger);
-            _kpi.AddCard("empty", "🟩", "Ô kệ còn trống", Theme.Success);
-            KpiStrip.InsertRow(root, _kpi, 1);
+            // Việc quản trị kho -> menu thả xuống (các nút gốc vẫn giữ để dùng lại xử lý + trạng thái bật/tắt).
+            foreach (var b in new[] { btnCreateWarehouse, btnEditWarehouse, btnManageZones, btnDeleteWarehouse })
+                toolbar.Controls.Remove(b);
+            var manage = new ContextMenuStrip();
+            manage.Items.Add(MenuItem("➕  Thêm kho mới", BtnCreateWarehouse_Click));
+            manage.Items.Add(MenuItem("✏️  Sửa thông tin kho đang chọn", BtnEditWarehouse_Click));
+            manage.Items.Add(MenuItem("🏗️  Quản lý khu vực / vị trí lưu trữ", BtnManageZones_Click));
+            manage.Items.Add(new ToolStripSeparator());
+            var delete = MenuItem("🗑️  Xóa kho đang chọn", BtnDeleteWarehouse_Click);
+            delete.ForeColor = Theme.Danger;
+            manage.Items.Add(delete);
+            ModernMenu.Apply(manage);
+            _btnManage = ToolbarButton("⚙️ Quản lý kho ▾");
+            _btnManage.Click += (_, _) =>
+            {
+                manage.MinimumSize = new Size(_btnManage.Width, 0);
+                manage.Show(_btnManage, new Point(0, _btnManage.Height + _btnManage.LogicalToDeviceUnits(2)));
+            };
+            toolbar.Controls.Add(_btnManage);
+
+            // Bỏ khung "Kiểm tra thuật toán Best-Fit" (chỉ để thử, làm rối màn) — Best-Fit vẫn chạy thật khi nhập kho.
+            testPanel.Visible = false;
+
             // Cửa sổ thấp: giữ sơ đồ kho cao tối thiểu ~320 px, thiếu chỗ thì cả màn cuộn xuống được.
             ScrollFit.Enable(this, root, zonesPanel, LogicalToDeviceUnits(320));
         }
 
-        /// <summary>Số liệu sức chứa của kho đang xem (tính từ dữ liệu sơ đồ vừa tải).</summary>
+        private static ToolStripMenuItem MenuItem(string text, EventHandler handler)
+        {
+            var item = new ToolStripMenuItem(text);
+            item.Click += handler;
+            return item;
+        }
+
+        private Button ToolbarButton(string text)
+        {
+            var b = new Button
+            {
+                Text = text,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                BackColor = Color.White,
+                ForeColor = Theme.TextPrimary,
+                Cursor = Cursors.Hand,
+                FlatStyle = FlatStyle.Flat,
+                Font = btnEditWarehouse.Font,
+                Margin = btnEditWarehouse.Margin,
+                MinimumSize = btnEditWarehouse.MinimumSize,
+                Padding = btnEditWarehouse.Padding,
+                UseVisualStyleBackColor = false,
+            };
+            b.FlatAppearance.BorderColor = Theme.BorderColor;
+            b.FlatAppearance.MouseOverBackColor = Theme.GridAltRow;
+            return b;
+        }
+
+        /// <summary>Sức chứa của kho đang xem (tính từ dữ liệu sơ đồ vừa tải) -> 1 cụm chữ cho dòng trạng thái.</summary>
         private void UpdateCapacityKpis(List<StorageBinItem> bins)
         {
+            if (bins.Count == 0) { _capacityText = "kho chưa có ô kệ"; return; }
             var capacity = bins.Sum(b => b.CapacityM3);
             var used = bins.Sum(b => Math.Min(b.CurrentUsedM3, b.CapacityM3));
             var ratio = capacity <= 0 ? 0.0 : (double)(used / capacity);
-            _kpi.SetValue("used", (int)Math.Round(ratio * 100), $"{used:0.#} / {capacity:0.#} m³", ratio);
             var full = bins.Count(b => b.CapacityM3 > 0 && b.CurrentUsedM3 / b.CapacityM3 >= 0.85m);
-            _kpi.SetValue("full", full, $"trên tổng {bins.Count} ô kệ");
             var empty = bins.Count(b => b.CurrentUsedM3 <= 0);
-            _kpi.SetValue("empty", empty, bins.Count == 0 ? "kho chưa có ô kệ" : $"{empty * 100 / bins.Count}% số ô",
-                bins.Count == 0 ? 0 : empty / (double)bins.Count);
+            _capacityText = $"📊 đã dùng {ratio:P0} ({used:0.#} / {capacity:0.#} m³) · {bins.Count} ô kệ" +
+                            (full > 0 ? $" · 🟥 {full} ô gần đầy" : "") + $" · 🟩 {empty} ô trống";
         }
 
         /// <summary>Phần đã dùng của các ô kệ dâng từ 0 lên đúng % (~0,7 giây) mỗi lần vẽ sơ đồ.</summary>
@@ -143,7 +202,6 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             using var f = new ManualStockForm(_api, warehouseId, mode);
             f.ShowDialog(FindForm());
             _ = LoadZonesAsync(); // vẽ lại sơ đồ ngay — có thể vừa nhập/xuất làm đổi % các ô
-            _ = LoadCargoLinesForSuggestAsync(); // panel thử Best-Fit: số còn lại / giới hạn ô nhập mới
         }
 
         /// <summary>Hàng của chuyến Lấy hàng đã về kho nhưng chưa lên kệ — nhập thủ công hoặc Best-Fit.</summary>
@@ -159,7 +217,6 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             if (f.ReceivedAny)
             {
                 _ = LoadZonesAsync(); // vẽ lại % các ô vừa xếp hàng vào
-                _ = LoadCargoLinesForSuggestAsync();
             }
             _ = UpdatePendingCountAsync();
         }
@@ -177,7 +234,6 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             if (f.ChangedAny)
             {
                 _ = LoadZonesAsync(); // vẽ lại % các ô vừa lấy hàng ra / xếp lại
-                _ = LoadCargoLinesForSuggestAsync();
             }
             _ = UpdatePendingCountAsync();
         }
@@ -196,15 +252,11 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                 var lines = await new TruckingSystem.Desktop.SERVICE_WarehouseManagement.PendingReceiptApiService(_api.Connection).GetPendingAsync(warehouseId);
                 if (IsDisposed || loadId != _pendingCountLoadId) return;
                 btnPendingReceipts.Text = lines.Count > 0 ? $"{baseText} ({lines.Count} chờ)" : baseText;
-                var receiptTrips = lines.Select(l => l.TripId).Distinct().Count();
-                _kpi.SetValue("receipts", receiptTrips, receiptTrips == 0 ? "không có hàng chờ lên kệ" : $"{lines.Count} dòng hàng — bấm để nhập");
                 // Số chuyến giao SẴN SÀNG xuất (hàng đã nhập kho đủ, chờ kho soạn + bốc lên xe).
                 var issueLines = await new TruckingSystem.Desktop.SERVICE_WarehouseManagement.TripIssueApiService(_api.Connection).GetAsync(warehouseId);
                 if (IsDisposed || loadId != _pendingCountLoadId) return;
                 var ready = issueLines.Where(l => l.CanIssue).Select(l => l.TripId).Distinct().Count();
                 btnTripIssues.Text = ready > 0 ? $"📤 Xuất kho theo chuyến ({ready} chờ)" : "📤 Xuất kho theo chuyến";
-                var waitingTrips = issueLines.Select(l => l.TripId).Distinct().Count();
-                _kpi.SetValue("issues", ready, ready == 0 ? $"{waitingTrips} chuyến giao chưa chạy" : $"sẵn sàng xuất / {waitingTrips} chuyến — bấm để mở");
             }
             catch
             {
@@ -278,7 +330,10 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                 cboWarehouse.SelectedValue = list.Max(w => w.Id);
         }
 
-        private async void BtnSuggest_Click(object? sender, EventArgs e) => await RunSuggestAsync();
+        /// <summary>Khung thử Best-Fit đã BỎ khỏi giao diện (thuật toán đã chạy thật ở Nhập hàng từ chuyến / Nhận hàng
+        /// khách mang tới). Hàm rỗng giữ lại vì Designer còn gắn sự kiện nút cũ — xóa khung testPanel trong Designer
+        /// thì xóa luôn hàm này.</summary>
+        private void BtnSuggest_Click(object? sender, EventArgs e) { }
 
         private async Task LoadWarehousesAsync()
         {
@@ -320,7 +375,6 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                 zonesPanel.AutoScrollMinSize = new Size(canvasWidth, canvasHeight);
 
                 // Tải HẾT dữ liệu trước rồi mới vẽ — và chỉ vẽ nếu đây vẫn là lượt tải mới nhất.
-                _kpi.Busy = true;
                 var zones = await _api.Warehouses.GetZonesAsync(warehouseId);
                 var binsByZone = new List<(WarehouseZoneItem Zone, List<StorageBinItem> Bins)>();
                 foreach (var zone in zones)
@@ -350,7 +404,8 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                 var warnings = new List<string>();
                 if (missingSize) warnings.Add("⚠️ kho chưa khai báo kích thước thật, đang hiện tạm theo tỉ lệ mặc định");
                 if (!_currentHasDoor) warnings.Add("⚠️ kho chưa khai báo vị trí cửa — chưa ưu tiên gần/xa cửa được (vào Sửa kho để khai báo)");
-                lblStatus.Text = $"{zones.Count} khu vực" + string.Concat(warnings.Select(w => " — " + w));
+                lblStatus.Text = $"{zones.Count} khu vực · {_capacityText}" + string.Concat(warnings.Select(w => " — " + w)) +
+                                 "   —   bấm vào khu / ô trên sơ đồ để sửa, rê chuột để xem hàng bên trong";
                 lblStatus.ForeColor = warnings.Count > 0 ? Theme.Warning : Theme.TextSecondary;
             }
             catch (Exception ex)
@@ -358,10 +413,6 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                 if (loadId != _zonesLoadId || IsDisposed) return;
                 lblStatus.Text = "Lỗi: " + ex.Message;
                 lblStatus.ForeColor = Theme.Danger;
-            }
-            finally
-            {
-                if (loadId == _zonesLoadId && !IsDisposed) _kpi.Busy = false;
             }
         }
 
@@ -577,132 +628,5 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
         }
 
         private static string ZoneIcon(string zoneType) => zoneType switch { "Fragile" => "🔷", "Hazmat" => "☣️", _ => "📦" };
-
-        /// <summary>CHỈ các đơn liên quan tới KHO ĐANG CHỌN (chọn kho này / có chuyến
-        /// qua kho / đã nhập-xuất tại kho) — giống màn Nhập/Xuất kho thủ công.</summary>
-        private async Task LoadOrdersForSuggestAsync()
-        {
-            if (_api is null || cboWarehouse.SelectedValue is not int warehouseId) return;
-            var loadId = ++_ordersLoadId;
-            try
-            {
-                var orders = await _api.Warehouses.GetOrdersForWarehouseAsync(warehouseId);
-                if (loadId != _ordersLoadId || IsDisposed) return; // đã đổi sang kho khác
-                cboCargoLineSuggest.DataSource = null;
-                if (orders.Count == 0)
-                {
-                    lblResult.Text = "Kho này chưa có đơn nào để thử gợi ý vị trí.";
-                    lblResult.ForeColor = Theme.TextSecondary;
-                }
-                else
-                {
-                    lblResult.Text = "ℹ️ Đây CHỈ LÀ GỢI Ý vị trí theo Best-Fit — không nhập gì vào kho. Hàng xe công ty chở về nhập ở \"📦 Nhập hàng từ chuyến\"; hàng khách tự mang tới nhập ở \"🙋 Nhận hàng khách mang tới\".";
-                    lblResult.ForeColor = Theme.TextSecondary;
-                }
-                cboOrderSuggest.DataSource = orders;
-                cboOrderSuggest.DisplayMember = nameof(TransportOrderListItem.DisplayText);
-                cboOrderSuggest.ValueMember = nameof(TransportOrderListItem.Id);
-            }
-            catch (Exception ex)
-            {
-                lblResult.Text = "Lỗi tải danh sách đơn: " + ex.Message;
-            }
-        }
-
-        /// <summary>Đổ dòng hàng ĐÚNG theo đơn đã chọn — hiện rõ LOẠI HÀNG (không
-        /// chỉ mã số ID trơ trọi như trước), để nhân viên kho biết đang thử
-        /// xếp vị trí cho loại hàng gì. Tự động điền sẵn số lượng CÒN LẠI của
-        /// dòng hàng đó — đỡ phải gõ tay/tính nhẩm mỗi lần.</summary>
-        private async Task LoadCargoLinesForSuggestAsync()
-        {
-            if (_api is null || cboOrderSuggest.SelectedValue is not int orderId || cboWarehouse.SelectedValue is not int warehouseId) return;
-            var loadId = ++_linesLoadId;
-            try
-            {
-                var lines = await _api.Warehouses.GetCargoLinesForOrderAsync(orderId, warehouseId);
-                if (loadId != _linesLoadId || IsDisposed) return; // đã đổi đơn / kho
-                cboCargoLineSuggest.DataSource = lines;
-                cboCargoLineSuggest.DisplayMember = nameof(CargoLineOptionItem.CargoType);
-                cboCargoLineSuggest.ValueMember = nameof(CargoLineOptionItem.Id);
-            }
-            catch (Exception ex)
-            {
-                lblResult.Text = "Lỗi tải dòng hàng: " + ex.Message;
-            }
-        }
-
-        /// <summary>Số lượng thử PHẢI theo đúng quy tắc nhập kho: chỉ trong phần
-        /// CÒN ĐƯỢC NHẬP của dòng hàng (khai báo − đã nhập). Đã nhập đủ thì không
-        /// còn gì để xếp nữa.</summary>
-        private void CboCargoLineSuggest_SelectedIndexChanged(object? sender, EventArgs e)
-        {
-            if (cboCargoLineSuggest.SelectedItem is not CargoLineOptionItem line) return;
-            if (line.QtyRemaining > 0)
-            {
-                numQty.Maximum = line.QtyRemaining;
-                numQty.Value = line.QtyRemaining;
-                numQty.Enabled = btnSuggest.Enabled = true;
-                lblResult.Text = $"Dòng hàng \"{line.CargoType}\": khai báo {line.QtyTotal:0.##}, đã nhập {line.QtyTotal - line.QtyRemaining:0.##} — còn được nhập tối đa {line.QtyRemaining:0.##}. (Chỉ gợi ý, không nhập kho.)";
-                lblResult.ForeColor = Theme.TextSecondary;
-            }
-            else
-            {
-                numQty.Enabled = btnSuggest.Enabled = false;
-                lblResult.Text = $"✅ Dòng hàng \"{line.CargoType}\" đã nhập đủ {line.QtyTotal:0.##}/{line.QtyTotal:0.##} — không còn gì để xếp vị trí.";
-                lblResult.ForeColor = Theme.Success;
-            }
-        }
-
-        private async Task RunSuggestAsync()
-        {
-            if (_api is null) return;
-            if (cboWarehouse.SelectedValue is not int warehouseId)
-            {
-                lblResult.Text = "Vui lòng chọn kho trước.";
-                lblResult.ForeColor = Theme.Danger;
-                return;
-            }
-            if (cboCargoLineSuggest.SelectedValue is not int cargoLineId)
-            {
-                lblResult.Text = "Vui lòng chọn đơn hàng và dòng hàng trước.";
-                lblResult.ForeColor = Theme.Danger;
-                return;
-            }
-            if (cboCargoLineSuggest.SelectedItem is CargoLineOptionItem selLine && numQty.Value > selLine.QtyRemaining)
-            {
-                lblResult.Text = $"⚠️ Vượt số lượng còn được nhập — tối đa {selLine.QtyRemaining:0.##}.";
-                lblResult.ForeColor = Theme.Warning;
-                return;
-            }
-            lblResult.Text = "Đang tính toán...";
-            lblResult.ForeColor = Theme.TextSecondary;
-            try
-            {
-                var result = await _api.Warehouses.SuggestBinAsync(warehouseId, cargoLineId, numQty.Value);
-                if (result.Found)
-                {
-                    // Hiện ĐẦY ĐỦ tất cả vị trí được đề xuất — có thể nhiều hơn 1
-                    // nếu số lượng phải chia ra nhiều vị trí/khu vực mới đủ chỗ.
-                    var lines = result.Allocations.Select(a =>
-                        $"• {a.BinCode} ({a.ZoneName}): xếp {a.QtyToPlace:0.##} đơn vị — ô còn trống {a.RemainingAfterM3:0.00} m³");
-                    var header = result.Allocations.Count > 1
-                        ? $"✅ Phải chia ra {result.Allocations.Count} vị trí:"
-                        : "✅ Đề xuất vị trí:";
-                    lblResult.Text = header + "\n" + string.Join("\n", lines) + (result.Message is null ? "" : "\n" + result.Message)
-                        + "\n(Chỉ là gợi ý — sơ đồ kho không thay đổi. Nhập thật ở \"📦 Nhập hàng từ chuyến\" (hàng xe công ty chở về) hoặc \"🙋 Nhận hàng khách mang tới\".)";
-                    lblResult.ForeColor = Theme.Success;
-                }
-                else
-                {
-                    lblResult.Text = "⚠️ " + (result.Message ?? "Không tìm được vị trí phù hợp.");
-                    lblResult.ForeColor = Theme.Warning;
-                }
-            }
-            catch (Exception ex)
-            {
-                lblResult.Text = "Lỗi: " + ex.Message;
-                lblResult.ForeColor = Theme.Danger;
-            }
-        }
     }
 }
