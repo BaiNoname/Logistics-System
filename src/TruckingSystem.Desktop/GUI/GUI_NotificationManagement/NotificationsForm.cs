@@ -86,7 +86,7 @@ namespace TruckingSystem.Desktop.GUI_NotificationManagement
             lblStatus.Text = "Đang kiểm tra việc cần xử lý...";
             try
             {
-                _notifications = await _api.Notifications.GetMyNotificationsAsync() ?? new();
+                _notifications = await _api.Notifications.GetMyNotificationsAsync(refresh: true) ?? new();
                 ApplyFilter();
             }
             catch (Exception ex)

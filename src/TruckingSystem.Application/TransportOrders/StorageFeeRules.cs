@@ -69,12 +69,9 @@ public static class StorageFeeRules
                 if (!c.IsFeeOnly && order.CommittedDeliveryDate is DateTime current && current.Date < end) end = current.Date;
                 for (var d = oldDate.Date.AddDays(1); d <= c.NewDate.Date; d = d.AddDays(1))
                 {
-                    if (d > end)
-                    {
-                        if (d > today) { openWindow = true; dayRows.Add(new StorageFeeDayDto(d, 0, 0, "chưa tới ngày — sẽ tính nếu hàng còn nằm kho")); }
-                        else dayRows.Add(new StorageFeeDayDto(d, 0, 0, "sau hạn giao hiện tại (hạn đã rút ngắn lại)"));
-                        continue;
-                    }
+                    // Ngày SAU hạn giao hiện tại (hạn đã rút ngắn lại sau lần dời này) thì KHÔNG BAO GIỜ tính —
+                    // xét trước "chưa tới ngày" (bản trước ghi nhầm "sẽ tính" và để phí ở trạng thái tạm tính mãi).
+                    if (d > end) { dayRows.Add(new StorageFeeDayDto(d, 0, 0, "sau hạn giao hiện tại (hạn đã rút ngắn lại) — không tính")); continue; }
                     if (d > today) { openWindow = true; dayRows.Add(new StorageFeeDayDto(d, 0, 0, "chưa tới ngày — sẽ tính nếu hàng còn nằm kho")); continue; }
                     if (chargedDays.Contains(d)) { dayRows.Add(new StorageFeeDayDto(d, 0, 0, "đã tính ở lần trước (không tính trùng)")); continue; }
                     // Hàng nằm kho TRONG NGÀY d: đầu ngày (= cuối ngày d-1) hoặc cuối ngày d. Trước đây chỉ lấy

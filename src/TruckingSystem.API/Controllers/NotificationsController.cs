@@ -20,12 +20,13 @@ public class NotificationsController : ControllerBase
     /// <summary>Quét cảnh báo mới (giấy tờ xe, lịch tài xế) rồi trả về toàn bộ
     /// thông báo gần nhất của người dùng đang đăng nhập.</summary>
     [HttpGet]
-    public async Task<ActionResult<List<NotificationDto>>> GetMine()
+    public async Task<ActionResult<List<NotificationDto>>> GetMine([FromQuery] bool refresh = false)
     {
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
-        return Ok(await _service.CheckAndGetNotificationsAsync(userId));
+        var roles = User.FindAll(ClaimTypes.Role).Select(c => c.Value);
+        return Ok(await _service.CheckAndGetNotificationsAsync(userId, roles, refresh));
     }
 
     [HttpPost("{id:int}/mark-read")]

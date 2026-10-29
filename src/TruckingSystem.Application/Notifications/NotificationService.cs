@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using System.Collections.Concurrent;
+using Microsoft.EntityFrameworkCore;
 using TruckingSystem.Application.Common;
 using TruckingSystem.Application.Common.Interfaces;
 using TruckingSystem.Application.Drivers;
@@ -58,32 +59,86 @@ public class NotificationService : INotificationService
     /// Chỉ thông báo loại "Khác" (thông tin thuần) mới cho đánh dấu tay.</summary>
     public static bool IsAutoTracked(string title) => GetCategory(title) != CategoryOther;
 
+    /// <summary>Thông báo này có LIÊN QUAN tới vai trò của người xem không:
+    ///  • Quản trị / Điều phối: thấy TẤT CẢ (họ chịu trách nhiệm vận hành).
+    ///  • Nhân viên kho: chỉ việc của kho — "Chờ nhập kho" và chuyến bị chặn vì kho chưa xuất hàng.
+    ///  • Vai trò khác (Kế toán, Tài xế, Khách...): chỉ thông báo chung loại "Khác".
+    /// Trước đây ai đăng nhập cũng nhận đủ cảnh báo vận hành (giấy tờ xe, hạn giao...) không phải việc của họ.</summary>
+    public static bool CanSee(string title, Audience audience)
+    {
+        if (audience == Audience.Operations) return true;
+        var category = GetCategory(title);
+        if (category == CategoryOther) return true;
+        return audience == Audience.Warehouse && (category == CategoryReceipt || category == CategoryTripBlocked);
+    }
+
+    public enum Audience { Operations, Warehouse, Other }
+
+    public static Audience AudienceOf(IEnumerable<string> roles)
+    {
+        var set = roles.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (set.Contains("Admin") || set.Contains("Dispatcher")) return Audience.Operations;
+        return set.Contains("WarehouseStaff") ? Audience.Warehouse : Audience.Other;
+    }
+
+    // Chấm đỏ trên nút 🔔 gọi API mỗi 2 phút trên MỖI máy -> quét cảnh báo (~10 truy vấn) tối đa
+    // 1 lần / phút / người; các lần gọi khác trong 1 phút chỉ ĐỌC danh sách. Mở màn Thông báo
+    // (refresh = true) thì luôn quét lại để thấy ngay tình trạng mới nhất.
+    private static readonly ConcurrentDictionary<string, DateTime> LastSync = new();
+    private static readonly TimeSpan SyncInterval = TimeSpan.FromMinutes(1);
+    private static DateTime _lastCleanup = DateTime.MinValue;
+    private const int KeepDoneDays = 30;
+
     private static bool IsSystemAlert(string title)
         => title.StartsWith(PrefixDocExpired) || title.StartsWith(PrefixDocSoon) || title.StartsWith(PrefixSchedule)
            || title.StartsWith(PrefixDriverDoc) || title.StartsWith(PrefixDeadline) || title.StartsWith(PrefixTripBlocked);
 
-    public async Task<List<NotificationDto>> CheckAndGetNotificationsAsync(string userId)
+    public async Task<List<NotificationDto>> CheckAndGetNotificationsAsync(string userId, IEnumerable<string> roles, bool refresh = false)
     {
-        await SyncSystemAlertsAsync(userId);
-        await AutoResolveTripPendingAsync();
-        await AutoResolveReceiptWaitingAsync();
+        var audience = AudienceOf(roles);
+        var now = DateTime.UtcNow;
+        if (refresh || !LastSync.TryGetValue(userId, out var last) || now - last >= SyncInterval)
+        {
+            LastSync[userId] = now;
+            await SyncSystemAlertsAsync(userId, audience);
+            await AutoResolveTripPendingAsync();
+            await AutoResolveReceiptWaitingAsync();
+            await CleanupOldAsync(now);
+        }
 
         // Lấy CẢ thông báo riêng của user này LẪN thông báo CHUNG (UserId =
         // null, xem CreateBroadcastAsync) — ví dụ tài xế báo xong chuyến, cần
         // Vận hành (bất kỳ ai đang trực) thấy và duyệt.
-        var rows = await _db.Notifications
-            .Where(n => n.UserId == userId || n.UserId == null)
-            .OrderByDescending(n => n.CreatedAt)
-            .Take(200) // giới hạn, tránh danh sách phình to vô hạn (Desktop có bộ lọc)
+        // Việc CHƯA xử lý luôn lấy ĐỦ (trước đây chỉ lấy 200 dòng mới nhất -> việc cũ chưa làm bị đẩy
+        // ra ngoài, mất khỏi danh sách lẫn chấm đỏ); việc đã xử lý chỉ lấy 100 dòng gần nhất để xem lại.
+        var mine = _db.Notifications.Where(n => n.UserId == userId || n.UserId == null);
+        var open = await mine.Where(n => !n.IsRead)
+            .OrderByDescending(n => n.CreatedAt).Take(1000)
+            .Select(n => new { n.Id, n.Title, n.Message, n.IsRead, n.CreatedAt })
+            .ToListAsync();
+        var done = await mine.Where(n => n.IsRead)
+            .OrderByDescending(n => n.CreatedAt).Take(100)
             .Select(n => new { n.Id, n.Title, n.Message, n.IsRead, n.CreatedAt })
             .ToListAsync();
 
         // CreatedAt lưu giờ UTC (cột timestamp without time zone) -> gắn Kind=Utc
         // để Desktop đổi đúng sang giờ Việt Nam (trước đây bị lệch 7 tiếng).
-        return rows
+        return open.Concat(done)
+            .Where(n => CanSee(n.Title, audience))
+            .OrderByDescending(n => n.CreatedAt)
             .Select(n => new NotificationDto(n.Id, n.Title, n.Message, n.IsRead,
                 DateTime.SpecifyKind(n.CreatedAt, DateTimeKind.Utc), GetCategory(n.Title)))
             .ToList();
+    }
+
+    /// <summary>Dọn bảng (tối đa 6 giờ / lần): xóa thông báo ĐÃ XỬ LÝ cũ hơn 30 ngày — trước đây bảng
+    /// phình mãi. Việc CHƯA xử lý không bao giờ bị xóa (cảnh báo tự sinh hết hiệu lực vốn đã tự xóa).</summary>
+    private async Task CleanupOldAsync(DateTime now)
+    {
+        if (now - _lastCleanup < TimeSpan.FromHours(6)) return;
+        _lastCleanup = now;
+        var cutoff = now.AddDays(-KeepDoneDays);
+        await _db.Notifications.Where(n => n.IsRead && n.CreatedAt < cutoff).ExecuteDeleteAsync();
     }
 
     /// <summary>Tạo thông báo CHUNG (UserId = null) — không kiểm tra trùng lặp
@@ -188,14 +243,21 @@ public class NotificationService : INotificationService
     ///    đọc -> lần tải lại kế tiếp tạo lại y hệt dòng đó -> nhân bản mãi.)
     /// 3) Cảnh báo cũ KHÔNG còn đúng (đã gia hạn giấy tờ, tài xế đã đăng ký ca,
     ///    ngày đã qua) hoặc bị TRÙNG -> xóa đi.</summary>
-    private async Task SyncSystemAlertsAsync(string userId)
+    private async Task SyncSystemAlertsAsync(string userId, Audience audience)
     {
+        // Chỉ sinh cảnh báo LIÊN QUAN tới vai trò (xem CanSee); cảnh báo cũ không còn liên quan
+        // (VD tài khoản Kế toán đã lỡ nhận ở bản trước) không có trong expected -> tự bị xóa bên dưới.
         var expected = new List<(string Title, string Message)>();
-        expected.AddRange(await BuildVehicleDocumentAlertsAsync());
-        expected.AddRange(await BuildDriverScheduleAlertsAsync());
-        expected.AddRange(await BuildDriverDocumentAlertsAsync());
-        expected.AddRange(await BuildDeadlineAlertsAsync());
-        expected.AddRange(await BuildBlockedTripAlertsAsync());
+        if (audience == Audience.Operations)
+        {
+            expected.AddRange(await BuildVehicleDocumentAlertsAsync());
+            expected.AddRange(await BuildDriverScheduleAlertsAsync());
+            expected.AddRange(await BuildDriverDocumentAlertsAsync());
+            expected.AddRange(await BuildDeadlineAlertsAsync());
+            expected.AddRange(await BuildBlockedTripAlertsAsync(warehouseOnly: false));
+        }
+        else if (audience == Audience.Warehouse)
+            expected.AddRange(await BuildBlockedTripAlertsAsync(warehouseOnly: true));
 
         var existing = (await _db.Notifications
                 .Where(n => n.UserId == userId)
@@ -285,7 +347,9 @@ public class NotificationService : INotificationService
     /// nhưng trước đây chỉ biết lúc bấm Bắt đầu (hoặc tài xế mở app) — giờ báo TRƯỚC để kịp gia
     /// hạn / đăng ký ngày làm / Đổi xe-tài xế. Xét CÙNG quy tắc với Bắt đầu chuyến, trên khoảng
     /// [ngày xuất phát dự kiến (đã qua thì hôm nay) .. ngày cuối dự kiến của chặng].</summary>
-    private async Task<List<(string Title, string Message)>> BuildBlockedTripAlertsAsync()
+    /// <param name="warehouseOnly">true (Nhân viên kho): chỉ báo chuyến bị chặn vì KHO chưa xuất hàng —
+    /// giấy tờ / tài xế là việc của Điều phối.</param>
+    private async Task<List<(string Title, string Message)>> BuildBlockedTripAlertsAsync(bool warehouseOnly)
     {
         const int maxDrivingMinutesPerDay = 480;
         var today = VnClock.Today;
@@ -295,6 +359,7 @@ public class NotificationService : INotificationService
             {
                 t.Id, t.LegType, t.VehicleId, t.DriverEmployeeId, t.PlannedStartDate, t.EstimatedDurationMinutes,
                 OrderCode = t.TransportOrder.Code,
+                WarehouseName = t.Warehouse != null ? t.Warehouse.Name : null,
                 Plate = t.Vehicle.PlateNumber, VehicleStatus = t.Vehicle.Status, t.Vehicle.CapacityKg, t.Vehicle.VehicleType,
             })
             .ToListAsync();
@@ -343,13 +408,13 @@ public class NotificationService : INotificationService
             var days = Math.Max(1, (int)Math.Ceiling((t.EstimatedDurationMinutes ?? 0) / (double)maxDrivingMinutesPerDay));
             var last = from.AddDays(days - 1);
 
-            string? reason = t.VehicleStatus switch
+            string? reason = warehouseOnly ? null : t.VehicleStatus switch
             {
                 VehicleStatus.UnderMaintenance => $"Xe {t.Plate} đang Bảo trì",
                 VehicleStatus.OutOfService => $"Xe {t.Plate} đang Ngưng hoạt động",
                 _ => VehicleDocumentRules.BlockReason(docsByVehicle[t.VehicleId], t.Plate, last),
             };
-            if (reason is null)
+            if (reason is null && !warehouseOnly)
             {
                 if (!drivers.TryGetValue(t.DriverEmployeeId, out var d) || !d.HasProfile)
                     reason = "Tài xế của chuyến chưa có hồ sơ tài xế";
@@ -374,7 +439,15 @@ public class NotificationService : INotificationService
             if (reason is null && t.LegType == TripLegType.Delivery && from == today
                 && !ordersWithOpenPickup.Contains(orderOfTrip[t.Id])
                 && (issuedByTrip.TryGetValue(t.Id, out var iq) ? iq : 0) < (plannedByTrip.TryGetValue(t.Id, out var pq) ? pq : 0))
-                reason = "Kho chưa xác nhận xuất hàng lên xe (màn Kho → 📤 Xuất kho theo chuyến; hàng chưa nhập kho thì nhập ở 📦 Nhập hàng từ chuyến trước)";
+            {
+                // Việc của KHO -> tiêu đề riêng có tên kho: nhấp đúp mở thẳng "📤 Xuất kho theo chuyến" đúng kho
+                // (nhân viên kho không vào được màn Chuyến — trước đây nhấp đúp báo "không có quyền").
+                var wh = string.IsNullOrWhiteSpace(t.WarehouseName) ? "" : $" {t.WarehouseName}";
+                result.Add(($"{PrefixTripBlocked}Chuyến #{t.Id} (Giao hàng, đơn {t.OrderCode}) chờ kho{wh} xuất hàng",
+                    $"Chuyến #{t.Id} dự kiến chạy hôm nay {today:dd/MM} nhưng kho chưa xác nhận xuất hàng lên xe — vào màn Kho → 📤 Xuất kho theo chuyến " +
+                    "(hàng chưa nhập kho thì nhập ở 📦 Nhập hàng từ chuyến trước). Chưa xuất kho thì chuyến KHÔNG xuất phát được."));
+                continue;
+            }
             if (reason is null) continue;
 
             var leg = t.LegType switch { TripLegType.Pickup => "Lấy hàng", TripLegType.Return => "Trả hàng", _ => "Giao hàng" };

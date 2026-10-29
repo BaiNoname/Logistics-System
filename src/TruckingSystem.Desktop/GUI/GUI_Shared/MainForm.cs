@@ -76,7 +76,7 @@ namespace TruckingSystem.Desktop.GUI_Shared
                 ("🚕", "Tài xế", new[] { "Admin", "Dispatcher" }, () => new DriversControl(_api)),
                 ("🧭", "Nguồn lực theo kho", new[] { "Admin", "Dispatcher" }, () => new TruckingSystem.Desktop.GUI_ResourceManagement.ResourcesControl(_api)),
                 ("🧾", "Hóa đơn", new[] { "Admin", "Accountant" }, () => new InvoicesControl(_api)),
-                ("📜", "Nhật ký hệ thống", new[] { "Admin", "Dispatcher" }, () => new TruckingSystem.Desktop.GUI_AuditLogManagement.AuditLogsControl(_api)),
+                ("📜", "Nhật ký hệ thống", new[] { "Admin" }, () => new TruckingSystem.Desktop.GUI_AuditLogManagement.AuditLogsControl(_api)),
                 ("🔐", "Quản lý tài khoản", new[] { "Admin" }, () => new AccountsControl(_api)),
                 ("⚙️", "Hệ Thống", new[] { "Admin" }, () => new SystemControl(_api)),
             };

@@ -32,8 +32,12 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
-        services.AddDbContext<AppDbContext>(options =>
-            options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
+        // NHẬT KÝ HỆ THỐNG tự động: mỗi lần lưu database ghi lại thêm / sửa / xóa + người thao tác.
+        services.AddHttpContextAccessor();
+        services.AddScoped<AuditSaveChangesInterceptor>();
+        services.AddDbContext<AppDbContext>((sp, options) =>
+            options.UseNpgsql(configuration.GetConnectionString("DefaultConnection"))
+                   .AddInterceptors(sp.GetRequiredService<AuditSaveChangesInterceptor>()));
 
         // Đăng ký AppDbContext (lớp cụ thể) là cài đặt cho IApplicationDbContext (interface)
         services.AddScoped<IApplicationDbContext>(provider => provider.GetRequiredService<AppDbContext>());

@@ -5,9 +5,9 @@ using TruckingSystem.Desktop.SERVICE_TripManagement;
 namespace TruckingSystem.Desktop.GUI_TripManagement
 {
     /// <summary>Đổi xe và/hoặc tài xế cho chuyến CHƯA CHẠY — gỡ chuyến bị kẹt (xe hỏng, giấy
-    /// tờ / bằng lái hết hạn, tài xế nghỉ...). Danh sách do SERVER đánh giá theo đúng điều
-    /// kiện Chia xe: ✅ dùng được, ⛔ không dùng được (kèm lý do). Chặng Lấy hàng + Giao hàng
-    /// chưa chạy của cùng xe trong đơn được đổi CÙNG lúc.</summary>
+    /// tờ / bằng lái hết hạn, tài xế nghỉ...). Server đánh giá theo đúng điều kiện Chia xe; ô chọn CHỈ HIỆN
+    /// xe / tài xế DÙNG ĐƯỢC (không bày cả danh sách không chọn được). Xe / tài xế đang gán mà không còn dùng
+    /// được thì báo lý do ở dòng gợi ý. Chặng Lấy hàng + Giao hàng chưa chạy của cùng xe trong đơn được đổi CÙNG lúc.</summary>
     public partial class ReassignTripForm : BaseForm
     {
         private TripReassignApiService? _service;
@@ -48,17 +48,27 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
                     ? $"Sẽ đổi CÙNG LÚC các chuyến chưa chạy của xe này trong đơn: #{string.Join(", #", _options.AffectedTripIds)}."
                     : $"Đổi cho chuyến #{_tripId}.";
 
-                // Xe/tài xế dùng được lên đầu; không dùng được vẫn hiện (kèm lý do) để biết vì sao.
-                var vehicles = _options.Vehicles.OrderByDescending(v => v.Eligible).ToList();
-                var drivers = _options.Drivers.OrderByDescending(d => d.Eligible).ToList();
+                // CHỈ xe / tài xế DÙNG ĐƯỢC; mục đang gán thêm chữ "(đang gán)" để biết đang là ai.
+                var vehicles = Usable(_options.Vehicles, _options.CurrentVehicleId);
+                var drivers = Usable(_options.Drivers, _options.CurrentDriverEmployeeId);
                 cboVehicle.DataSource = vehicles;
                 cboDriver.DataSource = drivers;
-                cboVehicle.SelectedItem = vehicles.FirstOrDefault(v => v.Id == _options.CurrentVehicleId);
-                cboDriver.SelectedItem = drivers.FirstOrDefault(d => d.Id == _options.CurrentDriverEmployeeId);
+                cboVehicle.SelectedItem = vehicles.FirstOrDefault(v => v.Id == _options.CurrentVehicleId) ?? vehicles.FirstOrDefault();
+                cboDriver.SelectedItem = drivers.FirstOrDefault(d => d.Id == _options.CurrentDriverEmployeeId) ?? drivers.FirstOrDefault();
+                cboVehicle.Enabled = vehicles.Count > 0;
+                cboDriver.Enabled = drivers.Count > 0;
 
-                var okVehicles = vehicles.Count(v => v.Eligible);
-                var okDrivers = drivers.Count(d => d.Eligible);
-                ShowStatus($"{okVehicles} xe và {okDrivers} tài xế dùng được (✅). Mục ⛔ kèm lý do không dùng được.", Theme.TextSecondary);
+                // Xe / tài xế ĐANG GÁN không còn dùng được -> nói rõ vì sao phải đổi.
+                var notes = new List<string>();
+                if (_options.Vehicles.FirstOrDefault(v => v.Id == _options.CurrentVehicleId) is { Eligible: false } cv)
+                    notes.Add($"Xe đang gán {cv.Text} không dùng được: {cv.Reason}");
+                if (_options.Drivers.FirstOrDefault(d => d.Id == _options.CurrentDriverEmployeeId) is { Eligible: false } cd)
+                    notes.Add($"Tài xế đang gán {cd.Text} không dùng được: {cd.Reason}");
+                if (vehicles.Count == 0) notes.Add("Hiện KHÔNG có xe nào chạy được chuyến này (xe bận, bảo trì, giấy tờ hết hạn, không đủ tải...).");
+                if (drivers.Count == 0) notes.Add("Hiện KHÔNG có tài xế nào chạy được chuyến này (bận, nghỉ, bằng lái không hợp...).");
+                ShowStatus(notes.Count > 0 ? "⚠️ " + string.Join("\n⚠️ ", notes)
+                        : $"{vehicles.Count} xe và {drivers.Count} tài xế chạy được chuyến này.",
+                    notes.Count > 0 ? Theme.Warning : Theme.TextSecondary);
                 UpdateHint();
             }
             catch (Exception ex)
@@ -73,13 +83,12 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
             var v = cboVehicle.SelectedItem as ReassignOptionItem;
             var d = cboDriver.SelectedItem as ReassignOptionItem;
             var unchanged = v?.Id == _options.CurrentVehicleId && d?.Id == _options.CurrentDriverEmployeeId;
-            btnSave.Enabled = v is { Eligible: true } && d is { Eligible: true } && !unchanged;
-            lblHint.Text = v is { Eligible: false } ? "⛔ Xe: " + v.Reason
-                : d is { Eligible: false } ? "⛔ Tài xế: " + d.Reason
+            btnSave.Enabled = !_busy && v is { Eligible: true } && d is { Eligible: true } && !unchanged;
+            lblHint.Text = v is null || d is null ? "Không đổi được: thiếu xe hoặc tài xế chạy được chuyến này."
                 : unchanged ? "Chọn xe hoặc tài xế khác với hiện tại."
-                : d?.Reason is not null ? "⚠ " + d.Reason + " — cần đăng ký trước khi xuất phát."
+                : d.Reason is not null ? "⚠ " + d.Reason + " — cần đăng ký trước khi xuất phát."
                 : "";
-            lblHint.ForeColor = v is { Eligible: false } || d is { Eligible: false } ? Theme.Danger : Theme.Warning;
+            lblHint.ForeColor = v is null || d is null ? Theme.Danger : Theme.Warning;
         }
 
         private async void BtnSave_Click(object? sender, EventArgs e)
@@ -111,6 +120,19 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
                 if (!IsDisposed) UpdateHint();
             }
         }
+
+        /// <summary>Chỉ mục dùng được; mục đang gán đánh dấu "(đang gán)" (bản sao — không sửa dữ liệu gốc).</summary>
+        private static List<ReassignOptionItem> Usable(IEnumerable<ReassignOptionItem> items, int currentId)
+            => items.Where(i => i.Eligible)
+                .Select(i => new ReassignOptionItem
+                {
+                    Id = i.Id,
+                    Eligible = true,
+                    Reason = i.Reason,
+                    Text = i.Id == currentId ? i.Text + "  (đang gán)" : i.Text,
+                })
+                .OrderByDescending(i => i.Id == currentId)
+                .ToList();
 
         private void BtnClose_Click(object? sender, EventArgs e)
         {

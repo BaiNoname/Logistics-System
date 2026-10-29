@@ -16,7 +16,6 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             InitializeComponent();
             Theme.StyleGrid(grid);
             GridLayout.FitColumns(grid); // cột vừa nội dung, nhiều cột thì cuộn ngang thay vì cắt chữ
-            Load += (_, _) => Theme.UniformButtons(toolbar); // nút đều nhau, xuống dòng vẫn thẳng cột
 
             grid.DataBindingComplete += (_, _) =>
             {
@@ -35,23 +34,15 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             filterBar.AddChoice("warehouse", "Kho", Array.Empty<string>());
             filterBar.FilterChanged += (_, _) => BindGrid();
             SetupModernLook();
+            SetupActions(); // thanh nút gọn + menu chuột phải + thẻ "Đơn đang chọn" (TransportOrdersControl.Actions.cs)
 
             Load += async (_, _) => await LoadAsync();
         }
 
-        private readonly KpiStrip _kpi = new();
-
-        /// <summary>Thẻ số liệu (bấm = lọc nhanh) + nhãn màu trạng thái / hạn giao + thanh tiến độ.</summary>
+        /// <summary>Nhãn màu trạng thái / hạn giao + thanh tiến độ. (Bỏ hàng 6 thẻ số liệu theo góp ý GVHD — số cần
+        /// chú ý gom vào 1 dòng ngắn SummaryText; lọc nhanh dùng bộ lọc Trạng thái / Hạn giao trên bảng.)</summary>
         private void SetupModernLook()
         {
-            _kpi.AddCard("all", "📦", "Tất cả đơn", Theme.Primary);
-            _kpi.AddCard("draft", "📝", "Nháp", GridDecor.AccentSlate, "status", "Nháp");
-            _kpi.AddCard("confirmed", "🧭", "Chờ chia xe", GridDecor.AccentTeal, "status", "Đã xác nhận", alert: true);
-            _kpi.AddCard("running", "🚚", "Đang vận chuyển", Theme.PrimaryDark, "status", "Đang vận chuyển");
-            _kpi.AddCard("overdue", "⏰", "Quá hạn giao", Theme.Danger, "deadline", DeadlineOverdue, alert: true);
-            _kpi.AddCard("done", "✅", "Hoàn tất", Theme.Success, "status", "Hoàn tất");
-            _kpi.BindFilter(filterBar);
-            KpiStrip.InsertRow(root, _kpi, 1);
             // Cửa sổ thấp: giữ bảng tối thiểu ~8 dòng, thiếu chỗ thì cả màn có thanh cuộn kéo xuống.
             ScrollFit.Enable(this, root, grid);
 
@@ -75,23 +66,17 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             => row >= 0 && row < grid.Rows.Count && grid.Rows[row].Cells["Id"].Value is int id
                 ? _orders.FirstOrDefault(o => o.Id == id) : null;
 
-        private void UpdateKpis()
+        /// <summary>1 dòng tóm tắt thay cho 6 thẻ số liệu: tổng số đơn + CHỈ những việc cần chú ý (có số > 0).</summary>
+        private string SummaryText()
         {
-            _kpi.SetValue("all", _orders.Count, $"{_orders.Count(o => o.Status is "Draft" or "Confirmed" or "InProgress")} đơn đang xử lý");
-            _kpi.SetValue("draft", _orders.Count(o => o.Status == "Draft"), "chờ xác nhận với khách");
-            var confirmed = _orders.Where(o => o.Status == "Confirmed").ToList();
-            _kpi.SetValue("confirmed", confirmed.Count(o => o.ActiveTripCount == 0),
-                $"{confirmed.Count} đơn đã xác nhận");
-            var running = _orders.Where(o => o.Status == "InProgress").ToList();
-            _kpi.SetValue("running", running.Count,
-                running.Count == 0 ? "không có đơn đang chạy" : $"tiến độ TB {running.Average(o => (double)o.ProgressPercent):0}%",
-                running.Count == 0 ? 0 : running.Average(o => (double)o.ProgressPercent) / 100.0);
-            var soon = _orders.Count(o => DeadlineGroup(o) == DeadlineSoon && o.Status is not ("Done" or "Cancelled"));
-            _kpi.SetValue("overdue", _orders.Count(o => DeadlineGroup(o) == DeadlineOverdue), $"{soon} đơn tới hạn trong 3 ngày");
-            var closed = _orders.Count(o => o.Status is "Done" or "Cancelled");
-            _kpi.SetValue("done", _orders.Count(o => o.Status == "Done"),
-                $"{_orders.Count(o => o.Status == "Cancelled")} đơn đã hủy",
-                closed == 0 ? 0 : _orders.Count(o => o.Status == "Done") / (double)Math.Max(1, _orders.Count));
+            var parts = new List<string> { $"Tổng {_orders.Count} đơn" };
+            void Add(int n, string text) { if (n > 0) parts.Add($"{text}: {n}"); }
+            Add(_orders.Count(o => o.Status == "Draft"), "📝 nháp chờ xác nhận");
+            Add(_orders.Count(o => o.Status == "Confirmed" && o.ActiveTripCount == 0), "🧭 chờ chia xe");
+            Add(_orders.Count(o => o.Status == "InProgress"), "🚚 đang vận chuyển");
+            Add(_orders.Count(o => DeadlineGroup(o) == DeadlineOverdue), "⏰ quá hạn giao");
+            Add(_orders.Count(o => DeadlineGroup(o) == DeadlineSoon && o.Status is not ("Done" or "Cancelled")), "🟡 tới hạn trong 3 ngày");
+            return string.Join("   ·   ", parts) + "   —   chuột phải vào 1 đơn để xem mọi thao tác";
         }
 
         public TransportOrdersControl(ApiServices api) : this()
@@ -114,23 +99,21 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
         {
             if (_api is null) return;
             lblStatus.Text = "Đang tải...";
-            _kpi.Busy = true;
+            lblStatus.ForeColor = Theme.TextSecondary;
             try
             {
                 _orders = await _api.TransportOrders.GetTransportOrdersAsync();
                 filterBar.SetChoiceOptions("customer", _orders.Select(o => o.CustomerName));
                 filterBar.SetChoiceOptions("warehouse", _orders.Select(o => o.WarehouseName ?? ""));
                 BindGrid();
-                UpdateKpis();
-                lblStatus.Text = $"Tổng {_orders.Count} đơn hàng — chọn 1 dòng rồi bấm \"Chia xe\" để chạy thuật toán Greedy";
-                lblStatus.ForeColor = Theme.TextSecondary;
+                lblStatus.Text = SummaryText();
+                lblStatus.ForeColor = _orders.Any(o => DeadlineGroup(o) == DeadlineOverdue) ? Theme.Danger : Theme.TextSecondary;
             }
             catch (Exception ex)
             {
                 lblStatus.Text = "Lỗi: " + ex.Message;
                 lblStatus.ForeColor = Theme.Danger;
             }
-            finally { _kpi.Busy = false; }
         }
 
         private const string DeadlineOverdue = "Quá hạn (chưa xong)";
@@ -161,18 +144,16 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                     filterBar.Is("warehouse", o.WarehouseName ?? "") &&
                     filterBar.MatchesSearch(o.Code, o.CustomerName, o.PickupPoint, o.DropoffPoint, o.WarehouseName, o.ContractCode))
                 .ToList();
+            // CHỈ các cột cần để nhận ra đơn và biết việc cần làm; hợp đồng, kho, điểm lấy / giao, số chuyến
+            // hiện ở thẻ "Đơn đang chọn" khi bấm 1 dòng. Ô tìm vẫn tìm theo cả các thông tin đó.
             grid.DataSource = rows.Select(o => new
             {
                 o.Id,
                 Mã_đơn = o.Code,
                 Khách_hàng = o.CustomerName,
-                Mã_HĐ = o.ContractCode ?? "—",
                 Trạng_thái = TranslateStatus(o.Status),
                 Tiến_độ = $"{o.ProgressPercent}%",
                 Hạn_giao = o.CommittedDeliveryDate?.ToString("dd/MM/yyyy") ?? "—",
-                Kho = o.WarehouseName ?? "—",
-                Điểm_lấy = o.PickupPoint,
-                Điểm_giao = o.DropoffPoint,
             }).ToList();
             filterBar.SetCount(rows.Count, _orders.Count);
             if (keepId is int id)
@@ -251,6 +232,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             // vẫn giữ trạng thái "Đã xác nhận" tới khi xe xuất phát, trước đây nút
             // vẫn sáng và bấm vào thì bị server từ chối.
             btnAllocate.Enabled = !_allocating && order?.Status == "Confirmed" && order.ActiveTripCount == 0;
+            UpdateSelectionUi(order);
         }
 
         private static string TranslateStatus(string s) => s switch

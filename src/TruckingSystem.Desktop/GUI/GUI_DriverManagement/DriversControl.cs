@@ -38,19 +38,10 @@ namespace TruckingSystem.Desktop.GUI_DriverManagement
             Load += async (_, _) => await LoadAsync();
         }
 
-        private readonly KpiStrip _kpi = new();
-
-        /// <summary>Thẻ số liệu tài xế (bấm = lọc nhanh) + nhãn màu trạng thái / hồ sơ.</summary>
+        /// <summary>Nhãn màu trạng thái / hồ sơ. (Bỏ hàng 6 thẻ số liệu theo góp ý GVHD — số cần chú ý gom vào
+        /// 1 dòng ngắn SummaryText; lọc nhanh dùng bộ lọc Sẵn sàng / Hồ sơ / Cảnh báo trên bảng.)</summary>
         private void SetupModernLook()
         {
-            _kpi.AddCard("all", "🧑", "Tổng tài xế", Theme.Primary);
-            _kpi.AddCard("ready", "🟢", "Sẵn sàng hôm nay", Theme.Success, "availability", "Sẵn sàng");
-            _kpi.AddCard("busy", "🚚", "Đang chạy chuyến", Theme.PrimaryDark, "availability", "Đang làm");
-            _kpi.AddCard("notready", "⏸️", "Chưa sẵn sàng", GridDecor.AccentSlate, "availability", "Không sẵn sàng");
-            _kpi.AddCard("license", "🪪", "Bằng lái sắp hết hạn", Theme.Warning, "profile", "Bằng lái sắp hết hạn", alert: true);
-            _kpi.AddCard("warn", "⚠️", "Cần lưu ý", Theme.Danger, "warning", WarnYes, alert: true);
-            _kpi.BindFilter(filterBar);
-            KpiStrip.InsertRow(root, _kpi, 1);
             // Cửa sổ thấp: giữ bảng tối thiểu ~8 dòng, thiếu chỗ thì cả màn có thanh cuộn kéo xuống.
             ScrollFit.Enable(this, root, grid);
 
@@ -59,20 +50,20 @@ namespace TruckingSystem.Desktop.GUI_DriverManagement
             GridDecor.Pills(grid, "Hồ_sơ", (text, _) => GridDecor.StatusTone(text));
         }
 
-        private void UpdateKpis()
+        private readonly ToolTip _statusTip = new() { AutoPopDelay = 20000 };
+
+        /// <summary>1 dòng tóm tắt thay cho 6 thẻ số liệu: tổng số tài xế + CHỈ những việc cần chú ý (có số > 0).</summary>
+        private string SummaryText()
         {
-            var withProfile = _drivers.Count(d => d.HasProfile);
-            _kpi.SetValue("all", _drivers.Count, $"{withProfile} người đã có hồ sơ",
-                _drivers.Count == 0 ? 0 : withProfile / (double)_drivers.Count);
-            var ready = _drivers.Count(d => d.Availability == "Sẵn sàng");
-            _kpi.SetValue("ready", ready, "có ngày làm hôm nay, giấy tờ còn hạn",
-                _drivers.Count == 0 ? 0 : ready / (double)_drivers.Count);
-            _kpi.SetValue("busy", _drivers.Count(d => d.Availability == "Đang làm"), "đang có chuyến chưa xong");
-            _kpi.SetValue("notready", _drivers.Count(d => d.Availability == "Không sẵn sàng"),
-                $"{_drivers.Count(d => !d.HasProfile)} chưa có hồ sơ");
-            _kpi.SetValue("license", _drivers.Count(d => d.ProfileStatus == "Bằng lái sắp hết hạn"),
-                $"{_drivers.Count(d => d.ProfileStatus == "Bằng lái hết hạn")} đã hết hạn");
-            _kpi.SetValue("warn", _drivers.Count(d => !string.IsNullOrEmpty(d.Warning)), "xem cột Cảnh báo");
+            var parts = new List<string> { $"Tổng {_drivers.Count} tài xế" };
+            void Add(int n, string text) { if (n > 0) parts.Add($"{text}: {n}"); }
+            Add(_drivers.Count(d => d.Availability == "Sẵn sàng"), "🟢 sẵn sàng hôm nay");
+            Add(_drivers.Count(d => d.Availability == "Đang làm"), "🚚 đang chạy chuyến");
+            Add(_drivers.Count(d => !d.HasProfile), "📝 chưa có hồ sơ (chưa chia xe được)");
+            Add(_drivers.Count(d => d.ProfileStatus == "Bằng lái sắp hết hạn"), "🪪 bằng lái sắp hết hạn");
+            Add(_drivers.Count(d => d.ProfileStatus == "Bằng lái hết hạn"), "⛔ bằng lái hết hạn");
+            Add(_drivers.Count(d => !string.IsNullOrEmpty(d.Warning)), "⚠️ cần lưu ý (xem cột Cảnh báo)");
+            return string.Join("   ·   ", parts) + "   —   rê chuột vào dòng này để xem cách tính \"Sẵn sàng\"";
         }
 
         private const string WarnYes = "Có cảnh báo";
@@ -205,30 +196,24 @@ namespace TruckingSystem.Desktop.GUI_DriverManagement
             selectEmployeeId ??= Selected()?.EmployeeId;
             lblStatus.Text = "Đang tải...";
             lblStatus.ForeColor = Theme.TextSecondary;
-            _kpi.Busy = true;
             try
             {
                 _drivers = await _api.Drivers.GetDriversAsync();
                 filterBar.SetChoiceOptions("warehouse", _drivers.Select(WarehouseText));
                 BindGrid(selectEmployeeId);
-                UpdateKpis();
-
-                var noProfile = _drivers.Count(d => !d.HasProfile);
-                var warned = _drivers.Count(d => !string.IsNullOrEmpty(d.Warning));
-                lblStatus.Text = $"Tổng {_drivers.Count} tài xế (nhân viên Đang làm có chức danh Tài xế)" +
-                                 (noProfile > 0 ? $" — {noProfile} người chưa có hồ sơ (chưa Chia xe được)" : "") +
-                                 (warned > 0 ? $" — {warned} người cần lưu ý (xem cột Cảnh báo)" : "") +
-                                 ". Thêm tài xế mới: tạo nhân viên với chức danh Tài xế ở màn Nhân viên. " +
-                                 "\"Sẵn sàng\" = có hồ sơ, bằng lái còn hạn, có ngày làm hôm nay; khi Chia xe còn xét kho đóng quân " +
-                                 "và chuyến dài nhiều ngày phải đăng ký đủ các ngày.";
-                lblStatus.ForeColor = Theme.TextSecondary;
+                lblStatus.Text = SummaryText();
+                lblStatus.ForeColor = _drivers.Any(d => !string.IsNullOrEmpty(d.Warning)) ? Theme.Warning : Theme.TextSecondary;
+                // Giải thích dài trước đây nằm ở dòng trạng thái -> chuyển vào chú thích khi rê chuột.
+                _statusTip.SetToolTip(lblStatus,
+                    "Tài xế = nhân viên Đang làm có chức danh Tài xế (thêm mới ở màn Nhân viên).\n" +
+                    "\"Sẵn sàng\" = có hồ sơ, bằng lái còn hạn, có ngày làm hôm nay; khi Chia xe còn xét kho đóng quân\n" +
+                    "và chuyến dài nhiều ngày phải đăng ký đủ các ngày.");
             }
             catch (Exception ex)
             {
                 lblStatus.Text = "Lỗi: " + ex.Message;
                 lblStatus.ForeColor = Theme.Danger;
             }
-            finally { _kpi.Busy = false; }
         }
 
         private void Grid_CellFormatting(object? sender, DataGridViewCellFormattingEventArgs e)

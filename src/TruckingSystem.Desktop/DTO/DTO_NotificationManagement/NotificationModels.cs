@@ -48,7 +48,7 @@ namespace TruckingSystem.Desktop.DTO_NotificationManagement
         }
     }
 
-    public enum NotificationTargetKind { Trip, Order, Vehicle, Driver, PendingReceipt }
+    public enum NotificationTargetKind { Trip, Order, Vehicle, Driver, PendingReceipt, TripIssue }
 
     /// <summary>Việc mà 1 thông báo nói tới — suy ra từ tiêu đề (tiêu đề do hệ thống sinh theo
     /// mẫu cố định, xem NotificationService/TripService phía server).
@@ -59,6 +59,7 @@ namespace TruckingSystem.Desktop.DTO_NotificationManagement
         private static readonly Regex OrderCode = new(@"Đơn (\S+)", RegexOptions.Compiled);
         private static readonly Regex Plate = new(@" xe (.+?) (ĐÃ HẾT HẠN|sắp hết hạn)\s*$", RegexOptions.Compiled);
         private static readonly Regex DriverCode = new(@"\(([^()]+)\)[^()]*$", RegexOptions.Compiled);
+        private static readonly Regex IssueWarehouse = new(@"chờ kho ?(.*?) xuất hàng\s*$", RegexOptions.Compiled);
         private static readonly Regex ReceiptWarehouse = new(@"đã về kho (.+?) — chờ nhập kho", RegexOptions.Compiled);
 
         /// <summary>Mô tả ngắn cho tooltip / thanh trạng thái.</summary>
@@ -69,6 +70,7 @@ namespace TruckingSystem.Desktop.DTO_NotificationManagement
             NotificationTargetKind.Vehicle => $"Đội xe → xe {Key}",
             NotificationTargetKind.Driver => $"Tài xế → {Key}",
             NotificationTargetKind.PendingReceipt => "Kho trung chuyển → 📦 Nhập hàng từ chuyến" + (Key.Length > 0 ? $" (kho {Key})" : ""),
+            NotificationTargetKind.TripIssue => "Kho trung chuyển → 📤 Xuất kho theo chuyến" + (Key.Length > 0 ? $" (kho {Key})" : ""),
             _ => "",
         };
 
@@ -95,6 +97,14 @@ namespace TruckingSystem.Desktop.DTO_NotificationManagement
             {
                 m = DriverCode.Match(title);
                 return m.Success ? new NotificationTarget(NotificationTargetKind.Driver, m.Groups[1].Value.Trim()) : null;
+            }
+
+            // 🚫 chờ kho xuất hàng -> màn Kho (việc của kho, nhân viên kho không vào được màn Chuyến).
+            if (title.StartsWith("🚫") && IssueWarehouse.Match(title) is { Success: true } issue)
+            {
+                var trip = TripNo.Match(title);
+                return new NotificationTarget(NotificationTargetKind.TripIssue, issue.Groups[1].Value.Trim(),
+                    trip.Success ? int.Parse(trip.Groups[1].Value) : null);
             }
 
             // 🟢 chờ duyệt, 🚫 bị chặn, ⏰ hạn giao theo chuyến -> màn Chuyến; ⏰ theo đơn -> màn Đơn.

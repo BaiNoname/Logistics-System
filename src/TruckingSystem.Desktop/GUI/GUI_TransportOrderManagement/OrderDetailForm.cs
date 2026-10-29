@@ -244,7 +244,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
         /// <summary>Lộ trình của đơn ĐI QUA KHO trung chuyển — đúng như các chuyến và ước
         /// tính chạy thật: (Điểm lấy hàng →) Kho → Điểm giao hàng. Đơn khách tự mang tới
         /// không có chặng lấy hàng: Kho → Điểm giao.</summary>
-        private static List<RouteStopItem> BuildRouteStops(TransportOrderDetailItem order)
+        internal static List<RouteStopItem> BuildRouteStops(TransportOrderDetailItem order)
         {
             var stops = new List<RouteStopItem>();
             if (order.PickupMethod != "SelfDelivery" && order.PickupLat.HasValue && order.PickupLng.HasValue)

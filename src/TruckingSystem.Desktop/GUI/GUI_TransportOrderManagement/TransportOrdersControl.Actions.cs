@@ -1,0 +1,344 @@
+﻿using System.Drawing;
+using System.Windows.Forms;
+using TruckingSystem.Desktop.Common;
+using TruckingSystem.Desktop.DTO_TransportOrderManagement;
+using TruckingSystem.Desktop.GUI_RouteManagement;
+
+namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
+{
+    /// <summary>THAO TÁC của màn Đơn vận chuyển — cùng kiểu với màn Chuyến (gọn, đúng việc):
+    ///  • Thanh trên: Làm mới · Tạo đơn mới · nút BƯỚC TIẾP THEO theo trạng thái đơn đang chọn (Nháp: Sửa đơn +
+    ///    Xác nhận; Đã xác nhận chưa chia xe: Chia xe) · Xem chi tiết · 2 nút nhóm thả xuống
+    ///    "📅 Hạn giao và phí lưu kho ▾" và "🧰 Công cụ khác ▾".
+    ///  • CHUỘT PHẢI vào 1 đơn = menu đủ mọi thao tác (gom nhóm, thao tác không hợp trạng thái thì mờ).
+    ///  • Nhấp đúp = Xem chi tiết · F5 = Làm mới.
+    ///  • Thẻ "Đơn đang chọn" (UserControl SelectionCard) ngay trên bảng: thông tin + việc cần làm tiếp.
+    /// Mọi điều kiện bật/tắt giống màn Chi tiết đơn; server vẫn kiểm tra lại khi thực hiện.</summary>
+    public partial class TransportOrdersControl
+    {
+        /// <summary>1 thao tác trên đơn: chữ, điều kiện bấm được, (tuỳ chọn) điều kiện hiện, việc cần chạy.</summary>
+        private sealed record OrderAction(string Text, Func<TransportOrderListItem, bool> CanRun,
+            Func<TransportOrderListItem, Task> Run, Func<TransportOrderListItem, bool>? Show = null);
+
+        private readonly SelectionCard _card = new() { Hint = "🖱 Chuột phải vào dòng: mọi thao tác\n🖱 Nhấp đúp: xem chi tiết đơn" };
+        private readonly ContextMenuStrip _rowMenu = new();
+        private readonly List<(ToolStripMenuItem Item, OrderAction Action)> _menuBindings = new();
+        private Button? _btnEdit, _btnConfirm, _btnDetail, _btnDeadline, _btnTools;
+
+        private OrderAction _actDetail = null!, _actEdit = null!, _actConfirm = null!, _actAllocate = null!,
+            _actDeadline = null!, _actFee = null!, _actRecordFee = null!, _actRoute = null!,
+            _actCopyCode = null!, _actCopyLink = null!, _actCancel = null!;
+
+        private TransportOrderListItem? SelectedOrder
+            => grid.CurrentRow?.Cells["Id"]?.Value is int id ? _orders.FirstOrDefault(o => o.Id == id) : null;
+
+        private void SetupActions()
+        {
+            DefineActions();
+
+            // 1) Thẻ "Đơn đang chọn" ngay trên bảng.
+            KpiStrip.InsertRow(root, _card, root.GetRow(grid));
+            _card.ShowEmpty("Chưa chọn đơn", "Bấm 1 dòng trong bảng bên dưới để xem thông tin và việc cần làm của đơn.");
+
+            // 2) Thanh nút: Làm mới · Tạo đơn · [Sửa đơn · Xác nhận | Chia xe] · Xem chi tiết · 2 nhóm thả xuống.
+            _btnEdit = ToolbarButton("✏️ Sửa đơn", _actEdit, primary: false);
+            _btnConfirm = ToolbarButton("✅ Xác nhận đơn", _actConfirm, primary: true);
+            _btnDetail = ToolbarButton("📄 Xem chi tiết", _actDetail, primary: false);
+            _btnDeadline = GroupButton("📅 Hạn giao và phí lưu kho ▾", AddDeadlineItems);
+            _btnTools = GroupButton("🧰 Công cụ khác ▾", AddToolItems);
+            toolbar.Controls.Add(_btnEdit);
+            toolbar.Controls.Add(_btnConfirm);
+            toolbar.Controls.SetChildIndex(btnAllocate, toolbar.Controls.Count - 1);
+            toolbar.Controls.Add(_btnDetail);
+            toolbar.Controls.Add(_btnDeadline);
+            toolbar.Controls.Add(_btnTools);
+
+            // 3) Menu chuột phải.
+            BuildRowMenu();
+            grid.ContextMenuStrip = _rowMenu;
+            _rowMenu.Opening += (_, e) =>
+            {
+                SyncMenu();
+                if (SelectedOrder is null) e.Cancel = true;
+            };
+            grid.CellMouseDown += (_, e) =>
+            {
+                if (e.Button != MouseButtons.Right || e.RowIndex < 0) return;
+                var col = Math.Max(0, e.ColumnIndex);
+                if (grid.Rows[e.RowIndex].Cells[col].Visible) grid.CurrentCell = grid.Rows[e.RowIndex].Cells[col];
+                else grid.Rows[e.RowIndex].Selected = true;
+            };
+            grid.KeyDown += (_, e) => { if (e.KeyCode == Keys.F5) { e.Handled = true; _ = LoadAsync(); } };
+        }
+
+        private void DefineActions()
+        {
+            _actDetail = new("📄  Xem chi tiết đơn", _ => true, _ => OpenDetailAsync());
+            _actEdit = new("✏️  Sửa đơn", o => o.Status == "Draft", EditAsync);
+            _actConfirm = new("✅  Xác nhận đơn", o => o.Status == "Draft", ConfirmAsync, o => o.Status == "Draft");
+            _actAllocate = new("🚚  Chia xe (Greedy)", o => !_allocating && o.Status == "Confirmed" && o.ActiveTripCount == 0,
+                _ => AllocateSelectedAsync(), o => o.Status is "Draft" or "Confirmed");
+            _actDeadline = new("📅  Đổi hạn giao", o => o.Status is "Confirmed" or "InProgress", ChangeDeadlineAsync);
+            _actFee = new("💰  Xem phí lưu kho (chi tiết từng ngày)", o => o.Status != "Draft", StorageFeeAsync);
+            _actRecordFee = new("➕  Ghi nhận phí lưu kho bổ sung", o => o.Status != "Draft" && o.CommittedDeliveryDate.HasValue, RecordFeeAsync);
+            _actRoute = new("🗺️  Xem lộ trình (lấy → kho → giao)", _ => true, ViewRouteAsync);
+            _actCopyCode = new("📋  Sao chép mã đơn", _ => true, o =>
+            {
+                Clipboard.SetText(o.Code);
+                SetStatus($"📋 Đã sao chép mã đơn {o.Code}.", Theme.Success);
+                return Task.CompletedTask;
+            });
+            _actCopyLink = new("🔗  Sao chép link theo dõi cho khách", o => !string.IsNullOrEmpty(o.PublicTrackingToken), o =>
+            {
+                var url = $"{_api!.Connection.BaseUrl}/track.html?token={o.PublicTrackingToken}";
+                Clipboard.SetText(url);
+                SetStatus("🔗 Đã sao chép link theo dõi: " + url, Theme.Success);
+                return Task.CompletedTask;
+            });
+            _actCancel = new("❌  Hủy đơn", o => o.Status is not ("Done" or "Cancelled"), CancelAsync);
+        }
+
+        private void BuildRowMenu()
+        {
+            var detail = AddItem(_rowMenu.Items, _actDetail);
+            detail.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+            detail.ShortcutKeyDisplayString = "Nhấp đúp";
+            _rowMenu.Items.Add(new ToolStripSeparator());
+            AddItem(_rowMenu.Items, _actEdit);
+            AddItem(_rowMenu.Items, _actConfirm);
+            AddItem(_rowMenu.Items, _actAllocate);
+            _rowMenu.Items.Add(new ToolStripSeparator());
+            var deadline = new ToolStripMenuItem("📅  Hạn giao và phí lưu kho");
+            AddDeadlineItems(deadline.DropDownItems);
+            _rowMenu.Items.Add(deadline);
+            var tools = new ToolStripMenuItem("🧰  Công cụ khác");
+            AddToolItems(tools.DropDownItems);
+            _rowMenu.Items.Add(tools);
+            _rowMenu.Items.Add(new ToolStripSeparator());
+            var cancel = AddItem(_rowMenu.Items, _actCancel);
+            cancel.ForeColor = Theme.Danger;
+            var refresh = new ToolStripMenuItem("🔄  Làm mới danh sách") { ShortcutKeyDisplayString = "F5" };
+            refresh.Click += (_, _) => _ = LoadAsync();
+            _rowMenu.Items.Add(refresh);
+            ModernMenu.Apply(_rowMenu);
+        }
+
+        private void AddDeadlineItems(ToolStripItemCollection items)
+        {
+            AddItem(items, _actDeadline);
+            items.Add(new ToolStripSeparator());
+            AddItem(items, _actFee);
+            AddItem(items, _actRecordFee);
+        }
+
+        private void AddToolItems(ToolStripItemCollection items)
+        {
+            AddItem(items, _actRoute);
+            AddItem(items, _actCopyLink);
+            AddItem(items, _actCopyCode);
+        }
+
+        private ToolStripMenuItem AddItem(ToolStripItemCollection items, OrderAction action)
+        {
+            var item = new ToolStripMenuItem(action.Text);
+            item.Click += async (_, _) => await RunAsync(action);
+            items.Add(item);
+            _menuBindings.Add((item, action));
+            return item;
+        }
+
+        private async Task RunAsync(OrderAction action)
+        {
+            if (_api is null || SelectedOrder is not { } order || !action.CanRun(order)) return;
+            try { await action.Run(order); }
+            catch (Exception ex)
+            {
+                MessageBox.Show(FindForm(), "Lỗi: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void SyncMenu()
+        {
+            var o = SelectedOrder;
+            foreach (var (item, action) in _menuBindings)
+            {
+                item.Visible = o is null || action.Show?.Invoke(o) != false;
+                item.Enabled = o is not null && action.CanRun(o);
+                item.ToolTipText = item.Enabled ? "" : "Chưa làm được với trạng thái hiện tại của đơn";
+            }
+        }
+
+        private Button ToolbarButton(string text, OrderAction action, bool primary)
+        {
+            var b = NewButton(text, primary);
+            b.Click += async (_, _) => await RunAsync(action);
+            return b;
+        }
+
+        private Button GroupButton(string text, Action<ToolStripItemCollection> addItems)
+        {
+            var menu = new ContextMenuStrip();
+            addItems(menu.Items);
+            ModernMenu.Apply(menu);
+            var b = NewButton(text, primary: false);
+            b.Click += (_, _) =>
+            {
+                SyncMenu();
+                menu.MinimumSize = new Size(b.Width, 0);
+                menu.Show(b, new Point(0, b.Height + b.LogicalToDeviceUnits(2)));
+            };
+            return b;
+        }
+
+        private Button NewButton(string text, bool primary)
+        {
+            var b = new Button
+            {
+                Text = text,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                BackColor = primary ? Theme.Primary : Color.White,
+                ForeColor = primary ? Color.White : Theme.TextPrimary,
+                Cursor = Cursors.Hand,
+                FlatStyle = FlatStyle.Flat,
+                Font = btnRefresh.Font,
+                Margin = btnRefresh.Margin,
+                MinimumSize = btnRefresh.MinimumSize,
+                Padding = btnRefresh.Padding,
+                UseVisualStyleBackColor = false,
+                Enabled = false,
+            };
+            b.FlatAppearance.BorderSize = primary ? 0 : 1;
+            b.FlatAppearance.BorderColor = Theme.BorderColor;
+            b.FlatAppearance.MouseOverBackColor = primary ? Theme.PrimaryDark : Theme.GridAltRow;
+            return b;
+        }
+
+        /// <summary>Thanh trên + thẻ "Đơn đang chọn" theo đúng trạng thái đơn đang chọn (gọi từ UpdateActionButtons).</summary>
+        private void UpdateSelectionUi(TransportOrderListItem? o)
+        {
+            var draft = o?.Status == "Draft";
+            if (_btnEdit != null) { _btnEdit.Visible = draft; _btnEdit.Enabled = draft; }
+            if (_btnConfirm != null) { _btnConfirm.Visible = draft; _btnConfirm.Enabled = draft; }
+            btnAllocate.Visible = o?.Status == "Confirmed" && o.ActiveTripCount == 0;
+            foreach (var b in new[] { _btnDetail, _btnDeadline, _btnTools })
+                if (b != null) b.Enabled = o is not null;
+
+            if (o is null)
+            {
+                _card.ShowEmpty("Chưa chọn đơn", _orders.Count == 0
+                    ? "Chưa có đơn nào (hoặc bộ lọc không khớp đơn nào) — bấm ➕ Tạo đơn mới."
+                    : "Bấm 1 dòng trong bảng bên dưới để xem thông tin và việc cần làm của đơn.");
+                return;
+            }
+            var overdue = DeadlineGroup(o) == DeadlineOverdue;
+            var accent = o.Status switch
+            {
+                "Draft" => Theme.TextSecondary,
+                "Confirmed" => GridDecor.AccentTeal,
+                "InProgress" => Theme.Primary,
+                "Done" => Theme.Success,
+                "Cancelled" => Theme.Danger,
+                _ => Theme.BorderColor,
+            };
+            var next = o.Status switch
+            {
+                "Draft" => "Nháp — kiểm tra lại với khách rồi bấm ✅ Xác nhận đơn (còn sửa được bằng ✏️ Sửa đơn)",
+                "Confirmed" when o.ActiveTripCount == 0 => "Đã xác nhận — bấm 🚚 Chia xe để tạo chuyến",
+                "Confirmed" => $"Đã chia xe ({o.ActiveTripCount} chuyến) — chờ xe xuất phát, theo dõi ở màn Chuyến",
+                "InProgress" => $"Đang vận chuyển {o.ProgressPercent:0.##}% — theo dõi ở màn Chuyến",
+                "Done" => "Hoàn tất — chỉ xem lại / phí lưu kho",
+                "Cancelled" => "Đã hủy — chỉ xem lại",
+                _ => "",
+            };
+            if (overdue) next = "⏰ ĐÃ QUÁ HẠN GIAO — " + next;
+            _card.ShowItem(overdue ? Theme.Danger : accent,
+                $"Đơn {o.Code}  ·  {o.CustomerName}  ·  {TranslateStatus(o.Status)}",
+                new[]
+                {
+                    o.ContractCode is { Length: > 0 } c ? $"📑 HĐ {c}" : "📑 Khách lẻ",
+                    $"📍 {(string.IsNullOrWhiteSpace(o.PickupPoint) ? "?" : o.PickupPoint)} → 🏬 {o.WarehouseName ?? "?"} → {(string.IsNullOrWhiteSpace(o.DropoffPoint) ? "?" : o.DropoffPoint)}",
+                    o.CommittedDeliveryDate is DateTime due ? $"⏰ Hạn giao {due:dd/MM/yyyy}" : "⏰ Chưa có hạn giao",
+                    $"🚚 {o.ActiveTripCount} chuyến",
+                },
+                next, overdue || o.Status == "Confirmed" && o.ActiveTripCount == 0);
+        }
+
+        private void SetStatus(string text, Color color)
+        {
+            lblStatus.Text = text;
+            lblStatus.ForeColor = color;
+        }
+
+        // ------------------------------------------------------------ các thao tác
+
+        private async Task EditAsync(TransportOrderListItem o)
+        {
+            using var f = new CreateOrderForm(_api!, o.Id);
+            if (f.ShowDialog(FindForm()) == DialogResult.OK) await LoadAsync();
+        }
+
+        private async Task ConfirmAsync(TransportOrderListItem o)
+        {
+            if (MessageBox.Show(FindForm(), $"Xác nhận đơn {o.Code}? Sau khi xác nhận sẽ KHÔNG sửa được nữa (chỉ có thể hủy).",
+                    "Xác nhận đơn hàng", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
+            var result = await _api!.TransportOrders.ConfirmOrderAsync(o.Id);
+            await LoadAsync(); // đơn có thể vừa bị người khác đổi -> nút theo dữ liệu mới
+            SetStatus(result.Success ? $"✅ Đã xác nhận đơn {o.Code} — bước tiếp: 🚚 Chia xe." : "⚠️ " + result.Message,
+                result.Success ? Theme.Success : Theme.Warning);
+        }
+
+        private async Task CancelAsync(TransportOrderListItem o)
+        {
+            if (MessageBox.Show(FindForm(), $"Bạn có chắc chắn muốn HỦY đơn {o.Code} không? Không thể hoàn tác.",
+                    "Xác nhận hủy đơn", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes) return;
+            var result = await _api!.TransportOrders.CancelOrderAsync(o.Id);
+            await LoadAsync();
+            if (result.Success && !string.IsNullOrEmpty(result.Message))
+                MessageBox.Show(FindForm(), result.Message, "Đã hủy đơn — cần lưu ý", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            SetStatus(result.Success ? $"❌ Đã hủy đơn {o.Code}." : "⚠️ " + result.Message,
+                result.Success ? Theme.TextSecondary : Theme.Warning);
+        }
+
+        private async Task ChangeDeadlineAsync(TransportOrderListItem o)
+        {
+            var detail = await _api!.TransportOrders.GetOrderDetailAsync(o.Id);
+            using var f = new ChangeDeadlineForm(_api, detail);
+            if (f.ShowDialog(FindForm()) != DialogResult.OK) return;
+            await LoadAsync();
+            SetStatus("✅ " + (f.ResultMessage ?? "Đã đổi hạn giao.").Replace("\n", "  "), Theme.Success);
+        }
+
+        private async Task StorageFeeAsync(TransportOrderListItem o)
+        {
+            var detail = await _api!.TransportOrders.GetOrderDetailAsync(o.Id);
+            using var f = new StorageFeeForm(_api, detail);
+            f.ShowDialog(FindForm());
+            if (f.ChangedAny) await LoadAsync();
+        }
+
+        private async Task RecordFeeAsync(TransportOrderListItem o)
+        {
+            var detail = await _api!.TransportOrders.GetOrderDetailAsync(o.Id);
+            using var f = new RecordStorageFeeForm(_api, detail);
+            if (f.ShowDialog(FindForm()) != DialogResult.OK) return;
+            SetStatus("✅ " + (f.ResultMessage ?? "Đã ghi nhận phí lưu kho.").Replace("\n", "  "), Theme.Success);
+        }
+
+        private async Task ViewRouteAsync(TransportOrderListItem o)
+        {
+            var detail = await _api!.TransportOrders.GetOrderDetailAsync(o.Id);
+            var stops = OrderDetailForm.BuildRouteStops(detail);
+            if (stops.Count < 2)
+            {
+                MessageBox.Show(FindForm(),
+                    "Chưa đủ tọa độ để vẽ lộ trình (cần kho trung chuyển và điểm giao có tọa độ" +
+                    (detail.PickupMethod == "SelfDelivery" ? "" : ", cùng điểm lấy hàng") + ").",
+                    "Thiếu tọa độ", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+            using var f = new RouteMapForm(_api, detail.Code, stops);
+            f.ShowDialog(FindForm());
+        }
+    }
+}

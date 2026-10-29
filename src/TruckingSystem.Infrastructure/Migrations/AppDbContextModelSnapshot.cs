@@ -162,6 +162,12 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.Property<string>("UserId")
                         .HasColumnType("text");
 
+                    b.Property<string>("UserName")
+                        .HasColumnType("text");
+
+                    b.Property<string>("UserRole")
+                        .HasColumnType("text");
+
                     b.HasKey("Id");
 
                     b.HasIndex("Timestamp");
