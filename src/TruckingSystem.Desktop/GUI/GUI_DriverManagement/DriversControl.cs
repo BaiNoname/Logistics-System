@@ -35,7 +35,40 @@ namespace TruckingSystem.Desktop.GUI_DriverManagement
             filterBar.AddChoice("warehouse", "Kho", Array.Empty<string>());
             filterBar.FilterChanged += (_, _) => BindGrid();
             SetupModernLook();
+            SetupRowMenu();
             Load += async (_, _) => await LoadAsync();
+        }
+
+        /// <summary>Chuột phải 1 tài xế = Hồ sơ / Ngày làm — cùng kiểu màn Đơn, Chuyến, Đội xe (trước đây màn này chưa có).
+        /// Nhấp đúp vẫn mở hồ sơ. Chuột phải chọn luôn đúng dòng dưới con trỏ.</summary>
+        private void SetupRowMenu()
+        {
+            var menu = new ContextMenuStrip();
+            var profile = new ToolStripMenuItem("📝  Hồ sơ tài xế") { ShortcutKeyDisplayString = "Nhấp đúp", Font = new Font("Segoe UI", 10F, FontStyle.Bold) };
+            profile.Click += async (_, _) => await OpenProfileAsync();
+            var workDays = new ToolStripMenuItem("📅  Ngày làm việc");
+            workDays.Click += (s, e) => BtnSchedule_Click(s, e);
+            var refresh = new ToolStripMenuItem("🔄  Làm mới danh sách") { ShortcutKeyDisplayString = "F5" };
+            refresh.Click += (_, _) => _ = LoadAsync();
+            menu.Items.AddRange(new ToolStripItem[] { profile, workDays, new ToolStripSeparator(), refresh });
+            ModernMenu.Apply(menu);
+            menu.Opening += (_, e) =>
+            {
+                var d = Selected();
+                if (d is null) { e.Cancel = true; return; }
+                profile.Text = d.HasProfile ? "✏️  Sửa hồ sơ tài xế" : "📝  Tạo hồ sơ tài xế";
+                workDays.Enabled = d.HasProfile;
+                workDays.ToolTipText = d.HasProfile ? "" : "Chưa có hồ sơ tài xế — tạo hồ sơ trước rồi mới đăng ký ngày làm";
+            };
+            grid.ContextMenuStrip = menu;
+            grid.CellMouseDown += (_, e) =>
+            {
+                if (e.Button != MouseButtons.Right || e.RowIndex < 0) return;
+                var col = Math.Max(0, e.ColumnIndex);
+                if (grid.Rows[e.RowIndex].Cells[col].Visible) grid.CurrentCell = grid.Rows[e.RowIndex].Cells[col];
+                else grid.Rows[e.RowIndex].Selected = true;
+            };
+            grid.KeyDown += (_, e) => { if (e.KeyCode == Keys.F5) { e.Handled = true; _ = LoadAsync(); } };
         }
 
         /// <summary>Nhãn màu trạng thái / hồ sơ. (Bỏ hàng 6 thẻ số liệu theo góp ý GVHD — số cần chú ý gom vào

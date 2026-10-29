@@ -77,7 +77,7 @@ public class WarehouseSlottingService : IWarehouseSlottingService
         var hasDoor = warehouse is not null && HasDoor(warehouse);
         var distanceOf = bins.ToDictionary(b => b.Id, b => hasDoor ? DoorDistanceMeters(warehouse!, b.WarehouseZone, b) ?? 0 : 0);
         var doorNote = hasDoor ? null
-            : "⚠️ Kho chưa khai báo vị trí cửa — chưa ưu tiên gần/xa cửa được, đang xếp theo Best-Fit. Vào Sửa kho để khai báo cửa.";
+            : "⚠️ Kho chưa khai báo vị trí cửa — chưa ưu tiên gần/xa cửa được, đang xếp theo chỗ trống vừa nhất. Vào Sửa kho để khai báo cửa.";
 
         // Mỗi ô: còn bao nhiêu m³, và xếp thêm được TỐI ĐA bao nhiêu đơn vị hàng
         // này (giới hạn bởi CẢ thể tích lẫn tải trọng, cái nào chặt hơn tính cái đó).
@@ -901,7 +901,7 @@ public class WarehouseSlottingService : IWarehouseSlottingService
             var maxQtyInChosen = MaxQtyFitting(chosenBin, UnitVolumeM3(cargoLine), UnitWeightKg(cargoLine));
             if (maxQtyInChosen < qty)
                 return new ReceiveGoodsResult(false,
-                    $"Vị trí {chosenBin.Code} không đủ chỗ (còn {chosenBin.CapacityM3 - chosenBin.CurrentUsedM3:0.00} m³, tải trọng tối đa {chosenBin.MaxWeightKg:0.##} kg) — chỉ xếp thêm được tối đa {maxQtyInChosen:0.##} đơn vị, cần {qty} (≈ {qty * UnitVolumeM3(cargoLine):0.00} m³). Thử chọn vị trí khác hoặc chuyển sang \"Tự động (Best-Fit)\" để hệ thống tự chia ra nhiều vị trí.",
+                    $"Vị trí {chosenBin.Code} không đủ chỗ (còn {chosenBin.CapacityM3 - chosenBin.CurrentUsedM3:0.00} m³, tải trọng tối đa {chosenBin.MaxWeightKg:0.##} kg) — chỉ xếp thêm được tối đa {maxQtyInChosen:0.##} đơn vị, cần {qty} (≈ {qty * UnitVolumeM3(cargoLine):0.00} m³). Thử chọn vị trí khác hoặc chuyển sang \"Hệ thống tự chọn vị trí\" để hệ thống tự chia ra nhiều vị trí.",
                     new List<string>());
 
             targetAllocations.Add((chosenBin, qty));

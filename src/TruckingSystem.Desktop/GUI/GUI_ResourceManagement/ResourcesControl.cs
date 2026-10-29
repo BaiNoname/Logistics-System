@@ -53,7 +53,55 @@ namespace TruckingSystem.Desktop.GUI_ResourceManagement
             driverFilter.AddChoice("workday", "Ngày làm", new[] { WorkToday, WorkNotToday });
             driverFilter.AddChoice("license", "Hạng bằng", Array.Empty<string>());
             driverFilter.FilterChanged += (_, _) => BindDrivers();
+            SetupRowMenus();
             Load += async (_, _) => await LoadAsync();
+        }
+
+        /// <summary>Màn này để NHÌN NHANH hôm nay kho có xe / tài xế nào chạy được -> bỏ 2 thanh nút (trùng màn Đội xe,
+        /// Tài xế), thao tác chuyển vào CHUỘT PHẢI trên từng dòng: xe = Giấy tờ / Nhiên liệu; tài xế = Hồ sơ / Ngày làm.</summary>
+        private void SetupRowMenus()
+        {
+            vehicleBar.Visible = false;
+            driverBar.Visible = false;
+
+            var vMenu = new ContextMenuStrip();
+            var docs = new ToolStripMenuItem("📄  Giấy tờ xe");
+            docs.Click += (s, e) => BtnVehicleDocs_Click(s, e);
+            var fuel = new ToolStripMenuItem("⛽  Nhiên liệu trong bình");
+            fuel.Click += (s, e) => BtnVehicleFuel_Click(s, e);
+            vMenu.Items.AddRange(new ToolStripItem[] { docs, fuel });
+            ModernMenu.Apply(vMenu);
+            vMenu.Opening += (_, e) => { if (SelectedVehicle() is null) e.Cancel = true; };
+            AttachMenu(gridVehicles, vMenu);
+
+            var dMenu = new ContextMenuStrip();
+            var profile = new ToolStripMenuItem("📝  Hồ sơ tài xế");
+            profile.Click += (s, e) => BtnDriverProfile_Click(s, e);
+            var workDays = new ToolStripMenuItem("📅  Ngày làm việc");
+            workDays.Click += (s, e) => BtnDriverWorkDays_Click(s, e);
+            dMenu.Items.AddRange(new ToolStripItem[] { profile, workDays });
+            ModernMenu.Apply(dMenu);
+            dMenu.Opening += (_, e) =>
+            {
+                var d = SelectedDriver();
+                if (d is null) { e.Cancel = true; return; }
+                profile.Text = d.HasProfile ? "✏️  Sửa hồ sơ tài xế" : "📝  Tạo hồ sơ tài xế";
+                workDays.Enabled = d.HasProfile;
+                workDays.ToolTipText = d.HasProfile ? "" : "Chưa có hồ sơ tài xế — tạo hồ sơ trước";
+            };
+            AttachMenu(gridDrivers, dMenu);
+        }
+
+        private static void AttachMenu(DataGridView grid, ContextMenuStrip menu)
+        {
+            grid.ContextMenuStrip = menu;
+            grid.CellMouseDown += (_, e) =>
+            {
+                if (e.Button != MouseButtons.Right || e.RowIndex < 0) return;
+                var col = Math.Max(0, e.ColumnIndex);
+                if (grid.Rows[e.RowIndex].Cells[col].Visible) grid.CurrentCell = grid.Rows[e.RowIndex].Cells[col];
+                else grid.Rows[e.RowIndex].Selected = true;
+            };
         }
 
         public ResourcesControl(ApiServices api) : this()
@@ -194,7 +242,7 @@ namespace TruckingSystem.Desktop.GUI_ResourceManagement
                 Chạy_được_hôm_nay = v.CanRunToday ? "✅ Được" : "⛔ " + v.BlockReason,
                 Tài_xế_đang_chọn = "", // điền khi chọn 1 tài xế (CellFormatting)
             }).ToList();
-            grpVehicles.Text = $"🚚 Xe ({rows.Count}/{_data.Vehicles.Count})";
+            grpVehicles.Text = $"🚚 Xe ({rows.Count}/{_data.Vehicles.Count}) — chuột phải: giấy tờ, nhiên liệu";
             Reselect(gridVehicles, "Id", keep, "Biển_số");
         }
 
@@ -223,7 +271,7 @@ namespace TruckingSystem.Desktop.GUI_ResourceManagement
                 Chạy_được_hôm_nay = d.CanRunToday ? "✅ Được" : "⛔ " + d.BlockReason,
                 Xe_đang_chọn = "", // điền khi chọn 1 xe (CellFormatting)
             }).ToList();
-            grpDrivers.Text = $"👷 Tài xế ({rows.Count}/{_data.Drivers.Count})";
+            grpDrivers.Text = $"👷 Tài xế ({rows.Count}/{_data.Drivers.Count}) — chuột phải: hồ sơ, ngày làm";
             Reselect(gridDrivers, "EmployeeId", keep, "Mã_NV");
         }
 

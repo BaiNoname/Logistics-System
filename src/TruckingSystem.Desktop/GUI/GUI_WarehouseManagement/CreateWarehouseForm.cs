@@ -16,6 +16,8 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
         public CreateWarehouseForm()
         {
             InitializeComponent();
+            // Chữ cho NHÂN VIÊN (không nêu tên thuật toán) — đặt bằng code, không sửa Designer.
+            lblCapacity.Text = "Sức chứa (m³) — dùng để tự xếp hàng vào kho, tuỳ chọn";
 
             // Ô tìm địa chỉ VietMap: gõ -> danh sách gợi ý -> BẤM 1 dòng -> có địa chỉ + tọa độ.
             _placeSearch = new PlaceSearchBinder(txtSearch, lstSuggestions, lblSelectedAddress, item =>

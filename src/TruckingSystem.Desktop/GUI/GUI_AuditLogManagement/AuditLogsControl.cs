@@ -21,15 +21,7 @@ namespace TruckingSystem.Desktop.GUI_AuditLogManagement
             Theme.StyleGrid(grid);
             GridLayout.FitColumns(grid);
             GridDecor.HoverRows(grid);
-            GridDecor.Pills(grid, "Hành_động", (_, row) => LogAt(row) is { } l ? AuditLabels.Tone(l.Action) switch
-            {
-                "green" => GridDecor.Green,
-                "red" => GridDecor.Red,
-                "violet" => GridDecor.Violet,
-                "slate" => GridDecor.Slate,
-                "blue" => GridDecor.Blue,
-                _ => GridDecor.Amber,
-            } : null);
+            GridDecor.Pills(grid, "Hành_động", (_, row) => LogAt(row) is { } l ? AuditLabels.PillTone(l.Action) : null);
             grid.DataBindingComplete += (_, _) =>
             {
                 if (grid.Columns["Id"] != null) grid.Columns["Id"]!.Visible = false;
@@ -48,6 +40,26 @@ namespace TruckingSystem.Desktop.GUI_AuditLogManagement
             filterBar.AddChoice("entity", "Đối tượng", Array.Empty<string>());
             filterBar.FilterChanged += (_, _) => BindGrid();
             ScrollFit.Enable(this, root, grid);
+
+            // 📥 Xuất Excel — thêm bằng code cạnh nút "Tải thêm" (không sửa Designer). Xuất ĐÚNG các dòng đang hiện
+            // (theo bộ lọc), kèm cột Vai trò và Nội dung đầy đủ mà bảng trên màn hình không hiện.
+            var btnExport = new Button
+            {
+                Text = "📥 Xuất Excel",
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                BackColor = Color.White,
+                ForeColor = Theme.TextPrimary,
+                FlatStyle = FlatStyle.Flat,
+                Font = btnMore.Font,
+                Cursor = Cursors.Hand,
+                Padding = btnMore.Padding,
+                Margin = btnMore.Margin,
+                MinimumSize = btnMore.MinimumSize,
+            };
+            btnExport.FlatAppearance.BorderColor = btnMore.FlatAppearance.BorderColor;
+            btnExport.Click += (_, _) => ExportExcel();
+            dateBar.Controls.Add(btnExport);
             Load += async (_, _) => await LoadAsync(append: false);
         }
 
@@ -105,10 +117,27 @@ namespace TruckingSystem.Desktop.GUI_AuditLogManagement
             }
         }
 
-        private static string UserText(AuditLogItem l) => string.IsNullOrWhiteSpace(l.UserName) ? AuditLabels.SystemText : l.UserName!;
+        private static string UserText(AuditLogItem l) => AuditLabels.UserText(l);
 
         /// <summary>Lọc vai trò: 1 người có thể nhiều vai trò -> khớp nếu CÓ vai trò đang chọn.</summary>
         private bool RoleMatches(AuditLogItem l) => filterBar.Choice("role") is not string r || AuditLabels.Roles(l).Contains(r);
+
+        private List<AuditLogItem> _shown = new();
+
+        private void ExportExcel()
+        {
+            var rows = _shown.Select(l => new object?[]
+            {
+                l.Timestamp.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss"),
+                AuditLabels.UserText(l),
+                string.Join(", ", AuditLabels.Roles(l)),
+                AuditLabels.Action(l.Action),
+                AuditLabels.EntityText(l),
+                AuditLabels.DetailSummary(l),
+            }).ToList();
+            ExcelExport.Export(FindForm(), "Nhat ky he thong", $"NhatKy_{dtFrom.Value:yyyyMMdd}-{dtTo.Value:yyyyMMdd}",
+                new[] { "Thời gian", "Người", "Vai trò", "Hành động", "Đối tượng", "Nội dung" }, rows);
+        }
 
         private void BindGrid()
         {
@@ -119,6 +148,7 @@ namespace TruckingSystem.Desktop.GUI_AuditLogManagement
                     filterBar.Is("entity", AuditLabels.Entity(l.EntityName)) &&
                     filterBar.MatchesSearch(l.Detail, l.UserName, AuditLabels.Entity(l.EntityName), l.EntityId?.ToString()))
                 .ToList();
+            _shown = rows;
             grid.DataSource = rows.Select(l => new
             {
                 l.Id,
@@ -138,36 +168,8 @@ namespace TruckingSystem.Desktop.GUI_AuditLogManagement
         private void ShowDetail()
         {
             var log = grid.CurrentRow?.Cells["Id"]?.Value is int id ? _logs.FirstOrDefault(l => l.Id == id) : null;
-            if (log is null)
-            {
-                txtDetail.Text = _logs.Count == 0 ? "Không có nhật ký nào trong khoảng ngày này." : "Bấm 1 dòng trong bảng để xem chi tiết.";
-                return;
-            }
-            var lines = new List<string>
-            {
-                $"🕒 {log.Timestamp.ToLocalTime():dd/MM/yyyy HH:mm:ss}    👤 {UserText(log)}" +
-                (string.IsNullOrWhiteSpace(log.UserName) ? "" : $" ({string.Join(", ", AuditLabels.Roles(log))})") +
-                $"    {AuditLabels.Action(log.Action)}    " +
-                $"📁 {AuditLabels.Entity(log.EntityName)}{(log.EntityId.HasValue ? $" #{log.EntityId}" : "")}",
-                "",
-            };
-            var detail = log.Detail ?? "(không có nội dung)";
-            var json = AuditLabels.JsonLines(detail);
-            if (json is not null)
-            {
-                lines.Add("Thông tin ghi nhận:");
-                lines.AddRange(json.Select(p => "   • " + p));
-                txtDetail.Text = string.Join(Environment.NewLine, lines);
-                return;
-            }
-            var cut = detail.IndexOf(" — ", StringComparison.Ordinal);
-            if (cut > 0)
-            {
-                lines.Add(detail[..cut]);
-                lines.AddRange(detail[(cut + 3)..].Split(" · ").Select(p => "   • " + AuditLabels.PrettyPart(p)));
-            }
-            else lines.Add(detail);
-            txtDetail.Text = string.Join(Environment.NewLine, lines);
+            txtDetail.Text = log is not null ? AuditLabels.DetailText(log)
+                : _logs.Count == 0 ? "Không có nhật ký nào trong khoảng ngày này." : "Bấm 1 dòng trong bảng để xem chi tiết.";
         }
     }
 }

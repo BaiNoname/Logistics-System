@@ -131,7 +131,8 @@ public class TripService : ITripService
                 AwaitingReceipt(t),
                 deadline.Deadline, deadline.LatestStart, deadline.Text, deadline.Level.ToString(),
                 t.PlannedStartDate, t.Warehouse?.Name,
-                route.From, route.To);
+                route.From, route.To,
+                t.EstimatedDistanceKm, t.EstimatedDurationMinutes);
         }).ToList();
     }
 
@@ -268,13 +269,13 @@ public class TripService : ITripService
                             ? $"📦 Chuyến #{trip.Id} đã về kho — chờ nhập kho"
                             : $"📦 Chuyến #{trip.Id} đã về kho {warehouseName} — chờ nhập kho",
                         $"Hàng của chuyến lấy #{trip.Id} (đơn {trip.TransportOrder.Code}) đã về kho, còn chờ nhập {waiting.Sum(w => w.QtyPending):0.##}. " +
-                        "Vào màn Kho → 📦 Nhập hàng từ chuyến để nhập (thủ công hoặc Best-Fit); nhập xong thì xuất kho ở 📤 Xuất kho theo chuyến, chặng Giao mới bắt đầu được.");
+                        "Vào màn Kho → 📦 Nhập hàng từ chuyến để nhập (tự chọn vị trí hoặc để hệ thống tự xếp); nhập xong thì xuất kho ở 📤 Xuất kho theo chuyến, chặng Giao mới bắt đầu được.");
             }
             catch { /* thông báo không phải dữ liệu chính — chuyến đã hoàn tất xong */ }
         }
         return new TripActionResult(true, trip.LegType == TripLegType.Pickup
             ? $"Chuyến lấy hàng #{trip.Id} đã hoàn tất — hàng đã về kho, đang CHỜ NHẬP KHO. " +
-              "Vào màn Kho → 📦 Nhập hàng từ chuyến để nhập (thủ công hoặc Best-Fit); nhập xong thì xuất kho ở 📤 Xuất kho theo chuyến, chặng Giao mới bắt đầu được."
+              "Vào màn Kho → 📦 Nhập hàng từ chuyến để nhập (tự chọn vị trí hoặc để hệ thống tự xếp); nhập xong thì xuất kho ở 📤 Xuất kho theo chuyến, chặng Giao mới bắt đầu được."
             : null);
     }
 
@@ -297,6 +298,8 @@ public class TripService : ITripService
         var rejectedAt = DateTime.UtcNow;
         await _db.Trips.Where(t => t.Id == trip.Id)
             .ExecuteUpdateAsync(s => s.SetProperty(t => t.ConfirmRejectedAt, rejectedAt));
+
+        await _db.SaveChangesAsync(); // lưu dòng nhật ký "Từ chối" (TryClaimStatusAsync) — nhánh này không còn lần lưu nào khác chắc chắn
 
         // Đã xử lý (từ chối) -> thông báo "chờ duyệt" cũ không còn việc gì để làm.
         // Nếu tài xế báo xong lại, hệ thống sẽ tạo thông báo MỚI.
@@ -716,7 +719,7 @@ WHERE ""Id"" = {tripId}");
         var waitingReceipt = await PendingReceiptRules.LoadAsync(_db, l => l.Trip.TransportOrderId == orderId);
         if (waitingReceipt.Count > 0)
             return "Chưa thể bắt đầu chuyến giao hàng — hàng của chuyến lấy " + PendingReceiptRules.Describe(waitingReceipt) +
-                   " đã về kho nhưng CHƯA NHẬP KHO. Vận hành nhập kho trước (màn Kho → 📦 Nhập hàng từ chuyến: thủ công hoặc Best-Fit) rồi mới xuất kho đi giao.";
+                   " đã về kho nhưng CHƯA NHẬP KHO. Vận hành nhập kho trước (màn Kho → 📦 Nhập hàng từ chuyến: tự chọn vị trí hoặc để hệ thống tự xếp) rồi mới xuất kho đi giao.";
         return stockReason;
     }
 
@@ -1541,8 +1544,31 @@ WHERE ""Id"" = {tripId}");
         {
             affected = await query.ExecuteUpdateAsync(s => s.SetProperty(t => t.Status, to));
         }
+        if (affected == 1)
+        {
+            // ExecuteUpdate đi THẲNG xuống database, KHÔNG qua bộ ghi nhật ký tự động -> trước đây Bắt đầu / Báo xong /
+            // Duyệt / Từ chối chuyến KHÔNG có trong Nhật ký hệ thống. Ghi tay: lưu cùng lần SaveChanges kế tiếp của thao
+            // tác (người thao tác do bộ ghi tự điền); thao tác lỗi giữa chừng -> rollback thì dòng này cũng bỏ.
+            _db.AuditLogs.Add(new AuditLog
+            {
+                Action = "StatusChange",
+                EntityName = nameof(Trip),
+                EntityId = tripId,
+                Detail = $"Đổi trạng thái chuyến #{tripId} — Trạng thái: {StatusText(from)} → {StatusText(to)}",
+            });
+        }
         return affected == 1;
     }
+
+    private static string StatusText(TripStatus s) => s switch
+    {
+        TripStatus.Planned => "Đã lên kế hoạch",
+        TripStatus.InProgress => "Đang chạy",
+        TripStatus.PendingConfirmation => "Chờ xác nhận",
+        TripStatus.Completed => "Hoàn tất",
+        TripStatus.Cancelled => "Đã hủy",
+        _ => s.ToString(),
+    };
 
     /// <summary>Trả xe về Rảnh SAU KHI xong chuyến — chỉ khi xe đang ở trạng
     /// thái "Đang chạy" (không ghi đè Bảo trì / Ngưng hoạt động mà người dùng

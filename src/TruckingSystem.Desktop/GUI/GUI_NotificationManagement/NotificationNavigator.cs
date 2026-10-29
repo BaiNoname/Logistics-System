@@ -14,7 +14,7 @@ namespace TruckingSystem.Desktop.GUI_NotificationManagement
     {
         public static (string NavText, Func<Control> Build) Resolve(ApiServices api, NotificationTarget target) => target.Kind switch
         {
-            NotificationTargetKind.Trip => ("Chuyến (Trip)", () =>
+            NotificationTargetKind.Trip => ("Chuyến xe", () => // khớp tên mục menu trái (MainForm)
             {
                 var c = new TripsControl(api);
                 if (target.TripId is int id) c.FocusTrip(id);
