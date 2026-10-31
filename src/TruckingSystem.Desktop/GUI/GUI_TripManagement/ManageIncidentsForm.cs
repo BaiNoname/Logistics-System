@@ -14,6 +14,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
         public ManageIncidentsForm()
         {
             InitializeComponent();
+            TruckingSystem.Desktop.Common.DialogKeys.Enable(this); // Esc = đóng
             Theme.StyleGrid(grid);
         }
 

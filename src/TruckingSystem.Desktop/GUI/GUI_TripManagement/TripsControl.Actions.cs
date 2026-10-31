@@ -38,10 +38,10 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
             BuildRowMenu();
             _btnCost = GroupButton("⛽ Chi phí && nhiên liệu ▾", AddCostItems, "Ghi xăng (kèm so sánh với ước tính), chi phí khác, sự cố của chuyến đang chọn");
             _btnInfo = GroupButton("ℹ️ Thông tin && công cụ ▾", AddInfoItems, "Ảnh hàng, link cho tài xế, lịch sử thay đổi");
-            // Thứ tự: Làm mới · Bắt đầu/Hoàn tất/Duyệt/Từ chối · Đổi xe · Trả tại kho · Xem lộ trình · Chi phí ▾ · Thông tin ▾
-            toolbar.Controls.SetChildIndex(btnViewRoute, toolbar.Controls.Count - 1);
-            toolbar.Controls.Add(_btnCost);
-            toolbar.Controls.Add(_btnInfo);
+            // Thanh nút chỉ giữ Làm mới + các VIỆC CHÍNH theo trạng thái (Bắt đầu / Hoàn tất / Duyệt / Từ chối / Đổi xe /
+            // Trả tại kho). "Xem lộ trình" = nhấp đúp; "Chi phí & nhiên liệu", "Thông tin & công cụ" = chuột phải
+            // (2 nút nhóm ▾ trước đây mở ra đúng danh sách của chuột phải -> bỏ cho đỡ trùng).
+            toolbar.Controls.Remove(btnViewRoute);
 
             // 3) Menu chuột phải.
             grid.ContextMenuStrip = _rowMenu;
@@ -100,9 +100,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
                 lblStatus.ForeColor = Theme.Success;
             };
             _rowMenu.Items.Add(copy);
-            var refresh = new ToolStripMenuItem("🔄  Làm mới danh sách") { ShortcutKeyDisplayString = "F5" };
-            refresh.Click += (_, _) => _ = LoadAsync();
-            _rowMenu.Items.Add(refresh);
+            // "Làm mới danh sách" bỏ khỏi chuột phải — đã có nút 🔄 Làm mới và phím F5.
             ModernMenu.Apply(_rowMenu);
         }
 

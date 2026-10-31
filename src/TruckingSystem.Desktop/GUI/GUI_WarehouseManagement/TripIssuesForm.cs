@@ -26,6 +26,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
         public TripIssuesForm()
         {
             InitializeComponent();
+            TruckingSystem.Desktop.Common.DialogKeys.Enable(this); // Esc = đóng
             Anim.FadeIn(this);
             Theme.StyleGrid(grid);
             GridLayout.FitColumns(grid);

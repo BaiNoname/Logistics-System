@@ -42,6 +42,7 @@ namespace TruckingSystem.Desktop.GUI_Shared
                 lblTitle.Text = $"💰 Chi phí đơn {d.OrderCode}";
                 lblSub.Text = $"Khách hàng: {d.CustomerName}   •   Trạng thái: {ReportFormat.OrderStatus(d.Status)}";
 
+                foreach (var c in summary.Controls.Cast<Control>().ToList()) c.Dispose(); // giải phóng thẻ cũ
                 summary.Controls.Clear();
                 summary.Controls.Add(SummaryCard("Doanh thu", ReportFormat.FullMoney(d.Revenue), Theme.Primary));
                 summary.Controls.Add(SummaryCard("Tổng chi phí", ReportFormat.FullMoney(d.TotalCost), Theme.Warning));

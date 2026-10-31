@@ -19,6 +19,7 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
         public CreateVehicleForm()
         {
             InitializeComponent();
+            TruckingSystem.Desktop.Common.DialogKeys.Enable(this, btnSave); // Esc = đóng, Enter = Lưu
             // Server bắt buộc sức chứa > 0 ở cả 3 chiều — không cho chọn 0 ngay trên form.
             foreach (var n in new[] { numCapacityQty, numCapacityKg, numCapacityM3 })
                 n.Minimum = n.DecimalPlaces == 0 ? 1 : 1m / (decimal)Math.Pow(10, n.DecimalPlaces);

@@ -25,6 +25,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
         public TripCargoReviewForm()
         {
             InitializeComponent();
+            TruckingSystem.Desktop.Common.DialogKeys.Enable(this); // Esc = đóng
             Theme.StyleGrid(gridLines);
         }
 
@@ -84,7 +85,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
                 if (IsDisposed) return;
                 var legText = checklist?.LegType switch { "Pickup" => "lấy hàng", "Return" => "trả hàng", _ => "giao hàng" };
                 lblInfo.Text = _photos.Count == 0
-                    ? $"⚠️ Chuyến này CHƯA có ảnh hàng (dữ liệu cũ, hoặc Dispatcher tự Hoàn tất trên Desktop)."
+                    ? $"⚠️ Chuyến này CHƯA có ảnh hàng (dữ liệu cũ, hoặc điều phối viên bấm Hoàn tất trên máy tính)."
                     : $"Tài xế đã tick xác nhận ĐỦ {checklist?.Lines.Count ?? 0} dòng hàng ({legText}) kèm {_photos.Count} ảnh. " +
                       "Đối chiếu ảnh với tên hàng + số lượng bên trái — hàng sai/thiếu thì Từ chối và liên hệ tài xế.";
                 lblInfo.ForeColor = _photos.Count == 0 ? Theme.Warning : Theme.TextSecondary;

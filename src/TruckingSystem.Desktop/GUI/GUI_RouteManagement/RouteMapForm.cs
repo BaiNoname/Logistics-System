@@ -36,6 +36,7 @@ namespace TruckingSystem.Desktop.GUI_RouteManagement
         public RouteMapForm()
         {
             InitializeComponent();
+            TruckingSystem.Desktop.Common.DialogKeys.Enable(this); // Esc = đóng
         }
 
         /// <summary>Dùng khi ĐÃ CÓ sẵn danh sách điểm dừng (VD gọi từ TripsControl
@@ -138,12 +139,11 @@ namespace TruckingSystem.Desktop.GUI_RouteManagement
                 if (waypoints.Count == 0)
                 {
                     // CHƯA có GPS -> đường lý thuyết từ điểm xuất phát.
-                    foreach (var (from, to) in validStops.Zip(validStops.Skip(1), (a, b) => (a, b)))
-                    {
-                        var seg = await _api.Routes.CalculateAsync(from.Lat!.Value, from.Lng!.Value, to.Lat!.Value, to.Lng!.Value);
-                        theoretical.Add(seg);
-                        if (seg.Success) { totalKm += seg.DistanceKm; totalMin += seg.DurationMinutes; }
-                    }
+                    // Tính các chặng CÙNG LÚC (trước đây lần lượt từng chặng) — giữ đúng thứ tự chặng.
+                    var api = _api;
+                    theoretical = (await Task.WhenAll(validStops.Zip(validStops.Skip(1), (a, b) => (a, b))
+                        .Select(p => api.Routes.CalculateAsync(p.a.Lat!.Value, p.a.Lng!.Value, p.b.Lat!.Value, p.b.Lng!.Value)))).ToList();
+                    foreach (var seg in theoretical.Where(s => s.Success)) { totalKm += seg.DistanceKm; totalMin += seg.DurationMinutes; }
                 }
                 else
                 {
@@ -244,21 +244,21 @@ namespace TruckingSystem.Desktop.GUI_RouteManagement
         private async Task<(List<RouteResultItem> Segments, double TotalKm, int TotalMin)> CalculateDynamicSegmentsAsync(
             double fromLat, double fromLng, List<RouteStopItem> validStops)
         {
-            var segments = new List<RouteResultItem>();
-            double totalKm = 0;
-            int totalMin = 0;
+            // Dựng sẵn các cặp (điểm đầu, điểm cuối) của từng chặng rồi tính CÙNG LÚC (trước đây lần lượt) — đúng thứ tự.
+            var legs = new List<(double FromLat, double FromLng, double ToLat, double ToLng)>();
             var curLat = fromLat;
             var curLng = fromLng;
-
             for (int i = _currentStopIndex; i < validStops.Count; i++)
             {
                 var to = validStops[i];
-                var seg = await _api!.Routes.CalculateAsync(curLat, curLng, to.Lat!.Value, to.Lng!.Value);
-                segments.Add(seg);
-                if (seg.Success) { totalKm += seg.DistanceKm; totalMin += seg.DurationMinutes; }
+                legs.Add((curLat, curLng, to.Lat!.Value, to.Lng!.Value));
                 curLat = to.Lat!.Value;
                 curLng = to.Lng!.Value;
             }
+            var segments = (await Task.WhenAll(legs.Select(l => _api!.Routes.CalculateAsync(l.FromLat, l.FromLng, l.ToLat, l.ToLng)))).ToList();
+            double totalKm = 0;
+            int totalMin = 0;
+            foreach (var seg in segments.Where(s => s.Success)) { totalKm += seg.DistanceKm; totalMin += seg.DurationMinutes; }
             return (segments, totalKm, totalMin);
         }
 

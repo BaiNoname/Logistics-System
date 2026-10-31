@@ -30,6 +30,7 @@ namespace TruckingSystem.Desktop.GUI_NotificationManagement
         public NotificationsForm()
         {
             InitializeComponent();
+            TruckingSystem.Desktop.Common.DialogKeys.Enable(this); // Esc = đóng
             Theme.StyleGrid(grid);
             SetupGrid();
             SetupFilters();

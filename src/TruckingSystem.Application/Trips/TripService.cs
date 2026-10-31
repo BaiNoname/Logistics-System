@@ -796,8 +796,14 @@ WHERE ""Id"" = {tripId}");
 
         var driver = await _db.DriverProfiles
             .Where(dp => dp.EmployeeId == trip.DriverEmployeeId)
-            .Select(dp => new { dp.LicenseExpiryDate, dp.LicenseClass, dp.HealthCertExpiryDate, EmpStatus = dp.Employee.Status, dp.Employee.FullName,
-                                PositionName = dp.Employee.Position != null ? dp.Employee.Position.Name : null })
+            .Select(dp => new {
+                dp.LicenseExpiryDate,
+                dp.LicenseClass,
+                dp.HealthCertExpiryDate,
+                EmpStatus = dp.Employee.Status,
+                dp.Employee.FullName,
+                PositionName = dp.Employee.Position != null ? dp.Employee.Position.Name : null
+            })
             .FirstOrDefaultAsync();
         if (driver is null) return "Tài xế của chuyến này chưa có hồ sơ tài xế.";
         if (driver.EmpStatus != EmployeeStatus.Active)
@@ -972,10 +978,11 @@ WHERE ""Id"" = {tripId}");
         int totalDurationMinutes = 0;
         bool gotAnyRealRoute = false;
 
-        for (int i = 0; i < stops.Count - 1; i++)
+        // Các chặng hỏi VietMap CÙNG LÚC (trước đây lần lượt) — cộng dồn theo đúng thứ tự.
+        var routes = await Task.WhenAll(Enumerable.Range(0, stops.Count - 1).Select(i => _routeProvider.GetRouteAsync(new RouteRequest(
+            stops[i].Lat!.Value, stops[i].Lng!.Value, stops[i + 1].Lat!.Value, stops[i + 1].Lng!.Value))));
+        foreach (var route in routes)
         {
-            var route = await _routeProvider.GetRouteAsync(new RouteRequest(
-                stops[i].Lat!.Value, stops[i].Lng!.Value, stops[i + 1].Lat!.Value, stops[i + 1].Lng!.Value));
             if (route.Success)
             {
                 totalDistanceKm += (decimal)route.DistanceKm;
@@ -1717,8 +1724,17 @@ WHERE ""Id"" = {tripId}");
         var driverPositionIds = await DriverPositionRules.DriverPositionIdsAsync(_db);
         var drivers = await _db.DriverProfiles
             .OrderBy(dp => dp.Employee.FullName)
-            .Select(dp => new { dp.EmployeeId, dp.Employee.FullName, dp.Employee.Code, EmpStatus = dp.Employee.Status, dp.Employee.PositionId,
-                                dp.LicenseExpiryDate, dp.LicenseClass, dp.WarehouseId, dp.HealthCertExpiryDate })
+            .Select(dp => new {
+                dp.EmployeeId,
+                dp.Employee.FullName,
+                dp.Employee.Code,
+                EmpStatus = dp.Employee.Status,
+                dp.Employee.PositionId,
+                dp.LicenseExpiryDate,
+                dp.LicenseClass,
+                dp.WarehouseId,
+                dp.HealthCertExpiryDate
+            })
             .ToListAsync();
         var driverOptions = new List<ReassignOptionDto>();
         foreach (var d in drivers)

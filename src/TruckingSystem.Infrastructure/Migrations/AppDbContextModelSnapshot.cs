@@ -172,6 +172,8 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     b.HasIndex("Timestamp");
 
+                    b.HasIndex("EntityName", "EntityId");
+
                     b.ToTable("AuditLogs");
                 });
 

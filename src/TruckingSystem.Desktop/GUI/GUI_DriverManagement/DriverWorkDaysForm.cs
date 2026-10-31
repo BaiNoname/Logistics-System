@@ -30,6 +30,7 @@ namespace TruckingSystem.Desktop.GUI_DriverManagement
         public DriverWorkDaysForm()
         {
             InitializeComponent();
+            TruckingSystem.Desktop.Common.DialogKeys.Enable(this); // Esc = đóng
             Theme.StyleGrid(grid);
             SetupGrid();
             dtFrom.Value = DateTime.Today;

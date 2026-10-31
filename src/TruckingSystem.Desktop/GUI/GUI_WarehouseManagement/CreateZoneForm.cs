@@ -14,6 +14,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
         public CreateZoneForm()
         {
             InitializeComponent();
+            TruckingSystem.Desktop.Common.DialogKeys.Enable(this, btnSave); // Esc = đóng, Enter = Lưu
             // Hiện tiếng Việt, gửi đúng mã cho server (trước đây hiện "Normal/Fragile/Hazmat").
             cboZoneType.Items.AddRange(new object[]
             {

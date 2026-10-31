@@ -10,6 +10,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
         public CreateIncidentForm()
         {
             InitializeComponent();
+            TruckingSystem.Desktop.Common.DialogKeys.Enable(this); // Esc = đóng
             cboType.Items.AddRange(new object[]
             {
                 new ComboOption("Accident", "Tai nạn"),

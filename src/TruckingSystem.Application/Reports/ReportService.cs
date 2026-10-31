@@ -12,6 +12,10 @@ public class ReportService : IReportService
 
     private readonly IApplicationDbContext _db;
 
+    /// <summary>Km GPS của chuyến đã chốt (hoàn tất / hủy) — không đổi nữa nên nhớ trong bộ nhớ máy chủ (mất khi khởi động lại,
+    /// lần sau tính lại 1 lần).</summary>
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<int, decimal?> GpsKmCache = new();
+
     public ReportService(IApplicationDbContext db)
     {
         _db = db;
@@ -261,18 +265,35 @@ public class ReportService : IReportService
         if (trips.Count == 0) return new List<TripFuelStats>();
         var tripIds = trips.Select(t => t.Id).ToList();
 
-        var waypoints = await _db.Waypoints
-            .Where(w => tripIds.Contains(w.TripId))
-            .OrderBy(w => w.Timestamp)
-            .Select(w => new { w.TripId, w.Lat, w.Lng })
-            .ToListAsync();
-        var gpsKmByTrip = waypoints.GroupBy(w => w.TripId).ToDictionary(g => g.Key, g =>
+        // Km GPS: chuyến ĐÃ HOÀN TẤT / ĐÃ HỦY thì không còn điểm GPS mới -> tính 1 lần rồi nhớ (GpsKmCache). Chỉ tải điểm
+        // GPS của chuyến chưa có trong bộ nhớ — trước đây MỖI lần mở / đổi kỳ ở màn Tổng quan đều tải lại TOÀN BỘ điểm GPS
+        // của mọi chuyến trong kỳ (kỳ "Năm nay" có thể vài trăm nghìn điểm), nay chỉ lần đầu.
+        var gpsKmByTrip = new Dictionary<int, decimal?>();
+        var closed = trips.Where(t => t.Status is TripStatus.Completed or TripStatus.Cancelled).Select(t => t.Id).ToHashSet();
+        foreach (var id in closed)
+            if (GpsKmCache.TryGetValue(id, out var cached)) gpsKmByTrip[id] = cached;
+        var needIds = tripIds.Where(id => !gpsKmByTrip.ContainsKey(id)).ToList();
+        if (needIds.Count > 0)
         {
-            var pts = g.ToList();
-            double km = 0;
-            for (var i = 1; i < pts.Count; i++) km += HaversineKm(pts[i - 1].Lat, pts[i - 1].Lng, pts[i].Lat, pts[i].Lng);
-            return pts.Count >= 2 ? (decimal?)Math.Round((decimal)km, 1) : null;
-        });
+            var waypoints = await _db.Waypoints
+                .Where(w => needIds.Contains(w.TripId))
+                .OrderBy(w => w.Timestamp)
+                .Select(w => new { w.TripId, w.Lat, w.Lng })
+                .ToListAsync();
+            var byTrip = waypoints.GroupBy(w => w.TripId).ToDictionary(g => g.Key, g => g.ToList());
+            foreach (var id in needIds)
+            {
+                decimal? km = null;
+                if (byTrip.TryGetValue(id, out var pts) && pts.Count >= 2)
+                {
+                    double sum = 0;
+                    for (var i = 1; i < pts.Count; i++) sum += HaversineKm(pts[i - 1].Lat, pts[i - 1].Lng, pts[i].Lat, pts[i].Lng);
+                    km = Math.Round((decimal)sum, 1);
+                }
+                if (km is not null) gpsKmByTrip[id] = km;
+                if (closed.Contains(id)) GpsKmCache[id] = km;
+            }
+        }
 
         var fuelLogs = await _db.FuelLogs
             .Where(f => tripIds.Contains(f.TripId))

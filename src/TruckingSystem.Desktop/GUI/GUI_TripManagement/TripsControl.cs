@@ -502,7 +502,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
                           $"Trip ID:\n{tripId}";
 
             Clipboard.SetText($"Server URL: {serverUrl}\nTrip ID: {tripId}");
-            MessageBox.Show(FindForm(), message + "\n\n(Đã copy vào Clipboard)", "Thông tin kết nối tài xế", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show(FindForm(), message + "\n\n(Đã sao chép sẵn — chỉ cần dán vào app tài xế)", "Thông tin kết nối tài xế", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         private async void BtnQuickEstimate_Click(object? sender, EventArgs e)

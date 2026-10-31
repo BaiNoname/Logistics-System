@@ -82,39 +82,26 @@ namespace TruckingSystem.Desktop.GUI_ResourceManagement
             vehicleBar.Visible = false;
             driverBar.Visible = false;
 
+            // Sửa giấy tờ / nhiên liệu (xe), hồ sơ / ngày làm (tài xế): làm ngay trong cửa sổ "Xem đầy đủ" — chuột phải
+            // chỉ còn 2 mục (ghép xe – tài xế, xem đầy đủ / sửa), không lặp lại các mục sửa riêng.
             var vMenu = new ContextMenuStrip();
-            var docs = new ToolStripMenuItem("📄  Giấy tờ xe");
-            docs.Click += (s, e) => BtnVehicleDocs_Click(s, e);
-            var fuel = new ToolStripMenuItem("⛽  Nhiên liệu trong bình");
-            fuel.Click += (s, e) => BtnVehicleFuel_Click(s, e);
-            var vDetail = new ToolStripMenuItem("🔍  Xem đầy đủ thông tin") { ShortcutKeyDisplayString = "Nhấp đúp" };
+            var vDetail = new ToolStripMenuItem("🔍  Xem đầy đủ / sửa giấy tờ, nhiên liệu") { ShortcutKeyDisplayString = "Nhấp đúp" };
             vDetail.Click += (_, _) => ShowVehicleDetail();
             var vPair = new ToolStripMenuItem("🔗  Tài xế đang đi cùng / tài xế lái được xe này") { Font = new Font("Segoe UI", 10F, FontStyle.Bold) };
             vPair.Click += (_, _) => ShowVehiclePairing();
-            vMenu.Items.AddRange(new ToolStripItem[] { vPair, vDetail, new ToolStripSeparator(), docs, fuel });
+            vMenu.Items.AddRange(new ToolStripItem[] { vPair, vDetail });
             ModernMenu.Apply(vMenu);
             vMenu.Opening += (_, e) => { if (SelectedVehicle() is null) e.Cancel = true; };
             AttachMenu(gridVehicles, vMenu);
 
             var dMenu = new ContextMenuStrip();
-            var profile = new ToolStripMenuItem("📝  Hồ sơ tài xế");
-            profile.Click += (s, e) => BtnDriverProfile_Click(s, e);
-            var workDays = new ToolStripMenuItem("📅  Ngày làm việc");
-            workDays.Click += (s, e) => BtnDriverWorkDays_Click(s, e);
-            var dDetail = new ToolStripMenuItem("🔍  Xem đầy đủ thông tin") { ShortcutKeyDisplayString = "Nhấp đúp" };
+            var dDetail = new ToolStripMenuItem("🔍  Xem đầy đủ / sửa hồ sơ, ngày làm") { ShortcutKeyDisplayString = "Nhấp đúp" };
             dDetail.Click += (_, _) => ShowDriverDetail();
             var dPair = new ToolStripMenuItem("🔗  Xe đang dùng / xe lái được") { Font = new Font("Segoe UI", 10F, FontStyle.Bold) };
             dPair.Click += (_, _) => ShowDriverPairing();
-            dMenu.Items.AddRange(new ToolStripItem[] { dPair, dDetail, new ToolStripSeparator(), profile, workDays });
+            dMenu.Items.AddRange(new ToolStripItem[] { dPair, dDetail });
             ModernMenu.Apply(dMenu);
-            dMenu.Opening += (_, e) =>
-            {
-                var d = SelectedDriver();
-                if (d is null) { e.Cancel = true; return; }
-                profile.Text = d.HasProfile ? "✏️  Sửa hồ sơ tài xế" : "📝  Tạo hồ sơ tài xế";
-                workDays.Enabled = d.HasProfile;
-                workDays.ToolTipText = d.HasProfile ? "" : "Chưa có hồ sơ tài xế — tạo hồ sơ trước";
-            };
+            dMenu.Opening += (_, e) => { if (SelectedDriver() is null) e.Cancel = true; };
             AttachMenu(gridDrivers, dMenu);
         }
 
@@ -303,7 +290,7 @@ namespace TruckingSystem.Desktop.GUI_ResourceManagement
                 Chạy_được_hôm_nay = RunText(v.CanRunToday, v.CurrentTrip),
                 // "Đang đi cùng tài xế nào" + "tài xế nào lái được": chuột phải → 🔗 (PairingForm) cho bảng gọn.
             }).ToList();
-            grpVehicles.Text = $"🚚 Xe ({rows.Count}/{_data.Vehicles.Count}) — nhấp đúp: xem đầy đủ · chuột phải: tài xế đi cùng / lái được, giấy tờ";
+            grpVehicles.Text = $"🚚 Xe ({rows.Count}/{_data.Vehicles.Count}) — nhấp đúp: xem đầy đủ / sửa giấy tờ, nhiên liệu · chuột phải: tài xế đi cùng / lái được";
             Reselect(gridVehicles, "Id", keep, "Biển_số");
         }
 
@@ -326,7 +313,7 @@ namespace TruckingSystem.Desktop.GUI_ResourceManagement
                 Ngày_làm_hôm_nay = d.WorksToday ? "✅ Có" : "❌ Chưa ĐK",
                 Chạy_được_hôm_nay = RunText(d.CanRunToday, d.CurrentTrip),
             }).ToList();
-            grpDrivers.Text = $"👷 Tài xế ({rows.Count}/{_data.Drivers.Count}) — nhấp đúp: xem đầy đủ · chuột phải: xe đang dùng / lái được, hồ sơ";
+            grpDrivers.Text = $"👷 Tài xế ({rows.Count}/{_data.Drivers.Count}) — nhấp đúp: xem đầy đủ / sửa hồ sơ, ngày làm · chuột phải: xe đang dùng / lái được";
             Reselect(gridDrivers, "EmployeeId", keep, "Mã_NV");
         }
 
@@ -354,55 +341,67 @@ namespace TruckingSystem.Desktop.GUI_ResourceManagement
 
         // ================= Chi tiết (nhấp đúp) =================
 
-        private async void ShowVehicleDetail()
+        private void ShowVehicleDetail()
         {
-            if (_api is null || SelectedVehicle() is not VehicleResource v) return;
-            using var f = new ResourceDetailForm($"🚚 Xe {v.PlateNumber}", new (string, string)[]
-            {
-                ("# Hôm nay", ""),
-                ("Chạy được", v.CanRunToday ? "✅ Được" : v.CurrentTrip is not null ? "🚚 Đang bận chuyến" : "⛔ Không — " + v.BlockReason),
-                ("Trên chuyến", DriverOnTrip(v)),
-                ("Tài xế lái được", $"{_data.Drivers.Count(d => d.DrivableVehicleIds.Contains(v.Id))} người đủ hạng bằng · " +
-                                     $"{_data.Drivers.Count(d => d.DrivableVehicleIds.Contains(v.Id) && d.CanRunToday)} người rảnh hôm nay"),
-                ("# Thông tin xe", ""),
-                ("Xe", $"{v.VehicleType} · {v.CapacityKg / 1000m:0.##} tấn · cần bằng {v.RequiredLicense}"),
-                ("Kho / trạng thái", $"{v.WarehouseName ?? "(mọi kho)"} · {VehicleStatusText(v.Status)}"),
-                ("Nhiên liệu", FuelText(v)),
-                ("# Giấy tờ", ""),
-                ("Đăng kiểm", DocText(v.RegistrationExpiry)),
-                ("Bảo hiểm", DocText(v.InsuranceExpiry)),
-                ("Phù hiệu xe", DocText(v.PermitExpiry)),
-            }, new (string, bool, Func<Task>)[]
-            {
-                ("📄 Giấy tờ xe", true, async () => { BtnVehicleDocs_Click(this, EventArgs.Empty); await Task.CompletedTask; }),
-                ("⛽ Nhiên liệu", true, async () => { BtnVehicleFuel_Click(this, EventArgs.Empty); await Task.CompletedTask; }),
-            });
-            if (f.ShowDialog(FindForm()) == DialogResult.OK && f.PendingAction is { } run) await run();
+            if (_api is null || SelectedVehicle() is not VehicleResource sel) return;
+            var id = sel.Id;
+            VehicleResource? V() => _data.Vehicles.FirstOrDefault(x => x.Id == id); // lấy lại sau mỗi lần sửa (dữ liệu mới)
+            using var f = new ResourceDetailForm($"🚚 Xe {sel.PlateNumber}", () => V() is not VehicleResource v
+                ? new[] { ("Không còn thấy xe này", "— có thể đã đổi kho / bị xóa") }
+                : new (string, string)[]
+                {
+                    ("# Hôm nay", ""),
+                    ("Chạy được", v.CanRunToday ? "✅ Được" : v.CurrentTrip is not null ? "🚚 Đang bận chuyến" : "⛔ Không — " + v.BlockReason),
+                    ("Trên chuyến", DriverOnTrip(v)),
+                    ("Tài xế lái được", $"{_data.Drivers.Count(d => d.DrivableVehicleIds.Contains(v.Id))} người đủ hạng bằng · " +
+                                         $"{_data.Drivers.Count(d => d.DrivableVehicleIds.Contains(v.Id) && d.CanRunToday)} người rảnh hôm nay"),
+                    ("# Thông tin xe", ""),
+                    ("Xe", $"{v.VehicleType} · {v.CapacityKg / 1000m:0.##} tấn · cần bằng {v.RequiredLicense}"),
+                    ("Kho / trạng thái", $"{v.WarehouseName ?? "(mọi kho)"} · {VehicleStatusText(v.Status)}"),
+                    ("Nhiên liệu", FuelText(v)),
+                    ("# Giấy tờ", ""),
+                    ("Đăng kiểm", DocText(v.RegistrationExpiry)),
+                    ("Bảo hiểm", DocText(v.InsuranceExpiry)),
+                    ("Phù hiệu xe", DocText(v.PermitExpiry)),
+                },
+                () => V() is not VehicleResource v ? Array.Empty<(string, bool, Func<IWin32Window, Task>)>()
+                    : new (string, bool, Func<IWin32Window, Task>)[]
+                    {
+                        ("📄 Sửa giấy tờ xe", true, owner => EditVehicleDocsAsync(v, owner)),
+                        ("⛽ Cập nhật nhiên liệu", true, owner => EditVehicleFuelAsync(v, owner)),
+                    });
+            f.ShowDialog(FindForm());
         }
 
-        private async void ShowDriverDetail()
+        private void ShowDriverDetail()
         {
-            if (_api is null || SelectedDriver() is not DriverResource d) return;
-            using var f = new ResourceDetailForm($"👷 Tài xế {d.FullName} ({d.Code})", new (string, string)[]
-            {
-                ("# Hôm nay", ""),
-                ("Chạy được", d.CanRunToday ? "✅ Được" : d.CurrentTrip is not null ? "🚚 Đang bận chuyến" : "⛔ Không — " + d.BlockReason),
-                ("Ngày làm", (d.WorksToday ? "✅ Có làm hôm nay" : "❌ Hôm nay chưa đăng ký") + $" · 7 ngày tới: {d.WorkDaysNext7} ngày"),
-                ("Trên chuyến", d.CurrentTrip is null ? "—" : (d.CurrentVehiclePlate is null ? "" : $"xe {d.CurrentVehiclePlate} · ") + d.CurrentTrip),
-                ("Xe lái được", $"{d.DrivableVehicleIds.Count} xe trong danh sách"),
-                ("# Thông tin", ""),
-                ("Liên hệ", d.Phone ?? "—"),
-                ("Kho", !d.HasProfile ? "—" : d.WarehouseName ?? "(mọi kho)"),
-                ("# Giấy tờ", ""),
-                ("Hồ sơ / hạng bằng", d.HasProfile ? $"✅ Đã có · bằng {d.LicenseClass ?? "—"}" : "⛔ Chưa có hồ sơ"),
-                ("Bằng lái", d.HasProfile ? DocText(d.LicenseExpiry) : "—"),
-                ("Khám sức khỏe", d.HasProfile ? DocText(d.HealthCertExpiry, required: false) : "—"),
-            }, new (string, bool, Func<Task>)[]
-            {
-                (d.HasProfile ? "✏️ Sửa hồ sơ" : "📝 Tạo hồ sơ", true, async () => { BtnDriverProfile_Click(this, EventArgs.Empty); await Task.CompletedTask; }),
-                ("📅 Ngày làm", d.HasProfile, async () => { BtnDriverWorkDays_Click(this, EventArgs.Empty); await Task.CompletedTask; }),
-            });
-            if (f.ShowDialog(FindForm()) == DialogResult.OK && f.PendingAction is { } run) await run();
+            if (_api is null || SelectedDriver() is not DriverResource sel) return;
+            var id = sel.EmployeeId;
+            DriverResource? D() => _data.Drivers.FirstOrDefault(x => x.EmployeeId == id);
+            using var f = new ResourceDetailForm($"👷 Tài xế {sel.FullName} ({sel.Code})", () => D() is not DriverResource d
+                ? new[] { ("Không còn thấy tài xế này", "— có thể đã đổi kho") }
+                : new (string, string)[]
+                {
+                    ("# Hôm nay", ""),
+                    ("Chạy được", d.CanRunToday ? "✅ Được" : d.CurrentTrip is not null ? "🚚 Đang bận chuyến" : "⛔ Không — " + d.BlockReason),
+                    ("Ngày làm", (d.WorksToday ? "✅ Có làm hôm nay" : "❌ Hôm nay chưa đăng ký") + $" · 7 ngày tới: {d.WorkDaysNext7} ngày"),
+                    ("Trên chuyến", d.CurrentTrip is null ? "—" : (d.CurrentVehiclePlate is null ? "" : $"xe {d.CurrentVehiclePlate} · ") + d.CurrentTrip),
+                    ("Xe lái được", $"{d.DrivableVehicleIds.Count} xe trong danh sách"),
+                    ("# Thông tin", ""),
+                    ("Liên hệ", d.Phone ?? "—"),
+                    ("Kho", !d.HasProfile ? "—" : d.WarehouseName ?? "(mọi kho)"),
+                    ("# Giấy tờ", ""),
+                    ("Hồ sơ / hạng bằng", d.HasProfile ? $"✅ Đã có · bằng {d.LicenseClass ?? "—"}" : "⛔ Chưa có hồ sơ"),
+                    ("Bằng lái", d.HasProfile ? DocText(d.LicenseExpiry) : "—"),
+                    ("Khám sức khỏe", d.HasProfile ? DocText(d.HealthCertExpiry, required: false) : "—"),
+                },
+                () => D() is not DriverResource d ? Array.Empty<(string, bool, Func<IWin32Window, Task>)>()
+                    : new (string, bool, Func<IWin32Window, Task>)[]
+                    {
+                        (d.HasProfile ? "✏️ Sửa hồ sơ" : "📝 Tạo hồ sơ", true, owner => EditDriverProfileAsync(d, owner)),
+                        ("📅 Ngày làm việc", d.HasProfile, owner => EditDriverWorkDaysAsync(d, owner)),
+                    });
+            f.ShowDialog(FindForm());
         }
 
         private static void Reselect(DataGridView grid, string idColumn, int? id, string visibleColumn)
@@ -514,32 +513,62 @@ namespace TruckingSystem.Desktop.GUI_ResourceManagement
 
         private async void BtnVehicleDocs_Click(object? sender, EventArgs e)
         {
-            if (_api is null || SelectedVehicle() is not VehicleResource v) return;
-            using var f = new TruckingSystem.Desktop.GUI_VehicleManagement.ManageVehicleDocumentsForm(_api, v.Id, v.PlateNumber);
-            f.ShowDialog(FindForm());
-            await LoadAsync();
+            if (SelectedVehicle() is VehicleResource v) await EditVehicleDocsAsync(v, FindForm());
         }
 
         private async void BtnVehicleFuel_Click(object? sender, EventArgs e)
         {
-            if (_api is null || SelectedVehicle() is not VehicleResource v) return;
-            using var f = new TruckingSystem.Desktop.GUI_VehicleManagement.VehicleFuelLevelForm(_api, v.Id, v.PlateNumber);
-            if (f.ShowDialog(FindForm()) == DialogResult.OK) await LoadAsync();
+            if (SelectedVehicle() is VehicleResource v) await EditVehicleFuelAsync(v, FindForm());
         }
 
         private async void BtnDriverProfile_Click(object? sender, EventArgs e)
         {
-            if (_api is null || SelectedDriver() is not DriverResource d) return;
-            using var f = new TruckingSystem.Desktop.GUI_EmployeeManagement.CreateDriverProfileForm(_api, d.EmployeeId, d.FullName);
-            if (f.ShowDialog(FindForm()) == DialogResult.OK) await LoadAsync();
+            if (SelectedDriver() is DriverResource d) await EditDriverProfileAsync(d, FindForm());
         }
 
         private async void BtnDriverWorkDays_Click(object? sender, EventArgs e)
         {
-            if (_api is null || SelectedDriver() is not DriverResource d) return;
-            using var f = new TruckingSystem.Desktop.GUI_DriverManagement.DriverWorkDaysForm(_api, d.EmployeeId, d.FullName);
-            f.ShowDialog(FindForm());
-            if (f.Changed) await LoadAsync();
+            if (SelectedDriver() is DriverResource d) await EditDriverWorkDaysAsync(d, FindForm());
+        }
+
+        // Mỗi việc sửa: mở form trên cửa sổ đang mở (owner) -> đóng xong thì tải lại dữ liệu (Task chỉ xong khi đã tải lại,
+        // để cửa sổ chi tiết cập nhật đúng số liệu mới).
+        private async Task EditVehicleDocsAsync(VehicleResource v, IWin32Window? owner)
+        {
+            if (_api is null) return;
+            using (var f = new TruckingSystem.Desktop.GUI_VehicleManagement.ManageVehicleDocumentsForm(_api, v.Id, v.PlateNumber))
+                f.ShowDialog(owner);
+            await LoadAsync();
+        }
+
+        private async Task EditVehicleFuelAsync(VehicleResource v, IWin32Window? owner)
+        {
+            if (_api is null) return;
+            bool ok;
+            using (var f = new TruckingSystem.Desktop.GUI_VehicleManagement.VehicleFuelLevelForm(_api, v.Id, v.PlateNumber))
+                ok = f.ShowDialog(owner) == DialogResult.OK;
+            if (ok) await LoadAsync();
+        }
+
+        private async Task EditDriverProfileAsync(DriverResource d, IWin32Window? owner)
+        {
+            if (_api is null) return;
+            bool ok;
+            using (var f = new TruckingSystem.Desktop.GUI_EmployeeManagement.CreateDriverProfileForm(_api, d.EmployeeId, d.FullName))
+                ok = f.ShowDialog(owner) == DialogResult.OK;
+            if (ok) await LoadAsync();
+        }
+
+        private async Task EditDriverWorkDaysAsync(DriverResource d, IWin32Window? owner)
+        {
+            if (_api is null) return;
+            bool changed;
+            using (var f = new TruckingSystem.Desktop.GUI_DriverManagement.DriverWorkDaysForm(_api, d.EmployeeId, d.FullName))
+            {
+                f.ShowDialog(owner);
+                changed = f.Changed;
+            }
+            if (changed) await LoadAsync();
         }
     }
 }

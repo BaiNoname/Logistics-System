@@ -60,8 +60,12 @@ namespace TruckingSystem.Desktop.Common
                 var cols = VisibleColumns(grid);
                 var max = grid.Font.Height * 22; // ~ 400 px ở 100% — đo theo font nên đúng mọi mức phóng to
                 var min = grid.Font.Height * 3;
+                // Bảng NHIỀU dòng (nhật ký, lịch sử...): chỉ đo các dòng đang hiện + tiêu đề — đo hết vài nghìn dòng mỗi lần
+                // gõ lọc làm màn giật. Bảng ít dòng vẫn đo toàn bộ cho chính xác.
+                var mode = grid.RowCount > 300 ? DataGridViewAutoSizeColumnMode.DisplayedCells : DataGridViewAutoSizeColumnMode.AllCells;
                 state.Natural = cols
-                    .Select(c => Math.Max(c.MinimumWidth, Math.Clamp(c.GetPreferredWidth(DataGridViewAutoSizeColumnMode.AllCells, true) + 4, min, max)))
+                    .Select(c => Math.Max(c.MinimumWidth, Math.Clamp(Math.Max(c.GetPreferredWidth(mode, true),
+                        c.GetPreferredWidth(DataGridViewAutoSizeColumnMode.ColumnHeader, true)) + 4, min, max)))
                     .ToArray();
             }
             finally { state.Busy = false; }

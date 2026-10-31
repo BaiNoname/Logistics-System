@@ -34,25 +34,19 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
         {
             // Thanh trên chỉ giữ việc hay làm: Thêm xe + Giấy tờ xe. "Sửa xe" = nhấp đúp / chuột phải, "Nhiên liệu trong
             // bình" ít dùng -> chỉ ở chuột phải (bớt nút trùng).
+            // Giống màn Tài xế / Nguồn lực: nhấp đúp = XEM ĐẦY ĐỦ, sửa xe / giấy tờ / nhiên liệu ngay trong cửa sổ đó
+            // (cửa sổ vẫn mở, tự cập nhật). Thanh nút chỉ còn Thêm xe + Làm mới; chuột phải: Xem đầy đủ / sửa + Lịch sử.
             btnEdit.Visible = false;
             btnFuelLevel.Visible = false;
-            grid.CellDoubleClick += (s, e) => { if (e.RowIndex >= 0) BtnEdit_Click(s, e); };
+            btnDocuments.Visible = false;
+            grid.CellDoubleClick += (_, e) => { if (e.RowIndex >= 0) ShowDetail(); };
 
             var menu = new ContextMenuStrip();
-            var edit = new ToolStripMenuItem("✏️  Sửa xe") { ShortcutKeyDisplayString = "Nhấp đúp", Font = new Font("Segoe UI", 10F, FontStyle.Bold) };
-            edit.Click += BtnEdit_Click;
-            var docs = new ToolStripMenuItem("📄  Giấy tờ xe");
-            docs.Click += BtnDocuments_Click;
-            var fuel = new ToolStripMenuItem("⛽  Nhiên liệu trong bình");
-            fuel.Click += BtnFuelLevel_Click;
+            var detail = new ToolStripMenuItem("🔍  Xem đầy đủ / sửa xe, giấy tờ, nhiên liệu") { ShortcutKeyDisplayString = "Nhấp đúp", Font = new Font("Segoe UI", 10F, FontStyle.Bold) };
+            detail.Click += (_, _) => ShowDetail();
             var history = new ToolStripMenuItem("🕘  Lịch sử thay đổi (ai làm gì, lúc nào)");
             history.Click += (_, _) => ShowHistory();
-            var refresh = new ToolStripMenuItem("🔄  Làm mới danh sách") { ShortcutKeyDisplayString = "F5" };
-            refresh.Click += BtnRefresh_Click;
-            menu.Items.AddRange(new ToolStripItem[]
-            {
-                edit, new ToolStripSeparator(), docs, fuel, history, new ToolStripSeparator(), refresh,
-            });
+            menu.Items.AddRange(new ToolStripItem[] { detail, history });
             ModernMenu.Apply(menu);
             menu.Opening += (_, e) => { if (grid.CurrentRow is null) e.Cancel = true; };
             grid.ContextMenuStrip = menu;
@@ -68,12 +62,12 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
         }
 
         /// <summary>🕘 Nhật ký của xe đang chọn + giấy tờ xe (ai sửa trạng thái, biển số, gia hạn giấy tờ...).</summary>
-        private void ShowHistory()
+        private void ShowHistory(IWin32Window? owner = null)
         {
             if (_api is null || grid.CurrentRow?.Cells["Id"]?.Value is not int id) return;
             var plate = _vehicles.FirstOrDefault(v => v.Id == id)?.PlateNumber ?? $"#{id}";
             using var f = new TruckingSystem.Desktop.GUI_AuditLogManagement.EntityHistoryForm(_api, "Vehicle", id, "xe " + plate);
-            f.ShowDialog(FindForm());
+            f.ShowDialog(owner ?? FindForm());
         }
 
         /// <summary>Nhãn màu trạng thái / giấy tờ + thanh nhiên liệu. (Bỏ hàng 6 thẻ số liệu theo góp ý GVHD — số cần
@@ -110,7 +104,7 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
             Add(_vehicles.Count(v => v.Status == "UnderMaintenance"), "🔧 bảo trì");
             Add(_vehicles.Count(v => v.DocumentBlockReason is not null), "📄 giấy tờ thiếu / hết hạn");
             Add(_vehicles.Count(v => MatchesFuel(v, FuelLow)), "⛽ nhiên liệu thấp");
-            return string.Join("   ·   ", parts) + "   —   nhấp đúp 1 xe để sửa, chuột phải để xem thêm thao tác";
+            return string.Join("   ·   ", parts) + "   —   nhấp đúp 1 xe để xem đầy đủ / sửa";
         }
 
         private const string DocsOk = "✅ Hợp lệ";
@@ -172,6 +166,62 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
             if (_api is null) return;
             using var f = new CreateVehicleForm(_api);
             if (f.ShowDialog(FindForm()) == DialogResult.OK) await LoadAsync();
+        }
+
+        // ================= Xem đầy đủ (nhấp đúp) + sửa ngay trong cửa sổ =================
+
+        private void ShowDetail()
+        {
+            if (_api is null || grid.CurrentRow?.Cells["Id"]?.Value is not int id) return;
+            VehicleListItem? V() => _vehicles.FirstOrDefault(x => x.Id == id); // lấy lại sau mỗi lần sửa
+            var plate = V()?.PlateNumber ?? $"#{id}";
+            using var f = new TruckingSystem.Desktop.GUI_ResourceManagement.ResourceDetailForm($"🚚 Xe {plate}",
+                () => V() is not { } v
+                    ? new[] { ("Không còn thấy xe này", "— có thể đã bị lọc / xóa") }
+                    : new (string, string)[]
+                    {
+                        ("# Tình trạng", ""),
+                        ("Trạng thái", TranslateStatus(v.Status)),
+                        ("Giấy tờ", v.DocumentBlockReason is null ? "✅ Hợp lệ — chia xe được" : "⛔ " + v.DocumentBlockReason),
+                        ("Nhiên liệu", FuelText(v) + (v.FuelLevelMeasuredAt is DateTime m ? $" · đo lúc {m.ToLocalTime():dd/MM HH:mm}" : "")),
+                        ("# Thông tin xe", ""),
+                        ("Biển số / loại", $"{v.PlateNumber} · {v.VehicleType}"),
+                        ("Tải trọng", $"{v.CapacityKg / 1000m:0.##} tấn · {v.CapacityM3:0.##} m³ · {v.CapacityQty:0.##} đơn vị"),
+                        ("Kho", v.WarehouseName ?? AnyWarehouse),
+                        ("Tiêu hao", v.FuelConsumptionPer100Km is decimal c ? $"{c:0.#} L/100 km · {v.FuelType ?? "—"}" : "— chưa khai"),
+                    },
+                () => V() is not { } v ? Array.Empty<(string, bool, Func<IWin32Window, Task>)>()
+                    : new (string, bool, Func<IWin32Window, Task>)[]
+                    {
+                        ("✏️ Sửa xe", true, owner => EditAsync(v, owner)),
+                        ("📄 Giấy tờ xe", true, owner => DocumentsAsync(v, owner)),
+                        ("⛽ Nhiên liệu", true, owner => FuelLevelAsync(v, owner)),
+                        ("🕘 Lịch sử", true, owner => { ShowHistory(owner); return Task.CompletedTask; }),
+                    });
+            f.ShowDialog(FindForm());
+        }
+
+        private async Task EditAsync(VehicleListItem v, IWin32Window? owner)
+        {
+            if (_api is null) return;
+            bool ok;
+            using (var f = new EditVehicleForm(_api, v)) ok = f.ShowDialog(owner) == DialogResult.OK;
+            if (ok) await LoadAsync();
+        }
+
+        private async Task DocumentsAsync(VehicleListItem v, IWin32Window? owner)
+        {
+            if (_api is null) return;
+            using (var f = new ManageVehicleDocumentsForm(_api, v.Id, v.PlateNumber)) f.ShowDialog(owner);
+            await LoadAsync(); // giấy tờ có thể vừa thêm/xóa -> cột "Giấy tờ" cập nhật
+        }
+
+        private async Task FuelLevelAsync(VehicleListItem v, IWin32Window? owner)
+        {
+            if (_api is null) return;
+            bool ok;
+            using (var f = new VehicleFuelLevelForm(_api, v.Id, v.PlateNumber)) ok = f.ShowDialog(owner) == DialogResult.OK;
+            if (ok) await LoadAsync();
         }
 
         private void BtnDocuments_Click(object? sender, EventArgs e)

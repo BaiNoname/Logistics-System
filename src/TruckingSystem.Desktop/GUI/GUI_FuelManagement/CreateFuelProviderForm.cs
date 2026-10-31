@@ -9,6 +9,7 @@ namespace TruckingSystem.Desktop.GUI_FuelManagement
         public CreateFuelProviderForm()
         {
             InitializeComponent();
+            TruckingSystem.Desktop.Common.DialogKeys.Enable(this, btnSave); // Esc = đóng, Enter = Lưu
         }
 
         public CreateFuelProviderForm(ApiServices api) : this()

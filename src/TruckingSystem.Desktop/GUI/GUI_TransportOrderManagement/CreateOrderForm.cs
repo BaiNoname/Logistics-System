@@ -40,6 +40,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
         public CreateOrderForm()
         {
             InitializeComponent();
+            TruckingSystem.Desktop.Common.DialogKeys.Enable(this); // Esc = đóng
             Anim.FadeIn(this); // cửa sổ hiện dần lên
 
             // Hạn giao BẮT BUỘC (server cũng kiểm tra). Khi chọn xong địa điểm + kho, hệ thống ước
