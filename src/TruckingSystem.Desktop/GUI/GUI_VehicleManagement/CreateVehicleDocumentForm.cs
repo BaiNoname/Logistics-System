@@ -17,6 +17,7 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
         public CreateVehicleDocumentForm()
         {
             InitializeComponent();
+            TruckingSystem.Desktop.Common.DialogKeys.Enable(this, btnSave); // Esc = đóng, Enter = Lưu
             cboDocType.Items.AddRange(new object[]
             {
                 new DocTypeOption("Registration", "Đăng kiểm"),

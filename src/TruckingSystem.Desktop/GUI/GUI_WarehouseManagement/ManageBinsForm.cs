@@ -18,6 +18,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
         public ManageBinsForm()
         {
             InitializeComponent();
+            TruckingSystem.Desktop.Common.DialogKeys.Enable(this); // Esc = đóng
             Theme.StyleGrid(grid);
             GridLayout.FitColumns(grid);
             grid.DataBindingComplete += (_, _) => { if (grid.Columns["Id"] != null) grid.Columns["Id"]!.Visible = false; };

@@ -16,6 +16,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
         public ManageTripExpensesForm()
         {
             InitializeComponent();
+            TruckingSystem.Desktop.Common.DialogKeys.Enable(this); // Esc = đóng
             Theme.StyleGrid(grid);
             cboType.Items.AddRange(new object[]
             {

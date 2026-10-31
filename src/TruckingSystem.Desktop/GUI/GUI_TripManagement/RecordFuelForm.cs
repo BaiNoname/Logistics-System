@@ -30,6 +30,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
         public RecordFuelForm()
         {
             InitializeComponent();
+            TruckingSystem.Desktop.Common.DialogKeys.Enable(this); // Esc = đóng
             Theme.StyleGrid(gridLogs);
             SetupGrid();
         }

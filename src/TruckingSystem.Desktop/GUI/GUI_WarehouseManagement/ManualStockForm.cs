@@ -42,6 +42,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
         public ManualStockForm()
         {
             InitializeComponent();
+            TruckingSystem.Desktop.Common.DialogKeys.Enable(this); // Esc = đóng
             // Chữ cho NHÂN VIÊN (không nêu tên thuật toán) — đặt bằng code, không sửa Designer.
             lblBinsTitle.Text = "Chọn vị trí nhập (tùy chọn — để trống = hệ thống tự chọn vị trí)";
             Anim.FadeIn(this); // cửa sổ hiện dần lên

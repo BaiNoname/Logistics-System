@@ -16,6 +16,7 @@ namespace TruckingSystem.Desktop.GUI_FuelManagement
         public FuelProviderPricesForm()
         {
             InitializeComponent();
+            TruckingSystem.Desktop.Common.DialogKeys.Enable(this); // Esc = đóng
             Theme.StyleGrid(grid); // bảng chỉ xem: giãn kín bề ngang, chọn nguyên dòng
             dtEffectiveDate.Value = DateTime.Today;
             grid.DataBindingComplete += (_, _) => { if (grid.Columns["Id"] != null) grid.Columns["Id"]!.Visible = false; };
@@ -129,6 +130,7 @@ namespace TruckingSystem.Desktop.GUI_FuelManagement
                 return;
             }
 
+            btnAddPrice.Enabled = false; // chống bấm 2 lần -> thêm trùng 2 mức giá
             try
             {
                 await _api.Fuel.CreatePriceAsync(fuelType, numPrice.Value, dtEffectiveDate.Value.Date, _providerId);
@@ -139,6 +141,10 @@ namespace TruckingSystem.Desktop.GUI_FuelManagement
             {
                 lblStatus.Text = "Lỗi: " + ex.Message;
                 lblStatus.ForeColor = Theme.Danger;
+            }
+            finally
+            {
+                if (!IsDisposed) btnAddPrice.Enabled = true;
             }
         }
 

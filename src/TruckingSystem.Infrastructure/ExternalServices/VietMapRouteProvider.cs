@@ -24,7 +24,28 @@ public class VietMapRouteProvider : IRouteProvider
             ?? throw new InvalidOperationException("Thiếu cấu hình VietMap:MapApiKey trong appsettings.json.");
     }
 
+    // ---- BỘ NHỚ ĐỆM tuyến đường: cùng 2 điểm (làm tròn ~1 m) trong 6 giờ thì dùng lại kết quả, không gọi VietMap nữa.
+    // Chia xe tự động, ước tính chuyến, mở bản đồ tuyến... hỏi lại cùng các cặp điểm rất nhiều lần — trước đây lần nào
+    // cũng chờ VietMap (chậm + tốn lượt gọi API). Chỉ nhớ kết quả THÀNH CÔNG; quá 5.000 mục thì xóa bớt cho gọn.
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, (RouteResult Result, DateTime At)> Cache = new();
+    private static readonly TimeSpan CacheTtl = TimeSpan.FromHours(6);
+
     public async Task<RouteResult> GetRouteAsync(RouteRequest request)
+    {
+        var key = FormattableString.Invariant(
+            $"{request.FromLat:F5},{request.FromLng:F5}>{request.ToLat:F5},{request.ToLng:F5}");
+        if (Cache.TryGetValue(key, out var hit) && DateTime.UtcNow - hit.At < CacheTtl) return hit.Result;
+
+        var result = await FetchRouteAsync(request);
+        if (result.Success)
+        {
+            if (Cache.Count > 5000) Cache.Clear();
+            Cache[key] = (result, DateTime.UtcNow);
+        }
+        return result;
+    }
+
+    private async Task<RouteResult> FetchRouteAsync(RouteRequest request)
     {
         // vehicle=car dùng tạm cho v1.1 (API v1.1 chỉ hỗ trợ car/bike/foot/motorcycle,
         // chưa có "truck" — muốn định tuyến né đường cấm tải nặng cần nâng cấp lên

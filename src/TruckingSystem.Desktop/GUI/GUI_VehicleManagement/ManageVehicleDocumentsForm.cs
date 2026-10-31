@@ -15,6 +15,7 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
         public ManageVehicleDocumentsForm()
         {
             InitializeComponent();
+            TruckingSystem.Desktop.Common.DialogKeys.Enable(this); // Esc = đóng
             Theme.StyleGrid(grid);
             grid.CellDoubleClick += async (_, e) => { if (e.RowIndex >= 0) await OpenSelectedFileAsync(); };
         }

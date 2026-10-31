@@ -16,6 +16,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
         public CreateWarehouseForm()
         {
             InitializeComponent();
+            TruckingSystem.Desktop.Common.DialogKeys.Enable(this, btnSave); // Esc = đóng, Enter = Lưu
             // Chữ cho NHÂN VIÊN (không nêu tên thuật toán) — đặt bằng code, không sửa Designer.
             lblCapacity.Text = "Sức chứa (m³) — dùng để tự xếp hàng vào kho, tuỳ chọn";
 

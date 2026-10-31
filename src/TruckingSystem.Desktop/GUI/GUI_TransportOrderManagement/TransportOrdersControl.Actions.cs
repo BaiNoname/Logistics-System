@@ -46,12 +46,12 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             _btnDetail = ToolbarButton("📄 Xem chi tiết", _actDetail, primary: false);
             _btnDeadline = GroupButton("📅 Hạn giao và phí lưu kho ▾", AddDeadlineItems);
             _btnTools = GroupButton("🧰 Công cụ khác ▾", AddToolItems);
-            toolbar.Controls.Add(_btnEdit);
+            // Thanh nút chỉ giữ việc KHÔNG gắn 1 đơn (Tạo đơn, Làm mới) + 1 NÚT VIỆC CHÍNH theo trạng thái đơn đang chọn
+            // (nháp -> Xác nhận; đã xác nhận chưa chia -> Chia xe). Xem chi tiết / Sửa / Hạn giao / Công cụ: nhấp đúp hoặc
+            // chuột phải (trước đây lặp ở cả thanh nút, chuột phải và cửa sổ chi tiết).
             toolbar.Controls.Add(_btnConfirm);
             toolbar.Controls.SetChildIndex(btnAllocate, toolbar.Controls.Count - 1);
-            toolbar.Controls.Add(_btnDetail);
-            toolbar.Controls.Add(_btnDeadline);
-            toolbar.Controls.Add(_btnTools);
+
 
             // 3) Menu chuột phải.
             BuildRowMenu();
@@ -123,9 +123,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             _rowMenu.Items.Add(new ToolStripSeparator());
             var cancel = AddItem(_rowMenu.Items, _actCancel);
             cancel.ForeColor = Theme.Danger;
-            var refresh = new ToolStripMenuItem("🔄  Làm mới danh sách") { ShortcutKeyDisplayString = "F5" };
-            refresh.Click += (_, _) => _ = LoadAsync();
-            _rowMenu.Items.Add(refresh);
+            // "Làm mới danh sách" bỏ khỏi chuột phải — đã có nút 🔄 Làm mới và phím F5.
             ModernMenu.Apply(_rowMenu);
         }
 
@@ -154,14 +152,18 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             return item;
         }
 
+        private bool _running; // đang chạy 1 thao tác (VD Chia xe mất vài giây) -> bấm lại lần nữa thì bỏ qua
+
         private async Task RunAsync(OrderAction action)
         {
-            if (_api is null || SelectedOrder is not { } order || !action.CanRun(order)) return;
+            if (_running || _api is null || SelectedOrder is not { } order || !action.CanRun(order)) return;
+            _running = true;
             try { await action.Run(order); }
             catch (Exception ex)
             {
                 MessageBox.Show(FindForm(), "Lỗi: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+            finally { _running = false; }
         }
 
         private void SyncMenu()

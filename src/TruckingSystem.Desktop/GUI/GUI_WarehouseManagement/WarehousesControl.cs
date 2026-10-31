@@ -489,7 +489,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
 
             var loadId = ++_zonesLoadId;
             lblStatus.Text = "Đang tải sơ đồ kho...";
-            zonesPanel.Controls.Clear();
+            ClearMap();
             try
             {
                 // Kích thước canvas = đúng kích thước thật của kho (mét) x tỉ lệ vẽ.
@@ -502,18 +502,20 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
 
                 // AutoScrollMinSize thay vì đổi Size trực tiếp — giữ đúng cơ chế
                 // cuộn của Panel khi nội dung lớn hơn khung nhìn thực tế.
-                zonesPanel.AutoScrollMinSize = new Size(canvasWidth, canvasHeight);
+                // LỀ quanh mặt sàn: tường nằm NGOÀI vùng đặt khu (khu ở x = 0, y = 0 không bị tường / cửa đè), phía có
+                // cửa chừa thêm chỗ cho nhãn "🚪 CỬA" nằm ngoài tường.
+                var (padL, padT, padR, padB) = MapMargins(warehouse.DoorSide);
+                _ox = padL;
+                _oy = padT;
+                zonesPanel.AutoScrollMinSize = new Size(canvasWidth + padL + padR, canvasHeight + padT + padB);
 
                 // Tải HẾT dữ liệu trước rồi mới vẽ — và chỉ vẽ nếu đây vẫn là lượt tải mới nhất.
                 var zones = await _api.Warehouses.GetZonesAsync(warehouseId);
-                var binsByZone = new List<(WarehouseZoneItem Zone, List<StorageBinItem> Bins)>();
-                foreach (var zone in zones)
-                {
-                    binsByZone.Add((zone, await _api.Warehouses.GetBinsAsync(zone.Id)));
-                    if (loadId != _zonesLoadId || IsDisposed) return; // đã đổi kho / tải lại -> bỏ lượt này
-                }
+                // Tải ô của MỌI khu CÙNG LÚC (trước đây lần lượt từng khu: kho 6 khu = chờ 6 lượt nối nhau).
+                var binLists = await Task.WhenAll(zones.Select(z => _api.Warehouses.GetBinsAsync(z.Id)));
+                var binsByZone = zones.Select((z, i) => (Zone: z, Bins: binLists[i])).ToList();
                 if (loadId != _zonesLoadId || IsDisposed) return;
-                zonesPanel.Controls.Clear();
+                ClearMap();
                 _binCells.Clear();
                 UpdateCapacityKpis(binsByZone.SelectMany(z => z.Bins).ToList());
                 // Left/Top của control con trong Panel AutoScroll tính theo KHUNG NHÌN (đã trừ phần
@@ -550,7 +552,16 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
         /// kích thước), tường nét liền xám đậm bao quanh. Nằm DƯỚI các khu vực.</summary>
         private void AddWarehouseWalls(int canvasWidth, int canvasHeight)
         {
-            var floor = new DoubleBufferedPanel { Left = 0, Top = 0, Width = canvasWidth, Height = canvasHeight, BackColor = FloorColor };
+            var wall = WallThickness;
+            // Tấm sàn = mặt sàn + 1 vòng tường bao NGOÀI (tường không lấn vào chỗ đặt khu vực).
+            var floor = new DoubleBufferedPanel
+            {
+                Left = _ox - wall,
+                Top = _oy - wall,
+                Width = canvasWidth + 2 * wall,
+                Height = canvasHeight + 2 * wall,
+                BackColor = FloorColor,
+            };
             floor.Paint += (_, e) =>
             {
                 var g = e.Graphics;
@@ -559,16 +570,47 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                 {
                     using var dot = new SolidBrush(FloorDot);
                     var size = Math.Max(2, LogicalToDeviceUnits(2));
-                    for (var x = step; x < floor.Width - 1; x += step)
-                        for (var y = step; y < floor.Height - 1; y += step)
+                    for (var x = wall + step; x < floor.Width - wall - 1; x += step)
+                        for (var y = wall + step; y < floor.Height - wall - 1; y += step)
                             g.FillRectangle(dot, x - size / 2f, y - size / 2f, size, size);
                 }
-                var wall = WallThickness;
                 using var pen = new Pen(WallColor, wall);
                 g.DrawRectangle(pen, wall / 2f, wall / 2f, floor.Width - wall, floor.Height - wall);
             };
             zonesPanel.Controls.Add(floor);
             floor.SendToBack(); // nằm DƯỚI các khu vực, không che mất khu vực nào
+        }
+
+        private int _ox, _oy; // gốc tọa độ mặt sàn trong khung sơ đồ (sau lề + tường)
+
+        private static readonly string DoorText = "🚪 CỬA";
+
+        private Size DoorLabelSize()
+            => TextRenderer.MeasureText(DoorText, Theme.FontBold) + new Size(LogicalToDeviceUnits(14), LogicalToDeviceUnits(4));
+
+        /// <summary>Lề trái / trên / phải / dưới của sơ đồ: khoảng trống + tường, phía có cửa thêm chỗ cho nhãn cửa.</summary>
+        private (int L, int T, int R, int B) MapMargins(string? doorSide)
+        {
+            var baseM = LogicalToDeviceUnits(16) + WallThickness;
+            var lbl = DoorLabelSize();
+            var gap = LogicalToDeviceUnits(6);
+            return (baseM + (doorSide == "Left" ? lbl.Width + gap : 0),
+                    baseM + (doorSide == "Top" ? lbl.Height + gap : 0),
+                    baseM + (doorSide == "Right" ? lbl.Width + gap : 0),
+                    baseM + (doorSide == "Bottom" ? lbl.Height + gap : 0));
+        }
+
+        /// <summary>1 ToolTip dùng chung cho mọi khu / ô / cửa trên sơ đồ (đủ lâu để đọc danh sách hàng bên trong).</summary>
+        private readonly ToolTip _mapTip = new() { AutoPopDelay = 15000, InitialDelay = 300 };
+
+        /// <summary>Xóa sơ đồ cũ VÀ GIẢI PHÓNG các khu / ô cũ. Trước đây chỉ Controls.Clear() — các ô cũ không được giải phóng,
+        /// mỗi lần đổi kho / tải lại / sửa ô lại tích thêm hàng trăm cửa sổ con + ToolTip -> dùng lâu app chậm dần.</summary>
+        private void ClearMap()
+        {
+            _mapTip.RemoveAll();
+            _binCells.Clear();
+            foreach (var c in zonesPanel.Controls.Cast<Control>().ToList()) c.Dispose();
+            zonesPanel.Controls.Clear();
         }
 
         private int WallThickness => LogicalToDeviceUnits(8);
@@ -587,16 +629,15 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             var doorLength = Math.Max(LogicalToDeviceUnits(40), (int)(3 * Ppm));
             var offsetPx = (int)(warehouse.DoorOffsetMeters.Value * Ppm);
 
+            // Cửa = khoảng hở NẰM TRÊN TƯỜNG (tường ở ngoài mặt sàn) — không đè lên khu vực nào.
+            var along = Math.Clamp(offsetPx - doorLength / 2, 0, Math.Max(0, (warehouse.DoorSide is "Left" or "Right" ? canvasHeight : canvasWidth) - doorLength));
             var rect = warehouse.DoorSide switch
             {
-                "Top" => new Rectangle(offsetPx - doorLength / 2, 0, doorLength, thickness),
-                "Bottom" => new Rectangle(offsetPx - doorLength / 2, canvasHeight - thickness, doorLength, thickness),
-                "Left" => new Rectangle(0, offsetPx - doorLength / 2, thickness, doorLength),
-                _ => new Rectangle(canvasWidth - thickness, offsetPx - doorLength / 2, thickness, doorLength), // Right
+                "Top" => new Rectangle(_ox + along, _oy - thickness, doorLength, thickness),
+                "Bottom" => new Rectangle(_ox + along, _oy + canvasHeight, doorLength, thickness),
+                "Left" => new Rectangle(_ox - thickness, _oy + along, thickness, doorLength),
+                _ => new Rectangle(_ox + canvasWidth, _oy + along, thickness, doorLength), // Right
             };
-            // Kẹp vào trong khung kho (cửa sát góc vẫn hiện trọn, không lòi ra ngoài)
-            rect.X = Math.Clamp(rect.X, 0, Math.Max(0, canvasWidth - rect.Width));
-            rect.Y = Math.Clamp(rect.Y, 0, Math.Max(0, canvasHeight - rect.Height));
 
             var tipText = $"🚪 Cửa kho — tường {WarehouseDoorHelper.WallName(warehouse.DoorSide)}, cách góc {warehouse.DoorOffsetMeters:0.#} m";
             var door = new Panel { Bounds = rect, BackColor = FloorColor };
@@ -609,13 +650,13 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                 if (vertical) { e.Graphics.FillRectangle(b, 0, 0, door.Width, k); e.Graphics.FillRectangle(b, 0, door.Height - k, door.Width, k); }
                 else { e.Graphics.FillRectangle(b, 0, 0, k, door.Height); e.Graphics.FillRectangle(b, door.Width - k, 0, k, door.Height); }
             };
-            new ToolTip().SetToolTip(door, tipText);
+            _mapTip.SetToolTip(door, tipText);
             zonesPanel.Controls.Add(door);
             door.BringToFront();
 
             var label = new Label
             {
-                Text = "🚪 CỬA",
+                Text = DoorText,
                 AutoSize = true,
                 Font = Theme.FontBold,
                 ForeColor = Color.White,
@@ -623,18 +664,17 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                 Padding = new Padding(LogicalToDeviceUnits(6), LogicalToDeviceUnits(1), LogicalToDeviceUnits(6), LogicalToDeviceUnits(1)),
             };
             zonesPanel.Controls.Add(label);
+            // Nhãn nằm NGOÀI tường (phía lề đã chừa sẵn) -> không che khu / ô bên trong.
             var size = label.PreferredSize;
-            int ClampX(int x) => Math.Clamp(x, 0, Math.Max(0, canvasWidth - size.Width));
-            int ClampY(int y) => Math.Clamp(y, 0, Math.Max(0, canvasHeight - size.Height));
             var gap = LogicalToDeviceUnits(4);
             label.Location = warehouse.DoorSide switch
             {
-                "Top" => new Point(ClampX(rect.X + rect.Width / 2 - size.Width / 2), rect.Bottom + gap),
-                "Bottom" => new Point(ClampX(rect.X + rect.Width / 2 - size.Width / 2), rect.Top - size.Height - gap),
-                "Left" => new Point(rect.Right + gap, ClampY(rect.Y + rect.Height / 2 - size.Height / 2)),
-                _ => new Point(rect.Left - size.Width - gap, ClampY(rect.Y + rect.Height / 2 - size.Height / 2)),
+                "Top" => new Point(Math.Max(0, rect.X + rect.Width / 2 - size.Width / 2), rect.Top - size.Height - gap),
+                "Bottom" => new Point(Math.Max(0, rect.X + rect.Width / 2 - size.Width / 2), rect.Bottom + gap),
+                "Left" => new Point(Math.Max(0, rect.Left - size.Width - gap), rect.Y + rect.Height / 2 - size.Height / 2),
+                _ => new Point(rect.Right + gap, rect.Y + rect.Height / 2 - size.Height / 2),
             };
-            new ToolTip().SetToolTip(label, tipText);
+            _mapTip.SetToolTip(label, tipText);
             label.BringToFront();
             return true;
         }
@@ -665,8 +705,8 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
 
             var zonePanel = new DoubleBufferedPanel
             {
-                Left = (int)(zone.PosX * ppm),
-                Top = (int)(zone.PosY * ppm),
+                Left = _ox + (int)(zone.PosX * ppm),
+                Top = _oy + (int)(zone.PosY * ppm),
                 Width = Math.Max(LogicalToDeviceUnits(60), (int)(zone.WidthMeters * ppm)),
                 Height = Math.Max(LogicalToDeviceUnits(60), (int)(zone.HeightMeters * ppm)),
                 BackColor = FloorColor, // 4 góc bo lộ ra màu sàn
@@ -703,7 +743,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             };
             // Click vào NỀN khu vực (không phải vào 1 ô vị trí cụ thể) -> mở Sửa khu vực
             zonePanel.Click += async (_, _) => await OpenEditZoneAsync(zone);
-            new ToolTip().SetToolTip(zonePanel, $"{zone.Name} — đã dùng {zonePct:P0}\n(Click để sửa khu vực)");
+            _mapTip.SetToolTip(zonePanel, $"{zone.Name} — đã dùng {zonePct:P0}\n(Bấm để sửa khu vực)");
 
             if (bins.Count == 0) return zonePanel;
 
@@ -775,14 +815,14 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                 cell.Click += async (_, _) => await OpenEditBinAsync(bin, zone);
                 _binCells.Add(cell);
 
-                var tooltip = new ToolTip { AutoPopDelay = 15000, InitialDelay = 300 }; // để đủ lâu đọc hết danh sách hàng bên trong
+                var tooltip = _mapTip; // 1 ToolTip dùng chung cho cả sơ đồ (trước đây mỗi ô tạo 1 cái, không bao giờ giải phóng)
                 var tooltipText = $"{bin.Code}\nĐã dùng: {bin.CurrentUsedM3:#,##0.##}/{bin.CapacityM3:#,##0.##} m³ ({pct:P0})\nTải tối đa: {(bin.MaxWeightKg > 0 ? bin.MaxWeightKg.ToString("#,##0.##") + " kg" : "không giới hạn")}\n" +
                     (_currentHasDoor ? $"🚪 Cách cửa: {bin.DistanceFromDoorMeters:0.#} m (tự tính)\n" : "") + "\n" +
                     (bin.Contents.Count == 0
                         ? "(Trống — chưa có hàng)"
                         : "📦 Hàng bên trong:\n" + string.Join("\n", bin.Contents.Select(c =>
                             $"• Đơn {c.OrderCode} — {c.CustomerName}\n   {c.CargoType}: {c.QtyStored:0.##} đơn vị (nhập {c.ReceivedAt.ToLocalTime():dd/MM HH:mm})"))) +
-                    "\n\n(Click để sửa)";
+                    "\n\n(Bấm để sửa)";
                 tooltip.SetToolTip(cell, tooltipText);
 
                 zonePanel.Controls.Add(cell);

@@ -213,6 +213,9 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
 
         builder.Entity<AuditLog>()
             .HasIndex(a => a.Timestamp);
+        // Cửa sổ "Lịch sử thay đổi" lọc theo loại + mã đối tượng — có chỉ mục thì không phải quét cả bảng nhật ký.
+        builder.Entity<AuditLog>()
+            .HasIndex(a => new { a.EntityName, a.EntityId });
 
         builder.Entity<Notification>()
             .HasIndex(n => new { n.UserId, n.IsRead });

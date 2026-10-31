@@ -15,6 +15,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
         public CreateBinForm()
         {
             InitializeComponent();
+            TruckingSystem.Desktop.Common.DialogKeys.Enable(this, btnSave); // Esc = đóng, Enter = Lưu
         }
 
         public CreateBinForm(ApiServices api, int zoneId, string zoneName, decimal zoneWidth, decimal zoneHeight) : this()

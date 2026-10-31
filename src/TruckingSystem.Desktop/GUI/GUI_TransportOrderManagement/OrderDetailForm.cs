@@ -17,6 +17,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
         public OrderDetailForm()
         {
             InitializeComponent();
+            TruckingSystem.Desktop.Common.DialogKeys.Enable(this); // Esc = đóng
             // Chữ cho NHÂN VIÊN (không nêu tên thuật toán) — đặt bằng code, không sửa Designer.
             btnAllocate.Text = "🚚  Chia xe tự động";
             // Đổi hạn giao / Phí lưu kho đã có ở màn danh sách (nút "📅 Hạn giao và phí lưu kho ▾" + chuột phải) -> ẩn ở
@@ -41,7 +42,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
         {
             if (string.IsNullOrEmpty(_trackingUrl)) return;
             Clipboard.SetText(_trackingUrl);
-            MessageBox.Show(FindForm(), "Đã copy link theo dõi vào Clipboard:\n" + _trackingUrl, "Đã copy", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show(FindForm(), "Đã sao chép link theo dõi (dán gửi khách được ngay):\n" + _trackingUrl, "Đã sao chép", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         public OrderDetailForm(ApiServices api, int orderId) : this()
@@ -68,7 +69,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                 _ = LoadStorageFeeAsync(order);
 
                 _trackingUrl = $"{_api.Connection.BaseUrl}/track.html?token={order.PublicTrackingToken}";
-                lblTrackingLink.Text = "🔗 Link theo dõi công khai (bấm để copy): " + _trackingUrl;
+                lblTrackingLink.Text = "🔗 Link theo dõi cho khách (bấm để sao chép): " + _trackingUrl;
 
                 gridCargo.DataSource = order.CargoLines.Select(c => new
                 {

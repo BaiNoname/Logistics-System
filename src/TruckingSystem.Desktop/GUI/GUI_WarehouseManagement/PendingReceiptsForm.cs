@@ -31,6 +31,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
         public PendingReceiptsForm()
         {
             InitializeComponent();
+            TruckingSystem.Desktop.Common.DialogKeys.Enable(this); // Esc = đóng
             // Chữ cho NHÂN VIÊN (không nêu tên thuật toán) — đặt bằng code, không sửa Designer.
             lblInfo.Text = "Xe Lấy hàng đã về kho (đã duyệt) nhưng hàng CHƯA lên kệ. Chọn 1 dòng rồi nhập: TỰ ĐỘNG cả chuyến (hệ thống tự chọn vị trí), hoặc THỦ CÔNG — tự chọn vị trí + số lượng (nhập nhiều lần để chia nhiều vị trí). Chặng Giao của đơn chỉ bắt đầu được khi hàng đã nhập kho đủ.";
             btnAutoTrip.Text = "🤖 Nhập TỰ ĐỘNG cả chuyến";

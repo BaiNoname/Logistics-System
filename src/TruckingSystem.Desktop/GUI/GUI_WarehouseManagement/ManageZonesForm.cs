@@ -14,6 +14,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
         public ManageZonesForm()
         {
             InitializeComponent();
+            TruckingSystem.Desktop.Common.DialogKeys.Enable(this); // Esc = đóng
             Theme.StyleGrid(grid);
             grid.CellDoubleClick += (_, _) => OpenBinsForSelected();
         }
@@ -44,7 +45,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                     Số_vị_trí = z.BinCount,
                 }).ToList();
                 grid.DataBindingComplete += (_, _) => { if (grid.Columns["Id"] != null) grid.Columns["Id"]!.Visible = false; };
-                lblStatus.Text = $"{_zones.Count} khu vực — double-click 1 dòng để quản lý vị trí lưu trữ bên trong";
+                lblStatus.Text = $"{_zones.Count} khu vực — nhấp đúp 1 dòng để quản lý vị trí lưu trữ bên trong";
             }
             catch (Exception ex)
             {

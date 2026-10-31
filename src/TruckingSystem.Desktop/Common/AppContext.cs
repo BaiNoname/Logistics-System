@@ -1,4 +1,4 @@
-using System.Windows.Forms;
+﻿using System.Windows.Forms;
 using TruckingSystem.Desktop.GUI_Shared;
 
 namespace TruckingSystem.Desktop.Common
@@ -25,6 +25,9 @@ namespace TruckingSystem.Desktop.Common
             {
                 login.Hide();
                 ShowMain(api, username);
+                // Đóng hẳn màn đăng nhập cũ (trước đây chỉ ẩn: mỗi lần đăng xuất -> đăng nhập lại lại tích thêm 1 màn ẩn).
+                // Chạy sau khi nút Đăng nhập xử lý xong để không giải phóng form giữa chừng.
+                login.BeginInvoke(new Action(login.Close));
             };
             login.ExitRequested += (_, _) => ExitThread();
             login.Show();

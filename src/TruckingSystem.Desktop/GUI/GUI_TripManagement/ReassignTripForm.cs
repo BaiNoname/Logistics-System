@@ -18,6 +18,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
         public ReassignTripForm()
         {
             InitializeComponent();
+            TruckingSystem.Desktop.Common.DialogKeys.Enable(this, btnSave); // Esc = đóng, Enter = Lưu
         }
 
         public ReassignTripForm(ApiServices api, int tripId, string tripLabel) : this()

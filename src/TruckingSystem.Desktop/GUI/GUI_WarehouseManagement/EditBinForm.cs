@@ -14,6 +14,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
         public EditBinForm()
         {
             InitializeComponent();
+            TruckingSystem.Desktop.Common.DialogKeys.Enable(this, btnSave); // Esc = đóng, Enter = Lưu
         }
 
         public EditBinForm(ApiServices api, StorageBinItem bin, string zoneName, decimal zoneWidth, decimal zoneHeight) : this()

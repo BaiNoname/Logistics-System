@@ -45,7 +45,7 @@ namespace TruckingSystem.Desktop.GUI_FuelManagement
                     }))
                     .ToList();
                 gridProviders.DataSource = rows;
-                lblStatus.Text = $"{_providers.Count} hãng xăng — double-click vào 1 hãng để xem/thêm giá";
+                lblStatus.Text = $"{_providers.Count} hãng xăng — nhấp đúp vào 1 hãng để xem / thêm giá";
                 lblStatus.ForeColor = Theme.TextSecondary;
             }
             catch (Exception ex)

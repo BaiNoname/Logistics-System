@@ -353,7 +353,7 @@ namespace TruckingSystem.Desktop.GUI_Shared
 
         private void RenderMainKpis(ProfitReport r, ProfitReport? p, string prevLabel)
         {
-            _kpiMain.Controls.Clear();
+            ClearCards(_kpiMain);
             _kpiMain.Controls.Add(MakeCard("💰", "Doanh thu", ReportFormat.Money(r.Revenue), Theme.Primary, Theme.TextPrimary,
                 Delta(r.Revenue, p?.Revenue, prevLabel, higherIsBetter: true, out var c1) ?? $"Đã thu {ReportFormat.Money(r.Collected)}",
                 $"{ReportFormat.FullMoney(r.Revenue)} (theo hóa đơn) — đã thu {ReportFormat.FullMoney(r.Collected)}", big: true, subColor: c1));
@@ -381,6 +381,13 @@ namespace TruckingSystem.Desktop.GUI_Shared
                 (r.OrdersWithoutDeadline > 0 ? $" ({r.OrdersWithoutDeadline} đơn cũ không có hạn giao — không tính)" : ""), big: true));
         }
 
+        /// <summary>Xóa thẻ cũ VÀ giải phóng (Controls.Clear() không giải phóng -> đổi kỳ nhiều lần app nặng dần).</summary>
+        private static void ClearCards(Control host)
+        {
+            foreach (var c in host.Controls.Cast<Control>().ToList()) c.Dispose();
+            host.Controls.Clear();
+        }
+
         /// <summary>"▲ 12% so với tháng trước" — màu xanh nếu tốt lên, đỏ nếu xấu đi. null nếu không so được.</summary>
         private static string? Delta(decimal cur, decimal? prev, string prevLabel, bool higherIsBetter, out Color? color)
         {
@@ -398,7 +405,7 @@ namespace TruckingSystem.Desktop.GUI_Shared
         private void RenderAttention(ProfitReport r, int availableVehicles, int totalVehicles, int blockedVehicles)
         {
             _attention.SuspendLayout();
-            _attention.Controls.Clear();
+            ClearCards(_attention);
             _attention.Controls.Add(new Label
             {
                 Text = "⚠️ Cần chú ý",
@@ -495,7 +502,8 @@ namespace TruckingSystem.Desktop.GUI_Shared
                     MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
-            btn.PerformClick();
+            // Chạy SAU khi xử lý xong cú bấm hiện tại: mở màn mới sẽ giải phóng màn Tổng quan này.
+            FindForm()?.BeginInvoke(new Action(btn.PerformClick));
         }
 
         private static Button? FindButton(Control? parent, string navText)
@@ -514,7 +522,7 @@ namespace TruckingSystem.Desktop.GUI_Shared
 
         private void RenderFinanceKpis(ProfitReport r)
         {
-            _kpiFinance.Controls.Clear();
+            ClearCards(_kpiFinance);
             _kpiFinance.Controls.Add(MakeCard("⛽", "Chi phí xăng", ReportFormat.Money(r.FuelCost), Theme.Primary, Theme.TextPrimary,
                 $"{ReportFormat.Percent(r.FuelCost, r.TotalCost)} tổng chi phí",
                 $"{ReportFormat.FullMoney(r.FuelCost)} = xăng đã đổ (hóa đơn) + tạm tính theo km thực chạy cho chuyến chưa nhập hóa đơn"));
@@ -717,7 +725,7 @@ namespace TruckingSystem.Desktop.GUI_Shared
             var rows = r.FuelControl ?? new List<FuelControlRowItem>();
             var flagged = rows.Count(x => x.Flagged);
 
-            _kpiFuel.Controls.Clear();
+            ClearCards(_kpiFuel);
             _kpiFuel.Controls.Add(MakeCard("🗺️", "Xăng dự kiến", ReportFormat.Money(r.FuelPlannedCost), Theme.Primary, Theme.TextPrimary,
                 "Theo km tuyến đường lúc lập chuyến", ReportFormat.FullMoney(r.FuelPlannedCost)));
             _kpiFuel.Controls.Add(MakeCard("📡", "Xăng theo km thực chạy", ReportFormat.Money(r.FuelNormCost), Theme.Primary, Theme.TextPrimary,

@@ -3,21 +3,32 @@
 namespace TruckingSystem.Desktop.GUI_ResourceManagement
 {
     /// <summary>CHI TIẾT 1 xe / 1 tài xế (nhấp đúp 1 dòng ở màn Nguồn lực theo kho / màn Tài xế) — bảng ngoài chỉ giữ
-    /// vài cột chính, ở đây hiện ĐỦ thông tin, chia NHÓM có tiêu đề ("Thông tin", "Giấy tờ", "Hôm nay"...).
+    /// vài cột chính, ở đây hiện ĐỦ thông tin, chia NHÓM có tiêu đề ("Thông tin", "Giấy tờ", "Hôm nay"...), và là NƠI
+    /// SỬA luôn (giấy tờ / nhiên liệu của xe; hồ sơ / ngày làm của tài xế) — không cần mục sửa riêng ở chuột phải nữa.
+    ///  • Bấm 1 nút thao tác: form sửa mở NGAY TRÊN cửa sổ chi tiết; lưu / đóng form sửa xong thì cửa sổ chi tiết
+    ///    VẪN MỞ và tự cập nhật số liệu mới (trước đây cửa sổ chi tiết bị đóng, phải mở lại).
     ///  • Dòng có Label bắt đầu bằng "#" là TIÊU ĐỀ NHÓM (VD ("# Giấy tờ", "")).
     ///  • Giá trị bắt đầu bằng ✅ / 🟡 / ⛔ / ❌ tô xanh / cam / đỏ; chữ dài tự xuống dòng.
-    ///  • Nội dung nằm trong khung CÓ THANH CUỘN dọc + ngang: form không bao giờ cao / rộng quá màn hình
-    ///    (laptop nhỏ, phóng to 150%) — trước đây form tự giãn theo nội dung nên phần dưới bị khuất, không xem hết.
-    ///  • Hàng nút thao tác luôn nằm dưới cùng (không bị cuộn mất).
+    ///  • Nội dung nằm trong khung CÓ THANH CUỘN: form không bao giờ cao / rộng quá ~85% màn hình.
     /// Form dựng bằng code (không có Designer) — không mở bằng trình thiết kế của Visual Studio.</summary>
     public sealed class ResourceDetailForm : BaseForm
     {
-        /// <summary>Nút thao tác bấm xong (form đã đóng) — màn ngoài chạy việc này rồi tải lại dữ liệu.</summary>
-        public Func<Task>? PendingAction { get; private set; }
+        private readonly Func<IEnumerable<(string Label, string Value)>> _rows;
+        private readonly Func<IEnumerable<(string Text, bool Enabled, Func<IWin32Window, Task> Run)>> _actions;
+        private readonly TableLayoutPanel _table;
+        private readonly FlowLayoutPanel _bar;
+        private readonly Panel _scroll;
+        private readonly Button _close;
+        private bool _busy;
 
-        public ResourceDetailForm(string title, IEnumerable<(string Label, string Value)> rows,
-            IEnumerable<(string Text, bool Enabled, Func<Task> Run)> actions)
+        /// <param name="rows">Hàm dựng các dòng thông tin — được gọi LẠI sau mỗi lần sửa để hiện số liệu mới.</param>
+        /// <param name="actions">Hàm dựng các nút sửa; Run nhận cửa sổ chi tiết làm chủ (owner) để form sửa nổi lên trên nó,
+        /// và chỉ xong (Task hoàn tất) khi đã đóng form sửa VÀ tải lại dữ liệu.</param>
+        public ResourceDetailForm(string title, Func<IEnumerable<(string Label, string Value)>> rows,
+            Func<IEnumerable<(string Text, bool Enabled, Func<IWin32Window, Task> Run)>> actions)
         {
+            _rows = rows;
+            _actions = actions;
             Text = title;
             StartPosition = FormStartPosition.CenterParent;
             FormBorderStyle = FormBorderStyle.Sizable;
@@ -27,7 +38,7 @@ namespace TruckingSystem.Desktop.GUI_ResourceManagement
             MinimumSize = new Size(LogicalToDeviceUnits(460), LogicalToDeviceUnits(320));
 
             // ---- nội dung (cuộn được)
-            var table = new TableLayoutPanel
+            _table = new TableLayoutPanel
             {
                 ColumnCount = 2,
                 AutoSize = true,
@@ -35,47 +46,10 @@ namespace TruckingSystem.Desktop.GUI_ResourceManagement
                 Location = new Point(LogicalToDeviceUnits(20), LogicalToDeviceUnits(12)),
                 Margin = new Padding(0),
             };
-            table.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-            table.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-            var valueWidth = LogicalToDeviceUnits(460);
-            foreach (var (label, value) in rows)
-            {
-                var r = table.RowCount++;
-                table.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-                if (label.StartsWith('#'))
-                {
-                    var header = new Label
-                    {
-                        Text = label.TrimStart('#', ' ').ToUpperInvariant(),
-                        AutoSize = true,
-                        Font = new Font("Segoe UI", 9F, FontStyle.Bold),
-                        ForeColor = Theme.Primary,
-                        Margin = new Padding(0, r == 0 ? 0 : LogicalToDeviceUnits(12), 0, LogicalToDeviceUnits(4)),
-                    };
-                    table.Controls.Add(header, 0, r);
-                    table.SetColumnSpan(header, 2);
-                    continue;
-                }
-                table.Controls.Add(new Label
-                {
-                    Text = label,
-                    AutoSize = true,
-                    ForeColor = Theme.TextSecondary,
-                    Font = Theme.FontNormal,
-                    Margin = new Padding(0, LogicalToDeviceUnits(3), LogicalToDeviceUnits(16), LogicalToDeviceUnits(3)),
-                }, 0, r);
-                table.Controls.Add(new Label
-                {
-                    Text = value,
-                    AutoSize = true,
-                    Font = Theme.FontBold,
-                    ForeColor = ValueColor(value),
-                    MaximumSize = new Size(valueWidth, 0),
-                    Margin = new Padding(0, LogicalToDeviceUnits(3), 0, LogicalToDeviceUnits(3)),
-                }, 1, r);
-            }
-            var scroll = new Panel { Dock = DockStyle.Fill, AutoScroll = true, BackColor = Color.White };
-            scroll.Controls.Add(table);
+            _table.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            _table.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            _scroll = new Panel { Dock = DockStyle.Fill, AutoScroll = true, BackColor = Color.White };
+            _scroll.Controls.Add(_table);
 
             // ---- tiêu đề (trên) + hàng nút (dưới) cố định, không cuộn
             var titleLabel = new Label
@@ -88,7 +62,7 @@ namespace TruckingSystem.Desktop.GUI_ResourceManagement
                 ForeColor = Theme.TextPrimary,
                 Padding = new Padding(LogicalToDeviceUnits(18), LogicalToDeviceUnits(10), 0, 0),
             };
-            var bar = new FlowLayoutPanel
+            _bar = new FlowLayoutPanel
             {
                 Dock = DockStyle.Bottom,
                 AutoSize = true,
@@ -98,33 +72,112 @@ namespace TruckingSystem.Desktop.GUI_ResourceManagement
                 BackColor = Theme.GridAltRow,
                 Padding = new Padding(LogicalToDeviceUnits(14), LogicalToDeviceUnits(8), LogicalToDeviceUnits(14), LogicalToDeviceUnits(8)),
             };
-            foreach (var (text, enabled, run) in actions)
-            {
-                var b = Theme.MakeSecondaryButton(text, 160);
-                b.Enabled = enabled;
-                b.Click += (_, _) => { PendingAction = run; DialogResult = DialogResult.OK; Close(); };
-                bar.Controls.Add(b);
-            }
-            var close = Theme.MakeSecondaryButton("Đóng", 100);
-            close.Click += (_, _) => Close();
-            bar.Controls.Add(close);
-            CancelButton = close;
+            _close = Theme.MakeSecondaryButton("Đóng", 100);
+            _close.Click += (_, _) => Close();
+            CancelButton = _close;
 
-            Controls.Add(scroll);
-            Controls.Add(bar);
+            FillRows();
+            FillActions();
+
+            Controls.Add(_scroll);
+            Controls.Add(_bar);
             Controls.Add(titleLabel);
 
             // Kích thước: vừa nội dung nhưng KHÔNG quá ~85% màn hình — dư thì khung giữa hiện thanh cuộn.
             Load += (_, _) =>
             {
                 var area = Screen.FromControl((Control?)Owner ?? this).WorkingArea;
-                var pref = table.GetPreferredSize(Size.Empty);
+                var pref = _table.GetPreferredSize(Size.Empty);
                 var w = Math.Min(pref.Width + LogicalToDeviceUnits(60), (int)(area.Width * 0.85));
-                var h = Math.Min(titleLabel.Height + pref.Height + bar.GetPreferredSize(new Size(w, 0)).Height + LogicalToDeviceUnits(70),
+                var h = Math.Min(titleLabel.Height + pref.Height + _bar.GetPreferredSize(new Size(w, 0)).Height + LogicalToDeviceUnits(70),
                                  (int)(area.Height * 0.85));
                 ClientSize = new Size(Math.Max(w, MinimumSize.Width), Math.Max(h, MinimumSize.Height));
                 CenterToParent();
             };
+        }
+
+        private void FillRows()
+        {
+            _table.SuspendLayout();
+            foreach (Control c in _table.Controls.Cast<Control>().ToList()) c.Dispose();
+            _table.Controls.Clear();
+            _table.RowStyles.Clear();
+            _table.RowCount = 0;
+            var valueWidth = LogicalToDeviceUnits(460);
+            foreach (var (label, value) in _rows())
+            {
+                var r = _table.RowCount++;
+                _table.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+                if (label.StartsWith('#'))
+                {
+                    var header = new Label
+                    {
+                        Text = label.TrimStart('#', ' ').ToUpperInvariant(),
+                        AutoSize = true,
+                        Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+                        ForeColor = Theme.Primary,
+                        Margin = new Padding(0, r == 0 ? 0 : LogicalToDeviceUnits(12), 0, LogicalToDeviceUnits(4)),
+                    };
+                    _table.Controls.Add(header, 0, r);
+                    _table.SetColumnSpan(header, 2);
+                    continue;
+                }
+                _table.Controls.Add(new Label
+                {
+                    Text = label,
+                    AutoSize = true,
+                    ForeColor = Theme.TextSecondary,
+                    Font = Theme.FontNormal,
+                    Margin = new Padding(0, LogicalToDeviceUnits(3), LogicalToDeviceUnits(16), LogicalToDeviceUnits(3)),
+                }, 0, r);
+                _table.Controls.Add(new Label
+                {
+                    Text = value,
+                    AutoSize = true,
+                    Font = Theme.FontBold,
+                    ForeColor = ValueColor(value),
+                    MaximumSize = new Size(valueWidth, 0),
+                    Margin = new Padding(0, LogicalToDeviceUnits(3), 0, LogicalToDeviceUnits(3)),
+                }, 1, r);
+            }
+            _table.ResumeLayout(true);
+        }
+
+        private void FillActions()
+        {
+            _bar.SuspendLayout();
+            foreach (Control c in _bar.Controls.Cast<Control>().Where(c => c != _close).ToList()) c.Dispose();
+            _bar.Controls.Clear();
+            foreach (var (text, enabled, run) in _actions())
+            {
+                var b = Theme.MakeSecondaryButton(text, 160);
+                b.Enabled = enabled;
+                b.Click += async (_, _) => await RunActionAsync(run);
+                _bar.Controls.Add(b);
+            }
+            _bar.Controls.Add(_close);
+            _bar.ResumeLayout(true);
+        }
+
+        /// <summary>Mở form sửa ngay trên cửa sổ này; xong thì dựng lại thông tin + nút (cửa sổ chi tiết vẫn mở).</summary>
+        private async Task RunActionAsync(Func<IWin32Window, Task> run)
+        {
+            if (_busy) return;
+            _busy = true;
+            try
+            {
+                await run(this);
+                if (IsDisposed) return;
+                var scroll = _scroll.AutoScrollPosition;
+                FillRows();
+                FillActions();
+                _scroll.AutoScrollPosition = new Point(-scroll.X, -scroll.Y);
+            }
+            catch (Exception ex)
+            {
+                if (!IsDisposed) MessageBox.Show(this, "Lỗi: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally { _busy = false; }
         }
 
         private static Color ValueColor(string v)
