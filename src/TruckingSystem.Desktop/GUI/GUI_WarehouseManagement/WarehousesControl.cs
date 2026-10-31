@@ -88,7 +88,6 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
         private readonly List<Panel> _binCells = new(); // các ô kệ đang vẽ — để chạy hiệu ứng "dâng hàng"
         private double _binFill = 1;                     // 0 → 1: phần đã dùng của ô dâng dần lên khi vẽ sơ đồ
         private System.Windows.Forms.Timer? _binFillTimer;
-        private string _capacityText = "";               // "đã dùng 45% (12 / 27 m³) · 2 ô gần đầy · 5 ô trống"
         private Button? _btnManage;
 
         /// <summary>Bố cục gọn (góp ý GVHD):
@@ -123,6 +122,12 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             // Bỏ khung "Kiểm tra thuật toán Best-Fit" (chỉ để thử, làm rối màn) — Best-Fit vẫn chạy thật khi nhập kho.
             testPanel.Visible = false;
 
+            // Thanh SỨC CHỨA (vẽ tay) ngay trên sơ đồ: "Đã dùng 58%" + thanh tiến độ + số liệu + chú thích màu ô.
+            _summary.Paint += (_, e) => PaintSummary(e.Graphics);
+            _summary.Resize += (_, _) => _summary.Invalidate();
+            _summary.Height = LogicalToDeviceUnits(44);
+            KpiStrip.InsertRow(root, _summary, root.GetRow(lblStatus));
+
             // Cửa sổ thấp: giữ sơ đồ kho cao tối thiểu ~320 px, thiếu chỗ thì cả màn cuộn xuống được.
             ScrollFit.Enable(this, root, zonesPanel, LogicalToDeviceUnits(320));
         }
@@ -156,17 +161,142 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             return b;
         }
 
-        /// <summary>Sức chứa của kho đang xem (tính từ dữ liệu sơ đồ vừa tải) -> 1 cụm chữ cho dòng trạng thái.</summary>
+        // ------------------------------------------------------------ màu & thanh sức chứa
+
+        private static readonly Color FloorColor = ColorTranslator.FromHtml("#F8FAFC");
+        private static readonly Color FloorDot = ColorTranslator.FromHtml("#CBD5E1");
+        private static readonly Color WallColor = ColorTranslator.FromHtml("#475569");
+        private static readonly Color DoorColor = ColorTranslator.FromHtml("#F97316");
+        private static readonly Color BinBorder = ColorTranslator.FromHtml("#CBD5E1");
+        private static readonly Color BinHover = ColorTranslator.FromHtml("#2563EB");
+        private static readonly Color FillLow = ColorTranslator.FromHtml("#34D399");   // còn nhiều chỗ
+        private static readonly Color FillMid = ColorTranslator.FromHtml("#FBBF24");   // quá nửa
+        private static readonly Color FillHigh = ColorTranslator.FromHtml("#F87171");  // gần đầy (>= 85%)
+        private static readonly Color EmptyStripe = ColorTranslator.FromHtml("#EEF2F6");
+        private static readonly Font BinCodeFont = new("Segoe UI", 8.5f, FontStyle.Bold);
+        private static readonly Font BinPctFont = new("Segoe UI", 8f);
+        private static readonly Font ZoneTitleFont = new("Segoe UI", 9f, FontStyle.Bold);
+
+        private static Color FillColor(double pct) => pct >= 0.85 ? FillHigh : pct >= 0.5 ? FillMid : FillLow;
+
+        /// <summary>Loại khu -> (màu thanh tiêu đề, màu nền nhạt, màu viền).</summary>
+        private static (Color Head, Color Tint, Color Border) ZoneColors(string zoneType) => zoneType switch
+        {
+            "Fragile" => (ColorTranslator.FromHtml("#D97706"), ColorTranslator.FromHtml("#FFFBEB"), ColorTranslator.FromHtml("#FDE68A")),
+            "Hazmat" => (ColorTranslator.FromHtml("#DC2626"), ColorTranslator.FromHtml("#FEF2F2"), ColorTranslator.FromHtml("#FECACA")),
+            _ => (ColorTranslator.FromHtml("#2563EB"), ColorTranslator.FromHtml("#EFF6FF"), ColorTranslator.FromHtml("#BFDBFE")),
+        };
+
+        private readonly Panel _summary = new DoubleBufferedPanel { Dock = DockStyle.Fill, Margin = new Padding(0, 0, 0, 8), BackColor = Color.Transparent };
+        private int _sumBins, _sumFull, _sumEmpty;
+        private decimal _sumUsed, _sumCap;
+
+        /// <summary>Sức chứa của kho đang xem (tính từ dữ liệu sơ đồ vừa tải) -> thanh sức chứa.</summary>
         private void UpdateCapacityKpis(List<StorageBinItem> bins)
         {
-            if (bins.Count == 0) { _capacityText = "kho chưa có ô kệ"; return; }
-            var capacity = bins.Sum(b => b.CapacityM3);
-            var used = bins.Sum(b => Math.Min(b.CurrentUsedM3, b.CapacityM3));
-            var ratio = capacity <= 0 ? 0.0 : (double)(used / capacity);
-            var full = bins.Count(b => b.CapacityM3 > 0 && b.CurrentUsedM3 / b.CapacityM3 >= 0.85m);
-            var empty = bins.Count(b => b.CurrentUsedM3 <= 0);
-            _capacityText = $"📊 đã dùng {ratio:P0} ({used:0.#} / {capacity:0.#} m³) · {bins.Count} ô kệ" +
-                            (full > 0 ? $" · 🟥 {full} ô gần đầy" : "") + $" · 🟩 {empty} ô trống";
+            _sumBins = bins.Count;
+            _sumCap = bins.Sum(b => b.CapacityM3);
+            _sumUsed = bins.Sum(b => Math.Min(b.CurrentUsedM3, b.CapacityM3));
+            _sumFull = bins.Count(b => b.CapacityM3 > 0 && b.CurrentUsedM3 / b.CapacityM3 >= 0.85m);
+            _sumEmpty = bins.Count(b => b.CurrentUsedM3 <= 0);
+            _summary.Invalidate();
+        }
+
+        private void PaintSummary(Graphics g)
+        {
+            int S(int v) => LogicalToDeviceUnits(v);
+            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            var r = new Rectangle(0, 0, _summary.Width - 1, _summary.Height - 1);
+            if (r.Width <= 0 || r.Height <= 0) return;
+            using (var card = RoundRect(r, S(8)))
+            {
+                using var bg = new SolidBrush(Color.White);
+                using var pen = new Pen(Theme.BorderColor);
+                g.FillPath(bg, card);
+                g.DrawPath(pen, card);
+            }
+            var flags = TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine;
+            var x = S(16);
+            if (_sumBins == 0)
+            {
+                TextRenderer.DrawText(g, "Kho chưa có ô kệ nào — vào ⚙️ Quản lý kho ▾ để thêm khu vực / vị trí.", Theme.FontNormal,
+                    new Rectangle(x, 0, r.Width - x, r.Height), Theme.TextSecondary, flags);
+                return;
+            }
+            var ratio = _sumCap <= 0 ? 0.0 : (double)(_sumUsed / _sumCap);
+
+            var head = $"Đã dùng {ratio:P0}";
+            TextRenderer.DrawText(g, head, Theme.FontBold, new Rectangle(x, 0, S(200), r.Height), Theme.TextPrimary, flags);
+            x += TextRenderer.MeasureText(g, head, Theme.FontBold, Size.Empty, flags).Width + S(10);
+
+            // thanh tiến độ
+            var bar = new Rectangle(x, r.Height / 2 - S(6), S(200), S(12));
+            using (var track = RoundRect(bar, S(6)))
+            {
+                using var tb = new SolidBrush(ColorTranslator.FromHtml("#E2E8F0"));
+                g.FillPath(tb, track);
+                var fw = (int)(bar.Width * Math.Min(1.0, ratio));
+                if (fw > 0)
+                {
+                    var state = g.Save();
+                    g.SetClip(track);
+                    using var fb = new System.Drawing.Drawing2D.LinearGradientBrush(bar, FillLow, FillColor(ratio), 0f);
+                    g.FillRectangle(fb, bar.X, bar.Y, fw, bar.Height);
+                    g.Restore(state);
+                }
+            }
+            x = bar.Right + S(14);
+
+            // số liệu
+            void Part(string text, Color color, Font font)
+            {
+                TextRenderer.DrawText(g, text, font, new Rectangle(x, 0, r.Width, r.Height), color, flags);
+                x += TextRenderer.MeasureText(g, text, font, Size.Empty, flags).Width;
+            }
+            Part($"{_sumUsed:0.#} / {_sumCap:0.#} m³ · {_sumBins} ô kệ", Theme.TextSecondary, Theme.FontNormal);
+            if (_sumFull > 0) { Part(" · ", Theme.TextSecondary, Theme.FontNormal); Part($"{_sumFull} ô gần đầy", Theme.Danger, Theme.FontBold); }
+            Part($" · {_sumEmpty} ô trống", Theme.TextSecondary, Theme.FontNormal);
+
+            // chú thích màu (chỉ vẽ khi còn đủ chỗ bên phải)
+            var items = new (string Text, Color Color, bool Empty)[]
+                { ("Trống", EmptyStripe, true), ("Còn nhiều chỗ", FillLow, false), ("Quá nửa", FillMid, false), ("Gần đầy", FillHigh, false) };
+            var widths = items.Select(i => S(18) + TextRenderer.MeasureText(g, i.Text, Theme.FontSmall, Size.Empty, flags).Width + S(12)).ToList();
+            var lx = r.Width - S(12) - widths.Sum();
+            if (lx < x + S(20)) return;
+            for (var i = 0; i < items.Length; i++)
+            {
+                var sw = new Rectangle(lx, r.Height / 2 - S(7), S(14), S(14));
+                using (var swb = new SolidBrush(items[i].Color)) g.FillRectangle(swb, sw);
+                if (items[i].Empty)
+                {
+                    using var dash = new Pen(ColorTranslator.FromHtml("#94A3B8")) { DashStyle = System.Drawing.Drawing2D.DashStyle.Dash };
+                    g.DrawRectangle(dash, sw);
+                }
+                TextRenderer.DrawText(g, items[i].Text, Theme.FontSmall, new Rectangle(lx + S(18), 0, widths[i], r.Height), Theme.TextSecondary, flags);
+                lx += widths[i];
+            }
+        }
+
+        private static System.Drawing.Drawing2D.GraphicsPath RoundRect(Rectangle r, int radius)
+        {
+            var path = new System.Drawing.Drawing2D.GraphicsPath();
+            var d = Math.Max(1, Math.Min(radius * 2, Math.Min(r.Width, r.Height)));
+            path.AddArc(r.X, r.Y, d, d, 180, 90);
+            path.AddArc(r.Right - d, r.Y, d, d, 270, 90);
+            path.AddArc(r.Right - d, r.Bottom - d, d, d, 0, 90);
+            path.AddArc(r.X, r.Bottom - d, d, d, 90, 90);
+            path.CloseFigure();
+            return path;
+        }
+
+        /// <summary>Panel bật sẵn chống nháy (vẽ tay nhiều lớp).</summary>
+        private sealed class DoubleBufferedPanel : Panel
+        {
+            public DoubleBufferedPanel()
+            {
+                DoubleBuffered = true;
+                ResizeRedraw = true;
+            }
         }
 
         /// <summary>Phần đã dùng của các ô kệ dâng từ 0 lên đúng % (~0,7 giây) mỗi lần vẽ sơ đồ.</summary>
@@ -404,8 +534,8 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                 var warnings = new List<string>();
                 if (missingSize) warnings.Add("⚠️ kho chưa khai báo kích thước thật, đang hiện tạm theo tỉ lệ mặc định");
                 if (!_currentHasDoor) warnings.Add("⚠️ kho chưa khai báo vị trí cửa — chưa ưu tiên gần/xa cửa được (vào Sửa kho để khai báo)");
-                lblStatus.Text = $"{zones.Count} khu vực · {_capacityText}" + string.Concat(warnings.Select(w => " — " + w)) +
-                                 "   —   bấm vào khu / ô trên sơ đồ để sửa, rê chuột để xem hàng bên trong";
+                lblStatus.Text = $"{zones.Count} khu vực — bấm vào khu / ô để sửa, rê chuột vào ô để xem hàng bên trong" +
+                                 string.Concat(warnings.Select(w => "   " + w));
                 lblStatus.ForeColor = warnings.Count > 0 ? Theme.Warning : Theme.TextSecondary;
             }
             catch (Exception ex)
@@ -416,19 +546,32 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             }
         }
 
-        /// <summary>Vẽ khung TƯỜNG bao quanh toàn bộ mặt sàn kho (nét đứt) — để thấy
-        /// rõ ranh giới kho và vị trí cửa nằm trên bức tường nào.</summary>
+        /// <summary>Vẽ MẶT SÀN + TƯỜNG kho: sàn xám rất nhạt có lưới chấm (mỗi chấm cách nhau 1 m — dễ hình dung
+        /// kích thước), tường nét liền xám đậm bao quanh. Nằm DƯỚI các khu vực.</summary>
         private void AddWarehouseWalls(int canvasWidth, int canvasHeight)
         {
-            var floor = new Panel { Left = 0, Top = 0, Width = canvasWidth, Height = canvasHeight, BackColor = Color.Transparent };
+            var floor = new DoubleBufferedPanel { Left = 0, Top = 0, Width = canvasWidth, Height = canvasHeight, BackColor = FloorColor };
             floor.Paint += (_, e) =>
             {
-                using var pen = new Pen(Theme.TextSecondary, LogicalToDeviceUnits(2)) { DashStyle = System.Drawing.Drawing2D.DashStyle.Dash };
-                e.Graphics.DrawRectangle(pen, 1, 1, floor.Width - 3, floor.Height - 3);
+                var g = e.Graphics;
+                var step = (float)Ppm;
+                if (step >= 8)
+                {
+                    using var dot = new SolidBrush(FloorDot);
+                    var size = Math.Max(2, LogicalToDeviceUnits(2));
+                    for (var x = step; x < floor.Width - 1; x += step)
+                        for (var y = step; y < floor.Height - 1; y += step)
+                            g.FillRectangle(dot, x - size / 2f, y - size / 2f, size, size);
+                }
+                var wall = WallThickness;
+                using var pen = new Pen(WallColor, wall);
+                g.DrawRectangle(pen, wall / 2f, wall / 2f, floor.Width - wall, floor.Height - wall);
             };
             zonesPanel.Controls.Add(floor);
             floor.SendToBack(); // nằm DƯỚI các khu vực, không che mất khu vực nào
         }
+
+        private int WallThickness => LogicalToDeviceUnits(8);
 
         /// <summary>Vẽ CỬA kho đúng vị trí trên tường (thanh màu cam dày, rộng ~3 m)
         /// kèm nhãn "🚪 CỬA" nằm phía trong kho, cạnh cửa. Trả về false nếu kho chưa
@@ -439,8 +582,8 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                 || warehouse.LengthMeters is null || warehouse.WidthMeters is null)
                 return false;
 
-            var thickness = LogicalToDeviceUnits(10);
-            var doorColor = Color.FromArgb(234, 88, 12); // cam đậm — nổi bật trên nền sơ đồ
+            var thickness = WallThickness; // cửa = KHOẢNG HỞ trên tường (cùng bề dày tường)
+            var doorColor = DoorColor;
             var doorLength = Math.Max(LogicalToDeviceUnits(40), (int)(3 * Ppm));
             var offsetPx = (int)(warehouse.DoorOffsetMeters.Value * Ppm);
 
@@ -456,7 +599,16 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             rect.Y = Math.Clamp(rect.Y, 0, Math.Max(0, canvasHeight - rect.Height));
 
             var tipText = $"🚪 Cửa kho — tường {WarehouseDoorHelper.WallName(warehouse.DoorSide)}, cách góc {warehouse.DoorOffsetMeters:0.#} m";
-            var door = new Panel { Bounds = rect, BackColor = doorColor };
+            var door = new Panel { Bounds = rect, BackColor = FloorColor };
+            var vertical = warehouse.DoorSide is "Left" or "Right";
+            door.Paint += (_, e) =>
+            {
+                // 2 vạch cam ở 2 mép khoảng hở = khung cửa
+                using var b = new SolidBrush(doorColor);
+                var k = LogicalToDeviceUnits(3);
+                if (vertical) { e.Graphics.FillRectangle(b, 0, 0, door.Width, k); e.Graphics.FillRectangle(b, 0, door.Height - k, door.Width, k); }
+                else { e.Graphics.FillRectangle(b, 0, 0, k, door.Height); e.Graphics.FillRectangle(b, door.Width - k, 0, k, door.Height); }
+            };
             new ToolTip().SetToolTip(door, tipText);
             zonesPanel.Controls.Add(door);
             door.BringToFront();
@@ -466,14 +618,15 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                 Text = "🚪 CỬA",
                 AutoSize = true,
                 Font = Theme.FontBold,
-                ForeColor = doorColor,
-                BackColor = Color.White,
+                ForeColor = Color.White,
+                BackColor = doorColor,
+                Padding = new Padding(LogicalToDeviceUnits(6), LogicalToDeviceUnits(1), LogicalToDeviceUnits(6), LogicalToDeviceUnits(1)),
             };
             zonesPanel.Controls.Add(label);
             var size = label.PreferredSize;
             int ClampX(int x) => Math.Clamp(x, 0, Math.Max(0, canvasWidth - size.Width));
             int ClampY(int y) => Math.Clamp(y, 0, Math.Max(0, canvasHeight - size.Height));
-            var gap = LogicalToDeviceUnits(2);
+            var gap = LogicalToDeviceUnits(4);
             label.Location = warehouse.DoorSide switch
             {
                 "Top" => new Point(ClampX(rect.X + rect.Width / 2 - size.Width / 2), rect.Bottom + gap),
@@ -504,39 +657,53 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             // Mọi khoảng cách cố định tính theo pixel LOGIC rồi nhân DPI (LogicalToDeviceUnits).
             var headerHeight = LogicalToDeviceUnits(26);
             var padding = LogicalToDeviceUnits(6);
+            var radius = LogicalToDeviceUnits(8);
             var ppm = Ppm;
+            var (head, tint, border) = ZoneColors(zone.ZoneType);
+            var zoneCap = bins.Sum(b => b.CapacityM3);
+            var zonePct = zoneCap <= 0 ? 0.0 : (double)(bins.Sum(b => Math.Min(b.CurrentUsedM3, b.CapacityM3)) / zoneCap);
 
-            var zoneColor = zone.ZoneType switch { "Fragile" => Theme.Warning, "Hazmat" => Theme.Danger, _ => Theme.Primary };
-
-            var zonePanel = new Panel
+            var zonePanel = new DoubleBufferedPanel
             {
                 Left = (int)(zone.PosX * ppm),
                 Top = (int)(zone.PosY * ppm),
                 Width = Math.Max(LogicalToDeviceUnits(60), (int)(zone.WidthMeters * ppm)),
                 Height = Math.Max(LogicalToDeviceUnits(60), (int)(zone.HeightMeters * ppm)),
-                BackColor = Theme.CardBg,
+                BackColor = FloorColor, // 4 góc bo lộ ra màu sàn
                 Cursor = Cursors.Hand,
             };
+            // Nền nhạt theo loại khu + thanh tiêu đề màu: "📦 Khu A ........ 46%".
             zonePanel.Paint += (_, e) =>
             {
-                using var pen = new Pen(zoneColor, LogicalToDeviceUnits(2));
-                e.Graphics.DrawRectangle(pen, 1, 1, zonePanel.Width - 3, zonePanel.Height - 3);
+                var g = e.Graphics;
+                g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                var r = new Rectangle(0, 0, zonePanel.Width - 1, zonePanel.Height - 1);
+                using var body = RoundRect(r, radius);
+                using (var tb = new SolidBrush(tint)) g.FillPath(tb, body);
+                var state = g.Save();
+                g.SetClip(body);
+                using (var hb = new SolidBrush(head)) g.FillRectangle(hb, 0, 0, zonePanel.Width, headerHeight);
+                g.Restore(state);
+                using (var pen = new Pen(border, LogicalToDeviceUnits(1))) g.DrawPath(pen, body);
+
+                var flags = TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine | TextFormatFlags.EndEllipsis;
+                var pctText = bins.Count > 0 ? $"{zonePct:P0}" : "";
+                var pctW = pctText.Length > 0 ? TextRenderer.MeasureText(g, pctText, ZoneTitleFont, Size.Empty, flags).Width + LogicalToDeviceUnits(12) : 0;
+                TextRenderer.DrawText(g, $"{ZoneIcon(zone.ZoneType)} {zone.Name}", ZoneTitleFont,
+                    new Rectangle(LogicalToDeviceUnits(8), 0, zonePanel.Width - LogicalToDeviceUnits(16) - pctW, headerHeight), Color.White, flags);
+                if (pctW > 0 && zonePanel.Width > pctW + LogicalToDeviceUnits(60))
+                {
+                    var pill = new Rectangle(zonePanel.Width - pctW - LogicalToDeviceUnits(6), LogicalToDeviceUnits(4), pctW, headerHeight - LogicalToDeviceUnits(8));
+                    using var pp = RoundRect(pill, pill.Height / 2);
+                    using var pb = new SolidBrush(Color.FromArgb(64, Color.White));
+                    g.FillPath(pb, pp);
+                    TextRenderer.DrawText(g, pctText, ZoneTitleFont, pill, Color.White,
+                        TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix);
+                }
             };
             // Click vào NỀN khu vực (không phải vào 1 ô vị trí cụ thể) -> mở Sửa khu vực
             zonePanel.Click += async (_, _) => await OpenEditZoneAsync(zone);
-
-            var lblZoneName = new Label
-            {
-                Text = $"{ZoneIcon(zone.ZoneType)} {zone.Name}",
-                Font = Theme.FontSmall,
-                ForeColor = Theme.TextPrimary,
-                Top = LogicalToDeviceUnits(4),
-                Left = LogicalToDeviceUnits(6),
-                AutoSize = true,
-                Cursor = Cursors.Hand,
-            };
-            lblZoneName.Click += async (_, _) => await OpenEditZoneAsync(zone);
-            zonePanel.Controls.Add(lblZoneName);
+            new ToolTip().SetToolTip(zonePanel, $"{zone.Name} — đã dùng {zonePct:P0}\n(Click để sửa khu vực)");
 
             if (bins.Count == 0) return zonePanel;
 
@@ -544,53 +711,67 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             {
                 var pct = bin.CapacityM3 == 0 ? 0.0 : Math.Min(1.0, (double)(bin.CurrentUsedM3 / bin.CapacityM3));
 
-                // Vẽ ĐÚNG tọa độ + kích thước thật (mét) của vị trí, TƯƠNG ĐỐI so
-                // với góc trên-trái của khu vực (cùng cơ chế PixelsPerMeter như
-                // cách Khu vực định vị trong Kho) — khác bản trước tự chia đều ô
-                // theo lưới Row/Column, không phản ánh kích thước thật.
-                var cell = new Panel
+                // Vẽ ĐÚNG tọa độ + kích thước thật (mét) của vị trí, TƯƠNG ĐỐI so với góc trên-trái của khu vực.
+                var cell = new DoubleBufferedPanel
                 {
                     Left = padding + (int)(bin.PosX * ppm),
                     Top = headerHeight + (int)(bin.PosY * ppm),
                     Width = Math.Max(LogicalToDeviceUnits(4), (int)(bin.WidthMeters * ppm)),
                     Height = Math.Max(LogicalToDeviceUnits(4), (int)(bin.HeightMeters * ppm)),
-                    BackColor = Theme.Success, // nền XANH = phần còn TRỐNG
+                    BackColor = tint, // góc bo lộ ra màu nền khu
                     Cursor = Cursors.Hand,
                 };
+                var hover = false;
+                cell.MouseEnter += (_, _) => { hover = true; cell.Invalidate(); };
+                cell.MouseLeave += (_, _) => { hover = false; cell.Invalidate(); };
 
-                // Vẽ phần ĐÃ DÙNG dâng từ DƯỚI LÊN, đúng tỉ lệ % — không phải cả
-                // ô 1 màu như trước. VD: 60% đã dùng -> 60% chiều cao ô (tính từ
-                // đáy) tô đỏ, 40% phía trên vẫn giữ màu xanh nền.
+                // Ô nền TRẮNG; phần ĐÃ DÙNG dâng từ DƯỚI LÊN đúng tỉ lệ % (màu dịu theo mức đầy); ô trống kẻ sọc nhạt.
+                // Chữ tối (mã ô + %) ở giữa — dễ đọc trên mọi màu.
                 cell.Paint += (_, e) =>
                 {
-                    if (pct <= 0) return;
-                    var usedColor = pct >= 0.85 ? Theme.Danger : Theme.Warning; // gần đầy -> đỏ đậm hơn, còn lại -> vàng cam
-                    var usedHeight = (int)(cell.Height * pct * _binFill);       // dâng dần lên khi vừa vẽ sơ đồ
-                    var usedRect = new Rectangle(0, cell.Height - usedHeight, cell.Width, usedHeight);
-                    using var brush = new SolidBrush(usedColor);
-                    e.Graphics.FillRectangle(brush, usedRect);
+                    var g = e.Graphics;
+                    g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                    var small = cell.Width < LogicalToDeviceUnits(14) || cell.Height < LogicalToDeviceUnits(14);
+                    var r = new Rectangle(0, 0, cell.Width - 1, cell.Height - 1);
+                    using var shape = RoundRect(r, small ? 1 : LogicalToDeviceUnits(5));
+                    using (var white = new SolidBrush(Color.White)) g.FillPath(white, shape);
+
+                    var state = g.Save();
+                    g.SetClip(shape);
+                    if (pct <= 0)
+                    {
+                        using var stripe = new System.Drawing.Drawing2D.HatchBrush(System.Drawing.Drawing2D.HatchStyle.WideUpwardDiagonal, EmptyStripe, Color.White);
+                        g.FillRectangle(stripe, r);
+                    }
+                    else
+                    {
+                        var usedHeight = (int)(cell.Height * pct * _binFill); // dâng dần lên khi vừa vẽ sơ đồ
+                        using var fill = new SolidBrush(FillColor(pct));
+                        g.FillRectangle(fill, 0, cell.Height - usedHeight, cell.Width, usedHeight);
+                    }
+                    g.Restore(state);
+
+                    using (var pen = new Pen(hover ? BinHover : BinBorder, LogicalToDeviceUnits(hover ? 2 : 1)))
+                    {
+                        if (pct <= 0 && !hover) pen.DashStyle = System.Drawing.Drawing2D.DashStyle.Dash;
+                        g.DrawPath(pen, shape);
+                    }
+
+                    // Chữ: đủ chỗ thì 2 dòng (mã + %), ít chỗ thì chỉ mã ô, quá nhỏ thì chỉ nhìn màu.
+                    var flags = TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine;
+                    var pctText = pct <= 0 ? "Trống" : $"{pct:P0}";
+                    var codeColor = pct <= 0 ? ColorTranslator.FromHtml("#94A3B8") : Theme.TextPrimary;
+                    if (cell.Width >= LogicalToDeviceUnits(36) && cell.Height >= LogicalToDeviceUnits(34))
+                    {
+                        var mid = cell.Height / 2;
+                        TextRenderer.DrawText(g, bin.Code, BinCodeFont, new Rectangle(0, mid - LogicalToDeviceUnits(16), cell.Width, LogicalToDeviceUnits(16)), codeColor, flags);
+                        TextRenderer.DrawText(g, pctText, BinPctFont, new Rectangle(0, mid, cell.Width, LogicalToDeviceUnits(15)), ColorTranslator.FromHtml("#334155"), flags);
+                    }
+                    else if (cell.Width >= LogicalToDeviceUnits(30) && cell.Height >= LogicalToDeviceUnits(18))
+                        TextRenderer.DrawText(g, bin.Code, BinCodeFont, r, codeColor, flags | TextFormatFlags.EndEllipsis);
                 };
 
-                // Chỉ hiện chữ nếu ô đủ lớn để đọc được — ô quá nhỏ (kho nhiều vị
-                // trí) chỉ cần thấy MÀU là đủ, nhồi chữ vào sẽ chỉ rối mắt.
-                if (cell.Width >= LogicalToDeviceUnits(36) && cell.Height >= LogicalToDeviceUnits(28))
-                {
-                    var lblCode = new Label
-                    {
-                        Text = bin.Code,
-                        Font = Theme.FontSmall,
-                        ForeColor = Color.White,
-                        BackColor = Color.Transparent,
-                        Dock = DockStyle.Fill,
-                        TextAlign = ContentAlignment.MiddleCenter,
-                        AutoEllipsis = true,
-                        Cursor = Cursors.Hand,
-                    };
-                    lblCode.Click += async (_, _) => await OpenEditBinAsync(bin, zone);
-                    cell.Controls.Add(lblCode);
-                }
-
-                // Click vào Ô (kể cả phần chưa có Label che lên) -> mở Sửa vị trí ngay
+                // Click vào Ô -> mở Sửa vị trí ngay
                 cell.Click += async (_, _) => await OpenEditBinAsync(bin, zone);
                 _binCells.Add(cell);
 
@@ -603,7 +784,6 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                             $"• Đơn {c.OrderCode} — {c.CustomerName}\n   {c.CargoType}: {c.QtyStored:0.##} đơn vị (nhập {c.ReceivedAt.ToLocalTime():dd/MM HH:mm})"))) +
                     "\n\n(Click để sửa)";
                 tooltip.SetToolTip(cell, tooltipText);
-                foreach (Control child in cell.Controls) tooltip.SetToolTip(child, tooltipText);
 
                 zonePanel.Controls.Add(cell);
             }
