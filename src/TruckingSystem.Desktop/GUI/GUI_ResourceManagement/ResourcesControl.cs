@@ -28,20 +28,38 @@ namespace TruckingSystem.Desktop.GUI_ResourceManagement
             {
                 if (gridVehicles.Columns["Id"] is { } c) c.Visible = false;
                 // Cột chữ đổi theo dòng chọn ở bảng kia ("✖ Không đủ hạng bằng") -> chừa sẵn chỗ.
-                if (gridVehicles.Columns["Tài_xế_đang_chọn"] is { } pick) pick.MinimumWidth = MatchColumnWidth(gridVehicles);
+                if (gridVehicles.Columns["Hợp_tài_xế_đang_chọn"] is { } pick) pick.MinimumWidth = MatchColumnWidth(gridVehicles);
                 UpdateButtons();
             };
             gridDrivers.DataBindingComplete += (_, _) =>
             {
                 if (gridDrivers.Columns["EmployeeId"] is { } c) c.Visible = false;
-                if (gridDrivers.Columns["Xe_đang_chọn"] is { } pick) pick.MinimumWidth = MatchColumnWidth(gridDrivers);
+                if (gridDrivers.Columns["Hợp_xe_đang_chọn"] is { } pick) pick.MinimumWidth = MatchColumnWidth(gridDrivers);
                 UpdateButtons();
             };
-            // Cột vừa nội dung (không cắt chữ), bảng cao theo số dòng — cả màn cuộn như 1 trang.
+            // Cột vừa nội dung (không cắt chữ). Mỗi bảng CAO CỐ ĐỊNH ~10 dòng, có thanh cuộn DỌC + NGANG riêng — trước
+            // đây bảng "cao theo số dòng" để cả trang cuộn, nhưng nhiều xe / tài xế thì dòng cuối bị khuất, không cuộn
+            // xem hết được. Bảng chỉ giữ cột chính; nhấp đúp 1 dòng xem ĐẦY ĐỦ thông tin (ResourceDetailForm).
             GridLayout.FitColumns(gridVehicles);
             GridLayout.FitColumns(gridDrivers);
-            GridLayout.GrowWithRows(gridVehicles);
-            GridLayout.GrowWithRows(gridDrivers);
+            foreach (var g in new[] { gridVehicles, gridDrivers })
+            {
+                // Bảng LẤP ĐẦY ô của khung (Dock = Fill) — rộng đúng bằng phần nhìn thấy, cột dư ra thì CHÍNH BẢNG hiện
+                // thanh cuộn ngang; cao cố định ~10 dòng (Min = Max) và có thanh cuộn dọc riêng.
+                // (Trước đây bảng neo Left|Right giữ bề ngang thiết kế 1100 -> màn hẹp hơn thì cột cuối bị khung CHE
+                // mất, bảng tưởng vẫn đủ chỗ nên không hiện thanh cuộn ngang.)
+                var h = LogicalToDeviceUnits(380);
+                g.ScrollBars = ScrollBars.Both;
+                // Bề ngang "mặc định" nhỏ: khung AutoSize bên ngoài lấy bề ngang của bảng làm kích thước ưa thích —
+                // để 1100 (Designer) thì cả trang bị đẩy rộng ra. Dock = Fill sẽ giãn bảng ra đúng bề ngang thật.
+                g.Size = new Size(LogicalToDeviceUnits(300), h);
+                g.Dock = DockStyle.Fill;
+                g.MinimumSize = new Size(0, h);
+                g.MaximumSize = new Size(0, h);
+                g.Height = h;
+            }
+            gridVehicles.CellDoubleClick += (_, e) => { if (e.RowIndex >= 0) ShowVehicleDetail(); };
+            gridDrivers.CellDoubleClick += (_, e) => { if (e.RowIndex >= 0) ShowDriverDetail(); };
             Load += (_, _) => Theme.UniformButtons(vehicleBar, driverBar);
 
             // Bộ lọc cho 2 bảng (lọc trên dữ liệu đã tải, không gọi lại API).
@@ -69,7 +87,11 @@ namespace TruckingSystem.Desktop.GUI_ResourceManagement
             docs.Click += (s, e) => BtnVehicleDocs_Click(s, e);
             var fuel = new ToolStripMenuItem("⛽  Nhiên liệu trong bình");
             fuel.Click += (s, e) => BtnVehicleFuel_Click(s, e);
-            vMenu.Items.AddRange(new ToolStripItem[] { docs, fuel });
+            var vDetail = new ToolStripMenuItem("🔍  Xem đầy đủ thông tin") { ShortcutKeyDisplayString = "Nhấp đúp" };
+            vDetail.Click += (_, _) => ShowVehicleDetail();
+            var vPair = new ToolStripMenuItem("🔗  Tài xế đang đi cùng / tài xế lái được xe này") { Font = new Font("Segoe UI", 10F, FontStyle.Bold) };
+            vPair.Click += (_, _) => ShowVehiclePairing();
+            vMenu.Items.AddRange(new ToolStripItem[] { vPair, vDetail, new ToolStripSeparator(), docs, fuel });
             ModernMenu.Apply(vMenu);
             vMenu.Opening += (_, e) => { if (SelectedVehicle() is null) e.Cancel = true; };
             AttachMenu(gridVehicles, vMenu);
@@ -79,7 +101,11 @@ namespace TruckingSystem.Desktop.GUI_ResourceManagement
             profile.Click += (s, e) => BtnDriverProfile_Click(s, e);
             var workDays = new ToolStripMenuItem("📅  Ngày làm việc");
             workDays.Click += (s, e) => BtnDriverWorkDays_Click(s, e);
-            dMenu.Items.AddRange(new ToolStripItem[] { profile, workDays });
+            var dDetail = new ToolStripMenuItem("🔍  Xem đầy đủ thông tin") { ShortcutKeyDisplayString = "Nhấp đúp" };
+            dDetail.Click += (_, _) => ShowDriverDetail();
+            var dPair = new ToolStripMenuItem("🔗  Xe đang dùng / xe lái được") { Font = new Font("Segoe UI", 10F, FontStyle.Bold) };
+            dPair.Click += (_, _) => ShowDriverPairing();
+            dMenu.Items.AddRange(new ToolStripItem[] { dPair, dDetail, new ToolStripSeparator(), profile, workDays });
             ModernMenu.Apply(dMenu);
             dMenu.Opening += (_, e) =>
             {
@@ -90,6 +116,46 @@ namespace TruckingSystem.Desktop.GUI_ResourceManagement
                 workDays.ToolTipText = d.HasProfile ? "" : "Chưa có hồ sơ tài xế — tạo hồ sơ trước";
             };
             AttachMenu(gridDrivers, dMenu);
+        }
+
+        // ================= Ghép xe – tài xế (chuột phải → 🔗) =================
+
+        private void ShowVehiclePairing()
+        {
+            if (SelectedVehicle() is not VehicleResource v) return;
+            var list = _data.Drivers.Where(d => d.DrivableVehicleIds.Contains(v.Id))
+                .OrderByDescending(d => d.CanRunToday).ThenBy(d => d.CurrentTrip is not null).ThenBy(d => d.FullName)
+                .Select(d => new
+                {
+                    Mã_NV = d.Code,
+                    Họ_tên = d.FullName,
+                    Hạng_bằng = d.LicenseClass ?? "—",
+                    Ngày_làm_hôm_nay = d.WorksToday ? "✅ Có" : "❌ Chưa ĐK",
+                    Tình_trạng = d.CanRunToday ? "✅ Chạy được" : d.CurrentTrip is not null ? "🚚 Đang bận chuyến" : "⛔ " + d.BlockReason,
+                    Đang_ở_chuyến = d.CurrentTrip is null ? "—" : (d.CurrentVehiclePlate is null ? "" : $"xe {d.CurrentVehiclePlate} · ") + d.CurrentTrip,
+                }).ToList();
+            using var f = new PairingForm($"🔗 Xe {v.PlateNumber} ({v.CapacityKg / 1000m:0.##} tấn · cần bằng {v.RequiredLicense})",
+                DriverOnTrip(v), "Tài xế đủ hạng bằng lái xe này", list, list.Count);
+            f.ShowDialog(FindForm());
+        }
+
+        private void ShowDriverPairing()
+        {
+            if (SelectedDriver() is not DriverResource d) return;
+            var list = _data.Vehicles.Where(v => d.DrivableVehicleIds.Contains(v.Id))
+                .OrderByDescending(v => v.CanRunToday).ThenBy(v => v.CurrentTrip is not null).ThenBy(v => v.PlateNumber)
+                .Select(v => new
+                {
+                    Biển_số = v.PlateNumber,
+                    Loại_xe = $"{v.VehicleType} ({v.CapacityKg / 1000m:0.##} tấn)",
+                    Cần_bằng = v.RequiredLicense,
+                    Giấy_tờ = DocsSummary(v),
+                    Tình_trạng = v.CanRunToday ? "✅ Chạy được" : v.CurrentTrip is not null ? "🚚 Đang bận chuyến" : "⛔ " + v.BlockReason,
+                }).ToList();
+            var onTrip = d.CurrentTrip is null ? "—" : (d.CurrentVehiclePlate is null ? "" : $"xe {d.CurrentVehiclePlate} · ") + d.CurrentTrip;
+            using var f = new PairingForm($"🔗 Tài xế {d.FullName} ({d.Code}) · bằng {d.LicenseClass ?? "—"}",
+                onTrip, "Xe tài xế này lái được (đủ hạng bằng)", list, list.Count);
+            f.ShowDialog(FindForm());
         }
 
         private static void AttachMenu(DataGridView grid, ContextMenuStrip menu)
@@ -226,23 +292,18 @@ namespace TruckingSystem.Desktop.GUI_ResourceManagement
                     vehicleFilter.MatchesSearch(v.PlateNumber, v.VehicleType, v.WarehouseName, v.CurrentTrip, v.BlockReason))
                 .ToList();
             vehicleFilter.SetCount(rows.Count, _data.Vehicles.Count);
+            // CHỈ cột chính (cùng kiểu màn Chuyến); giấy tờ từng loại, nhiên liệu, chuyến hiện tại, lý do đầy đủ: nhấp đúp.
             gridVehicles.DataSource = rows.Select(v => new
             {
                 v.Id,
                 Biển_số = v.PlateNumber,
-                Loại_xe = $"{v.VehicleType} ({v.CapacityKg / 1000m:0.##} tấn)",
-                Cần_bằng = v.RequiredLicense,
-                Kho = v.WarehouseName ?? "(mọi kho)",
+                Tải_trọng = $"{v.CapacityKg / 1000m:0.##} tấn",
                 Trạng_thái = VehicleStatusText(v.Status),
-                Đăng_kiểm = DocText(v.RegistrationExpiry),
-                Bảo_hiểm = DocText(v.InsuranceExpiry),
-                Phù_hiệu = DocText(v.PermitExpiry),
-                Nhiên_liệu = FuelText(v),
-                Chuyến_hiện_tại = v.CurrentTrip ?? "—",
-                Chạy_được_hôm_nay = v.CanRunToday ? "✅ Được" : "⛔ " + v.BlockReason,
-                Tài_xế_đang_chọn = "", // điền khi chọn 1 tài xế (CellFormatting)
+                Giấy_tờ = DocsSummary(v),
+                Chạy_được_hôm_nay = RunText(v.CanRunToday, v.CurrentTrip),
+                // "Đang đi cùng tài xế nào" + "tài xế nào lái được": chuột phải → 🔗 (PairingForm) cho bảng gọn.
             }).ToList();
-            grpVehicles.Text = $"🚚 Xe ({rows.Count}/{_data.Vehicles.Count}) — chuột phải: giấy tờ, nhiên liệu";
+            grpVehicles.Text = $"🚚 Xe ({rows.Count}/{_data.Vehicles.Count}) — nhấp đúp: xem đầy đủ · chuột phải: tài xế đi cùng / lái được, giấy tờ";
             Reselect(gridVehicles, "Id", keep, "Biển_số");
         }
 
@@ -261,18 +322,87 @@ namespace TruckingSystem.Desktop.GUI_ResourceManagement
                 d.EmployeeId,
                 Mã_NV = d.Code,
                 Họ_tên = d.FullName,
-                Điện_thoại = d.Phone ?? "—",
-                Kho = !d.HasProfile ? "—" : d.WarehouseName ?? "(mọi kho)",
                 Hạng_bằng = d.LicenseClass ?? "—",
-                Bằng_lái = d.HasProfile ? DocText(d.LicenseExpiry) : "⛔ Chưa có hồ sơ",
-                Khám_sức_khỏe = d.HasProfile ? DocText(d.HealthCertExpiry, required: false) : "—",
-                Ngày_làm = (d.WorksToday ? "✅ Hôm nay" : "❌ Hôm nay chưa ĐK") + $" · 7 ngày tới: {d.WorkDaysNext7}",
-                Chuyến_hiện_tại = d.CurrentTrip is null ? "—" : d.CurrentTrip + (d.CurrentVehiclePlate is null ? "" : $" · xe {d.CurrentVehiclePlate}"),
-                Chạy_được_hôm_nay = d.CanRunToday ? "✅ Được" : "⛔ " + d.BlockReason,
-                Xe_đang_chọn = "", // điền khi chọn 1 xe (CellFormatting)
+                Ngày_làm_hôm_nay = d.WorksToday ? "✅ Có" : "❌ Chưa ĐK",
+                Chạy_được_hôm_nay = RunText(d.CanRunToday, d.CurrentTrip),
             }).ToList();
-            grpDrivers.Text = $"👷 Tài xế ({rows.Count}/{_data.Drivers.Count}) — chuột phải: hồ sơ, ngày làm";
+            grpDrivers.Text = $"👷 Tài xế ({rows.Count}/{_data.Drivers.Count}) — nhấp đúp: xem đầy đủ · chuột phải: xe đang dùng / lái được, hồ sơ";
             Reselect(gridDrivers, "EmployeeId", keep, "Mã_NV");
+        }
+
+        /// <summary>"Chạy được hôm nay": đang có chuyến chưa xong thì ghi BẬN (không phải lỗi giấy tờ / ngày làm) —
+        /// trước đây xe / tài xế đang chạy chuyến cũng hiện "⛔ Không" như thể có vấn đề.</summary>
+        private static string RunText(bool canRun, string? currentTrip)
+            => canRun ? "✅ Được" : currentTrip is not null ? "🚚 Đang bận chuyến" : "⛔ Không";
+
+        /// <summary>Tài xế đang đi cùng xe này (chuyến chưa xong) — ghép theo biển số xe của tài xế.</summary>
+        private string DriverOnTrip(VehicleResource v)
+        {
+            var d = _data.Drivers.FirstOrDefault(x => x.CurrentVehiclePlate == v.PlateNumber);
+            return d is not null ? $"{d.FullName} ({d.Code}) · {d.CurrentTrip}" : v.CurrentTrip is null ? "—" : v.CurrentTrip;
+        }
+
+        /// <summary>Gộp 3 loại giấy tờ xe thành 1 ô: "✅ Đủ" / "🟡 1 sắp hết hạn" / "⛔ Thiếu 2 loại".</summary>
+        private static string DocsSummary(VehicleResource v)
+        {
+            var docs = new[] { v.RegistrationExpiry, v.InsuranceExpiry, v.PermitExpiry };
+            var bad = docs.Count(d => d is null || d.Value.Date < DateTime.Today);
+            if (bad > 0) return $"⛔ Thiếu / hết hạn {bad} loại";
+            var soon = docs.Count(d => (d!.Value.Date - DateTime.Today).Days <= ExpiringDays);
+            return soon > 0 ? $"🟡 {soon} loại sắp hết hạn" : "✅ Đủ";
+        }
+
+        // ================= Chi tiết (nhấp đúp) =================
+
+        private async void ShowVehicleDetail()
+        {
+            if (_api is null || SelectedVehicle() is not VehicleResource v) return;
+            using var f = new ResourceDetailForm($"🚚 Xe {v.PlateNumber}", new (string, string)[]
+            {
+                ("# Hôm nay", ""),
+                ("Chạy được", v.CanRunToday ? "✅ Được" : v.CurrentTrip is not null ? "🚚 Đang bận chuyến" : "⛔ Không — " + v.BlockReason),
+                ("Trên chuyến", DriverOnTrip(v)),
+                ("Tài xế lái được", $"{_data.Drivers.Count(d => d.DrivableVehicleIds.Contains(v.Id))} người đủ hạng bằng · " +
+                                     $"{_data.Drivers.Count(d => d.DrivableVehicleIds.Contains(v.Id) && d.CanRunToday)} người rảnh hôm nay"),
+                ("# Thông tin xe", ""),
+                ("Xe", $"{v.VehicleType} · {v.CapacityKg / 1000m:0.##} tấn · cần bằng {v.RequiredLicense}"),
+                ("Kho / trạng thái", $"{v.WarehouseName ?? "(mọi kho)"} · {VehicleStatusText(v.Status)}"),
+                ("Nhiên liệu", FuelText(v)),
+                ("# Giấy tờ", ""),
+                ("Đăng kiểm", DocText(v.RegistrationExpiry)),
+                ("Bảo hiểm", DocText(v.InsuranceExpiry)),
+                ("Phù hiệu xe", DocText(v.PermitExpiry)),
+            }, new (string, bool, Func<Task>)[]
+            {
+                ("📄 Giấy tờ xe", true, async () => { BtnVehicleDocs_Click(this, EventArgs.Empty); await Task.CompletedTask; }),
+                ("⛽ Nhiên liệu", true, async () => { BtnVehicleFuel_Click(this, EventArgs.Empty); await Task.CompletedTask; }),
+            });
+            if (f.ShowDialog(FindForm()) == DialogResult.OK && f.PendingAction is { } run) await run();
+        }
+
+        private async void ShowDriverDetail()
+        {
+            if (_api is null || SelectedDriver() is not DriverResource d) return;
+            using var f = new ResourceDetailForm($"👷 Tài xế {d.FullName} ({d.Code})", new (string, string)[]
+            {
+                ("# Hôm nay", ""),
+                ("Chạy được", d.CanRunToday ? "✅ Được" : d.CurrentTrip is not null ? "🚚 Đang bận chuyến" : "⛔ Không — " + d.BlockReason),
+                ("Ngày làm", (d.WorksToday ? "✅ Có làm hôm nay" : "❌ Hôm nay chưa đăng ký") + $" · 7 ngày tới: {d.WorkDaysNext7} ngày"),
+                ("Trên chuyến", d.CurrentTrip is null ? "—" : (d.CurrentVehiclePlate is null ? "" : $"xe {d.CurrentVehiclePlate} · ") + d.CurrentTrip),
+                ("Xe lái được", $"{d.DrivableVehicleIds.Count} xe trong danh sách"),
+                ("# Thông tin", ""),
+                ("Liên hệ", d.Phone ?? "—"),
+                ("Kho", !d.HasProfile ? "—" : d.WarehouseName ?? "(mọi kho)"),
+                ("# Giấy tờ", ""),
+                ("Hồ sơ / hạng bằng", d.HasProfile ? $"✅ Đã có · bằng {d.LicenseClass ?? "—"}" : "⛔ Chưa có hồ sơ"),
+                ("Bằng lái", d.HasProfile ? DocText(d.LicenseExpiry) : "—"),
+                ("Khám sức khỏe", d.HasProfile ? DocText(d.HealthCertExpiry, required: false) : "—"),
+            }, new (string, bool, Func<Task>)[]
+            {
+                (d.HasProfile ? "✏️ Sửa hồ sơ" : "📝 Tạo hồ sơ", true, async () => { BtnDriverProfile_Click(this, EventArgs.Empty); await Task.CompletedTask; }),
+                ("📅 Ngày làm", d.HasProfile, async () => { BtnDriverWorkDays_Click(this, EventArgs.Empty); await Task.CompletedTask; }),
+            });
+            if (f.ShowDialog(FindForm()) == DialogResult.OK && f.PendingAction is { } run) await run();
         }
 
         private static void Reselect(DataGridView grid, string idColumn, int? id, string visibleColumn)
@@ -312,7 +442,7 @@ namespace TruckingSystem.Desktop.GUI_ResourceManagement
             {
                 var can = _data.Drivers.Count(d => d.DrivableVehicleIds.Contains(v.Id));
                 var ready = _data.Drivers.Count(d => d.DrivableVehicleIds.Contains(v.Id) && d.CanRunToday);
-                lblHint.Text = $"Xe {v.PlateNumber} cần bằng {v.RequiredLicense}: {can} tài xế đủ hạng bằng, trong đó {ready} người chạy được hôm nay (tô xanh ở bảng Tài xế).";
+                lblHint.Text = $"Xe {v.PlateNumber} cần bằng {v.RequiredLicense}: {can} tài xế đủ hạng bằng, trong đó {ready} người chạy được hôm nay — chuột phải → 🔗 để xem danh sách.";
             }
         }
 
@@ -324,14 +454,14 @@ namespace TruckingSystem.Desktop.GUI_ResourceManagement
             if (d is not null)
                 lblHint.Text = d.LicenseClass is null
                     ? $"{d.FullName} chưa có hồ sơ / hạng bằng — chưa lái được xe nào."
-                    : $"{d.FullName} (bằng {d.LicenseClass}) lái được {d.DrivableVehicleIds.Count} xe trong danh sách (tô xanh ở bảng Xe).";
+                    : $"{d.FullName} (bằng {d.LicenseClass}) lái được {d.DrivableVehicleIds.Count} xe trong danh sách — chuột phải → 🔗 để xem danh sách.";
         }
 
         private void GridVehicles_CellFormatting(object? sender, DataGridViewCellFormattingEventArgs e)
         {
             if (e.RowIndex < 0 || e.CellStyle is null) return;
             var name = gridVehicles.Columns[e.ColumnIndex].Name;
-            if (name == "Tài_xế_đang_chọn")
+            if (name == "Hợp_tài_xế_đang_chọn")
             {
                 var d = SelectedDriver();
                 var vid = gridVehicles.Rows[e.RowIndex].Cells["Id"].Value as int?;
@@ -348,7 +478,7 @@ namespace TruckingSystem.Desktop.GUI_ResourceManagement
         {
             if (e.RowIndex < 0 || e.CellStyle is null) return;
             var name = gridDrivers.Columns[e.ColumnIndex].Name;
-            if (name == "Xe_đang_chọn")
+            if (name == "Hợp_xe_đang_chọn")
             {
                 var v = SelectedVehicle();
                 var did = gridDrivers.Rows[e.RowIndex].Cells["EmployeeId"].Value as int?;

@@ -114,7 +114,16 @@ public static class StorageFeeRules
     private static string Formula(List<StorageFeeDayDto> days, decimal rate, decimal fee)
     {
         var charged = days.Where(d => d.NotChargedReason is null).ToList();
-        if (charged.Count == 0) return days.Count == 0 ? "" : "Không có ngày nào hàng nằm kho trong khoảng này → 0 đ";
+        if (charged.Count == 0)
+        {
+            if (days.Count == 0) return "";
+            // Các ngày khách xin dời còn ở PHÍA TRƯỚC -> chưa phát sinh, không phải "hàng không nằm kho".
+            var future = days.Where(d => d.NotChargedReason?.StartsWith("chưa tới ngày") == true).ToList();
+            if (future.Count > 0)
+                return $"Chưa tới ngày tính phí ({future[0].Day:dd/MM}" + (future.Count > 1 ? $"–{future[^1].Day:dd/MM}" : "") +
+                       ") — mỗi ngày qua mà hàng còn nằm kho sẽ được cộng dần → hiện 0 đ";
+            return "Không có ngày nào hàng nằm kho trong khoảng này → 0 đ";
+        }
         var groups = new List<(DateTime From, DateTime To, int Count, decimal M3)>();
         foreach (var d in charged)
         {

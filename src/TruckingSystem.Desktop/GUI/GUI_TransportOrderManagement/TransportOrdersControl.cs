@@ -32,13 +32,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             filterBar.AddChoice("deadline", "Hạn giao", new[] { DeadlineOverdue, DeadlineSoon, DeadlineLater, DeadlineNone });
             filterBar.AddChoice("customer", "Khách hàng", Array.Empty<string>());
             filterBar.AddChoice("warehouse", "Kho", Array.Empty<string>());
-            filterBar.FilterChanged += (_, _) =>
-            {
-                // Chọn hẳn 1 trạng thái (VD "Hoàn tất") -> chuyển tab "Tất cả", tránh bảng trống vì tab "Đang xử lý" đang ẩn nó.
-                if (filterBar.Choice("status") is not null) _tabs.SelectTab(TabAll, raiseEvent: false);
-                BindGrid();
-            };
-            SetupTabs();
+            filterBar.FilterChanged += (_, _) => BindGrid();
             SetupModernLook();
             SetupActions(); // thanh nút gọn + menu chuột phải + thẻ "Đơn đang chọn" (TransportOrdersControl.Actions.cs)
 
@@ -140,32 +134,8 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
         /// <summary>Mở từ thông báo (nhấp đúp): bỏ các bộ lọc khác, lọc sẵn theo mã đơn.</summary>
         public void FocusOn(string search)
         {
-            _tabs.SelectTab(TabAll, raiseEvent: false); // mở từ thông báo: đơn có thể đã xong / đã hủy
             filterBar.ShowOnlySearch(search);
         }
-
-        // ------------------------------------------------------------------ tab nhanh
-
-        private readonly QuickTabs _tabs = new();
-        private const string TabOpen = "open", TabDone = "done", TabAll = "all";
-
-        /// <summary>Mặc định chỉ hiện đơn ĐANG XỬ LÝ (Nháp / Đã xác nhận / Đang vận chuyển) — đơn đã xong / đã hủy
-        /// dồn nhiều theo thời gian làm danh sách dài, nhân viên ít khi cần xem lại.</summary>
-        private void SetupTabs()
-        {
-            _tabs.Add(TabOpen, "🟢 Đang xử lý", "Nháp, Đã xác nhận, Đang vận chuyển");
-            _tabs.Add(TabDone, "✅ Đã xong / đã hủy");
-            _tabs.Add(TabAll, "📋 Tất cả");
-            _tabs.Changed += (_, _) => BindGrid();
-            KpiStrip.InsertRow(root, _tabs, root.GetRow(filterBar));
-        }
-
-        private static bool InTab(TransportOrderListItem o, string? tab) => tab switch
-        {
-            TabOpen => o.Status is not ("Done" or "Cancelled"),
-            TabDone => o.Status is "Done" or "Cancelled",
-            _ => true,
-        };
 
         private void BindGrid()
         {
@@ -177,9 +147,6 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                     filterBar.Is("warehouse", o.WarehouseName ?? "") &&
                     filterBar.MatchesSearch(o.Code, o.CustomerName, o.PickupPoint, o.DropoffPoint, o.WarehouseName, o.ContractCode))
                 .ToList();
-            foreach (var key in new[] { TabOpen, TabDone, TabAll })
-                _tabs.SetCount(key, rows.Count(o => InTab(o, key)));
-            rows = rows.Where(o => InTab(o, _tabs.Selected)).ToList();
             // CHỈ các cột cần để nhận ra đơn và biết việc cần làm; hợp đồng, kho, điểm lấy / giao, số chuyến
             // hiện ở thẻ "Đơn đang chọn" khi bấm 1 dòng. Ô tìm vẫn tìm theo cả các thông tin đó.
             grid.DataSource = rows.Select(o => new
