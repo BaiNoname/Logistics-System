@@ -36,14 +36,106 @@ namespace TruckingSystem.Desktop.GUI_Shared
         private Button? _activeNavButton;
         private NotificationBadge? _badge;
 
+        // ---- Tông màu "Ban ngày" (cùng tông màn đăng nhập) — chỉ áp cho khung MainForm, không đổi Theme dùng chung.
+        private static readonly Color SideBg = ColorTranslator.FromHtml("#F0F9FF");
+        private static readonly Color SideText = ColorTranslator.FromHtml("#334155");
+        private static readonly Color SideHover = ColorTranslator.FromHtml("#DBEAFE");
+        private static readonly Color SideActive = ColorTranslator.FromHtml("#2563EB");
+        private static readonly Color SideActiveHover = ColorTranslator.FromHtml("#1D4ED8");
+        private static readonly Color SideBorder = ColorTranslator.FromHtml("#E2E8F0");
+
         public MainForm()
         {
             InitializeComponent();
+            ApplyDayTheme();
+        }
+
+        /// <summary>Đổi khung chính sang tông sáng: menu trái nền xanh trời nhạt, logo có trời – đồi – đường
+        /// (giống màn đăng nhập), mục đang chọn nền xanh chữ trắng, nút Đăng xuất đỏ nhạt, dải màu dưới thanh trên.</summary>
+        private void ApplyDayTheme()
+        {
+            Text = "Logistics System";
+            sidebar.BackColor = navPanel.BackColor = sidebarBottom.BackColor = SideBg;
+            sidebar.Controls.Add(new Panel { Dock = DockStyle.Right, Width = 1, BackColor = SideBorder }); // viền phải
+
+            // Logo: vẽ tay (trời + đồi + đường + xe nhỏ + chữ) thay cho nhãn chữ trắng trên nền tối.
+            lblLogo.Visible = false;
+            logoPanel.Height = LogicalToDeviceUnits(96);
+            typeof(Control).GetProperty("DoubleBuffered",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+                .SetValue(logoPanel, true);
+            logoPanel.Paint += (_, e) => PaintLogo(e.Graphics, logoPanel.ClientSize);
+            logoPanel.Resize += (_, _) => logoPanel.Invalidate();
+
+            btnLogout.BackColor = Color.White;
+            btnLogout.ForeColor = ColorTranslator.FromHtml("#DC2626");
+            btnLogout.FlatAppearance.BorderSize = 1;
+            btnLogout.FlatAppearance.BorderColor = ColorTranslator.FromHtml("#FECACA");
+            btnLogout.FlatAppearance.MouseOverBackColor = ColorTranslator.FromHtml("#FEE2E2");
+
+            // Dải màu xanh – lá – vàng dưới thanh trên cùng (thay đường kẻ xám 1px).
+            topBarBorder.Height = LogicalToDeviceUnits(3);
+            topBarBorder.Paint += (_, e) =>
+            {
+                var r = topBarBorder.ClientRectangle;
+                if (r.Width <= 0 || r.Height <= 0) return;
+                using var brush = new System.Drawing.Drawing2D.LinearGradientBrush(r, Color.Black, Color.Black, 0f)
+                {
+                    InterpolationColors = new System.Drawing.Drawing2D.ColorBlend
+                    {
+                        Colors = new[] { ColorTranslator.FromHtml("#7DD3FC"), ColorTranslator.FromHtml("#6EE7B7"), ColorTranslator.FromHtml("#FACC15") },
+                        Positions = new[] { 0f, 0.5f, 1f },
+                    },
+                };
+                e.Graphics.FillRectangle(brush, r);
+            };
+            topBarBorder.Resize += (_, _) => topBarBorder.Invalidate();
+        }
+
+        private static readonly Font LogoFont = new("Segoe UI", 21f, FontStyle.Bold, GraphicsUnit.Pixel);
+
+        /// <summary>Logo menu trái, khung chuẩn 260 × 96: trời nhạt, đồi cỏ, con đường có vạch vàng, xe tải nhỏ.</summary>
+        private static void PaintLogo(Graphics g, Size size)
+        {
+            if (size.Width <= 0 || size.Height <= 0) return;
+            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
+            var scale = size.Height / 96f;
+            var w = size.Width / scale;
+            g.ScaleTransform(scale, scale);
+
+            using (var sky = new System.Drawing.Drawing2D.LinearGradientBrush(new RectangleF(0, 0, w, 96), ColorTranslator.FromHtml("#BAE6FD"), SideBg, 90f))
+                g.FillRectangle(sky, 0, 0, w, 96);
+            using (var hill = new System.Drawing.Drawing2D.GraphicsPath())
+            {
+                hill.AddBezier(0, 80, w * 0.25f, 64, w * 0.45f, 70, w * 0.6f, 76);
+                hill.AddBezier(w * 0.6f, 76, w * 0.75f, 80, w * 0.9f, 68, w, 72);
+                hill.AddLine(w, 72, w, 86);
+                hill.AddLine(w, 86, 0, 86);
+                hill.CloseFigure();
+                using var b = new SolidBrush(ColorTranslator.FromHtml("#A7F3D0"));
+                g.FillPath(b, hill);
+            }
+            using (var road = new SolidBrush(ColorTranslator.FromHtml("#475569"))) g.FillRectangle(road, 0, 84, w, 12);
+            using (var lane = new SolidBrush(ColorTranslator.FromHtml("#FACC15")))
+                for (var x = 8f; x < w; x += 32f) g.FillRectangle(lane, x, 89, 16, 2);
+
+            // xe tải nhỏ (dùng lại hình xe của màn đăng nhập, thu nhỏ ~1/3)
+            var state = g.Save();
+            g.TranslateTransform(w - 66, 64);
+            g.ScaleTransform(0.36f, 0.36f);
+            LoginForm.DrawTruck(g, 0, 0, 0, smoke: false);
+            g.Restore(state);
+
+            using var title = new SolidBrush(ColorTranslator.FromHtml("#0F172A"));
+            g.DrawString("Logistics System", LogoFont, title, 16, 18);
         }
 
         public MainForm(ApiServices api, string username) : this()
         {
             _api = api;
+            // Đăng nhập xong: mở app TOÀN MÀN HÌNH (phóng to), không phải cửa sổ 1280×800 giữa màn.
+            WindowState = FormWindowState.Maximized;
             lblUser.Text = username;
             lblRole.Text = RoleText(api.Connection.Roles);
             BuildNavButtons();
@@ -142,7 +234,7 @@ namespace TruckingSystem.Desktop.GUI_Shared
             TextAlign = ContentAlignment.BottomLeft,
             Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
             ForeColor = ColorTranslator.FromHtml("#64748B"),
-            BackColor = Theme.SidebarBg,
+            BackColor = SideBg,
             Padding = new Padding(LogicalToDeviceUnits(12), 0, 0, LogicalToDeviceUnits(2)),
             Margin = new Padding(0, LogicalToDeviceUnits(8), 0, 0),
         };
@@ -158,14 +250,14 @@ namespace TruckingSystem.Desktop.GUI_Shared
                 AutoEllipsis = false,
                 UseCompatibleTextRendering = false,
                 FlatStyle = FlatStyle.Flat,
-                BackColor = Theme.SidebarBg,
-                ForeColor = Theme.SidebarText,
+                BackColor = SideBg,
+                ForeColor = SideText,
                 Font = Theme.FontSidebar,
                 Cursor = Cursors.Hand,
                 Margin = new Padding(0, 2, 0, 2),
             };
             btn.FlatAppearance.BorderSize = 0;
-            btn.FlatAppearance.MouseOverBackColor = ColorTranslator.FromHtml("#334155");
+            btn.FlatAppearance.MouseOverBackColor = SideHover;
             return btn;
         }
 
@@ -254,11 +346,13 @@ namespace TruckingSystem.Desktop.GUI_Shared
         {
             if (_activeNavButton != null)
             {
-                _activeNavButton.BackColor = Theme.SidebarBg;
-                _activeNavButton.ForeColor = Theme.SidebarText;
+                _activeNavButton.BackColor = SideBg;
+                _activeNavButton.ForeColor = SideText;
+                _activeNavButton.FlatAppearance.MouseOverBackColor = SideHover;
             }
-            navButton.BackColor = Theme.SidebarBgActive;
-            navButton.ForeColor = Theme.SidebarTextActive;
+            navButton.BackColor = SideActive;
+            navButton.ForeColor = Color.White;
+            navButton.FlatAppearance.MouseOverBackColor = SideActiveHover;
             _activeNavButton = navButton;
 
             content.Controls.Clear();

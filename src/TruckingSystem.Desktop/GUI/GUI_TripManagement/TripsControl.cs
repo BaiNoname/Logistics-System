@@ -39,13 +39,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
             filterBar.AddChoice("deadline", "Hạn giao", new[] { DlLate, DlWarn, DlOk, DlOnTime, DlDoneLate, DlNone });
             filterBar.AddChoice("start", "Xuất phát", new[] { StartToday, StartTomorrow, StartWeek, StartPast });
             filterBar.AddChoice("warehouse", "Kho", Array.Empty<string>());
-            filterBar.FilterChanged += (_, _) =>
-            {
-                // Chọn hẳn 1 trạng thái (VD "Hoàn tất") -> chuyển tab "Tất cả", tránh bảng trống vì tab đang chọn ẩn nó.
-                if (filterBar.Choice("status") is not null) _tabs.SelectTab(TabAll, raiseEvent: false);
-                BindGrid();
-            };
-            SetupTabs();
+            filterBar.FilterChanged += (_, _) => BindGrid();
             SetupModernLook();
             SetupActions(); // thanh nút gọn + menu chuột phải + thẻ "Chuyến đang chọn" (TripsControl.Actions.cs)
             Load += async (_, _) => await LoadAsync();
@@ -76,40 +70,6 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
         private TripListItem? TripAt(int row)
             => row >= 0 && row < grid.Rows.Count && grid.Rows[row].Cells["Id"].Value is int id
                 ? _trips.FirstOrDefault(t => t.Id == id) : null;
-
-        // ------------------------------------------------------------------ tab nhanh
-
-        private readonly QuickTabs _tabs = new();
-        private const string TabTodo = "todo", TabRunning = "running", TabPending = "pending", TabUpcoming = "upcoming", TabAll = "all";
-
-        /// <summary>Hàng tab ngay trên bộ lọc — mở màn là vào "Cần xử lý" (việc phải làm hôm nay), không phải tự chỉnh
-        /// 5 ô lọc. Bộ lọc chi tiết vẫn dùng được, kết hợp với tab.</summary>
-        private void SetupTabs()
-        {
-            _tabs.Add(TabTodo, "🔥 Cần xử lý", "Chờ duyệt, xuất phát hôm nay (hoặc đã quá ngày mà chưa chạy), sắp / đã trễ hạn giao");
-            _tabs.Add(TabRunning, "🚚 Đang chạy");
-            _tabs.Add(TabPending, "📝 Chờ duyệt", "Tài xế đã báo xong — xem ảnh hàng rồi Duyệt / Từ chối");
-            _tabs.Add(TabUpcoming, "📅 Sắp chạy", "Đã chia xe, ngày xuất phát từ ngày mai trở đi");
-            _tabs.Add(TabAll, "📋 Tất cả", "Mọi chuyến, kể cả đã hoàn tất / đã hủy");
-            _tabs.Changed += (_, _) => BindGrid();
-            KpiStrip.InsertRow(root, _tabs, root.GetRow(filterBar));
-        }
-
-        private static bool InTab(TripListItem t, string? tab)
-        {
-            var today = DateTime.Today;
-            var open = t.Status is not ("Completed" or "Cancelled");
-            return tab switch
-            {
-                TabTodo => t.Status == "PendingConfirmation"
-                           || (t.Status == "Planned" && (t.PlannedStartDate?.Date ?? today) <= today)
-                           || (open && t.DeadlineLevel is "Late" or "Warning"),
-                TabRunning => t.Status == "InProgress",
-                TabPending => t.Status == "PendingConfirmation",
-                TabUpcoming => t.Status == "Planned" && t.PlannedStartDate?.Date > today,
-                _ => true,
-            };
-        }
 
         /// <summary>1 dòng tóm tắt thay cho 6 thẻ số liệu: tổng số chuyến + CHỈ những việc cần chú ý (có số > 0).</summary>
         private string SummaryText()
@@ -179,7 +139,6 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
         public void FocusTrip(int tripId)
         {
             _focusTripId = tripId;
-            _tabs.SelectTab(TabAll, raiseEvent: false); // mở từ thông báo: chuyến có thể không nằm trong tab "Cần xử lý"
             filterBar.ShowOnlySearch($"#{tripId}");
         }
 
@@ -201,9 +160,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
                     filterBar.Is("warehouse", t.WarehouseName ?? "") &&
                     filterBar.MatchesSearch($"#{t.Id}", t.OrderCode, t.VehiclePlate, t.DriverName, t.WarehouseName, t.FromName, t.ToName))
                 .ToList();
-            foreach (var key in new[] { TabTodo, TabRunning, TabPending, TabUpcoming, TabAll })
-                _tabs.SetCount(key, filtered.Count(t => InTab(t, key)));
-            var rows = filtered.Where(t => InTab(t, _tabs.Selected)).ToList();
+            var rows = filtered;
             // CHỈ các cột cần để nhận ra chuyến và biết việc cần làm; chi tiết (điểm đi/đến đầy đủ, số lượng,
             // tiến độ kho, hạn giao, mốc xuất phát muộn nhất...) hiện ở thẻ "Chuyến đang chọn" khi bấm 1 dòng.
             // Ô tìm vẫn tìm theo cả các thông tin không hiện cột (kho, điểm đi, điểm đến).

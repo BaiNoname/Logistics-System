@@ -40,17 +40,19 @@ namespace TruckingSystem.Desktop.GUI_DriverManagement
         }
 
         /// <summary>Chuột phải 1 tài xế = Hồ sơ / Ngày làm — cùng kiểu màn Đơn, Chuyến, Đội xe (trước đây màn này chưa có).
-        /// Nhấp đúp vẫn mở hồ sơ. Chuột phải chọn luôn đúng dòng dưới con trỏ.</summary>
+        /// Nhấp đúp = xem đầy đủ thông tin. Chuột phải chọn luôn đúng dòng dưới con trỏ.</summary>
         private void SetupRowMenu()
         {
             var menu = new ContextMenuStrip();
-            var profile = new ToolStripMenuItem("📝  Hồ sơ tài xế") { ShortcutKeyDisplayString = "Nhấp đúp", Font = new Font("Segoe UI", 10F, FontStyle.Bold) };
+            var profile = new ToolStripMenuItem("📝  Hồ sơ tài xế") { Font = new Font("Segoe UI", 10F, FontStyle.Bold) };
+            var detail = new ToolStripMenuItem("🔍  Xem đầy đủ thông tin") { ShortcutKeyDisplayString = "Nhấp đúp" };
+            detail.Click += (_, _) => { if (grid.CurrentRow is { } r) Grid_CellDoubleClick(grid, new DataGridViewCellEventArgs(0, r.Index)); };
             profile.Click += async (_, _) => await OpenProfileAsync();
             var workDays = new ToolStripMenuItem("📅  Ngày làm việc");
             workDays.Click += (s, e) => BtnSchedule_Click(s, e);
             var refresh = new ToolStripMenuItem("🔄  Làm mới danh sách") { ShortcutKeyDisplayString = "F5" };
             refresh.Click += (_, _) => _ = LoadAsync();
-            menu.Items.AddRange(new ToolStripItem[] { profile, workDays, new ToolStripSeparator(), refresh });
+            menu.Items.AddRange(new ToolStripItem[] { detail, new ToolStripSeparator(), profile, workDays, new ToolStripSeparator(), refresh });
             ModernMenu.Apply(menu);
             menu.Opening += (_, e) =>
             {
@@ -119,21 +121,17 @@ namespace TruckingSystem.Desktop.GUI_DriverManagement
                     filterBar.Is("warehouse", WarehouseText(d)) &&
                     filterBar.MatchesSearch(d.Code, d.FullName, d.Phone, d.LicenseNumber, d.LicenseClass, d.PositionName, d.WarehouseName))
                 .ToList();
+            // CHỈ cột chính (cùng kiểu màn Chuyến); điện thoại, chức danh, số / hạn bằng lái, giấy khám, kinh nghiệm,
+            // cảnh báo đầy đủ: NHẤP ĐÚP xem chi tiết. Sửa hồ sơ / ngày làm: chuột phải.
             grid.DataSource = rows.Select(d => new
             {
                 d.EmployeeId,
                 Mã_NV = d.Code,
                 Họ_tên = d.FullName,
-                Điện_thoại = d.Phone ?? "—",
-                Chức_danh = d.PositionName ?? "—",
-                Hồ_sơ = d.ProfileStatus,
-                Số_bằng_lái = d.LicenseNumber ?? "—",
                 Hạng = d.LicenseClass ?? "—",
-                Hạn_bằng_lái = d.LicenseExpiryDate?.ToString("dd/MM/yyyy") ?? "—",
-                Kinh_nghiệm = d.YearsOfExperience is int y ? $"{y} năm" : "—",
                 Kho_đóng_quân = WarehouseText(d),
                 Trạng_thái = d.Availability,
-                Cảnh_báo = d.Warning ?? "",
+                Cảnh_báo = string.IsNullOrEmpty(d.Warning) ? "" : "⚠️ Có",
             }).ToList();
             filterBar.SetCount(rows.Count, _drivers.Count);
 
@@ -173,10 +171,37 @@ namespace TruckingSystem.Desktop.GUI_DriverManagement
         /// form tự nhận ra đã có hồ sơ hay chưa để chuyển chế độ.</summary>
         private async void BtnEditProfile_Click(object? sender, EventArgs e) => await OpenProfileAsync();
 
+        /// <summary>Nhấp đúp = XEM đầy đủ thông tin (sửa hồ sơ / ngày làm: chuột phải hoặc nút trong cửa sổ chi tiết).</summary>
         private async void Grid_CellDoubleClick(object? sender, DataGridViewCellEventArgs e)
         {
-            if (e.RowIndex < 0) return;
-            await OpenProfileAsync();
+            if (e.RowIndex < 0 || _api is null || Selected() is not { } d) return;
+            using var f = new TruckingSystem.Desktop.GUI_ResourceManagement.ResourceDetailForm($"🚕 Tài xế {d.FullName} ({d.Code})", new (string, string)[]
+            {
+                ("# Tình trạng", ""),
+                ("Trạng thái", d.Availability),
+                ("Cảnh báo", string.IsNullOrEmpty(d.Warning) ? "✅ Không có" : "⚠️ " + d.Warning),
+                ("# Thông tin", ""),
+                ("Liên hệ", d.Phone ?? "—"),
+                ("Chức danh / kho", $"{d.PositionName ?? "—"} · {WarehouseText(d)}"),
+                ("Kinh nghiệm", d.YearsOfExperience is int y ? $"{y} năm" : "—"),
+                ("# Bằng lái & sức khỏe", ""),
+                ("Hồ sơ", d.HasProfile ? "✅ " + d.ProfileStatus : "⛔ Chưa có hồ sơ"),
+                ("Bằng lái", d.HasProfile ? $"{d.LicenseNumber ?? "—"} · hạng {d.LicenseClass ?? "—"}" : "—"),
+                ("Hạn bằng lái", ExpiryText(d.LicenseExpiryDate)),
+                ("Hạn khám sức khỏe", ExpiryText(d.HealthCertExpiryDate)),
+            }, new (string, bool, Func<Task>)[]
+            {
+                (d.HasProfile ? "✏️ Sửa hồ sơ" : "📝 Tạo hồ sơ", true, OpenProfileAsync),
+                ("📅 Ngày làm", d.HasProfile, () => { BtnSchedule_Click(this, EventArgs.Empty); return Task.CompletedTask; }),
+            });
+            if (f.ShowDialog(FindForm()) == DialogResult.OK && f.PendingAction is { } run) await run();
+        }
+
+        private static string ExpiryText(DateTime? d)
+        {
+            if (d is not DateTime x) return "— chưa nhập";
+            var days = (x.Date - DateTime.Today).Days;
+            return days < 0 ? $"⛔ Hết hạn {x:dd/MM/yyyy}" : days <= 30 ? $"🟡 {x:dd/MM/yyyy} (còn {days} ngày)" : $"✅ {x:dd/MM/yyyy}";
         }
 
         private async Task OpenProfileAsync()
