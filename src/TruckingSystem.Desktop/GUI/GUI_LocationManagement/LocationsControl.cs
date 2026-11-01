@@ -12,7 +12,8 @@ namespace TruckingSystem.Desktop.GUI_LocationManagement
             Theme.StyleGrid(grid);
             GridLayout.FitColumns(grid); // cột vừa nội dung, nhiều cột thì cuộn ngang thay vì cắt chữ
             Load += (_, _) => Theme.UniformButtons(toolbar); // nút đều nhau, xuống dòng vẫn thẳng cột
-            filterBar.AddChoice("scope", "Loại", new[] { ScopeShared, ScopeCustomer });
+            // Không có bộ lọc chọn: "Loại" (dùng chung / riêng của khách) luôn là "Dùng chung" vì chưa có chỗ tạo địa điểm
+            // riêng cho khách; tọa độ thì luôn có (form + máy chủ bắt buộc chọn từ gợi ý VietMap). Chỉ cần ô tìm nhanh.
             filterBar.FilterChanged += (_, _) => BindGrid();
             Load += async (_, _) => await LoadAsync();
         }
@@ -31,22 +32,17 @@ namespace TruckingSystem.Desktop.GUI_LocationManagement
             if (f.ShowDialog(FindForm()) == DialogResult.OK) await LoadAsync();
         }
 
-        private const string ScopeShared = "Dùng chung";
-        private const string ScopeCustomer = "Địa chỉ riêng của khách";
         private List<TruckingSystem.Desktop.DTO_LocationManagement.LocationItem> _locations = new();
 
-        /// <summary>Đổ lưới theo bộ lọc (tìm theo tên, địa chỉ; lọc dùng chung / riêng của khách).</summary>
+        /// <summary>Đổ lưới theo ô tìm nhanh (tên, địa chỉ). Chỉ 2 cột Tên + Địa chỉ: bỏ Loại (luôn "Dùng chung"),
+        /// Vĩ độ / Kinh độ (số thô, địa điểm nào cũng có vì bắt buộc chọn từ gợi ý VietMap).</summary>
         private void BindGrid()
         {
-            var rows = _locations.Where(l => filterBar.Is("scope", l.CustomerId is null ? ScopeShared : ScopeCustomer)
-                                             && filterBar.MatchesSearch(l.Name, l.Address)).ToList();
+            var rows = _locations.Where(l => filterBar.MatchesSearch(l.Name, l.Address)).ToList();
             grid.DataSource = rows.Select(l => new
             {
                 Tên_địa_điểm = l.Name,
                 Địa_chỉ = l.Address,
-                Loại = l.CustomerId is null ? ScopeShared : ScopeCustomer,
-                Vĩ_độ = l.Lat?.ToString("0.0000") ?? "—",
-                Kinh_độ = l.Lng?.ToString("0.0000") ?? "—",
             }).ToList();
             filterBar.SetCount(rows.Count, _locations.Count);
         }
