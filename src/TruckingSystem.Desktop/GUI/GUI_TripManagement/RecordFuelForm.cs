@@ -30,6 +30,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
         public RecordFuelForm()
         {
             InitializeComponent();
+            TruckingSystem.Desktop.Common.DialogFit.Enable(this, root); // vừa màn hình mọi máy, bảng không bị ép mất chữ
             TruckingSystem.Desktop.Common.DialogKeys.Enable(this); // Esc = đóng
             Theme.StyleGrid(gridLogs);
             SetupGrid();
@@ -237,10 +238,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
             var log = _logs.FirstOrDefault(l => l.Id == logId);
             if (log is null) return;
 
-            var confirm = MessageBox.Show(this,
-                $"Xóa lần đổ {log.Liters:N2} lít ({log.Cost:N0} đ) lúc {log.TimestampLocal:dd/MM/yyyy HH:mm}?",
-                "Xác nhận xóa", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-            if (confirm != DialogResult.Yes) return;
+            if (!Ask.Confirm(this, "Xóa lần đổ xăng này?", $"{log.Liters:N2} lít · {log.Cost:N0} đ · lúc {log.TimestampLocal:dd/MM/yyyy HH:mm}. Không hoàn tác được.", "🗑 Xóa lần đổ", danger: true)) return;
 
             _busy = true;
             try

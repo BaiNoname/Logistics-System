@@ -86,6 +86,22 @@ namespace TruckingSystem.Desktop.Common
                 var vScroll = grid.Controls.OfType<VScrollBar>().FirstOrDefault()?.Visible == true ? SystemInformation.VerticalScrollBarWidth : 0;
                 var avail = grid.ClientSize.Width - vScroll - 2;
                 var total = state.Natural.Sum();
+                if (total > avail)
+                {
+                    // THIẾU CHỖ (kéo nhỏ cửa sổ / laptop màn nhỏ): CO các cột theo tỉ lệ phần "dư" của từng cột, mỗi cột
+                    // không nhỏ hơn mức tối thiểu (~5 ký tự) — chữ dài hiện "…", rê chuột xem đủ. Chỉ khi co hết cỡ vẫn
+                    // không vừa mới để bảng cuộn ngang (trước đây hẹp chút là cuộn ngang ngay).
+                    var minW = state.Natural.Select((n, i) => Math.Min(n, Math.Max(cols[i].MinimumWidth, grid.Font.Height * 5))).ToArray();
+                    var shrinkable = state.Natural.Select((n, i) => n - minW[i]).ToArray();
+                    var sumShrink = Math.Max(1, shrinkable.Sum());
+                    var deficit = Math.Min(total - avail, shrinkable.Sum());
+                    for (var i = 0; i < cols.Length; i++)
+                    {
+                        cols[i].AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
+                        cols[i].Width = Math.Max(minW[i], state.Natural[i] - (int)((long)deficit * shrinkable[i] / sumShrink));
+                    }
+                    return;
+                }
                 var extra = Math.Max(0, avail - total);
                 var given = 0;
                 for (var i = 0; i < cols.Length; i++)

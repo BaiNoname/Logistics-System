@@ -8,6 +8,8 @@
         public bool Eligible { get; set; }
         /// <summary>Lý do không dùng được (Eligible = false) hoặc lưu ý (Eligible = true).</summary>
         public string? Reason { get; set; }
+        /// <summary>Chỉ với tài xế: xe (Id) mà tài xế không lái được (hạng bằng) -> lý do. null = API cũ / lái được hết.</summary>
+        public Dictionary<int, string>? CannotDrive { get; set; }
 
         public override string ToString()
             => Eligible

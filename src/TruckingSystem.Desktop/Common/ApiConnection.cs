@@ -1,4 +1,4 @@
-using System.Net.Http.Headers;
+﻿using System.Net.Http.Headers;
 using System.Text;
 using Newtonsoft.Json;
 
@@ -19,10 +19,29 @@ namespace TruckingSystem.Desktop.Common
 
         private readonly HashSet<string> _roles = new(StringComparer.OrdinalIgnoreCase);
 
+        /// <summary>Máy chủ trả 401 (phiên đăng nhập hết hạn / token không còn hợp lệ) — màn chính lắng nghe để báo 1 lần
+        /// rồi đưa về màn đăng nhập (trước đây màn nào cũng chỉ báo lỗi lạ, người dùng không biết phải làm gì).</summary>
+        public event EventHandler? SessionExpired;
+
         public ApiConnection(string baseUrl)
         {
             BaseUrl = baseUrl.TrimEnd('/');
             Http = new HttpClient { BaseAddress = new Uri(BaseUrl) };
+        }
+
+        /// <summary>Gửi yêu cầu, đổi lỗi MẠNG thành câu dễ hiểu (trước đây hiện nguyên văn tiếng Anh như
+        /// "No such host is known", "A task was canceled").</summary>
+        private static async Task<HttpResponseMessage> SendAsync(Func<Task<HttpResponseMessage>> send)
+        {
+            try { return await send(); }
+            catch (TaskCanceledException ex)
+            {
+                throw new HttpRequestException("Máy chủ phản hồi quá lâu — kiểm tra mạng rồi thử lại sau ít phút.", ex);
+            }
+            catch (HttpRequestException ex) when (ex.StatusCode is null)
+            {
+                throw new HttpRequestException("Không kết nối được máy chủ — kiểm tra mạng (wifi / dây mạng) rồi bấm Làm mới.", ex);
+            }
         }
 
         public void SetToken(string token, IEnumerable<string>? roles = null)
@@ -44,31 +63,32 @@ namespace TruckingSystem.Desktop.Common
         }
 
         public async Task<T?> GetAsync<T>(string path)
-            => await ReadResultAsync<T>(await Http.GetAsync(path));
+            => await ReadResultAsync<T>(await SendAsync(() => Http.GetAsync(path)));
 
         public async Task<T?> PostAsync<T>(string path, object payload)
         {
             var content = new StringContent(JsonConvert.SerializeObject(payload), Encoding.UTF8, "application/json");
-            return await ReadResultAsync<T>(await Http.PostAsync(path, content));
+            return await ReadResultAsync<T>(await SendAsync(() => Http.PostAsync(path, content)));
         }
 
         public async Task<T?> PutAsync<T>(string path, object payload)
         {
             var content = new StringContent(JsonConvert.SerializeObject(payload), Encoding.UTF8, "application/json");
-            return await ReadResultAsync<T>(await Http.PutAsync(path, content));
+            return await ReadResultAsync<T>(await SendAsync(() => Http.PutAsync(path, content)));
         }
 
         public async Task<T?> DeleteAsync<T>(string path)
-            => await ReadResultAsync<T>(await Http.DeleteAsync(path));
+            => await ReadResultAsync<T>(await SendAsync(() => Http.DeleteAsync(path)));
 
         /// <summary>Đọc phản hồi API — xử lý lỗi TẬP TRUNG cho mọi màn hình:
         /// - 400 mà body là object kết quả {success:false, message:"..."} -> trả về object đó
         ///   luôn (màn hình tự hiện result.Message sạch sẽ), không ném lỗi.
         /// - Các lỗi khác -> ném HttpRequestException với thông báo TIẾNG VIỆT dễ hiểu,
         ///   thay vì "Lỗi API (400): {json thô}" như trước.</summary>
-        private static async Task<T?> ReadResultAsync<T>(HttpResponseMessage resp)
+        private async Task<T?> ReadResultAsync<T>(HttpResponseMessage resp)
         {
             var body = await resp.Content.ReadAsStringAsync();
+            if ((int)resp.StatusCode == 401 && Token is not null) SessionExpired?.Invoke(this, EventArgs.Empty);
             if (resp.IsSuccessStatusCode)
                 return string.IsNullOrWhiteSpace(body) ? default : JsonConvert.DeserializeObject<T>(body);
 
@@ -94,7 +114,7 @@ namespace TruckingSystem.Desktop.Common
         {
             switch (status)
             {
-                case 401: return "Phiên đăng nhập đã hết hạn — vui lòng đăng xuất rồi đăng nhập lại.";
+                case 401: return "Phiên đăng nhập đã hết hạn — vui lòng đăng nhập lại.";
                 case 403: return "Tài khoản của bạn không có quyền thực hiện chức năng này.";
                 case 404 when string.IsNullOrWhiteSpace(body): return "Không tìm thấy dữ liệu (404).";
             }
@@ -141,7 +161,7 @@ namespace TruckingSystem.Desktop.Common
         public async Task<(bool IsSuccess, string Body)> PostRawAsync(string path, object payload)
         {
             var content = new StringContent(JsonConvert.SerializeObject(payload), Encoding.UTF8, "application/json");
-            var resp = await Http.PostAsync(path, content);
+            var resp = await SendAsync(() => Http.PostAsync(path, content));
             var body = await resp.Content.ReadAsStringAsync();
             return (resp.IsSuccessStatusCode, body);
         }

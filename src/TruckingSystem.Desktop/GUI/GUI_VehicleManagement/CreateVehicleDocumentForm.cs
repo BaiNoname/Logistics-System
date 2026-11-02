@@ -82,7 +82,7 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
         {
             if (dtExpiryDate.Value <= dtIssueDate.Value)
             {
-                lblStatus.Text = "Ngày hết hạn phải sau ngày cấp.";
+                FieldHint.Show(dtExpiryDate, lblStatus, "Ngày hết hạn phải sau ngày cấp."); // tô đỏ + nhảy vào đúng ô
                 return;
             }
             if (_api is null) return;

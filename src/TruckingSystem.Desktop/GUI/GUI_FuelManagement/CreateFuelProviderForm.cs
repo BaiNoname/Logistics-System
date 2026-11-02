@@ -21,7 +21,7 @@ namespace TruckingSystem.Desktop.GUI_FuelManagement
         {
             if (string.IsNullOrWhiteSpace(txtName.Text))
             {
-                lblStatus.Text = "Vui lòng nhập tên hãng xăng.";
+                FieldHint.Show(txtName, lblStatus, "Vui lòng nhập tên hãng xăng."); // tô đỏ + nhảy vào đúng ô
                 return;
             }
             if (_api is null) return;

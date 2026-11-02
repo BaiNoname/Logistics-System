@@ -18,7 +18,12 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
         public ManageBinsForm()
         {
             InitializeComponent();
+            TruckingSystem.Desktop.Common.DialogFit.Enable(this, root); // vừa màn hình mọi máy, bảng không bị ép mất chữ
             TruckingSystem.Desktop.Common.DialogKeys.Enable(this); // Esc = đóng
+            // Từ ngữ thống nhất: chỗ đặt hàng gọi là "kệ" ở mọi màn (đặt bằng code, không sửa Designer).
+            btnAddBin.Text = "➕ Thêm kệ mới";
+            btnEditBin.Text = "✏️ Sửa kệ";
+            btnDeleteBin.Text = "🗑️ Xóa kệ";
             Theme.StyleGrid(grid);
             GridLayout.FitColumns(grid);
             grid.DataBindingComplete += (_, _) => { if (grid.Columns["Id"] != null) grid.Columns["Id"]!.Visible = false; };
@@ -73,7 +78,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             {
                 _bins = await _api.Warehouses.GetBinsAsync(_zoneId);
                 BindGrid();
-                lblStatus.Text = $"{_bins.Count} vị trí lưu trữ";
+                lblStatus.Text = $"{_bins.Count} kệ";
             }
             catch (Exception ex)
             {
@@ -86,13 +91,13 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
         {
             if (_api is null || grid.CurrentRow is null)
             {
-                MessageBox.Show(FindForm(), "Vui lòng chọn 1 vị trí trước.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(FindForm(), "Vui lòng chọn 1 kệ trước.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
             var binId = (int)grid.CurrentRow.Cells["Id"].Value;
             var binCode = _bins.First(b => b.Id == binId).Code;
 
-            var confirm = MessageBox.Show(FindForm(), $"Xóa hẳn vị trí \"{binCode}\"? Không thể hoàn tác.",
+            var confirm = MessageBox.Show(FindForm(), $"Xóa hẳn kệ \"{binCode}\"? Không thể hoàn tác.",
                 "Xác nhận xóa", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
             if (confirm != DialogResult.Yes) return;
 
@@ -116,13 +121,13 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
         {
             if (_api is null || grid.CurrentRow is null)
             {
-                MessageBox.Show(FindForm(), "Vui lòng chọn 1 vị trí trước.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(FindForm(), "Vui lòng chọn 1 kệ trước.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
             var binId = (int)grid.CurrentRow.Cells["Id"].Value;
             var bin = _bins.First(b => b.Id == binId);
 
-            using var f = new EditBinForm(_api, bin, _zoneName, _zoneWidth, _zoneHeight);
+            using var f = new EditBinForm(_api, bin, _zoneName, _zoneWidth, _zoneHeight, _zoneId);
             if (f.ShowDialog(FindForm()) == DialogResult.OK) await LoadAsync();
         }
 

@@ -115,7 +115,9 @@ public record ServiceResult(bool Success, string? Message);
 
 /// <summary>1 lựa chọn xe / tài xế. Eligible = dùng được; Reason = lý do không dùng được
 /// (hoặc lưu ý, VD tài xế chưa đăng ký ngày làm hôm nay).</summary>
-public record ReassignOptionDto(int Id, string Text, bool Eligible, string? Reason);
+/// <summary>CannotDrive (chỉ với tài xế): xe (Id) mà hạng bằng của tài xế KHÔNG lái được -> lý do —
+/// để màn Đổi xe / tài xế báo ngay khi chọn cặp không hợp, không phải bấm Lưu mới biết.</summary>
+public record ReassignOptionDto(int Id, string Text, bool Eligible, string? Reason, Dictionary<int, string>? CannotDrive = null);
 
 /// <summary>AffectedTripIds: các chuyến sẽ được đổi CÙNG lúc (chặng Lấy hàng + Giao hàng
 /// chưa chạy của cùng xe trong đơn đi cùng nhau). Message != null: không đổi được.</summary>

@@ -32,7 +32,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
             if (_api is null) return;
             if (txtDescription.Text.Trim().Length < 5)
             {
-                lblStatus.Text = "Vui lòng mô tả sự cố (ít nhất 5 ký tự) — VD \"Thủng lốp sau trên QL1A, Km 1520\".";
+                FieldHint.Show(txtDescription, lblStatus, "Vui lòng mô tả sự cố (ít nhất 5 ký tự) — VD \"Thủng lốp sau trên QL1A, Km 1520\"."); // tô đỏ + nhảy vào đúng ô
                 return;
             }
 

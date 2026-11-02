@@ -25,6 +25,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
         public TripCargoReviewForm()
         {
             InitializeComponent();
+            TruckingSystem.Desktop.Common.DialogFit.Enable(this, root); // vừa màn hình mọi máy, bảng không bị ép mất chữ
             TruckingSystem.Desktop.Common.DialogKeys.Enable(this); // Esc = đóng
             Theme.StyleGrid(gridLines);
         }
@@ -153,7 +154,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, "Không mở được ảnh: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                Ask.Fail(this, "Không mở được ảnh: " + ex.Message);
             }
         }
 

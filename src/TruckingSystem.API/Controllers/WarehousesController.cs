@@ -14,11 +14,33 @@ public class WarehousesController : ControllerBase
 {
     private readonly IWarehouseSlottingService _slottingService;
     private readonly TruckingSystem.Application.Trips.ITripService _tripService;
+    private readonly ITripIssueService _tripIssueService;
 
-    public WarehousesController(IWarehouseSlottingService slottingService, TruckingSystem.Application.Trips.ITripService tripService)
+    public WarehousesController(IWarehouseSlottingService slottingService, TruckingSystem.Application.Trips.ITripService tripService,
+        ITripIssueService tripIssueService)
     {
         _slottingService = slottingService;
         _tripService = tripService;
+        _tripIssueService = tripIssueService;
+    }
+
+    /// <summary>Số việc chờ cho chấm đỏ trên menu (1 lần gọi thay cho ~2 + 2×số kho lần gọi tải nguyên danh sách).</summary>
+    [HttpGet("work-counts")]
+    public async Task<ActionResult<WorkCountsDto>> GetWorkCounts()
+    {
+        var ordersTrips = User.IsInRole("Admin") || User.IsInRole("Dispatcher");
+        var (drafts, waitAlloc, waitApproval, inByWarehouse, overdueStorage) = await _slottingService.GetWorkCountsAsync(ordersTrips);
+        var result = new List<WarehouseWorkCountDto>();
+        var today = TruckingSystem.Application.Common.VnClock.Today;
+        foreach (var w in await _slottingService.GetWarehousesAsync())
+        {
+            // Chờ XUẤT: đúng quy tắc màn "Xuất kho theo chuyến" (chuyến sẵn sàng xuất). Chạy tuần tự — cùng 1 DbContext.
+            var ready = (await _tripIssueService.GetAsync(w.Id)).Where(x => x.CanIssue).ToList();
+            var outTrips = ready.Select(x => x.TripId).Distinct().Count();
+            var urgent = ready.Where(x => x.LatestStart is DateTime ls && ls.Date <= today).Select(x => x.TripId).Distinct().Count();
+            result.Add(new WarehouseWorkCountDto(w.Id, w.Name, inByWarehouse.GetValueOrDefault(w.Id), outTrips, urgent));
+        }
+        return Ok(new WorkCountsDto(drafts, waitAlloc, waitApproval, result, Math.Max(0, overdueStorage)));
     }
 
     // Endpoint chính thể hiện thuật toán Best-Fit — gọi khi hàng chuẩn bị nhập kho,

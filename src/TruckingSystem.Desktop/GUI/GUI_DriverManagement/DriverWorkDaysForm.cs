@@ -30,6 +30,7 @@ namespace TruckingSystem.Desktop.GUI_DriverManagement
         public DriverWorkDaysForm()
         {
             InitializeComponent();
+            TruckingSystem.Desktop.Common.DialogFit.Enable(this, root); // vừa màn hình mọi máy, bảng không bị ép mất chữ
             TruckingSystem.Desktop.Common.DialogKeys.Enable(this); // Esc = đóng
             Theme.StyleGrid(grid);
             SetupGrid();
@@ -352,10 +353,7 @@ namespace TruckingSystem.Desktop.GUI_DriverManagement
                 return;
             }
 
-            var confirm = MessageBox.Show(this,
-                $"Xóa ngày làm {Weekday(day.Date)}, {day.Date:dd/MM/yyyy}?",
-                "Xác nhận xóa", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-            if (confirm != DialogResult.Yes) return;
+            if (!Ask.Confirm(this, $"Xóa ngày làm {Weekday(day.Date)}, {day.Date:dd/MM/yyyy}?", "Tài xế sẽ không được xếp chuyến vào ngày này.", "🗑 Xóa ngày làm", danger: true)) return;
 
             _busy = true;
             try

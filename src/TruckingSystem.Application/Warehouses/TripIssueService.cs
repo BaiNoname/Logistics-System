@@ -12,7 +12,8 @@ public record TripIssueLineDto(int TripId, int TransportOrderId, string OrderCod
     string DriverName, string PlateNumber, DateTime? PlannedStartDate,
     string TripState, bool CanIssue, bool CanUndo, string? BlockReason,
     int CargoLineId, string CargoType, decimal QtyPlanned, decimal QtyIssued, decimal QtyPending, decimal QtyOnHand,
-    string BinsText, string Destination = "—"); // điểm giao của chuyến (xe chở hàng đi đâu)
+    string BinsText, string Destination = "—", // điểm giao của chuyến (xe chở hàng đi đâu)
+    DateTime? LatestStart = null, DateTime? Deadline = null, string? DeadlineText = null); // mốc PHẢI xuất phát trước (cùng quy tắc màn Chuyến) + hạn giao
 
 public interface ITripIssueService
 {
@@ -85,9 +86,24 @@ public class TripIssueService : ITripIssueService
         var waitingOrderIds = waitingReceiptOrders.Count == 0 ? new HashSet<int>()
             : (await _db.Trips.Where(t => waitingReceiptOrders.Contains(t.Id)).Select(t => t.TransportOrderId).ToListAsync()).ToHashSet();
 
+        // MỐC XUẤT PHÁT MUỘN NHẤT (cùng quy tắc DeliveryDeadlineRules với màn Chuyến / Chia xe) — để kho biết
+        // chuyến nào phải xuất trước (VD SG → Hà Nội ~3 ngày, hạn 05/11 -> phải xuất chậm nhất 03/11).
+        var orderTripEntities = (await _db.Trips.AsNoTracking().Where(t => orderIds.Contains(t.TransportOrderId)).ToListAsync())
+            .ToLookup(t => t.TransportOrderId);
+        var deadlines = await _db.TransportOrders.Where(o => orderIds.Contains(o.Id))
+            .ToDictionaryAsync(o => o.Id, o => o.CommittedDeliveryDate);
+        var today = VnClock.Today;
+        TruckingSystem.Application.Trips.DeliveryDeadlineRules.Info? Deadline(int tripId, int orderId)
+        {
+            var entity = orderTripEntities[orderId].FirstOrDefault(x => x.Id == tripId);
+            return entity is null ? null
+                : TruckingSystem.Application.Trips.DeliveryDeadlineRules.Evaluate(entity, orderTripEntities[orderId], deadlines.GetValueOrDefault(orderId), today);
+        }
+
         var result = new List<TripIssueLineDto>();
         foreach (var t in trips)
         {
+            var dl = Deadline(t.Id, t.TransportOrderId);
             var tLines = lines.Where(l => l.TripId == t.Id).Select(l =>
             {
                 var done = issued.FirstOrDefault(i => i.TripId == t.Id && i.CargoLineId == l.CargoLineId)?.Qty ?? 0;
@@ -112,10 +128,12 @@ public class TripIssueService : ITripIssueService
                     t.PlannedStartDate, state, !allIssued && reason is null, anyIssued, reason,
                     l.CargoLineId, l.CargoType, l.QtyPlanned, l.Issued, l.Pending, l.OnHand,
                     bins.TryGetValue(l.CargoLineId, out var b) ? b : "—",
-                    TripRouteText.For(TripLegType.Delivery, null, null, null, t.DropoffName, t.DropoffPoint).To));
+                    TripRouteText.For(TripLegType.Delivery, null, null, null, t.DropoffName, t.DropoffPoint).To,
+                    dl?.LatestStart, dl?.Deadline, dl?.Text));
         }
-        // Chuyến xuất phát sớm nhất lên đầu.
-        return result.OrderBy(r => r.PlannedStartDate ?? DateTime.MaxValue).ThenBy(r => r.TripId).ThenBy(r => r.CargoLineId).ToList();
+        // Chuyến GẤP nhất (mốc phải xuất phát sớm nhất) lên đầu; chưa có hạn thì theo ngày xuất phát dự kiến.
+        return result.OrderBy(r => r.LatestStart ?? r.PlannedStartDate ?? DateTime.MaxValue)
+            .ThenBy(r => r.PlannedStartDate ?? DateTime.MaxValue).ThenBy(r => r.TripId).ThenBy(r => r.CargoLineId).ToList();
     }
 
     public async Task<WarehouseActionResult> IssueTripAsync(int warehouseId, int tripId, StockPerformer performer)

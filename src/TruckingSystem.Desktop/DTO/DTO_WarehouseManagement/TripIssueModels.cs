@@ -25,5 +25,9 @@
         public string BinsText { get; set; } = "";
         /// <summary>Điểm giao của chuyến — xe chở hàng đi đâu.</summary>
         public string Destination { get; set; } = "—";
+        /// <summary>Mốc PHẢI xuất phát trước (cùng quy tắc màn Chuyến) — null = đơn chưa có hạn / API cũ.</summary>
+        public DateTime? LatestStart { get; set; }
+        public DateTime? Deadline { get; set; }
+        public string? DeadlineText { get; set; }
     }
 }

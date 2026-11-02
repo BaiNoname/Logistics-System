@@ -28,6 +28,12 @@ public class TransportOrderListItem
     public string PickupMethod { get; set; } = "CompanyPickup";
     /// <summary>Hàng của đơn đang nằm trong kho đang xem — chỉ API danh sách đơn theo kho trả về.</summary>
     public decimal QtyOnHand { get; set; }
+    /// <summary>Kho đang xem đúng là kho trung chuyển của đơn (mặc định true khi API cũ chưa trả về).</summary>
+    public bool IsHomeWarehouse { get; set; } = true;
+    /// <summary>Còn dòng hàng chưa nhập đủ số khai báo (mặc định true khi API cũ chưa trả về).</summary>
+    public bool HasQtyToReceive { get; set; } = true;
+    /// <summary>Hàng nằm kho quá hạn giao bao nhiêu ngày mà CHƯA chọn do bên nào (0 = không / API cũ).</summary>
+    public int OverdueStorageDays { get; set; }
 
     /// <summary>Chữ hiện ở ô chọn đơn của màn Xuất hàng tồn: nói rõ đơn nào xuất tay được, đơn
     /// nào đang chờ xuất theo chuyến giao.</summary>
@@ -111,6 +117,24 @@ public class TransportOrderDetailItem
     public int? DropoffLocationId { get; set; }
     public int? ContractId { get; set; }
     public string? ContractCode { get; set; }
+    /// <summary>Đơn chờ Chia xe nhưng CHƯA chia được — lý do (null = chia được / API cũ).</summary>
+    public string? AllocateBlockReason { get; set; }
+    /// <summary>Chuyến giao đã KHÔNG KỊP hạn giao — câu giải thích (null = ổn).</summary>
+    public string? LateWarning { get; set; }
+    /// <summary>Ngày giao sớm nhất nếu xuất phát ngay — gợi ý khi dời hạn.</summary>
+    public DateTime? SuggestedDeadline { get; set; }
+    /// <summary>Hàng nằm kho sau hạn giao (null = không).</summary>
+    public OverdueStorageItem? OverdueStorage { get; set; }
+}
+
+/// <summary>Hàng nằm kho quá hạn giao — Decision null = chưa chọn (mặc định công ty chịu), "Customer" / "Company".</summary>
+public class OverdueStorageItem
+{
+    public int Days { get; set; }
+    public decimal VolumeM3 { get; set; }
+    public decimal RatePerM3PerDay { get; set; }
+    public decimal EstimatedFee { get; set; }
+    public string? Decision { get; set; }
 }
 
 /// <summary>Kết quả thao tác Xác nhận/Hủy đơn.</summary>

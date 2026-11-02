@@ -14,6 +14,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
         public ManageIncidentsForm()
         {
             InitializeComponent();
+            TruckingSystem.Desktop.Common.DialogFit.Enable(this, root); // vừa màn hình mọi máy, bảng không bị ép mất chữ
             TruckingSystem.Desktop.Common.DialogKeys.Enable(this); // Esc = đóng
             Theme.StyleGrid(grid);
         }
@@ -62,28 +63,26 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
         {
             if (_api is null || grid.CurrentRow is null)
             {
-                MessageBox.Show(FindForm(), "Vui lòng chọn 1 sự cố trước.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                Toast.Show(this, "👆 " + "Vui lòng chọn 1 sự cố trước.", ToastKind.Info);
                 return;
             }
             var id = (int)grid.CurrentRow.Cells["Id"].Value;
 
-            var confirm = MessageBox.Show(FindForm(), "Xóa hẳn bản ghi sự cố này? Không thể hoàn tác.",
-                "Xác nhận xóa", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
-            if (confirm != DialogResult.Yes) return;
+            if (!Ask.Confirm(this, "Xóa bản ghi sự cố này?", "Bản ghi bị xóa hẳn, không hoàn tác được.", "🗑 Xóa sự cố", danger: true)) return;
 
             try
             {
                 var result = await _api.Trips.DeleteIncidentAsync(id);
                 if (!result.Success)
                 {
-                    MessageBox.Show(FindForm(), result.Message ?? "Không thể xóa.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    Ask.Fail(this, result.Message ?? "Không thể xóa.");
                     return;
                 }
                 await LoadAsync();
             }
             catch (Exception ex)
             {
-                MessageBox.Show(FindForm(), "Lỗi: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                Ask.Fail(this, "Lỗi: " + ex.Message);
             }
         }
 

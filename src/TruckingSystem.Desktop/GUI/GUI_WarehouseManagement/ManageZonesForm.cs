@@ -14,6 +14,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
         public ManageZonesForm()
         {
             InitializeComponent();
+            TruckingSystem.Desktop.Common.DialogFit.Enable(this, root); // vừa màn hình mọi máy, bảng không bị ép mất chữ
             TruckingSystem.Desktop.Common.DialogKeys.Enable(this); // Esc = đóng
             Theme.StyleGrid(grid);
             grid.CellDoubleClick += (_, _) => OpenBinsForSelected();
@@ -45,7 +46,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                     Số_vị_trí = z.BinCount,
                 }).ToList();
                 grid.DataBindingComplete += (_, _) => { if (grid.Columns["Id"] != null) grid.Columns["Id"]!.Visible = false; };
-                lblStatus.Text = $"{_zones.Count} khu vực — nhấp đúp 1 dòng để quản lý vị trí lưu trữ bên trong";
+                lblStatus.Text = $"{_zones.Count} khu vực — nhấp đúp 1 dòng để quản lý kệ bên trong";
             }
             catch (Exception ex)
             {
@@ -94,7 +95,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             var zoneId = (int)grid.CurrentRow.Cells["Id"].Value;
             var zone = _zones.First(z => z.Id == zoneId);
 
-            using var f = new EditZoneForm(_api, zone);
+            using var f = new EditZoneForm(_api, zone, _warehouseId);
             if (f.ShowDialog(FindForm()) == DialogResult.OK) await LoadAsync();
         }
 

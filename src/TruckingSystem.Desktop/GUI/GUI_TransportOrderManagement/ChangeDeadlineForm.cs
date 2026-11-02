@@ -19,6 +19,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
         public ChangeDeadlineForm()
         {
             InitializeComponent();
+            TruckingSystem.Desktop.Common.DialogFit.Enable(this, root); // vừa màn hình mọi máy, bảng không bị ép mất chữ
             Anim.FadeIn(this);
             // Bên yêu cầu BẮT BUỘC chọn (không chọn sẵn): khách xin dời trễ hơn -> khách chịu phí lưu kho.
             cboRequester.Items.Add(new ComboOption("Customer", "👤 Khách hàng (tính phí lưu kho)"));
@@ -75,6 +76,18 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                 : "Hạn giao hiện tại: ⚠️ chưa có (đơn cũ) — chọn hạn giao để bổ sung.";
             dtNewDate.Value = order.CommittedDeliveryDate is { } d && d.Date >= DateTime.Today ? d.Date : DateTime.Today.AddDays(1);
             Load += async (_, _) => { await LoadEstimateAsync(); await LoadFeePreviewAsync(); };
+        }
+
+        /// <summary>Mở sẵn cho việc "báo khách & dời hạn": điền ngày gợi ý, chọn sẵn bên yêu cầu, gợi ý lý do (vẫn sửa được).</summary>
+        public void Preset(DateTime? newDate, string requester, string? reason = null)
+        {
+            if (newDate is DateTime d)
+            {
+                var v = d.Date < dtNewDate.MinDate ? dtNewDate.MinDate : d.Date > dtNewDate.MaxDate ? dtNewDate.MaxDate : d.Date;
+                dtNewDate.Value = v;
+            }
+            cboRequester.SelectedItem = cboRequester.Items.Cast<ComboOption>().FirstOrDefault(o => o.Value == requester);
+            if (!string.IsNullOrWhiteSpace(reason) && string.IsNullOrWhiteSpace(txtReason.Text)) txtReason.Text = reason;
         }
 
         /// <summary>Tham khảo: tuyến chạy khoảng bao nhiêu ngày (đơn chưa chia xe -> giao sớm nhất ngày nào).</summary>

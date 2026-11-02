@@ -1,4 +1,4 @@
-using TruckingSystem.Desktop.Common;
+﻿using TruckingSystem.Desktop.Common;
 using TruckingSystem.Desktop.DTO_TransportOrderManagement;
 using TruckingSystem.Desktop.DTO_TripManagement;
 using TruckingSystem.Desktop.GUI_RouteManagement;
@@ -17,6 +17,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
         public OrderDetailForm()
         {
             InitializeComponent();
+            _fit = TruckingSystem.Desktop.Common.DialogFit.Enable(this, root); // vừa màn hình mọi máy, bảng không bị ép mất chữ
             TruckingSystem.Desktop.Common.DialogKeys.Enable(this); // Esc = đóng
             // Chữ cho NHÂN VIÊN (không nêu tên thuật toán) — đặt bằng code, không sửa Designer.
             btnAllocate.Text = "🚚  Chia xe tự động";
@@ -35,6 +36,70 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             dtPlannedStart.MinDate = DateTime.Today;
             dtPlannedStart.MaxDate = DateTime.Today.AddDays(3); // khớp server: chia xe trước tối đa 3 ngày
             dtPlannedStart.Value = DateTime.Today; // mặc định xuất phát hôm nay
+            SetupActionLayout();
+        }
+
+        // ================= Bố cục nút theo quy tắc UX (1 nút chính, nguy hiểm tách riêng, việc tiếp theo) =================
+        private readonly Label _nextStep = ButtonStyles.NextStep();
+        private readonly Label _why = new() { AutoSize = true, ForeColor = Color.FromArgb(148, 163, 184), Font = new Font("Segoe UI", 8.5F), Margin = new Padding(0, 0, 0, 6) };
+        private readonly FlowLayoutPanel _primaryBox = new() { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, WrapContents = false, Margin = Padding.Empty };
+        private readonly Button _btnClose = Theme.MakeSecondaryButton("Đóng", 100);
+
+        /// <summary>Chi tiết đơn: khung "👉 Việc tiếp theo" dưới dòng thông tin; hàng nút phụ (Sửa đơn, Xem lộ trình…) giữ ở
+        /// giữa; CHÂN cửa sổ: [Hủy đơn… chữ đỏ] ........ [Đóng] [NÚT CHÍNH theo trạng thái: Xác nhận đơn / Chia xe].
+        /// Trước đây 5 nút ngang hàng, 3 màu, nút Hủy đứng sát nút chính. Dời control có sẵn bằng code, không sửa Designer.</summary>
+        private void SetupActionLayout()
+        {
+            KpiStrip.InsertRow(root, _nextStep, root.GetRow(lblTrackingLink));
+            actionBar.Controls.Add(_why);
+            actionBar.SetFlowBreak(btnViewRoute, true);
+
+            // Nút nguy hiểm -> chữ đỏ góc trái chân cửa sổ.
+            actionBar.Controls.Remove(btnCancel);
+            btnCancel.Text = "Hủy đơn…";
+            ButtonStyles.DangerLink(btnCancel);
+            // Nút chính (Xác nhận / Chia xe kèm ngày xuất phát) -> góc phải chân cửa sổ, cạnh Đóng.
+            foreach (var c in new Control[] { btnConfirm, lblPlannedStart, dtPlannedStart, btnAllocate }) actionBar.Controls.Remove(c);
+            lblPlannedStart.Anchor = dtPlannedStart.Anchor = AnchorStyles.Left;
+            _primaryBox.Controls.AddRange(new Control[] { lblPlannedStart, dtPlannedStart, btnConfirm, btnAllocate });
+            foreach (var b in new[] { btnEdit, btnViewRoute }) ButtonStyles.Secondary(b);
+            ButtonStyles.Primary(btnConfirm);
+            ButtonStyles.Primary(btnAllocate);
+            _btnClose.Click += (_, _) => Close();
+            CancelButton = _btnClose;
+            ButtonStyles.Footer(this, btnCancel, _btnClose, _primaryBox);
+            SetupAlerts(); // ⏰ không kịp hạn + 📦 nằm kho quá hạn (OrderDetailForm.Alerts.cs)
+        }
+
+        /// <summary>Hiện / ẩn nút + câu "Việc tiếp theo" theo trạng thái đơn (gọi sau khi tải đơn).</summary>
+        private void UpdateActionLayout(TransportOrderDetailItem order)
+        {
+            var draft = order.Status == "Draft";
+            var waitAlloc = order.Status == "Confirmed" && order.Trips.Count == 0;
+            btnEdit.Visible = draft;
+            btnConfirm.Visible = draft;
+            btnAllocate.Visible = lblPlannedStart.Visible = dtPlannedStart.Visible = waitAlloc;
+            btnCancel.Visible = btnCancel.Enabled;
+            // Chưa chia được (khách chưa mang hàng tới đủ / kho thiếu khu) -> mờ nút + ghi lý do NGAY, không bấm rồi mới báo lỗi.
+            var blocked = waitAlloc ? order.AllocateBlockReason : null;
+            if (blocked is not null) btnAllocate.Enabled = false;
+            _why.Text = draft ? "🚚 Chia xe: cần xác nhận đơn trước"
+                : blocked is not null ? "🚚 Chia xe chưa được: " + blocked : "";
+            _why.Visible = _why.Text.Length > 0;
+            _nextStep.Text = "👉 Việc tiếp theo: " + order.Status switch
+            {
+                "Draft" when order.CargoLines.Count == 0 => "đơn chưa có dòng hàng — bấm Sửa đơn để thêm hàng rồi mới xác nhận được.",
+                "Draft" => "kiểm tra thông tin rồi bấm ✅ Xác nhận đơn — xác nhận xong mới chia xe được.",
+                "Confirmed" when order.Trips.Count == 0 && blocked is not null && order.PickupMethod == "SelfDelivery"
+                    => "chờ khách mang hàng tới kho — nhân viên kho nhập đủ hàng (màn Kho → Nhận hàng khách mang tới) rồi mới chia xe.",
+                "Confirmed" when order.Trips.Count == 0 && blocked is not null
+                    => "kho trung chuyển của đơn chưa có khu phù hợp — thêm khu ở màn Kho → Quản lý khu vực rồi mới chia xe.",
+                "Confirmed" when order.Trips.Count == 0 => "chọn ngày xuất phát rồi bấm 🚚 Chia xe tự động để hệ thống xếp xe + tài xế.",
+                "Confirmed" or "InProgress" => "đơn đang được vận chuyển — theo dõi từng chuyến ở bảng bên dưới (màn Chuyến xe để thao tác).",
+                "Done" => "đơn đã hoàn tất — không còn việc cần làm.",
+                "Cancelled" => "đơn đã hủy.",
+                _ => "—",
+            };
         }
 
         /// <summary>Bấm link theo dõi -> copy vào Clipboard (gắn sự kiện trong Designer).</summary>
@@ -42,7 +107,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
         {
             if (string.IsNullOrEmpty(_trackingUrl)) return;
             Clipboard.SetText(_trackingUrl);
-            MessageBox.Show(FindForm(), "Đã sao chép link theo dõi (dán gửi khách được ngay):\n" + _trackingUrl, "Đã sao chép", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            Toast.Show(this, "🔗 Đã sao chép link theo dõi — dán gửi khách được ngay.", ToastKind.Info);
         }
 
         public OrderDetailForm(ApiServices api, int orderId) : this()
@@ -110,6 +175,9 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                 var deliveryLeft = order.Trips.Any(t => t.LegType == "Delivery" && t.Status is "InProgress" or "PendingConfirmation" or "Completed");
                 var pickupPending = order.Trips.Any(t => t.LegType == "Pickup" && t.Status == "PendingConfirmation");
                 btnCancel.Enabled = order.Status is not ("Done" or "Cancelled") && !deliveryLeft && !pickupPending;
+                UpdateActionLayout(order);
+                UpdateAlerts(order);
+                _fit?.Invoke(); // hiện thêm khung cảnh báo -> nới cửa sổ cho bảng hàng / chuyến vẫn thấy đủ
             }
             catch (Exception ex)
             {
@@ -176,10 +244,9 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
         private async void BtnConfirm_Click(object? sender, EventArgs e)
         {
             if (_api is null) return;
-            var confirm = MessageBox.Show(FindForm(),
-                "Xác nhận đơn này? Sau khi xác nhận sẽ KHÔNG sửa được nữa (chỉ có thể hủy).",
-                "Xác nhận đơn hàng", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-            if (confirm != DialogResult.Yes) return;
+            if (!Ask.Confirm(this, $"Xác nhận đơn {_currentOrder?.Code}?",
+                    "Sau khi xác nhận sẽ KHÔNG sửa được đơn nữa (chỉ có thể hủy). Bước tiếp theo: chia xe.",
+                    "✅ Xác nhận đơn")) return;
 
             btnConfirm.Enabled = false;
             try
@@ -209,10 +276,8 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
         private async void BtnCancel_Click(object? sender, EventArgs e)
         {
             if (_api is null) return;
-            var confirm = MessageBox.Show(FindForm(),
-                "Bạn có chắc chắn muốn HỦY đơn hàng này không? Không thể hoàn tác.",
-                "Xác nhận hủy đơn", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
-            if (confirm != DialogResult.Yes) return;
+            if (!Ask.Confirm(this, $"Hủy đơn {_currentOrder?.Code}?", "Đơn bị hủy hẳn, không hoàn tác được.",
+                    "❌ Hủy đơn", danger: true, cancelText: "Giữ đơn")) return;
 
             btnCancel.Enabled = false;
             try
@@ -270,11 +335,10 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             var stops = BuildRouteStops(_currentOrder);
             if (stops.Count < 2)
             {
-                MessageBox.Show(FindForm(),
+                Ask.Fail(this,
                     "Chưa đủ tọa độ để vẽ lộ trình (cần kho trung chuyển và điểm giao có tọa độ" +
                     (_currentOrder.PickupMethod == "SelfDelivery" ? "" : ", cùng điểm lấy hàng") + ").\n\n" +
-                    "Kiểm tra tọa độ của kho (màn Kho) và địa điểm (màn Địa điểm).",
-                    "Thiếu tọa độ", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    "Kiểm tra tọa độ của kho (màn Kho) và địa điểm (màn Địa điểm).");
                 return;
             }
             using var f = new RouteMapForm(_api, _currentOrder.Code, stops);
@@ -305,11 +369,10 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                 // với khách). Đồng ý thì chia, hệ thống ghi nhật ký người đã chấp nhận trễ hạn.
                 if (!result.Success && result.NeedsLateConfirmation)
                 {
-                    var answer = MessageBox.Show(FindForm(),
+                    if (!Ask.Confirm(this, "Không kịp hạn giao — vẫn chia xe?",
                         (result.Message ?? "Chuyến dự kiến không kịp hạn giao.") +
-                        "\n\nVẫn chia xe cho đơn này?\n(Hệ thống sẽ ghi nhật ký bạn đã xác nhận chia trễ hạn — nên báo trước cho khách.)",
-                        "Không kịp hạn giao", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2);
-                    if (answer != DialogResult.Yes)
+                        "\n\nHệ thống sẽ ghi nhật ký bạn đã xác nhận chia trễ hạn — nên báo trước cho khách.",
+                        "🚚 Vẫn chia xe (trễ hạn)", danger: true, cancelText: "Chưa chia"))
                     {
                         lblResult.Text = "⏰ Chưa chia xe — " + (result.Message ?? "không kịp hạn giao.");
                         lblResult.ForeColor = Theme.Warning;

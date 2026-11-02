@@ -389,7 +389,7 @@ namespace TruckingSystem.Desktop.GUI_Shared
             }
             catch (HttpRequestException ex)
             {
-                lblStatus.Text = "❌ Không kết nối được máy chủ: " + ex.Message;
+                lblStatus.Text = "❌ " + ex.Message; // đã là câu dễ hiểu (ApiConnection đổi lỗi mạng sang tiếng Việt)
             }
             catch (Exception ex)
             {
