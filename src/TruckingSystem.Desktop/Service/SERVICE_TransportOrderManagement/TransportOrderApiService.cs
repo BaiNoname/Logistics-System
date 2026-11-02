@@ -31,6 +31,10 @@ namespace TruckingSystem.Desktop.SERVICE_TransportOrderManagement
             => _conn.PostAsync<OrderActionResultItem>($"/api/transport-orders/{orderId}/storage-fee-records",
                 new { endDate = endDate.Date, reason })!;
 
+        /// <summary>Hàng nằm kho quá hạn giao: party = "Customer" (tính phí, bắt buộc lý do) / "Company" (0 đ).</summary>
+        public Task<OrderActionResultItem> SetStorageResponsibilityAsync(int orderId, string party, string? reason)
+            => _conn.PostAsync<OrderActionResultItem>($"/api/transport-orders/{orderId}/storage-responsibility", new { party, reason })!;
+
         /// <summary>Ước tính số ngày chạy của tuyến (Lấy hàng + Giao) — để gợi ý hạn giao khi tạo đơn.</summary>
         public async Task<int> EstimateRouteDaysAsync(int? pickupLocationId, int? dropoffLocationId, int warehouseId, string pickupMethod)
         {

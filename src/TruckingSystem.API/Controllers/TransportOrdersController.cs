@@ -111,6 +111,15 @@ public class TransportOrdersController : ControllerBase
         return result.Success ? Ok(result) : BadRequest(result);
     }
 
+    /// <summary>Hàng nằm kho QUÁ HẠN GIAO: chọn do khách hàng (tính phí lưu kho) hay do công ty (0 đ).</summary>
+    [HttpPost("{id:int}/storage-responsibility")]
+    public async Task<ActionResult<OrderActionResult>> SetStorageResponsibility(int id, StorageResponsibilityRequest request)
+    {
+        var result = await _service.SetStorageResponsibilityAsync(id, request,
+            User.FindFirstValue(ClaimTypes.NameIdentifier), User.FindFirstValue(ClaimTypes.Name));
+        return result.Success ? Ok(result) : BadRequest(result);
+    }
+
     /// <summary>Đổi / bổ sung hạn giao cho đơn Đã xác nhận / Đang chạy (bắt buộc lý do, ghi nhật ký).</summary>
     [HttpPost("{id:int}/deadline")]
     public async Task<ActionResult<OrderActionResult>> ChangeDeadline(int id, ChangeDeadlineRequest request)

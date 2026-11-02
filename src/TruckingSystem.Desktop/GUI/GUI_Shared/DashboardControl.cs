@@ -1,4 +1,4 @@
-using System.Drawing;
+﻿using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 using TruckingSystem.Desktop.Common;
@@ -34,8 +34,10 @@ namespace TruckingSystem.Desktop.GUI_Shared
 
         // ---- trang con
         private const string PageOverview = "ov", PageFinance = "fin", PageFuel = "fuel";
-        private readonly QuickTabs _pages = new();
-        private readonly QuickTabs _periodTabs = new();
+        private readonly UnderlineTabs _pages = new();   // tab gạch chân = ĐỔI TRANG (khác hẳn ô chọn kỳ)
+        private readonly ComboBox _periodBox = new() { DropDownStyle = ComboBoxStyle.DropDownList, Font = new Font("Segoe UI", 10F), Width = 190, Margin = new Padding(0, 4, 10, 4) };
+        private static readonly (string Key, string Text)[] PeriodOptions =
+            { ("m", "Tháng này"), ("pm", "Tháng trước"), ("q", "3 tháng gần nhất"), ("y", "Năm nay"), ("c", "📅 Tự chọn ngày…") };
         private readonly FlowLayoutPanel _kpiMain = new() { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Dock = DockStyle.Fill, WrapContents = true, Margin = new Padding(0, 0, 0, 6) };
         private readonly FlowLayoutPanel _attention = new()
         {
@@ -98,28 +100,25 @@ namespace TruckingSystem.Desktop.GUI_Shared
 
         // ================= Bố cục (dựng bằng code) =================
 
-        /// <summary>Thanh chọn kỳ: nút nhanh Tháng này · Tháng trước · 3 tháng gần nhất · Năm nay · Tùy chọn (thay ô xổ xuống).
-        /// Ô chọn ngày chỉ hiện khi bấm "Tùy chọn".</summary>
+        /// <summary>Thanh chọn kỳ: "Xem số liệu của: [3 tháng gần nhất ▾]" (1 ô chọn — trước đây là hàng nút giống hệt hàng
+        /// tab trang, dễ nhầm) + khoảng ngày + giờ cập nhật ở dòng trạng thái + nút 🔄. Ô chọn ngày chỉ hiện khi "Tự chọn ngày…".</summary>
         private void BuildFilterBar()
         {
-            lblPeriod.Visible = false;
             _cboPeriod.Visible = false;
-            _periodTabs.Dock = DockStyle.None;
-            _periodTabs.Margin = new Padding(0, 2, 12, 0);
-            _periodTabs.Add("m", "Tháng này");
-            _periodTabs.Add("pm", "Tháng trước");
-            _periodTabs.Add("q", "3 tháng gần nhất", "Tháng này và 2 tháng trước đó");
-            _periodTabs.Add("y", "Năm nay");
-            _periodTabs.Add("c", "📅 Tùy chọn", "Tự chọn từ ngày – đến ngày rồi bấm \"Xem báo cáo\"");
-            _periodTabs.SelectTab("q", raiseEvent: false);
-            _periodTabs.Changed += async (_, _) =>
+            lblPeriod.Text = "Xem số liệu của:";
+            lblPeriod.Visible = true;
+            _periodBox.Width = LogicalToDeviceUnits(190);
+            foreach (var (_, text) in PeriodOptions) _periodBox.Items.Add(text);
+            _periodBox.SelectedIndex = 2; // 3 tháng gần nhất
+            _periodBox.SelectedIndexChanged += async (_, _) =>
             {
-                _period = _periodTabs.Selected ?? "q";
+                _period = PeriodOptions[Math.Max(0, _periodBox.SelectedIndex)].Key;
                 ApplyPeriod();
-                if (_period != "c") await LoadAsync(); // "Tùy chọn": chọn ngày xong mới bấm Xem báo cáo
+                if (_period != "c") await LoadAsync(); // "Tự chọn ngày": chọn ngày xong mới bấm Xem
             };
-            _filterBar.Controls.Add(_periodTabs);
-            _filterBar.Controls.SetChildIndex(_periodTabs, 0);
+            _filterBar.Controls.Add(_periodBox);
+            _filterBar.Controls.SetChildIndex(_periodBox, _filterBar.Controls.GetChildIndex(lblPeriod) + 1);
+            ButtonStyles.Secondary(_btnRefresh);
         }
 
         /// <summary>Xếp lại các khối có sẵn thành 3 trang con. Mỗi khối là 1 hàng của dashLayout, gắn với 1 trang
@@ -250,7 +249,8 @@ namespace TruckingSystem.Desktop.GUI_Shared
             var custom = _period == "c";
             lblFrom.Visible = lblTo.Visible = _dtpFrom.Visible = _dtpTo.Visible = custom;
             _dtpFrom.Enabled = _dtpTo.Enabled = custom;
-            _btnRefresh.Text = custom ? "🔄 Xem báo cáo" : "🔄 Làm mới";
+            _btnRefresh.Text = custom ? "🔄 Xem" : "🔄 Làm mới";
+            if (custom) ButtonStyles.Primary(_btnRefresh); else ButtonStyles.Secondary(_btnRefresh);
             if (custom) return;
 
             var monthStart = new DateTime(today.Year, today.Month, 1);
@@ -335,7 +335,7 @@ namespace TruckingSystem.Desktop.GUI_Shared
                 _chartMonthly.Invalidate();
                 _chartCosts.Invalidate();
 
-                _lblStatus.Text = $"{_report.TotalOrders} đơn tạo từ {from:dd/MM/yyyy} đến {to:dd/MM/yyyy}";
+                _lblStatus.Text = $"{from:dd/MM/yyyy} – {to:dd/MM/yyyy} (theo ngày tạo đơn) · {_report.TotalOrders} đơn · cập nhật lúc {DateTime.Now:HH:mm}";
             }
             catch (Exception ex)
             {
@@ -356,17 +356,19 @@ namespace TruckingSystem.Desktop.GUI_Shared
             ClearCards(_kpiMain);
             _kpiMain.Controls.Add(MakeCard("💰", "Doanh thu", ReportFormat.Money(r.Revenue), Theme.Primary, Theme.TextPrimary,
                 Delta(r.Revenue, p?.Revenue, prevLabel, higherIsBetter: true, out var c1) ?? $"Đã thu {ReportFormat.Money(r.Collected)}",
-                $"{ReportFormat.FullMoney(r.Revenue)} (theo hóa đơn) — đã thu {ReportFormat.FullMoney(r.Collected)}", big: true, subColor: c1));
+                $"{ReportFormat.FullMoney(r.Revenue)} (theo hóa đơn) — đã thu {ReportFormat.FullMoney(r.Collected)}", big: true, subColor: c1,
+                link: "Xem từng đơn", onClick: ShowAllOrders));
             _kpiMain.Controls.Add(MakeCard("💸", "Chi phí", ReportFormat.Money(r.TotalCost), Theme.Warning, Theme.TextPrimary,
                 Delta(r.TotalCost, p?.TotalCost, prevLabel, higherIsBetter: false, out var c2) ?? $"Xăng {ReportFormat.Money(r.FuelCost)}",
                 $"{ReportFormat.FullMoney(r.TotalCost)} = xăng {ReportFormat.FullMoney(r.FuelCost)} + phát sinh / sự cố {ReportFormat.FullMoney(r.ExpenseCost + r.IncidentCost)}",
-                big: true, subColor: c2));
+                big: true, subColor: c2, link: "Xem cơ cấu chi phí", onClick: () => GoTo(PageFinance, _chartCosts)));
 
             var isProfit = r.Profit >= 0;
             var profitColor = isProfit ? Theme.Success : Theme.Danger;
             _kpiMain.Controls.Add(MakeCard(isProfit ? "📈" : "📉", isProfit ? "Lãi" : "Lỗ", ReportFormat.Money(r.Profit), profitColor, profitColor,
                 r.MarginPercent.HasValue ? $"Biên lợi nhuận {r.MarginPercent:0.#}%" : "Chưa có doanh thu",
-                ReportFormat.FullMoney(r.Profit) + (p is not null ? $" — {prevLabel}: {ReportFormat.FullMoney(p.Profit)}" : ""), big: true));
+                ReportFormat.FullMoney(r.Profit) + (p is not null ? $" — {prevLabel}: {ReportFormat.FullMoney(p.Profit)}" : ""), big: true,
+                link: "Xem đơn bị lỗ", onClick: () => ShowOrders("đơn hoàn tất bị lỗ", o => o.Status == "Done" && o.Profit < 0)));
 
             // Tỉ lệ giao ĐÚNG HẠN: đơn hoàn tất có hạn giao, ngày xong chặng Giao cuối ≤ hạn giao.
             var judged = r.OnTimeOrders + r.LateOrders;
@@ -378,7 +380,8 @@ namespace TruckingSystem.Desktop.GUI_Shared
                     : prevJudged > 0 ? $"Trễ {r.LateOrders} đơn · {prevLabel} {ReportFormat.Percent(p!.OnTimeOrders, prevJudged)}"
                     : $"Đúng hạn {r.OnTimeOrders} · Trễ {r.LateOrders} đơn",
                 "Đơn hoàn tất trong kỳ có hạn giao: so ngày giao xong với hạn giao" +
-                (r.OrdersWithoutDeadline > 0 ? $" ({r.OrdersWithoutDeadline} đơn cũ không có hạn giao — không tính)" : ""), big: true));
+                (r.OrdersWithoutDeadline > 0 ? $" ({r.OrdersWithoutDeadline} đơn cũ không có hạn giao — không tính)" : ""), big: true,
+                link: "Xem đơn giao trễ", onClick: () => ShowOrders("đơn giao trễ hạn", o => DeliveryGroup(o) == DeliveryLate)));
         }
 
         /// <summary>Xóa thẻ cũ VÀ giải phóng (Controls.Clear() không giải phóng -> đổi kỳ nhiều lần app nặng dần).</summary>
@@ -477,6 +480,16 @@ namespace TruckingSystem.Desktop.GUI_Shared
             _attention.ResumeLayout(true);
         }
 
+        /// <summary>Thẻ Doanh thu -> bảng lãi / lỗ TẤT CẢ đơn trong kỳ (bỏ lọc).</summary>
+        private void ShowAllOrders()
+        {
+            _showAllOrders = true;
+            _preset = null;
+            _presetText = null;
+            _ordersFilter.SetOnly(null, null);
+            GoTo(PageFinance, _grid);
+        }
+
         private void ShowOrders(string text, Func<OrderProfitItem, bool> preset)
         {
             _showAllOrders = true;
@@ -539,13 +552,13 @@ namespace TruckingSystem.Desktop.GUI_Shared
 
         /// <summary>Thẻ số liệu (sinh theo dữ liệu nên tạo bằng code). big = thẻ chính ở trang Tổng quan (to hơn).</summary>
         private Panel MakeCard(string icon, string label, string value, Color accent, Color valueColor, string sub, string? tooltip,
-            bool big = false, Color? subColor = null)
+            bool big = false, Color? subColor = null, string? link = null, Action? onClick = null)
         {
             int S(int v) => LogicalToDeviceUnits(v);
 
             var card = new TableLayoutPanel
             {
-                Size = big ? new Size(S(260), S(122)) : new Size(S(220), S(104)),
+                Size = big ? new Size(S(260), S(link is null ? 122 : 142)) : new Size(S(220), S(104)),
                 Margin = new Padding(0, 0, S(14), S(10)),
                 Padding = new Padding(S(14), S(8), S(8), S(6)),
                 BackColor = Theme.CardBg,
@@ -584,6 +597,19 @@ namespace TruckingSystem.Desktop.GUI_Shared
             card.SetColumnSpan(lblValue, 2);
             card.Controls.Add(lblSub, 0, 2);
             card.SetColumnSpan(lblSub, 2);
+
+            // "Xem … →": cả thẻ bấm được, mở đúng chỗ xem chi tiết con số này (góp ý UX: thẻ số trước đây không bấm được).
+            if (link is not null && onClick is not null)
+            {
+                card.RowCount = 4;
+                card.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+                var lblLink = new Label { Text = link + " →", AutoSize = true, Font = Theme.FontSmall, ForeColor = Theme.Primary, Margin = new Padding(0, S(2), 0, 0) };
+                card.Controls.Add(lblLink, 0, 3);
+                card.SetColumnSpan(lblLink, 2);
+                card.Cursor = Cursors.Hand;
+                foreach (Control c in card.Controls) { c.Cursor = Cursors.Hand; c.Click += (_, _) => onClick(); }
+                card.Click += (_, _) => onClick();
+            }
 
             if (tooltip is not null)
             {
@@ -860,7 +886,7 @@ namespace TruckingSystem.Desktop.GUI_Shared
         private void PaintMonthlyChart(Graphics g, Rectangle rect)
         {
             g.SmoothingMode = SmoothingMode.AntiAlias;
-            DrawFrame(g, rect, "📈 Doanh thu & chi phí theo tháng");
+            DrawFrame(g, rect, "📈 Doanh thu và chi phí theo tháng");
             DrawLegend(g, rect.Width - 210, 12, Theme.Primary, "Doanh thu");
             DrawLegend(g, rect.Width - 110, 12, Theme.Warning, "Chi phí");
 

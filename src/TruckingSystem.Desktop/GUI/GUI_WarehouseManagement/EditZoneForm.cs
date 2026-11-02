@@ -13,6 +13,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
         public EditZoneForm()
         {
             InitializeComponent();
+            TruckingSystem.Desktop.Common.DialogFit.Enable(this, root); // vừa màn hình mọi máy, bảng không bị ép mất chữ
             TruckingSystem.Desktop.Common.DialogKeys.Enable(this, btnSave); // Esc = đóng, Enter = Lưu
             // Hiện tiếng Việt, gửi đúng mã cho server (trước đây hiện "Normal/Fragile/Hazmat").
             cboZoneType.Items.AddRange(new object[]
@@ -23,10 +24,13 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             });
         }
 
-        public EditZoneForm(ApiServices api, WarehouseZoneItem zone) : this()
+        /// <param name="warehouseId">Kho của khu — có thì hiện sơ đồ xem trước (0 = không hiện).</param>
+        public EditZoneForm(ApiServices api, WarehouseZoneItem zone, int warehouseId = 0) : this()
         {
             _api = api;
             _zoneId = zone.Id;
+            PlacementSetup.Zone(this, inputs, numPosX, numPosY, numWidth, numHeight, lblPosX, lblPosY, lblWidth, lblHeight, lblNote,
+                btnSave, () => txtName.Text.Trim(), api, warehouseId, zone.Id);
 
             txtName.Text = zone.Name;
             cboZoneType.SelectedItem = cboZoneType.Items.Cast<ComboOption>().FirstOrDefault(o => o.Value == zone.ZoneType)
@@ -50,12 +54,12 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
         {
             if (string.IsNullOrWhiteSpace(txtName.Text))
             {
-                lblStatus.Text = "Vui lòng nhập tên khu vực.";
+                FieldHint.Show(txtName, lblStatus, "Vui lòng nhập tên khu vực."); // tô đỏ + nhảy vào đúng ô
                 return;
             }
             if (numWidth.Value <= 0 || numHeight.Value <= 0)
             {
-                lblStatus.Text = "Chiều rộng/cao phải lớn hơn 0.";
+                FieldHint.Show(numWidth, lblStatus, "Chiều rộng/cao phải lớn hơn 0."); // tô đỏ + nhảy vào đúng ô
                 return;
             }
             if (_api is null) return;

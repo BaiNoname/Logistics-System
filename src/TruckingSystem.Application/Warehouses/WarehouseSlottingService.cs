@@ -343,10 +343,41 @@ public class WarehouseSlottingService : IWarehouseSlottingService
 
     public async Task<List<WarehouseListItemDto>> GetWarehousesAsync()
     {
-        return await _db.Warehouses
+        var list = await _db.Warehouses
             .Select(w => new WarehouseListItemDto(w.Id, w.Name, w.Address, w.CapacityM3, w.LengthMeters, w.WidthMeters, w.Lat, w.Lng,
-                w.DoorSide.HasValue ? w.DoorSide.Value.ToString() : null, w.DoorOffsetMeters, w.StorageFeePerM3PerDay))
+                w.DoorSide.HasValue ? w.DoorSide.Value.ToString() : null, w.DoorOffsetMeters, w.StorageFeePerM3PerDay, null))
             .ToListAsync();
+        // Loại khu đang dùng được (khu có ít nhất 1 vị trí) — cùng điều kiện WarehouseZoneRules.AvailableAsync.
+        var zones = (await _db.WarehouseZones
+                .Where(z => _db.StorageBins.Any(b => b.WarehouseZoneId == z.Id))
+                .Select(z => new { z.WarehouseId, z.ZoneType })
+                .Distinct()
+                .ToListAsync())
+            .ToLookup(z => z.WarehouseId, z => z.ZoneType.ToString());
+        return list.Select(w => w with { ZoneTypes = zones[w.Id].ToList() }).ToList();
+    }
+
+    public async Task<(int Drafts, int WaitAllocation, int WaitApproval, Dictionary<int, int> InTripsByWarehouse, int OverdueStorage)> GetWorkCountsAsync(bool includeOrdersTrips)
+    {
+        int drafts = -1, waitAlloc = -1, waitApproval = -1, overdueStorage = -1;
+        if (includeOrdersTrips)
+        {
+            drafts = await _db.TransportOrders.CountAsync(o => o.Status == TransportOrderStatus.Draft);
+            // Đã xác nhận mà chưa có chuyến nào (chưa hủy) — cùng điều kiện "ActiveTripCount == 0" trên Desktop.
+            waitAlloc = await _db.TransportOrders.CountAsync(o => o.Status == TransportOrderStatus.Confirmed
+                && !_db.Trips.Any(t => t.TransportOrderId == o.Id && t.Status != TripStatus.Cancelled));
+            waitApproval = await _db.Trips.CountAsync(t => t.Status == TripStatus.PendingConfirmation);
+            overdueStorage = await TruckingSystem.Application.TransportOrders.OverdueStorageRules.CountUndecidedAsync(_db);
+        }
+        var pendingTripIds = (await PendingReceiptRules.LoadAsync(_db, l => true)).Select(p => p.TripId).Distinct().ToList();
+        var tripWarehouse = await _db.Trips
+            .Where(t => pendingTripIds.Contains(t.Id))
+            .Select(t => new { t.Id, t.WarehouseId })
+            .ToListAsync();
+        var inTrips = tripWarehouse.Where(t => t.WarehouseId.HasValue)
+            .GroupBy(t => t.WarehouseId!.Value)
+            .ToDictionary(g => g.Key, g => g.Count());
+        return (drafts, waitAlloc, waitApproval, inTrips, overdueStorage);
     }
 
     public async Task<WarehouseListItemDto> CreateWarehouseAsync(CreateWarehouseRequest request)
@@ -1507,11 +1538,15 @@ public class WarehouseSlottingService : IWarehouseSlottingService
                 OnHand = _db.WarehouseStocks
                     .Where(s => s.WarehouseId == warehouseId && s.CargoLine.TransportOrderId == o.Id)
                     .Sum(s => (decimal?)s.QtyOnHand) ?? 0m,
+                IsHome = o.WarehouseId == warehouseId,
+                // Còn dòng hàng chưa nhập đủ số khai báo (mọi lần nhập của dòng, theo chuyến lẫn nhập tay).
+                HasQtyToReceive = _db.CargoLines.Any(c => c.TransportOrderId == o.Id
+                    && c.QtyTotal > (_db.GoodsReceipts.Where(r => r.CargoLineId == c.Id).Sum(r => (decimal?)r.QtyReceived) ?? 0m)),
             })
             .ToListAsync();
 
         return orders.Select(o => new WarehouseOrderDto(o.Id, o.Code, o.CustomerName, o.Status.ToString(),
-            o.PickupMethod.ToString(), o.OnHand)).ToList();
+            o.PickupMethod.ToString(), o.OnHand, o.IsHome, o.HasQtyToReceive)).ToList();
     }
 
     public async Task<OrderStockFlowDto?> GetOrderStockFlowAsync(int transportOrderId, int warehouseId)

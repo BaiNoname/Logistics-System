@@ -12,6 +12,8 @@ public interface IWarehouseSlottingService
     Task<List<WarehouseZoneDto>> GetZonesAsync(int warehouseId);
     Task<List<StorageBinDto>> GetBinsAsync(int zoneId);
     Task<List<WarehouseListItemDto>> GetWarehousesAsync();
+    /// <summary>Đếm đơn nháp / đơn chờ chia xe / chuyến chờ duyệt + số chuyến chờ NHẬP theo kho (chỉ đếm, nhẹ).</summary>
+    Task<(int Drafts, int WaitAllocation, int WaitApproval, Dictionary<int, int> InTripsByWarehouse, int OverdueStorage)> GetWorkCountsAsync(bool includeOrdersTrips);
 
     /// <summary>Tạo kho mới — cho phép nhiều kho ở nhiều địa điểm khác nhau.</summary>
     Task<WarehouseListItemDto> CreateWarehouseAsync(CreateWarehouseRequest request);

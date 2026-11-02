@@ -22,6 +22,9 @@ namespace TruckingSystem.Desktop.GUI_ResourceManagement
         public ResourcesControl()
         {
             InitializeComponent();
+            ScreenKit.Help(this, "resources", "Xem nhanh xe và tài xế của từng kho: ai / xe nào chạy được hôm nay, vì sao không.",
+                new[] { "Chọn kho", "Xem cột \"Chạy được hôm nay\" — rê chuột để xem lý do", "Nhấp đúp 1 dòng để xem đủ thông tin và sửa" },
+                "Ctrl+F tìm nhanh");
             Theme.StyleGrid(gridVehicles);
             Theme.StyleGrid(gridDrivers);
             gridVehicles.DataBindingComplete += (_, _) =>
@@ -67,11 +70,26 @@ namespace TruckingSystem.Desktop.GUI_ResourceManagement
             vehicleFilter.AddChoice("status", "Trạng thái", new[] { "Rảnh", "Đang chạy", "Bảo trì", "Ngưng hoạt động" });
             vehicleFilter.AddChoice("license", "Cần bằng", Array.Empty<string>());
             vehicleFilter.FilterChanged += (_, _) => BindVehicles();
+            FilterMemory.Attach(vehicleFilter, "res-vehicles"); // nhớ bộ lọc khi chuyển màn rồi quay lại
             driverFilter.AddChoice("state", "Tình trạng", new[] { StateReady, StateBlocked, StateExpiring });
             driverFilter.AddChoice("workday", "Ngày làm", new[] { WorkToday, WorkNotToday });
             driverFilter.AddChoice("license", "Hạng bằng", Array.Empty<string>());
             driverFilter.FilterChanged += (_, _) => BindDrivers();
+            FilterMemory.Attach(driverFilter, "res-drivers"); // nhớ bộ lọc khi chuyển màn rồi quay lại
             SetupRowMenus();
+            // Rê chuột vào ô "Chạy được hôm nay" -> lý do đầy đủ (ô chỉ ghi lý do ngắn).
+            gridVehicles.CellToolTipTextNeeded += (_, e) =>
+            {
+                if (e.RowIndex < 0 || gridVehicles.Columns[e.ColumnIndex].Name != "Chạy_được_hôm_nay") return;
+                if (gridVehicles.Rows[e.RowIndex].Cells["Id"].Value is int id && _data.Vehicles.FirstOrDefault(x => x.Id == id) is { CanRunToday: false } v)
+                    e.ToolTipText = v.CurrentTrip is not null ? "Đang chạy " + v.CurrentTrip : v.BlockReason ?? "";
+            };
+            gridDrivers.CellToolTipTextNeeded += (_, e) =>
+            {
+                if (e.RowIndex < 0 || gridDrivers.Columns[e.ColumnIndex].Name != "Chạy_được_hôm_nay") return;
+                if (gridDrivers.Rows[e.RowIndex].Cells["EmployeeId"].Value is int id && _data.Drivers.FirstOrDefault(x => x.EmployeeId == id) is { CanRunToday: false } d)
+                    e.ToolTipText = d.CurrentTrip is not null ? "Đang chạy " + d.CurrentTrip : d.BlockReason ?? "";
+            };
             Load += async (_, _) => await LoadAsync();
         }
 
@@ -287,7 +305,7 @@ namespace TruckingSystem.Desktop.GUI_ResourceManagement
                 Tải_trọng = $"{v.CapacityKg / 1000m:0.##} tấn",
                 Trạng_thái = VehicleStatusText(v.Status),
                 Giấy_tờ = DocsSummary(v),
-                Chạy_được_hôm_nay = RunText(v.CanRunToday, v.CurrentTrip),
+                Chạy_được_hôm_nay = RunText(v.CanRunToday, v.CurrentTrip, v.BlockReason),
                 // "Đang đi cùng tài xế nào" + "tài xế nào lái được": chuột phải → 🔗 (PairingForm) cho bảng gọn.
             }).ToList();
             grpVehicles.Text = $"🚚 Xe ({rows.Count}/{_data.Vehicles.Count}) — nhấp đúp: xem đầy đủ / sửa giấy tờ, nhiên liệu · chuột phải: tài xế đi cùng / lái được";
@@ -311,7 +329,7 @@ namespace TruckingSystem.Desktop.GUI_ResourceManagement
                 Họ_tên = d.FullName,
                 Hạng_bằng = d.LicenseClass ?? "—",
                 Ngày_làm_hôm_nay = d.WorksToday ? "✅ Có" : "❌ Chưa ĐK",
-                Chạy_được_hôm_nay = RunText(d.CanRunToday, d.CurrentTrip),
+                Chạy_được_hôm_nay = RunText(d.CanRunToday, d.CurrentTrip, d.BlockReason),
             }).ToList();
             grpDrivers.Text = $"👷 Tài xế ({rows.Count}/{_data.Drivers.Count}) — nhấp đúp: xem đầy đủ / sửa hồ sơ, ngày làm · chuột phải: xe đang dùng / lái được";
             Reselect(gridDrivers, "EmployeeId", keep, "Mã_NV");
@@ -319,8 +337,18 @@ namespace TruckingSystem.Desktop.GUI_ResourceManagement
 
         /// <summary>"Chạy được hôm nay": đang có chuyến chưa xong thì ghi BẬN (không phải lỗi giấy tờ / ngày làm) —
         /// trước đây xe / tài xế đang chạy chuyến cũng hiện "⛔ Không" như thể có vấn đề.</summary>
-        private static string RunText(bool canRun, string? currentTrip)
-            => canRun ? "✅ Được" : currentTrip is not null ? "🚚 Đang bận chuyến" : "⛔ Không";
+        private static string RunText(bool canRun, string? currentTrip, string? reason)
+            => canRun ? "✅ Được" : currentTrip is not null ? "🚚 Đang bận chuyến" : "⛔ " + ShortReason(reason);
+
+        /// <summary>Lý do NGẮN ngay trong ô "Chạy được hôm nay" (VD "Hết hạn đăng kiểm") — trước đây chỉ ghi "⛔ Không",
+        /// phải mở chi tiết mới biết vì sao. Rê chuột vào ô xem lý do đầy đủ.</summary>
+        private static string ShortReason(string? reason)
+        {
+            if (string.IsNullOrWhiteSpace(reason)) return "Không";
+            var first = reason.Split(new[] { ";", " — ", " - ", "\n" }, StringSplitOptions.RemoveEmptyEntries)[0].Trim().TrimEnd('.');
+            if (first.Length > 0) first = char.ToUpper(first[0]) + first[1..];
+            return first.Length > 40 ? first[..38] + "…" : first;
+        }
 
         /// <summary>Tài xế đang đi cùng xe này (chuyến chưa xong) — ghép theo biển số xe của tài xế.</summary>
         private string DriverOnTrip(VehicleResource v)

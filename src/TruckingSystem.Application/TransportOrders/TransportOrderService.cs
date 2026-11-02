@@ -23,7 +23,7 @@ public class TransportOrderService : ITransportOrderService
 
     public async Task<List<TransportOrderListItemDto>> GetAllAsync()
     {
-        return await _db.TransportOrders
+        var list = await _db.TransportOrders
             .Include(o => o.Customer)
             .OrderByDescending(o => o.Id)
             // Truyền ĐỦ tham số (trong truy vấn EF không được bỏ tham số tùy chọn).
@@ -32,8 +32,11 @@ public class TransportOrderService : ITransportOrderService
                 o.ProgressPercent, o.PickupPoint, o.DropoffPoint, o.PublicTrackingToken,
                 o.Trips.Count(t => t.Status != TripStatus.Cancelled),
                 o.CommittedDeliveryDate, o.Warehouse.Name,
-                o.Contract != null ? o.Contract.Code : null))
+                o.Contract != null ? o.Contract.Code : null, 0))
             .ToListAsync();
+        // Hàng nằm kho quá hạn giao mà chưa ai chọn do bên nào -> Desktop gắn nhãn đỏ + đếm vào số việc chờ.
+        var overdue = await OverdueStorageRules.LoadAsync(_db);
+        return list.Select(o => overdue.TryGetValue(o.Id, out var i) && i.Decision is null ? o with { OverdueStorageDays = i.Days } : o).ToList();
     }
 
     public async Task<TransportOrderDetailDto?> GetByIdAsync(int id)
@@ -53,7 +56,137 @@ public class TransportOrderService : ITransportOrderService
 
         if (order is null) return null;
 
-        return MapToDetail(order);
+        var dto = MapToDetail(order);
+        if (order.Status == TransportOrderStatus.Confirmed && order.Trips.All(t => t.Status == TripStatus.Cancelled))
+            dto = dto with { AllocateBlockReason = await AllocateBlockReasonAsync(order) };
+        var (late, suggested) = LateWarning(order);
+        dto = dto with { LateWarning = late, SuggestedDeadline = suggested, OverdueStorage = await OverdueStorageAsync(order) };
+        return dto;
+    }
+
+    /// <summary>Chuyến GIAO chưa chạy đã qua mốc xuất phát muộn nhất / đang chạy mà dự kiến trễ -> câu giải thích +
+    /// ngày giao sớm nhất nếu đi ngay (gợi ý khi dời hạn). CÙNG quy tắc DeliveryDeadlineRules với màn Chuyến.</summary>
+    private static (string? Text, DateTime? Suggested) LateWarning(TransportOrder order)
+    {
+        if (order.CommittedDeliveryDate is not DateTime due || order.Status is TransportOrderStatus.Done or TransportOrderStatus.Cancelled)
+            return (null, null);
+        var today = VnClock.Today;
+        // Xét cả chặng LẤY HÀNG (chuỗi gồm luôn chặng Giao cùng xe) — chặng lấy hàng chưa chạy mà đã quá mốc thì chặng
+        // giao chắc chắn trễ, báo sớm hơn là đợi tới chặng giao.
+        foreach (var t in order.Trips.Where(t => t.LegType is TripLegType.Pickup or TripLegType.Delivery && t.Status is TripStatus.Planned or TripStatus.InProgress)
+                     .OrderBy(t => t.LegType == TripLegType.Pickup ? 0 : 1).ThenBy(t => t.Id))
+        {
+            var info = TruckingSystem.Application.Trips.DeliveryDeadlineRules.Evaluate(t, order.Trips, due, today);
+            if (info.Level != TruckingSystem.Application.Trips.DeliveryDeadlineRules.Level.Late) continue;
+            var days = TruckingSystem.Application.Trips.DeliveryDeadlineRules.DaysFor(
+                TruckingSystem.Application.Trips.DeliveryDeadlineRules.RemainingChain(t, order.Trips));
+            var start = t.Status == TripStatus.InProgress && t.StartTime is DateTime st
+                ? TruckingSystem.Application.Trips.DeliveryDeadlineRules.UtcToVnDate(st)
+                : (t.PlannedStartDate?.Date is DateTime p && p > today ? p : today);
+            var earliest = start.AddDays(Math.Max(1, days) - 1);
+            var leg = t.LegType == TripLegType.Pickup ? " (lấy hàng)" : "";
+            var text = t.Status == TripStatus.InProgress
+                ? $"Chuyến #{t.Id}{leg} đang chạy nhưng dự kiến xong ~{earliest:dd/MM} — không kịp hạn giao {due:dd/MM}."
+                : info.LatestStart is DateTime ls
+                    ? $"Chuyến #{t.Id}{leg} {(today > ls ? $"đã qua mốc xuất phát ({ls:dd/MM})" : $"có lịch xuất phát muộn hơn mốc {ls:dd/MM}")} — không kịp hạn giao {due:dd/MM}. " +
+                      $"Tuyến cần ~{days} ngày chạy; nếu xuất phát {(start == today ? "hôm nay" : $"ngày {start:dd/MM}")} thì giao sớm nhất {earliest:dd/MM}."
+                    : $"Chuyến #{t.Id}: {info.Text}.";
+            return (text, earliest > due.Date ? earliest : due.Date.AddDays(1));
+        }
+        return (null, null);
+    }
+
+    /// <summary>Hàng nằm kho sau hạn giao (null = không): số ngày, m³, đơn giá kho, phí ƯỚC TÍNH (m³ hiện tại × ngày × đơn giá),
+    /// và đã chọn do bên nào.</summary>
+    private async Task<OverdueStorageDto?> OverdueStorageAsync(TransportOrder order)
+    {
+        var items = await OverdueStorageRules.LoadAsync(_db, new[] { order.Id });
+        if (!items.TryGetValue(order.Id, out var item)) return null;
+        var rate = await _db.Warehouses.Where(w => w.Id == order.WarehouseId).Select(w => w.StorageFeePerM3PerDay).FirstOrDefaultAsync();
+        var volume = await StorageFeeRules.CurrentVolumeM3Async(_db, order.Id, order.WarehouseId);
+        return new OverdueStorageDto(item.Days, volume, rate, Math.Round(volume * item.Days * rate, 0), item.Decision?.ToString());
+    }
+
+    /// <summary>Chọn bên chịu phí cho phần hàng nằm kho QUÁ HẠN GIAO hiện tại: "Customer" (bắt buộc lý do — phí tính cho
+    /// khách từ ngày sau hạn giao, cộng dồn mỗi ngày tới khi hàng rời kho) hoặc "Company" (khách 0 đ, tắt nhắc).
+    /// Chọn lại thì cập nhật dòng cũ (ghi nhật ký). Không đổi hạn giao.</summary>
+    public async Task<OrderActionResult> SetStorageResponsibilityAsync(int id, StorageResponsibilityRequest request, string? userId, string? userName)
+    {
+        var order = await _db.TransportOrders.FirstOrDefaultAsync(o => o.Id == id);
+        if (order is null) return new OrderActionResult(false, "Không tìm thấy đơn.");
+        if (order.CommittedDeliveryDate is not DateTime due)
+            return new OrderActionResult(false, "Đơn chưa có hạn giao — không có phần nằm kho quá hạn.");
+        var party = ParseRequester(request.Party);
+        if (party is null) return new OrderActionResult(false, "Chọn bên chịu: Khách hàng hoặc Công ty.");
+        var reason = (request.Reason ?? "").Trim();
+        if (party == DeadlineChangeRequester.Customer && reason.Length < 5)
+            return new OrderActionResult(false, "Do khách hàng: phải ghi lý do (ít nhất 5 ký tự) — VD \"Khách hẹn lại ngày nhận hàng\".");
+        if (reason.Length == 0) reason = "Xác nhận do công ty — không tính phí lưu kho cho khách.";
+        if (reason.Length > 500) reason = reason[..500];
+
+        var items = await OverdueStorageRules.LoadAsync(_db, new[] { id });
+        if (!items.ContainsKey(id))
+            return new OrderActionResult(false, "Đơn hiện không có hàng nằm kho quá hạn giao.");
+
+        var rate = await _db.Warehouses.Where(w => w.Id == order.WarehouseId).Select(w => w.StorageFeePerM3PerDay).FirstOrDefaultAsync();
+        if (party == DeadlineChangeRequester.Customer && rate <= 0)
+            return new OrderActionResult(false, "Kho của đơn chưa khai báo phí lưu kho (Sửa kho → Phí lưu kho) — chưa tính được cho khách.");
+        var volume = await StorageFeeRules.CurrentVolumeM3Async(_db, order.Id, order.WarehouseId);
+        var oldDate = due.Date;
+        var mark = (await _db.DeliveryDeadlineChanges.Where(c => c.TransportOrderId == id && c.IsFeeOnly && c.OldDate != null).ToListAsync())
+            .Where(c => c.OldDate!.Value.Date == oldDate).OrderByDescending(c => c.Id).FirstOrDefault();
+        var endDate = VnClock.Today.AddDays(OverdueStorageRules.WindowDays);
+        if (mark is null)
+        {
+            mark = new DeliveryDeadlineChange { TransportOrderId = id, OldDate = oldDate, IsFeeOnly = true };
+            _db.DeliveryDeadlineChanges.Add(mark);
+        }
+        var before = mark.Id == 0 ? null : StorageFeeRules.RequesterText(mark.RequestedBy);
+        mark.NewDate = endDate;
+        mark.RequestedBy = party.Value;
+        mark.Reason = reason;
+        mark.ChangedByUserName = userName;
+        mark.DelayDays = (endDate - oldDate).Days;
+        mark.StorageFeePerM3PerDay = rate;
+        mark.VolumeM3AtChange = volume;
+        mark.EstimatedFee = 0;
+        _db.AuditLogs.Add(new AuditLog
+        {
+            UserId = userId,
+            Action = "SetStorageResponsibility",
+            EntityName = nameof(TransportOrder),
+            EntityId = id,
+            Detail = $"Hàng đơn {order.Code} nằm kho quá hạn giao {oldDate:dd/MM/yyyy}: {(before is null ? "" : $"đổi từ \"{before}\" ")}chọn do " +
+                     $"{StorageFeeRules.RequesterText(party.Value)}. Lý do: {reason}. Người chọn: {userName ?? "(không rõ)"}.",
+        });
+        await _db.SaveChangesAsync();
+        if (party == DeadlineChangeRequester.Company)
+            return new OrderActionResult(true, $"Đã ghi nhận: hàng đơn {order.Code} nằm kho quá hạn do công ty — không tính phí lưu kho cho khách.");
+        var fee = await StorageFeeRules.ComputeAsync(_db, id);
+        return new OrderActionResult(true, $"Đã ghi nhận do khách hàng: phí lưu kho tính từ {oldDate.AddDays(1):dd/MM/yyyy}, cộng dồn mỗi ngày tới khi hàng rời kho." +
+            (fee is null ? "" : $"\nTổng phí lưu kho hiện tại: {fee.TotalFee:N0} đ{(fee.IsFinal ? "" : " (tạm tính)")}."));
+    }
+
+    /// <summary>Lý do CHƯA Chia xe được — CÙNG điều kiện VehicleAllocationService kiểm tra lúc bấm, để màn chi tiết
+    /// mờ nút + ghi lý do ngay (không phải bấm rồi mới báo lỗi). null = chia được.</summary>
+    private async Task<string?> AllocateBlockReasonAsync(TransportOrder order)
+    {
+        if (order.CargoLines.Count == 0) return "đơn chưa có dòng hàng";
+        if (order.PickupMethod == PickupMethod.CompanyPickup)
+            return await WarehouseZoneRules.MissingReasonAsync(_db, order.WarehouseId,
+                order.CargoLines.Select(c => WarehouseZoneRules.Required(c.IsHazmat, c.IsFragile)));
+        var ids = order.CargoLines.Select(c => c.Id).ToList();
+        var received = await _db.GoodsReceipts.Where(r => ids.Contains(r.CargoLineId))
+            .GroupBy(r => r.CargoLineId)
+            .Select(g => new { g.Key, Qty = g.Sum(r => r.QtyReceived) })
+            .ToDictionaryAsync(x => x.Key, x => x.Qty);
+        var missing = order.CargoLines
+            .Select(c => (c.CargoType, c.QtyTotal, Got: received.TryGetValue(c.Id, out var q) ? q : 0))
+            .Where(x => x.Got < x.QtyTotal)
+            .Select(x => $"\"{x.CargoType}\" mới nhập {x.Got:0.##}/{x.QtyTotal:0.##}")
+            .ToList();
+        return missing.Count == 0 ? null
+            : "khách chưa mang hàng tới kho đủ (" + string.Join("; ", missing) + ") — nhập ở màn Kho → Nhận hàng khách mang tới trước";
     }
 
     public async Task<TransportOrderDetailDto> CreateAsync(CreateTransportOrderRequest request)

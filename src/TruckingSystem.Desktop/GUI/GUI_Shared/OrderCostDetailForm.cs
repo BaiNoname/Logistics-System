@@ -1,4 +1,4 @@
-using System.Drawing;
+﻿using System.Drawing;
 using System.Windows.Forms;
 using TruckingSystem.Desktop.Common;
 using TruckingSystem.Desktop.DTO_ReportManagement;
@@ -18,6 +18,7 @@ namespace TruckingSystem.Desktop.GUI_Shared
             // Giao diện tĩnh (tiêu đề, vùng thẻ tổng hợp, bảng, nút Đóng) nằm ở
             // OrderCostDetailForm.Designer.cs; ở đây chỉ đổ dữ liệu theo từng đơn.
             InitializeComponent();
+            TruckingSystem.Desktop.Common.DialogFit.Enable(this, root); // vừa màn hình mọi máy, bảng không bị ép mất chữ
             Theme.StyleGrid(grid);
         }
 

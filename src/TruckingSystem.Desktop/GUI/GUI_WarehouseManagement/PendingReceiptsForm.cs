@@ -31,11 +31,11 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
         public PendingReceiptsForm()
         {
             InitializeComponent();
+            TruckingSystem.Desktop.Common.DialogFit.Enable(this, root); // vừa màn hình mọi máy, bảng không bị ép mất chữ
             TruckingSystem.Desktop.Common.DialogKeys.Enable(this); // Esc = đóng
             // Chữ cho NHÂN VIÊN (không nêu tên thuật toán) — đặt bằng code, không sửa Designer.
-            lblInfo.Text = "Xe Lấy hàng đã về kho (đã duyệt) nhưng hàng CHƯA lên kệ. Chọn 1 dòng rồi nhập: TỰ ĐỘNG cả chuyến (hệ thống tự chọn vị trí), hoặc THỦ CÔNG — tự chọn vị trí + số lượng (nhập nhiều lần để chia nhiều vị trí). Chặng Giao của đơn chỉ bắt đầu được khi hàng đã nhập kho đủ.";
-            btnAutoTrip.Text = "🤖 Nhập TỰ ĐỘNG cả chuyến";
-            lblManualHint.Text = "Chọn vị trí bên dưới (chỉ hiện vị trí ĐÚNG khu theo tính chất hàng). Dòng đầu = để hệ thống tự chọn vị trí cho riêng số lượng này.";
+            lblInfo.Text = "Xe Lấy hàng đã về kho (đã duyệt) nhưng hàng CHƯA lên kệ. Chọn 1 dòng rồi nhập: TỰ ĐỘNG cả chuyến (hệ thống tự chọn kệ), hoặc THỦ CÔNG — tự chọn kệ + số lượng (nhập nhiều lần để chia nhiều kệ). Chặng Giao của đơn chỉ bắt đầu được khi hàng đã nhập kho đủ.";
+            lblManualHint.Text = "Chọn kệ bên dưới (chỉ hiện kệ ĐÚNG khu theo tính chất hàng). Dòng đầu = để hệ thống tự chọn kệ cho riêng số lượng này. Màu dòng: 🟩 còn nhiều chỗ · 🟨 đã dùng quá nửa · 🟥 gần đầy (≥ 85%).";
             Anim.FadeIn(this); // cửa sổ hiện dần lên
             Theme.StyleGrid(gridPending);
             Theme.StyleGrid(gridBins);
@@ -59,6 +59,107 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                 BindPending((SelectedLine() is { } cur) ? Key(cur) : null);
                 await OnSelectionChangedAsync();
             };
+            SetupSteps();
+            // Đỏ = chặng Giao phải xuất phát hôm nay / đã quá mốc -> nhập trước; vàng = mai.
+            GridDecor.Pills(gridPending, "Giao_phải_xuất_trước", (_, row) =>
+                row >= 0 && row < gridPending.Rows.Count && gridPending.Rows[row].Cells["Key"].Value is string k
+                && _pending.FirstOrDefault(p => Key(p) == k) is { } line
+                    ? ScreenKit.StartBy(line.DeliveryLatestStart).Level switch { 2 => GridDecor.Red, 1 => GridDecor.Amber, _ => null }
+                    : null);
+        }
+
+        // ================= Bố cục theo BƯỚC (mẫu UX ③ đã duyệt) =================
+        // ① Chọn dòng hàng cần nhập (bảng trên) → ② Chọn cách nhập: ⚡ Tự xếp cả chuyến / ✋ Tự chọn kệ (2 ô chọn có mô tả;
+        // "Tự chọn kệ" mới hiện ô số lượng + bảng kệ) → ③ nút chính ở góc phải chân cửa sổ, chữ ghi rõ việc
+        // ("📥 Nhập cả chuyến #12"). Dời control có sẵn bằng code, không sửa Designer.
+        private bool _manualMode;
+        private readonly Panel _optAuto = new(), _optManual = new();
+        private readonly FlowLayoutPanel _primaryBox = new() { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, WrapContents = false, Margin = Padding.Empty, Anchor = AnchorStyles.Right };
+
+        private void SetupSteps()
+        {
+            int S(int v) => LogicalToDeviceUnits(v);
+            lblInfo.Text = "① Chọn dòng hàng cần nhập — hàng của các chuyến lấy hàng đã về kho (đã duyệt) nhưng chưa lên kệ. " +
+                           "Chặng Giao của đơn chỉ bắt đầu được khi hàng đã nhập kho đủ.";
+            lblInfo.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+            lblInfo.ForeColor = Theme.TextPrimary;
+
+            // ② 2 ô chọn cách nhập, thay chỗ nút "Nhập TỰ ĐỘNG" ở hàng giữa.
+            pendingBar.Controls.Remove(btnAutoTrip);
+            var step2 = new FlowLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, WrapContents = true, Margin = Padding.Empty };
+            step2.Controls.Add(new Label { Text = "② Chọn cách nhập:", AutoSize = true, Font = new Font("Segoe UI", 10F, FontStyle.Bold), Margin = new Padding(0, S(14), S(10), 0) });
+            BuildOption(_optAuto, "⚡ Tự xếp cả chuyến", "Hệ thống tự chọn kệ phù hợp — nhanh, dùng cho hầu hết trường hợp", false);
+            BuildOption(_optManual, "✋ Tự chọn kệ", "Chọn từng kệ + số lượng — khi muốn xếp theo ý mình (nhập nhiều lần để chia nhiều kệ)", true);
+            step2.Controls.Add(_optAuto);
+            step2.Controls.Add(_optManual);
+            pendingBar.Controls.Add(step2, 0, 0);
+            ButtonStyles.Secondary(btnRefresh);
+            btnRefresh.Anchor = AnchorStyles.Right | AnchorStyles.Top;
+
+            // ③ chân cửa sổ: [trạng thái] ........ [Đóng] [nút chính]
+            bottomBar.Controls.Remove(btnManual);
+            bottomBar.Controls.Remove(lblStatus);
+            bottomBar.Controls.Remove(btnClose);
+            ButtonStyles.Secondary(btnClose);
+            ButtonStyles.Primary(btnAutoTrip);
+            ButtonStyles.Primary(btnManual);
+            btnAutoTrip.Margin = btnManual.Margin = new Padding(S(8), 0, 0, 0);
+            btnClose.Margin = new Padding(0);
+            _primaryBox.Controls.AddRange(new Control[] { btnClose, btnAutoTrip, btnManual });
+            bottomBar.Controls.Add(lblStatus, 0, 0);
+            bottomBar.SetColumnSpan(lblStatus, 2);
+            bottomBar.Controls.Add(_primaryBox, 2, 0);
+            bottomBar.Padding = new Padding(0, S(8), 0, 0);
+            SetMode(false);
+        }
+
+        private void BuildOption(Panel opt, string title, string desc, bool manual)
+        {
+            int S(int v) => LogicalToDeviceUnits(v);
+            opt.Size = new Size(S(300), S(58));
+            opt.Margin = new Padding(0, S(4), S(10), S(4));
+            opt.Cursor = Cursors.Hand;
+            opt.BackColor = Color.White;
+            var t = new Label { Text = title, AutoSize = true, Font = new Font("Segoe UI", 10F, FontStyle.Bold), Location = new Point(S(10), S(6)), Cursor = Cursors.Hand };
+            var d = new Label
+            {
+                Text = desc,
+                AutoSize = false,
+                Font = new Font("Segoe UI", 8.5F),
+                ForeColor = Theme.TextSecondary,
+                Location = new Point(S(10), S(27)),
+                Size = new Size(S(282), S(28)),
+                Cursor = Cursors.Hand
+            };
+            opt.Controls.Add(t);
+            opt.Controls.Add(d);
+            foreach (Control c in new Control[] { opt, t, d }) c.Click += (_, _) => SetMode(manual);
+            opt.Paint += (_, e) =>
+            {
+                var on = _manualMode == manual;
+                using var pen = new Pen(on ? Theme.Primary : Theme.BorderColor, on ? 2 : 1);
+                e.Graphics.DrawRectangle(pen, 1, 1, opt.Width - 3, opt.Height - 3);
+            };
+        }
+
+        /// <summary>Đổi cách nhập: Tự xếp (ẩn ô số lượng + bảng kệ) / Tự chọn kệ (hiện ra). Nút chính đổi theo.</summary>
+        private void SetMode(bool manual)
+        {
+            _manualMode = manual;
+            foreach (var (o, on) in new[] { (_optAuto, !manual), (_optManual, manual) })
+            {
+                o.BackColor = on ? Color.FromArgb(239, 246, 255) : Color.White;
+                foreach (Control c in o.Controls) c.BackColor = o.BackColor;
+                o.Invalidate();
+            }
+            root.SuspendLayout();
+            manualBar.Visible = lblManualHint.Visible = gridBins.Visible = manual;
+            var binsRow = root.GetRow(gridBins);
+            root.RowStyles[binsRow] = manual ? new RowStyle(SizeType.Percent, 45F) : new RowStyle(SizeType.Absolute, 0);
+            root.ResumeLayout(true);
+            btnAutoTrip.Visible = !manual;
+            btnManual.Visible = manual;
+            UpdateButtons();
         }
 
         public PendingReceiptsForm(ApiServices api, int warehouseId, string warehouseName) : this()
@@ -127,6 +228,8 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                 Khách_hàng = p.CustomerName,
                 Tài_xế_xe = $"{p.DriverName} · {p.PlateNumber}",
                 Về_kho_lúc = p.ArrivedAt is null ? "" : ToVn(p.ArrivedAt.Value).ToString("dd/MM HH:mm"),
+                // Chặng Giao của đơn phải xuất phát trước — hàng gấp nhập trước (đã xếp lên đầu).
+                Giao_phải_xuất_trước = ScreenKit.StartBy(p.DeliveryLatestStart).Text,
                 Loại_hàng = p.CargoType,
                 Khu = ZoneText(p.ZoneType),
                 Kế_hoạch = p.QtyPlanned,
@@ -167,7 +270,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                 _bins = bins;
                 var rows = new List<object>
                 {
-                    new { Id = 0, Vị_trí = "🤖 Hệ thống tự chọn vị trí (có thể chia nhiều vị trí)", Đã_dùng = "", Còn_trống_m3 = "", Tải_tối_đa_kg = "", Cách_cửa_m = "" }
+                    new { Id = 0, Vị_trí = "🤖 Hệ thống tự chọn kệ (có thể chia nhiều kệ)", Đã_dùng = "", Còn_trống_m3 = "", Tải_tối_đa_kg = "", Cách_cửa_m = "" }
                 };
                 rows.AddRange(_bins.Select(b => (object)new
                 {
@@ -181,11 +284,11 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                 gridBins.DataSource = rows;
                 if (gridBins.Rows.Count > 0) gridBins.CurrentCell = gridBins.Rows[0].Cells["Vị_trí"];
                 if (_bins.Count == 0)
-                    ShowStatus($"⚠️ Kho chưa có vị trí nào thuộc khu {ZoneText(line.ZoneType)} — thêm khu vực/vị trí trước khi nhập loại hàng này.", Theme.Warning);
+                    ShowStatus($"⚠️ Kho chưa có kệ nào thuộc khu {ZoneText(line.ZoneType)} — thêm khu / kệ trước khi nhập loại hàng này.", Theme.Warning);
             }
             catch (Exception ex)
             {
-                if (!IsDisposed && loadId == _binsLoadId) ShowStatus("Lỗi tải danh sách vị trí: " + ex.Message, Theme.Danger);
+                if (!IsDisposed && loadId == _binsLoadId) ShowStatus("Lỗi tải danh sách kệ: " + ex.Message, Theme.Danger);
             }
             UpdateButtons();
         }
@@ -197,7 +300,8 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             btnManual.Enabled = !_busy && line is not null && line.QtyPending > 0;
             numQty.Enabled = !_busy && line is not null;
             btnRefresh.Enabled = !_busy;
-            btnAutoTrip.Text = line is null ? "🤖 Nhập TỰ ĐỘNG cả chuyến" : $"🤖 Nhập TỰ ĐỘNG cả chuyến #{line.TripId}";
+            btnAutoTrip.Text = line is null ? "📥 Nhập cả chuyến (tự xếp kệ)" : $"📥 Nhập cả chuyến #{line.TripId} (tự xếp kệ)";
+            btnManual.Text = "📥 Nhập vào kệ đã chọn";
         }
 
         private void SetBusy(bool busy)
@@ -222,12 +326,10 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             if (line is null) return;
 
             var tripLines = _pending.Where(p => p.TripId == line.TripId).ToList();
-            var confirm = MessageBox.Show(this,
-                $"Nhập TỰ ĐỘNG (hệ thống tự xếp vị trí) toàn bộ hàng còn chờ của chuyến #{line.TripId} (đơn {line.OrderCode})?\n\n" +
-                string.Join("\n", tripLines.Select(p => $"• {p.CargoType}: {p.QtyPending:0.##}")) +
-                "\n\nHệ thống tự chọn vị trí phù hợp (có thể chia nhiều vị trí). Nếu 1 dòng không xếp được thì không nhập dòng nào.",
-                "Nhập kho tự động", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-            if (confirm != DialogResult.Yes) return;
+            if (!Ask.Confirm(this, $"Nhập cả chuyến #{line.TripId} vào kho?",
+                    $"Đơn {line.OrderCode}:\n" + string.Join("\n", tripLines.Select(p => $"• {p.CargoType}: {p.QtyPending:0.##}")) +
+                    "\n\nHệ thống tự chọn kệ phù hợp (có thể chia nhiều kệ). Nếu 1 dòng không xếp được thì không nhập dòng nào.",
+                    $"📥 Nhập cả chuyến #{line.TripId}")) return;
 
             SetBusy(true);
             try
@@ -264,12 +366,11 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             if (qty > line.QtyPending) { ShowStatus($"Chỉ còn chờ nhập {line.QtyPending:0.##}.", Theme.Warning); return; }
 
             int? binId = gridBins.CurrentRow?.Cells["Id"]?.Value is int id && id != 0 ? id : null;
-            var binText = binId is null ? "vị trí do hệ thống tự chọn" : $"vị trí {_bins.FirstOrDefault(b => b.Id == binId)?.Code}";
-            var confirm = MessageBox.Show(this,
-                $"Nhập {qty:0.##} \"{line.CargoType}\" của chuyến #{line.TripId} vào {binText}?" +
-                (qty < line.QtyPending ? $"\n\nSau khi nhập còn chờ {line.QtyPending - qty:0.##} — nhập tiếp vào vị trí khác." : ""),
-                "Nhập kho thủ công", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-            if (confirm != DialogResult.Yes) return;
+            var binText = binId is null ? "kệ do hệ thống tự chọn" : $"kệ {_bins.FirstOrDefault(b => b.Id == binId)?.Code}";
+            if (!Ask.Confirm(this, $"Nhập {qty:0.##} \"{line.CargoType}\" vào {binText}?",
+                    $"Hàng của chuyến #{line.TripId}." +
+                    (qty < line.QtyPending ? $"\n\nSau khi nhập còn chờ {line.QtyPending - qty:0.##} — nhập tiếp vào kệ khác." : ""),
+                    $"📥 Nhập {qty:0.##} vào kệ")) return;
 
             SetBusy(true);
             try

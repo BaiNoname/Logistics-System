@@ -53,6 +53,18 @@ public class PendingReceiptService : IPendingReceiptService
             .Select(c => new { c.Id, c.CargoType, c.IsHazmat, c.IsFragile, c.QtyTotal })
             .ToDictionaryAsync(c => c.Id);
 
+        // Chặng GIAO của đơn phải xuất phát trước ngày nào (cùng quy tắc màn Chuyến) — hàng của chuyến giao sắp tới
+        // mốc thì nhập trước, kẻo kho soạn không kịp.
+        var orderIds = trips.Values.Select(t => t.TransportOrderId).Distinct().ToList();
+        var orderTrips = (await _db.Trips.AsNoTracking().Where(t => orderIds.Contains(t.TransportOrderId)).ToListAsync())
+            .ToLookup(t => t.TransportOrderId);
+        var deadlines = await _db.TransportOrders.Where(o => orderIds.Contains(o.Id)).ToDictionaryAsync(o => o.Id, o => o.CommittedDeliveryDate);
+        var today = TruckingSystem.Application.Common.VnClock.Today;
+        DateTime? LatestStart(int orderId) => orderTrips[orderId]
+            .Where(t => t.LegType == TripLegType.Delivery && t.Status == TripStatus.Planned)
+            .Select(t => TruckingSystem.Application.Trips.DeliveryDeadlineRules.Evaluate(t, orderTrips[orderId], deadlines.GetValueOrDefault(orderId), today).LatestStart)
+            .Where(d => d.HasValue).Min();
+
         return pending.Select(p =>
         {
             var t = trips[p.TripId];
@@ -61,10 +73,10 @@ public class PendingReceiptService : IPendingReceiptService
             return new PendingReceiptLineDto(p.TripId, t.TransportOrderId, t.OrderCode, t.CustomerName,
                 t.DriverName, t.PlateNumber, t.EndTime,
                 p.CargoLineId, c.CargoType, zone, c.QtyTotal == Math.Floor(c.QtyTotal),
-                p.QtyPlanned, p.QtyReceived, p.QtyPending);
+                p.QtyPlanned, p.QtyReceived, p.QtyPending, LatestStart(t.TransportOrderId));
         })
-        // Xe về kho trước -> nhập trước
-        .OrderBy(d => d.ArrivedAt ?? DateTime.MaxValue).ThenBy(d => d.TripId).ThenBy(d => d.CargoLineId)
+        // Chuyến giao gấp (mốc xuất phát sớm) trước; còn lại xe về kho trước -> nhập trước.
+        .OrderBy(d => d.DeliveryLatestStart ?? DateTime.MaxValue).ThenBy(d => d.ArrivedAt ?? DateTime.MaxValue).ThenBy(d => d.TripId).ThenBy(d => d.CargoLineId)
         .ToList();
     }
 

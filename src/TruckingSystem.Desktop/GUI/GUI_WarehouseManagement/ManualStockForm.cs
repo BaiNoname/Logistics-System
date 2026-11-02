@@ -1,4 +1,4 @@
-using System.Drawing;
+﻿using System.Drawing;
 using System.Windows.Forms;
 using TruckingSystem.Desktop.Common;
 using TruckingSystem.Desktop.DTO_TransportOrderManagement;
@@ -42,9 +42,10 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
         public ManualStockForm()
         {
             InitializeComponent();
+            TruckingSystem.Desktop.Common.DialogFit.Enable(this, root); // vừa màn hình mọi máy, bảng không bị ép mất chữ
             TruckingSystem.Desktop.Common.DialogKeys.Enable(this); // Esc = đóng
             // Chữ cho NHÂN VIÊN (không nêu tên thuật toán) — đặt bằng code, không sửa Designer.
-            lblBinsTitle.Text = "Chọn vị trí nhập (tùy chọn — để trống = hệ thống tự chọn vị trí)";
+            lblBinsTitle.Text = "Chọn kệ để nhập (tùy chọn — để trống = hệ thống tự chọn kệ). Màu dòng: 🟩 còn nhiều chỗ · 🟨 đã dùng quá nửa · 🟥 gần đầy (≥ 85%).";
             Anim.FadeIn(this); // cửa sổ hiện dần lên
             cboOrder.SelectedIndexChanged += async (_, _) => await OnOrderChangedAsync();
             cboCargoLine.SelectedIndexChanged += async (_, _) =>
@@ -79,17 +80,18 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             _warehouseId = warehouseId;
             _mode = mode;
             ApplyMode();
-            Load += async (_, _) => { await LoadOrdersAsync(); await LoadHistoryAsync(); };
+            SetupLayout(); // bố cục theo việc (ManualStockForm.Steps.cs)
+            Load += async (_, _) => { await LoadOrdersAsync(); await LoadHistoryAsync(); await LoadStockAsync(); };
         }
 
         /// <summary>Chỉ hiện phần của ĐÚNG việc đang làm (ẩn nút / bảng của việc kia).</summary>
         private void ApplyMode()
         {
             var receive = _mode == ManualStockMode.Receive;
-            Text = receive ? "Nhận hàng khách mang tới kho" : "Tồn kho theo đơn & lịch sử nhập/xuất";
+            Text = receive ? "Nhận hàng khách mang tới kho" : "Tồn kho theo đơn và lịch sử nhập/xuất";
             lblTitle.Text = receive
                 ? "🙋 Nhận hàng khách tự mang tới kho"
-                : "📋 Tồn kho theo đơn & lịch sử nhập/xuất";
+                : "📋 Tồn kho theo đơn và lịch sử nhập/xuất";
             btnReceive.Visible = receive;
             lblBinsTitle.Visible = gridBins.Visible = receive;
             btnIssue.Visible = false; // màn Nhận: không xuất; màn Tồn kho: chỉ hiện khi có hàng xuất tay được (UpdateFlowSummary)
@@ -105,7 +107,10 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
 
         /// <summary>Đơn hợp lệ cho việc đang làm — cùng điều kiện server cho phép nhập / xuất tay.</summary>
         private bool MatchesMode(TransportOrderListItem o) => _mode == ManualStockMode.Receive
+            // Chỉ đơn "khách tự mang tới" ĐÚNG kho này và CÒN hàng chưa nhập — trước đây hiện cả đơn chỉ đi ngang
+            // qua kho (chuyến gắn kho này nhưng đơn ghi kho khác) hoặc đã nhập đủ -> chọn vào thấy "nhập tay được 0".
             ? o.PickupMethod == "SelfDelivery" && (o.Status is "Confirmed" or "InProgress")
+              && o.IsHomeWarehouse && o.HasQtyToReceive
             // Đơn Hoàn tất / Đã hủy còn hàng -> xuất tay. Đơn ĐANG vận chuyển có hàng trong kho (VD
             // chặng Lấy hàng đã nhập kho, chặng Giao chưa chạy) cũng HIỆN để biết hàng đang nằm đâu,
             // chờ chuyến nào — nút Xuất ẩn, kèm lý do (hàng xuất theo chuyến ở màn 📤 Xuất kho theo chuyến).
@@ -168,10 +173,19 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             {
                 var lines = await _api.Warehouses.GetCargoLinesForOrderAsync(orderId, _warehouseId);
                 if (IsDisposed || (loadId is not null && loadId != _orderLoadId)) return; // đã đổi sang đơn khác
+                // Nhận hàng: dòng CÒN phải nhập lên trước, dòng đã nhập đủ ghi rõ "✅ đã nhập đủ"
+                // (trước đây chỉ ghi tên loại hàng -> chọn trúng dòng đã đủ, thấy "nhập tay được 0" mà không hiểu vì sao).
+                if (_mode == ManualStockMode.Receive)
+                    lines = lines.OrderBy(l => l.QtyRemaining > 0 ? 0 : 1).ToList();
                 cboCargoLine.DataSource = lines;
-                cboCargoLine.DisplayMember = nameof(CargoLineOptionItem.CargoType);
+                cboCargoLine.DisplayMember = _mode == ManualStockMode.Receive
+                    ? nameof(CargoLineOptionItem.ReceiveText)
+                    : nameof(CargoLineOptionItem.CargoType);
                 cboCargoLine.ValueMember = nameof(CargoLineOptionItem.Id);
                 var keep = keepCargoLineId is null ? null : lines.FirstOrDefault(l => l.Id == keepCargoLineId);
+                // Chọn từ bảng "Đang tồn": chọn đúng loại hàng của dòng vừa bấm.
+                keep ??= _wantCargoType is null ? null : lines.FirstOrDefault(l => l.CargoType == _wantCargoType);
+                _wantCargoType = null;
                 if (keep is not null) cboCargoLine.SelectedItem = keep;
             }
             catch (Exception ex)
@@ -252,6 +266,8 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             numQty.DecimalPlaces = wholeUnits ? 0 : 2;
             numQty.Increment = wholeUnits ? 1 : 0.01m;
             numQty.Value = Math.Min(numQty.Maximum, _mode == ManualStockMode.Receive ? canReceive : f.QtyFreeForManualIssue);
+            if (_mode == ManualStockMode.Issue && _tabs.Selected == "history") btnIssue.Visible = lblQty.Visible = numQty.Visible = false;
+            UpdatePrimaryText();
         }
 
         /// <summary>Danh sách vị trí còn trống đúng khu vực — kèm dòng "Tự động
@@ -268,7 +284,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
 
                 var rows = new List<object>
                 {
-                    new { Id = 0, Vị_trí = "🤖 Hệ thống tự chọn vị trí", Đã_dùng = "", Còn_trống_m3 = "", Cách_cửa_m = "" }
+                    new { Id = 0, Vị_trí = "🤖 Hệ thống tự chọn kệ", Đã_dùng = "", Còn_trống_m3 = "", Cách_cửa_m = "" }
                 };
                 rows.AddRange(_availableBins.Select(b => (object)new
                 {
@@ -284,7 +300,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             }
             catch (Exception ex)
             {
-                ShowStatus("Lỗi tải danh sách vị trí: " + ex.Message, Theme.Danger);
+                ShowStatus("Lỗi tải danh sách kệ: " + ex.Message, Theme.Danger);
             }
         }
 
@@ -445,11 +461,13 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             if (numQty.Value < referenceQty)
                 confirmText += $"\n\n⚠️ Số lượng nhỏ hơn mức tối đa — sau thao tác vẫn còn {referenceQty - numQty.Value:0.##}.";
 
-            if (MessageBox.Show(FindForm(), confirmText, $"Xác nhận {actionText.ToLower()} kho", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+            var verb = isReceive ? "Nhập" : "Xuất";
+            if (!Ask.Confirm(this, $"{verb} {numQty.Value:0.##} \"{cargo.CargoType}\"?", confirmText,
+                    (isReceive ? "📥 " : "📤 ") + $"{verb} {numQty.Value:0.##}"))
                 return;
 
             int? chosenBinId = null;
-            if (isReceive && gridBins.CurrentRow?.Cells["Id"].Value is int selectedId && selectedId != 0)
+            if (isReceive && _pickBin && gridBins.CurrentRow?.Cells["Id"].Value is int selectedId && selectedId != 0)
                 chosenBinId = selectedId;
 
             // Khóa nút trong lúc chờ server — bấm 2 lần trước đây có thể nhập/xuất 2 lần.
@@ -462,8 +480,9 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                     var result = await _api.Warehouses.ReceiveManualAsync(_warehouseId, orderId, cargo.Id, numQty.Value, chosenBinId);
                     var binCodesText = result.BinCodesUsed.Count > 0 ? string.Join(", ", result.BinCodesUsed) : "(chưa xếp được)";
                     ShowStatus(result.Success
-                        ? $"✅ Đã nhập kho — vị trí {binCodesText}" + (result.Message is null ? "" : "\n" + result.Message)
+                        ? $"✅ Đã nhập kho — kệ {binCodesText}" + (result.Message is null ? "" : "\n" + result.Message)
                         : "⚠️ " + result.Message, result.Success ? Theme.Success : Theme.Warning);
+                    if (result.Success) Toast.Show(this, $"✅ Đã nhận {numQty.Value:0.##} {cargo.CargoType} — xếp vào kệ {binCodesText}");
                 }
                 else
                 {
@@ -493,11 +512,10 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                 return;
             }
 
-            var confirm = MessageBox.Show(FindForm(),
-                $"Hoàn tác phiếu xuất tay {h.Qty:0.##} \"{h.CargoType}\" của đơn {h.OrderCode} ({ToVn(h.OccurredAt):dd/MM HH:mm})?\n\n" +
-                "Hàng sẽ được cộng lại vào tồn kho và xếp lại vào ô kệ (hệ thống tự chọn vị trí). Phiếu xuất vẫn được giữ trong lịch sử, đánh dấu \"đã hoàn tác\".",
-                "Hoàn tác phiếu xuất tay", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-            if (confirm != DialogResult.Yes) return;
+            if (!Ask.Confirm(this, $"Hoàn tác phiếu xuất tay {h.Qty:0.##} \"{h.CargoType}\"?",
+                    $"Đơn {h.OrderCode} · {ToVn(h.OccurredAt):dd/MM HH:mm}.\n\n" +
+                    "Hàng được cộng lại vào tồn kho và xếp lại lên kệ (hệ thống tự chọn kệ). Phiếu xuất vẫn giữ trong lịch sử, đánh dấu \"đã hoàn tác\".",
+                    "↩️ Hoàn tác phiếu xuất", danger: true)) return;
 
             _busy = true;
             btnReceive.Enabled = btnIssue.Enabled = btnReverse.Enabled = false;
@@ -526,6 +544,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             await LoadFlowAsync();
             await LoadAvailableBinsAsync();
             await LoadHistoryAsync();
+            await LoadStockAsync();
         }
     }
 }

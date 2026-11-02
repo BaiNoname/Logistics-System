@@ -62,23 +62,23 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
         {
             if (string.IsNullOrWhiteSpace(txtPlateNumber.Text))
             {
-                lblStatus.Text = "Vui lòng nhập biển số xe.";
+                FieldHint.Show(txtPlateNumber, lblStatus, "Vui lòng nhập biển số xe."); // tô đỏ + nhảy vào đúng ô
                 return;
             }
             // Loại xe, loại nhiên liệu, định mức là BẮT BUỘC (server cũng kiểm tra lại).
             if (string.IsNullOrWhiteSpace(cboVehicleType.SelectedItem as string))
             {
-                lblStatus.Text = "Vui lòng chọn Loại xe.";
+                FieldHint.Show(cboVehicleType, lblStatus, "Vui lòng chọn Loại xe."); // tô đỏ + nhảy vào đúng ô
                 return;
             }
             if (string.IsNullOrWhiteSpace(cboFuelType.SelectedItem as string))
             {
-                lblStatus.Text = "Vui lòng chọn Loại nhiên liệu.";
+                FieldHint.Show(cboFuelType, lblStatus, "Vui lòng chọn Loại nhiên liệu."); // tô đỏ + nhảy vào đúng ô
                 return;
             }
             if (numFuelConsumption.Value <= 0)
             {
-                lblStatus.Text = "Vui lòng nhập Định mức nhiên liệu (lít/100 km) lớn hơn 0.";
+                FieldHint.Show(numFuelConsumption, lblStatus, "Vui lòng nhập Định mức nhiên liệu (lít/100 km) lớn hơn 0."); // tô đỏ + nhảy vào đúng ô
                 return;
             }
             if (_api is null) return; // đang ở chế độ xem Designer, không có API thật

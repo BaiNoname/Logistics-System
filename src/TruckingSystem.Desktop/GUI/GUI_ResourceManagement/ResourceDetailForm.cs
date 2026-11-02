@@ -62,15 +62,16 @@ namespace TruckingSystem.Desktop.GUI_ResourceManagement
                 ForeColor = Theme.TextPrimary,
                 Padding = new Padding(LogicalToDeviceUnits(18), LogicalToDeviceUnits(10), 0, 0),
             };
+            // Chân cửa sổ (quy tắc nút): các nút sửa (nút phụ) bên trái · nút Đóng tách sang góc phải.
             _bar = new FlowLayoutPanel
             {
-                Dock = DockStyle.Bottom,
+                Dock = DockStyle.Fill,
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 FlowDirection = FlowDirection.LeftToRight,
                 WrapContents = true,
                 BackColor = Theme.GridAltRow,
-                Padding = new Padding(LogicalToDeviceUnits(14), LogicalToDeviceUnits(8), LogicalToDeviceUnits(14), LogicalToDeviceUnits(8)),
+                Margin = Padding.Empty,
             };
             _close = Theme.MakeSecondaryButton("Đóng", 100);
             _close.Click += (_, _) => Close();
@@ -79,8 +80,23 @@ namespace TruckingSystem.Desktop.GUI_ResourceManagement
             FillRows();
             FillActions();
 
+            var footer = new TableLayoutPanel
+            {
+                Dock = DockStyle.Bottom,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                ColumnCount = 2,
+                BackColor = Theme.GridAltRow,
+                Padding = new Padding(LogicalToDeviceUnits(14), LogicalToDeviceUnits(8), LogicalToDeviceUnits(14), LogicalToDeviceUnits(8)),
+            };
+            footer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            footer.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            footer.Controls.Add(_bar, 0, 0);
+            _close.Anchor = AnchorStyles.Right | AnchorStyles.Top;
+            footer.Controls.Add(_close, 1, 0);
+
             Controls.Add(_scroll);
-            Controls.Add(_bar);
+            Controls.Add(footer);
             Controls.Add(titleLabel);
 
             // Kích thước: vừa nội dung nhưng KHÔNG quá ~85% màn hình — dư thì khung giữa hiện thanh cuộn.
@@ -89,7 +105,7 @@ namespace TruckingSystem.Desktop.GUI_ResourceManagement
                 var area = Screen.FromControl((Control?)Owner ?? this).WorkingArea;
                 var pref = _table.GetPreferredSize(Size.Empty);
                 var w = Math.Min(pref.Width + LogicalToDeviceUnits(60), (int)(area.Width * 0.85));
-                var h = Math.Min(titleLabel.Height + pref.Height + _bar.GetPreferredSize(new Size(w, 0)).Height + LogicalToDeviceUnits(70),
+                var h = Math.Min(titleLabel.Height + pref.Height + footer.GetPreferredSize(new Size(w, 0)).Height + LogicalToDeviceUnits(70),
                                  (int)(area.Height * 0.85));
                 ClientSize = new Size(Math.Max(w, MinimumSize.Width), Math.Max(h, MinimumSize.Height));
                 CenterToParent();
@@ -146,7 +162,7 @@ namespace TruckingSystem.Desktop.GUI_ResourceManagement
         private void FillActions()
         {
             _bar.SuspendLayout();
-            foreach (Control c in _bar.Controls.Cast<Control>().Where(c => c != _close).ToList()) c.Dispose();
+            foreach (Control c in _bar.Controls.Cast<Control>().ToList()) c.Dispose();
             _bar.Controls.Clear();
             foreach (var (text, enabled, run) in _actions())
             {
@@ -155,7 +171,6 @@ namespace TruckingSystem.Desktop.GUI_ResourceManagement
                 b.Click += async (_, _) => await RunActionAsync(run);
                 _bar.Controls.Add(b);
             }
-            _bar.Controls.Add(_close);
             _bar.ResumeLayout(true);
         }
 
@@ -175,7 +190,7 @@ namespace TruckingSystem.Desktop.GUI_ResourceManagement
             }
             catch (Exception ex)
             {
-                if (!IsDisposed) MessageBox.Show(this, "Lỗi: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                if (!IsDisposed) Ask.Fail(this, "Lỗi: " + ex.Message);
             }
             finally { _busy = false; }
         }

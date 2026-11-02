@@ -1,4 +1,4 @@
-using TruckingSystem.Desktop.Common;
+﻿using TruckingSystem.Desktop.Common;
 using TruckingSystem.Desktop.DTO_VehicleManagement;
 
 namespace TruckingSystem.Desktop.GUI_VehicleManagement
@@ -7,10 +7,19 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
     {
         private ApiServices? _api;
         private List<VehicleListItem> _vehicles = new();
+        private ScreenKit.GridOverlay _overlay = null!; // bảng trống / đang tải (Common/ScreenKit.cs)
+
 
         public VehiclesControl()
         {
             InitializeComponent();
+            _overlay = ScreenKit.Overlay(grid, () => _vehicles.Count, "Chưa có xe nào",
+                "Thêm xe đầu tiên kèm giấy tờ (đăng kiểm, bảo hiểm) để xe được chia chuyến.", ("➕ Thêm xe", () => btnCreate.PerformClick()),
+                () => filterBar.ClearFilters());
+            ScreenKit.Shortcuts(this, grid, null, () => btnCreate.PerformClick(), () => ShowDetail());
+            ScreenKit.Help(this, "vehicles", "Danh sách xe của công ty: tình trạng, giấy tờ, sức chứa.",
+                new[] { "Thêm xe (➕) và khai giấy tờ còn hạn", "Nhấp đúp 1 xe để xem đủ thông tin, sửa, thêm giấy tờ", "Xe thiếu / hết hạn giấy tờ sẽ không được chia chuyến" },
+                "Ctrl+N thêm xe · Enter xem chi tiết · F5 làm mới");
             Theme.StyleGrid(grid);
             GridLayout.FitColumns(grid); // cột vừa nội dung, nhiều cột thì cuộn ngang thay vì cắt chữ
             Load += (_, _) => Theme.UniformButtons(toolbar); // nút đều nhau, xuống dòng vẫn thẳng cột
@@ -23,6 +32,7 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
             filterBar.AddChoice("fuel", "Nhiên liệu", new[] { FuelLow, FuelUnknown });
             filterBar.AddChoice("warehouse", "Kho", Array.Empty<string>());
             filterBar.FilterChanged += (_, _) => BindGrid();
+            FilterMemory.Attach(filterBar, "vehicles"); // nhớ bộ lọc khi chuyển màn rồi quay lại
             SetupModernLook();
             SetupRowActions();
             Load += async (_, _) => await LoadAsync();
@@ -228,7 +238,7 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
         {
             if (_api is null || grid.CurrentRow is null)
             {
-                MessageBox.Show(FindForm(), "Vui lòng chọn 1 xe trước.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                Toast.Show(this, "👆 " + "Vui lòng chọn 1 xe trước.", ToastKind.Info);
                 return;
             }
             var id = (int)grid.CurrentRow.Cells["Id"].Value;
@@ -244,7 +254,7 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
         {
             if (_api is null || grid.CurrentRow is null)
             {
-                MessageBox.Show(FindForm(), "Vui lòng chọn 1 xe trước.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                Toast.Show(this, "👆 " + "Vui lòng chọn 1 xe trước.", ToastKind.Info);
                 return;
             }
             var id = (int)grid.CurrentRow.Cells["Id"].Value;
@@ -266,7 +276,7 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
         {
             if (_api is null || grid.CurrentRow is null)
             {
-                MessageBox.Show(FindForm(), "Vui lòng chọn 1 xe trước.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                Toast.Show(this, "👆 " + "Vui lòng chọn 1 xe trước.", ToastKind.Info);
                 return;
             }
             var id = (int)grid.CurrentRow.Cells["Id"].Value;
@@ -281,6 +291,7 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
             if (_api is null) return;
             lblStatus.Text = "Đang tải...";
             lblStatus.ForeColor = Theme.TextSecondary;
+            _overlay.Loading = true;
             try
             {
                 _vehicles = await _api.Vehicles.GetVehiclesAsync();
@@ -294,6 +305,7 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
                 lblStatus.Text = "Lỗi: " + ex.Message;
                 lblStatus.ForeColor = Theme.Danger;
             }
+            finally { _overlay.Loading = false; }
         }
 
         private static string TranslateStatus(string s) => s switch

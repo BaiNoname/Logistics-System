@@ -1,4 +1,4 @@
-using System.Drawing;
+﻿using System.Drawing;
 using System.Windows.Forms;
 using TruckingSystem.Desktop.Common;
 using TruckingSystem.Desktop.GUI.GUI_ContractManagement;
@@ -113,7 +113,10 @@ namespace TruckingSystem.Desktop.GUI_Shared
                 _modeButtons.Add((b, m));
                 _modeBar.Controls.Add(b);
             }
-            topBarLayout.Controls.Add(_modeBar, 0, 0);
+            // Đầu thanh trên: ô TÌM NHANH toàn hệ thống + 4 nút chế độ màu.
+            _topLeft.Controls.Add(_searchBox);
+            _topLeft.Controls.Add(_modeBar);
+            topBarLayout.Controls.Add(_topLeft, 0, 0);
         }
 
         /// <summary>Đổi màu khung theo chế độ: menu trái, mục đang chọn, nút Đăng xuất, thanh trên, nền, logo, dải màu.</summary>
@@ -123,7 +126,7 @@ namespace TruckingSystem.Desktop.GUI_Shared
             SuspendLayout();
             sidebar.BackColor = navPanel.BackColor = sidebarBottom.BackColor = m.Side;
             _sideBorder.BackColor = m.Night ? DayScene.Hex("#1E293B") : DayScene.Hex("#E2E8F0");
-            foreach (var h in _navHeaders) { h.BackColor = m.Side; h.ForeColor = m.SideHeader; }
+            foreach (var h in _navHeaders) StyleGroupHeader(h);
             foreach (var b in _navButtons) StyleNavButton(b, b == _activeNavButton);
 
             btnLogout.BackColor = m.Night ? DayScene.Hex("#1E293B") : Color.White;
@@ -168,7 +171,14 @@ namespace TruckingSystem.Desktop.GUI_Shared
             lblRole.Text = RoleText(api.Connection.Roles);
             BuildNavButtons();
             _badge = new NotificationBadge(btnNotifications, api);
-            NavigateTo(_navButtons[0], () => new DashboardControl(_api));
+            // Màn đầu tiên theo vai trò: mục đầu tiên tài khoản được xem (Quản trị / Điều phối / Kế toán: Tổng quan —
+            // Kế toán tự vào trang Tài chính; Nhân viên kho: Kho trung chuyển).
+            SetupResponsive(); // co giãn thanh trên theo bề ngang cửa sổ (MainForm.Responsive.cs)
+            if (_navButtons.Count > 0) NavigateTo(_navButtons[0], _buildOf[_navButtons[0]]);
+            SetupGlobalSearch();
+            SetupMenuBadges();
+            api.Connection.SessionExpired += OnSessionExpired;
+            FormClosed += (_, _) => api.Connection.SessionExpired -= OnSessionExpired;
         }
 
         /// <summary>Sinh các nút điều hướng theo quyền (role) vào navPanel (khai báo ở Designer).
@@ -180,7 +190,9 @@ namespace TruckingSystem.Desktop.GUI_Shared
 
             var navItems = new (string Icon, string Text, string[] Roles, Func<Control> Build)[]
             {
-                ("📊", "Tổng quan", new[] { "Admin", "Dispatcher", "Accountant", "WarehouseStaff" }, () => new DashboardControl(_api)),
+                // Tổng quan không gồm Nhân viên kho (màn này chỉ có số liệu tài chính / vận hành họ không được xem) -> nhân viên kho
+                // đăng nhập vào thẳng màn đầu tiên của mình (Kho trung chuyển) thay vì gặp câu "không có quyền".
+                ("📊", "Tổng quan", new[] { "Admin", "Dispatcher", "Accountant" }, () => new DashboardControl(_api)),
                 ("📦", "Đơn vận chuyển", new[] { "Admin", "Dispatcher" }, () => new TransportOrdersControl(_api)),
                 ("🛣️", "Chuyến xe", new[] { "Admin", "Dispatcher" }, () => new TripsControl(_api)),
                 ("⛽", "Nhiên liệu", new[] { "Admin", "Accountant" }, () => new FuelManagementControl(_api)),
@@ -221,21 +233,90 @@ namespace TruckingSystem.Desktop.GUI_Shared
                     if (group.Length > 0)
                     {
                         var header = MakeNavHeader(group);
+                        var g = group;
+                        header.Click += (_, _) => ToggleGroup(g);
                         navPanel.Controls.Add(header);
                         _navHeaders.Add(header);
                     }
                 }
 
-                var btn = MakeNavButton(item.Icon, item.Text);
-                btn.Click += (_, _) => NavigateTo(btn, item.Build);
+                var btn = MakeNavButton(item.Icon, item.Text, child: group.Length > 0);
+                // Mục đang có số đỏ (việc chờ) -> mở màn đã lọc sẵn đúng các việc đó; không có thì mở bình thường.
+                btn.Click += (_, _) => NavigateTo(btn, PendingBuild(btn) ?? item.Build);
+                _buildOf[btn] = item.Build;
                 navPanel.Controls.Add(btn);
                 _navButtons.Add(btn);
+                _groupOf[btn] = group;
             }
+            // Mở lại đúng nhóm lần trước (nếu tài khoản này còn quyền thấy nhóm đó), các nhóm khác thu gọn.
+            var saved = LoadOpenGroup();
+            SetOpenGroup(_navHeaders.Any(h => (string)h.Tag! == saved) ? saved : null, save: false);
             navPanel.ResumeLayout(true);
             ResizeNavButtons();
         }
 
-        private readonly List<Label> _navHeaders = new();
+        // ================= Menu trái THU GỌN THEO NHÓM (chỉ mở 1 nhóm 1 lúc) =================
+        // Tổng quan đứng riêng; mỗi nhóm (Vận hành, Tài nguyên, Kinh doanh, Nhân sự, Hệ thống) là 1 nút — bấm thì xổ các
+        // mục con ra, nhóm đang mở khác tự đóng lại -> menu luôn ngắn. Mở 1 màn (kể cả từ chuông thông báo) tự mở đúng
+        // nhóm của nó. Nhóm đang chứa màn hiện tại mà đang thu gọn thì tên nhóm tô màu nhấn để biết mình đang ở đâu.
+        // App nhớ nhóm đang mở cho lần sau.
+
+        private readonly List<Button> _navHeaders = new();
+        private readonly Dictionary<Button, string> _groupOf = new();
+        private readonly Dictionary<Button, Func<Control>> _buildOf = new();
+        private string? _openGroup;
+
+        private static readonly Dictionary<string, (string Icon, string Name)> GroupLabels = new()
+        {
+            ["VẬN HÀNH"] = ("🚚", "Vận hành"),
+            ["TÀI NGUYÊN"] = ("🧰", "Tài nguyên"),
+            ["KINH DOANH"] = ("💼", "Kinh doanh"),
+            ["NHÂN SỰ"] = ("👥", "Nhân sự"),
+            ["HỆ THỐNG"] = ("⚙️", "Hệ thống"),
+        };
+
+        private void ToggleGroup(string group) => SetOpenGroup(_openGroup == group ? null : group, save: true);
+
+        private void SetOpenGroup(string? group, bool save)
+        {
+            _openGroup = group;
+            navPanel.SuspendLayout();
+            foreach (var (btn, g) in _groupOf)
+                btn.Visible = g.Length == 0 || g == group;
+            foreach (var h in _navHeaders) StyleGroupHeader(h);
+            navPanel.ResumeLayout(true);
+            if (save) SaveOpenGroup(group);
+        }
+
+        private void StyleGroupHeader(Button h)
+        {
+            var g = (string)h.Tag!;
+            var open = g == _openGroup;
+            var holdsCurrent = _activeNavButton is not null && _groupOf.TryGetValue(_activeNavButton, out var ag) && ag == g;
+            h.BackColor = _mode.Side;
+            h.ForeColor = holdsCurrent && !open ? _mode.Active : _mode.SideText;
+            h.FlatAppearance.MouseOverBackColor = _mode.SideHover;
+            h.Invalidate(); // vẽ lại mũi tên ▸ / ▾
+        }
+
+        private static string NavStateFile => Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "LogisticsSystem", "nav-group.txt");
+
+        private static string? LoadOpenGroup()
+        {
+            try { return File.Exists(NavStateFile) ? File.ReadAllText(NavStateFile).Trim() : null; }
+            catch { return null; }
+        }
+
+        private static void SaveOpenGroup(string? group)
+        {
+            try
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(NavStateFile)!);
+                File.WriteAllText(NavStateFile, group ?? "");
+            }
+            catch { /* không lưu được thì thôi */ }
+        }
 
         /// <summary>Thứ tự nhóm trên menu trái; "" = mục đứng riêng trên cùng (Tổng quan).</summary>
         private static readonly string[] NavGroupOrder = { "", "VẬN HÀNH", "TÀI NGUYÊN", "KINH DOANH", "NHÂN SỰ", "HỆ THỐNG" };
@@ -252,26 +333,42 @@ namespace TruckingSystem.Desktop.GUI_Shared
             return "HỆ THỐNG";
         }
 
-        /// <summary>Tiêu đề nhóm: chữ nhỏ in hoa màu xám, không bấm được.</summary>
-        private Label MakeNavHeader(string text) => new()
+        /// <summary>Nút NHÓM (bấm để xổ / thu các mục con): biểu tượng + tên nhóm chữ đậm, mũi tên ▸ (đang thu) / ▾ (đang mở)
+        /// vẽ ở mép phải.</summary>
+        private Button MakeNavHeader(string group)
         {
-            Text = text,
-            AutoSize = false,
-            Width = NavButtonWidth(),
-            Height = LogicalToDeviceUnits(26),
-            TextAlign = ContentAlignment.BottomLeft,
-            Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
-            ForeColor = _mode.SideHeader,
-            BackColor = _mode.Side,
-            Padding = new Padding(LogicalToDeviceUnits(12), 0, 0, LogicalToDeviceUnits(2)),
-            Margin = new Padding(0, LogicalToDeviceUnits(8), 0, 0),
-        };
+            var (icon, name) = GroupLabels.TryGetValue(group, out var l) ? l : ("📁", group);
+            var h = new Button
+            {
+                Text = $"  {icon}   {name}",
+                Tag = group,
+                Width = NavButtonWidth(),
+                Height = LogicalToDeviceUnits(44),
+                TextAlign = ContentAlignment.MiddleLeft,
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 10.5F, FontStyle.Bold),
+                Cursor = Cursors.Hand,
+                Margin = new Padding(0, LogicalToDeviceUnits(4), 0, 2),
+                UseVisualStyleBackColor = false,
+            };
+            h.FlatAppearance.BorderSize = 0;
+            h.Paint += (_, e) =>
+            {
+                var arrow = (string)h.Tag! == _openGroup ? "▾" : "▸";
+                var r = new Rectangle(h.Width - LogicalToDeviceUnits(32), 0, LogicalToDeviceUnits(24), h.Height);
+                TextRenderer.DrawText(e.Graphics, arrow, h.Font, r, h.ForeColor,
+                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix);
+            };
+            return h;
+        }
 
-        private Button MakeNavButton(string icon, string text)
+        /// <param name="child">Mục con của 1 nhóm -> thụt vào 1 chút cho thấy thuộc nhóm phía trên.</param>
+        private Button MakeNavButton(string icon, string text, bool child = false)
         {
             var btn = new Button
             {
                 Text = $"  {icon}   {text}",
+                Padding = new Padding(child ? LogicalToDeviceUnits(16) : 0, 0, 0, 0),
                 Width = NavButtonWidth(),
                 Height = LogicalToDeviceUnits(44),
                 TextAlign = ContentAlignment.MiddleLeft,
@@ -305,7 +402,7 @@ namespace TruckingSystem.Desktop.GUI_Shared
             foreach (var header in _navHeaders)
             {
                 header.Width = width;
-                header.Height = LogicalToDeviceUnits(26);
+                header.Height = height;
             }
         }
 
@@ -378,6 +475,9 @@ namespace TruckingSystem.Desktop.GUI_Shared
             }
             StyleNavButton(navButton, true);
             _activeNavButton = navButton;
+            // Mở 1 màn (từ menu hoặc chuông thông báo) -> tự mở đúng nhóm của màn đó.
+            if (_groupOf.TryGetValue(navButton, out var g) && g.Length > 0 && g != _openGroup) SetOpenGroup(g, save: true);
+            else foreach (var h in _navHeaders) StyleGroupHeader(h);
 
             // GIẢI PHÓNG màn cũ (trước đây chỉ Controls.Clear(): mỗi lần bấm menu, màn cũ — bảng, thẻ, đồng hồ hẹn giờ
             // bên trong — vẫn nằm trong bộ nhớ và có cái vẫn chạy ngầm -> dùng lâu app chậm dần).
@@ -387,6 +487,7 @@ namespace TruckingSystem.Desktop.GUI_Shared
             var control = buildControl();
             control.Dock = DockStyle.Fill;
             content.Controls.Add(control);
+            RefreshMenuBadgesSoon(); // vừa rời màn trước (có thể vừa làm xong việc) -> đếm lại số việc chờ trên menu
         }
     }
 }

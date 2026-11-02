@@ -19,6 +19,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
         public RecordStorageFeeForm()
         {
             InitializeComponent();
+            TruckingSystem.Desktop.Common.DialogFit.Enable(this, root); // vừa màn hình mọi máy, bảng không bị ép mất chữ
             Anim.FadeIn(this);
             dtEndDate.ValueChanged += (_, _) => UpdateHint();
         }

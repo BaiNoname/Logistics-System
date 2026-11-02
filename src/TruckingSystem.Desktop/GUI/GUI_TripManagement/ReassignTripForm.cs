@@ -18,6 +18,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
         public ReassignTripForm()
         {
             InitializeComponent();
+            TruckingSystem.Desktop.Common.DialogFit.Enable(this, root); // vừa màn hình mọi máy, bảng không bị ép mất chữ
             TruckingSystem.Desktop.Common.DialogKeys.Enable(this, btnSave); // Esc = đóng, Enter = Lưu
         }
 
@@ -84,12 +85,15 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
             var v = cboVehicle.SelectedItem as ReassignOptionItem;
             var d = cboDriver.SelectedItem as ReassignOptionItem;
             var unchanged = v?.Id == _options.CurrentVehicleId && d?.Id == _options.CurrentDriverEmployeeId;
-            btnSave.Enabled = !_busy && v is { Eligible: true } && d is { Eligible: true } && !unchanged;
+            // Hạng bằng không lái được xe đang chọn -> báo NGAY (trước đây phải bấm Lưu mới bị từ chối).
+            string? licenseBlock = v is not null && d?.CannotDrive is { } cd && cd.TryGetValue(v.Id, out var why) ? why : null;
+            btnSave.Enabled = !_busy && v is { Eligible: true } && d is { Eligible: true } && !unchanged && licenseBlock is null;
             lblHint.Text = v is null || d is null ? "Không đổi được: thiếu xe hoặc tài xế chạy được chuyến này."
+                : licenseBlock is not null ? $"⛔ Tài xế này không lái được xe đang chọn: {licenseBlock} — chọn xe hoặc tài xế khác."
                 : unchanged ? "Chọn xe hoặc tài xế khác với hiện tại."
                 : d.Reason is not null ? "⚠ " + d.Reason + " — cần đăng ký trước khi xuất phát."
                 : "";
-            lblHint.ForeColor = v is null || d is null ? Theme.Danger : Theme.Warning;
+            lblHint.ForeColor = v is null || d is null || licenseBlock is not null ? Theme.Danger : Theme.Warning;
         }
 
         private async void BtnSave_Click(object? sender, EventArgs e)
@@ -107,7 +111,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
                     ShowStatus("⚠️ " + result.Message, Theme.Warning);
                     return;
                 }
-                MessageBox.Show(this, result.Message ?? "Đã đổi xe / tài xế.", "Đã đổi", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                Toast.Show((Control?)Owner ?? this, "✅ " + (result.Message ?? "Đã đổi xe / tài xế."));
                 DialogResult = DialogResult.OK;
                 Close();
             }
@@ -130,6 +134,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
                     Id = i.Id,
                     Eligible = true,
                     Reason = i.Reason,
+                    CannotDrive = i.CannotDrive,
                     Text = i.Id == currentId ? i.Text + "  (đang gán)" : i.Text,
                 })
                 .OrderByDescending(i => i.Id == currentId)

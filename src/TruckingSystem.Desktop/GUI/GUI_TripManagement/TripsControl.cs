@@ -17,6 +17,8 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
 
         // Đang chờ server (Bắt đầu / Ước tính...) -> khóa nút, chống bấm 2 lần gửi 2 yêu cầu.
         private bool _busy;
+        private ScreenKit.GridOverlay _overlay = null!; // bảng trống / đang tải (Common/ScreenKit.cs)
+
 
 
         public TripsControl()
@@ -24,6 +26,14 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
             // Giao diện (vị trí, cỡ chữ, nút) nằm hết trong TripsControl.Designer.cs — bố cục tự co
             // giãn (TableLayoutPanel + FlowLayoutPanel), không còn tính tọa độ bằng code.
             InitializeComponent();
+            _overlay = ScreenKit.Overlay(grid, () => _trips.Count, "Chưa có chuyến xe nào",
+                "Chuyến được tạo khi bạn 🚚 Chia xe cho đơn ở màn Đơn vận chuyển.", null,
+                () => { _pendingOnly = false; filterBar.ClearFilters(); BindGrid(); });
+            ScreenKit.Shortcuts(this, grid, null, null, () => BtnViewRoute_Click(this, EventArgs.Empty));
+            ScreenKit.Help(this, "trips", "Theo dõi và điều hành từng chuyến xe (Lấy hàng · Giao hàng · Trả hàng).",
+                new[] { "Chọn 1 chuyến — thẻ \"Chuyến đang chọn\" cho biết việc tiếp theo", "Bấm nút xanh: Bắt đầu / Hoàn tất / Duyệt",
+                        "Chi phí, xăng, sự cố: menu 💰 hoặc chuột phải vào dòng" },
+                "Enter xem lộ trình · chuột phải = mọi thao tác · F5 làm mới · Ctrl+F tìm nhanh");
             lblTitle.Text = "Quản lý chuyến xe"; // bỏ chữ "(Trip)" — đặt bằng code, không sửa Designer
             Theme.StyleGrid(grid);
             GridLayout.FitColumns(grid); // cột vừa nội dung, nhiều cột thì cuộn ngang thay vì cắt chữ
@@ -40,8 +50,12 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
             filterBar.AddChoice("start", "Xuất phát", new[] { StartToday, StartTomorrow, StartWeek, StartPast });
             filterBar.AddChoice("warehouse", "Kho", Array.Empty<string>());
             filterBar.FilterChanged += (_, _) => BindGrid();
+            FilterMemory.Attach(filterBar, "trips"); // nhớ bộ lọc khi chuyển màn rồi quay lại
             SetupModernLook();
             SetupActions(); // thanh nút gọn + menu chuột phải + thẻ "Chuyến đang chọn" (TripsControl.Actions.cs)
+            // Dải nhắc việc (giải thích số đỏ trên menu): chuyến tài xế báo xong chờ duyệt.
+            KpiStrip.InsertRow(root, _pendingBanner, root.GetRow(_selectedBar));
+            _pendingBanner.FilterToggled += (_, on) => { _pendingOnly = on; BindGrid(); };
             Load += async (_, _) => await LoadAsync();
         }
 
@@ -57,6 +71,13 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
             GridDecor.Pills(grid, "Trạng_thái", (text, _) => GridDecor.StatusTone(text));
             GridDecor.Pills(grid, "Chặng", (text, _) => text.Contains("Lấy") ? GridDecor.Teal
                 : text.Contains("Giao") ? GridDecor.Blue : GridDecor.Violet);
+            // Rê chuột vào ô "Hạn" -> câu đầy đủ (trễ mấy ngày / phải xuất phát trước lúc nào), khỏi phải bấm dòng.
+            grid.CellToolTipTextNeeded += (_, e) =>
+            {
+                if (e.RowIndex >= 0 && grid.Columns[e.ColumnIndex].Name == "Hạn" && TripAt(e.RowIndex) is { } t
+                    && !string.IsNullOrWhiteSpace(t.DeadlineStatus) && t.DeadlineStatus != "—")
+                    e.ToolTipText = t.DeadlineStatus;
+            };
             GridDecor.Pills(grid, "Hạn", (_, row) => TripAt(row)?.DeadlineLevel switch
             {
                 "Ok" or "DoneOnTime" => GridDecor.Green,
@@ -144,6 +165,16 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
 
         private int? _focusTripId;
 
+        private readonly PendingBanner _pendingBanner = new();
+        private bool _pendingOnly;
+
+        /// <summary>Mở từ số đỏ trên menu trái: bỏ bộ lọc cũ, chỉ hiện chuyến chờ duyệt.</summary>
+        public void ShowPendingOnly()
+        {
+            _pendingOnly = true;
+            FilterMemory.Cancel(filterBar);
+        }
+
         private void BindGrid()
         {
             var keepId = _trips.Count > 0 && _focusTripId is int focus ? focus : GetSelectedTripId();
@@ -152,6 +183,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
             var exactId = System.Text.RegularExpressions.Regex.Match(filterBar.SearchText, @"^#(\d+)$") is { Success: true } m
                 ? int.Parse(m.Groups[1].Value) : (int?)null;
             var filtered = _trips.Where(t =>
+                    (!_pendingOnly || t.Status == "PendingConfirmation") &&
                     (exactId is null || t.Id == exactId) &&
                     filterBar.Is("status", StatusText(t)) &&
                     filterBar.Is("leg", TranslateLegType(t.LegType)) &&
@@ -171,11 +203,13 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
                 Chặng = TranslateLegType(t.LegType),
                 Mã_đơn = t.OrderCode,
                 Xe_và_tài_xế = $"{t.VehiclePlate} · {t.DriverName}",
-                Xuất_phát = t.PlannedStartDate?.ToString("dd/MM") ?? "—",
+                Xuất_phát = ScreenKit.Day(t.PlannedStartDate), // "Hôm nay" / "Mai" / "05/11"
                 Trạng_thái = StatusText(t),
                 Hạn = DeadlineShort(t),
             }).ToList();
             filterBar.SetCount(rows.Count, _trips.Count);
+            var waitApprove = _trips.Count(t => t.Status == "PendingConfirmation");
+            _pendingBanner.Update($"{waitApprove} chuyến tài xế báo xong, chờ duyệt", waitApprove, _pendingOnly);
             if (keepId is int id)
                 foreach (DataGridViewRow r in grid.Rows)
                     if (r.Cells["Id"].Value is int rid && rid == id) { grid.CurrentCell = r.Cells["Chuyến"]; break; }
@@ -201,15 +235,16 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
                 var result = await _api!.Trips.StartTripAsync(tripId.Value);
                 if (!result.Success)
                 {
-                    MessageBox.Show(FindForm(), result.Message ?? "Không thể bắt đầu chuyến.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    Ask.Fail(this, result.Message ?? "Không thể bắt đầu chuyến.");
                     await LoadAsync(); // trạng thái có thể vừa bị người khác đổi -> tải lại, không để dữ liệu cũ
                     return;
                 }
                 await LoadAsync();
+                Toast.Show(this, $"▶️ Đã bắt đầu chuyến #{tripId.Value} — tài xế đã được báo trên app.");
             }
             catch (Exception ex)
             {
-                MessageBox.Show(FindForm(), "Lỗi: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                Ask.Fail(this, "Lỗi: " + ex.Message);
             }
             finally { SetBusy(false); }
         }
@@ -232,8 +267,8 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
         /// chuyển sang Chờ nhập kho) — hiện cho Vận hành biết bước tiếp theo.</summary>
         private void ShowSuccessNote(string? message)
         {
-            if (!string.IsNullOrWhiteSpace(message))
-                MessageBox.Show(FindForm(), message, "Đã xong", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            // Thông báo nhẹ góc dưới, tự tắt (bấm để tắt ngay) — không bắt bấm OK.
+            if (!string.IsNullOrWhiteSpace(message)) Toast.Show(this, "✅ " + message);
         }
 
         private async void BtnComplete_Click(object? sender, EventArgs e)
@@ -242,18 +277,17 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
             if (tripId is null) { ShowNoSelection(); return; }
 
             var completeLeg = _trips.FirstOrDefault(t => t.Id == tripId.Value)?.LegType;
-            var confirm = MessageBox.Show(FindForm(),
-                "Xác nhận chuyến này đã hoàn tất (xe đã tới nơi, hàng đã giao/nhận xong)?" +
-                (completeLeg == "Pickup" ? "\n\nHàng lấy về sẽ ở trạng thái \"Chờ nhập kho\" — nhập kho ở màn Kho → 📦 Nhập hàng từ chuyến." : ""),
-                "Xác nhận hoàn tất chuyến", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-            if (confirm != DialogResult.Yes) return;
+            if (!Ask.Confirm(this, $"Hoàn tất chuyến #{tripId.Value}?",
+                    "Xe đã tới nơi, hàng đã giao / nhận xong." +
+                    (completeLeg == "Pickup" ? "\n\nHàng lấy về sẽ ở trạng thái \"Chờ nhập kho\" — nhập kho ở màn Kho → 📦 Nhập hàng từ chuyến." : ""),
+                    $"✅ Hoàn tất chuyến #{tripId.Value}")) return;
 
             try
             {
                 var result = await _api!.Trips.CompleteTripAsync(tripId.Value);
                 if (!result.Success)
                 {
-                    MessageBox.Show(FindForm(), result.Message ?? "Không thể hoàn tất chuyến.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    Ask.Fail(this, result.Message ?? "Không thể hoàn tất chuyến.");
                     await LoadAsync(); // trạng thái có thể vừa bị người khác đổi -> tải lại, không để dữ liệu cũ
                     return;
                 }
@@ -262,7 +296,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
             }
             catch (Exception ex)
             {
-                MessageBox.Show(FindForm(), "Lỗi: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                Ask.Fail(this, "Lỗi: " + ex.Message);
             }
         }
 
@@ -301,23 +335,20 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
             var trip = _trips.FirstOrDefault(t => t.Id == tripId.Value);
             if (trip is null || _api is null) return;
 
-            var confirm = MessageBox.Show(FindForm(),
-                $"Khách nhận lại hàng NGAY TẠI KHO cho chuyến trả hàng #{trip.Id} (đơn {trip.OrderCode})?\n\n" +
-                "Hàng sẽ được xuất kho, chuyến trả hàng đóng lại và xe + tài xế được giải phóng. Không hoàn tác được.",
-                "Trả khách tại kho", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-            if (confirm != DialogResult.Yes) return;
+            if (!Ask.Confirm(this, $"Trả hàng tại kho cho chuyến #{trip.Id}?",
+                    $"Khách nhận lại hàng của đơn {trip.OrderCode} ngay tại kho: hàng xuất kho, chuyến trả hàng đóng lại, xe + tài xế được giải phóng.\n\nKhông hoàn tác được.",
+                    "🏬 Trả hàng cho khách", danger: true)) return;
 
             try
             {
                 var result = await new SERVICE_TripManagement.TripReassignApiService(_api.Connection).ReturnAtWarehouseAsync(trip.Id);
-                MessageBox.Show(FindForm(), result.Message ?? (result.Success ? "Đã xong." : "Không thực hiện được."),
-                    result.Success ? "Đã trả hàng" : "Thông báo", MessageBoxButtons.OK,
-                    result.Success ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
+                if (result.Success) Toast.Show(this, "✅ " + (result.Message ?? $"Đã trả hàng tại kho — chuyến #{trip.Id} đã đóng."));
+                else Ask.Fail(this, result.Message ?? "Không thực hiện được.");
                 await LoadAsync(); // cả khi thất bại: trạng thái có thể vừa bị thao tác khác đổi
             }
             catch (Exception ex)
             {
-                MessageBox.Show(FindForm(), "Lỗi: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                Ask.Fail(this, "Lỗi: " + ex.Message);
             }
         }
 
@@ -347,17 +378,14 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
                 "Return" => "Sau khi duyệt, hàng sẽ được XUẤT KHO trả lại đối tác và xe được trả về trạng thái rảnh.",
                 _ => "Sau khi duyệt, chuyến giao hàng hoàn tất; xe được trả về trạng thái rảnh nếu không còn chuyến nào khác.",
             };
-            var confirm = MessageBox.Show(FindForm(),
-                "Duyệt xác nhận của tài xế cho chuyến này? " + approveText,
-                "Duyệt xác nhận", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-            if (confirm != DialogResult.Yes) return;
+            if (!Ask.Confirm(this, $"Duyệt chuyến #{tripId.Value}?", approveText, $"✅ Duyệt chuyến #{tripId.Value}")) return;
 
             try
             {
                 var result = await _api!.Trips.ApproveCompletionAsync(tripId.Value);
                 if (!result.Success)
                 {
-                    MessageBox.Show(FindForm(), result.Message ?? "Không thể duyệt.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    Ask.Fail(this, result.Message ?? "Không thể duyệt.");
                     await LoadAsync(); // trạng thái có thể vừa bị người khác đổi -> tải lại, không để dữ liệu cũ
                     return;
                 }
@@ -366,7 +394,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
             }
             catch (Exception ex)
             {
-                MessageBox.Show(FindForm(), "Lỗi: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                Ask.Fail(this, "Lỗi: " + ex.Message);
             }
         }
 
@@ -375,27 +403,26 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
             var tripId = GetSelectedTripId();
             if (tripId is null) { ShowNoSelection(); return; }
 
-            var confirm = MessageBox.Show(FindForm(),
-                "Từ chối xác nhận của tài xế? Chuyến sẽ quay lại trạng thái Đang chạy để tài xế báo lại " +
-                "(kiểm hàng + chụp ảnh lại).\n\n" +
-                "⚠️ CHỈ từ chối khi tài xế báo NHẦM (hàng thật sự chưa tới nơi) hoặc ảnh / danh sách hàng không khớp.",
-                "Từ chối xác nhận", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
-            if (confirm != DialogResult.Yes) return;
+            if (!Ask.Confirm(this, $"Từ chối xác nhận chuyến #{tripId.Value}?",
+                    "Chuyến quay lại trạng thái Đang chạy để tài xế báo lại (kiểm hàng + chụp ảnh lại).\n\n" +
+                    "Chỉ từ chối khi tài xế báo NHẦM (hàng thật sự chưa tới nơi) hoặc ảnh / danh sách hàng không khớp.",
+                    "↩️ Từ chối, trả về tài xế", danger: true)) return;
 
             try
             {
                 var result = await _api!.Trips.RejectCompletionAsync(tripId.Value);
                 if (!result.Success)
                 {
-                    MessageBox.Show(FindForm(), result.Message ?? "Không thể từ chối.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    Ask.Fail(this, result.Message ?? "Không thể từ chối.");
                     await LoadAsync(); // trạng thái có thể vừa bị người khác đổi -> tải lại, không để dữ liệu cũ
                     return;
                 }
                 await LoadAsync();
+                Toast.Show(this, $"↩️ Đã trả chuyến #{tripId.Value} về tài xế để báo lại.", ToastKind.Info);
             }
             catch (Exception ex)
             {
-                MessageBox.Show(FindForm(), "Lỗi: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                Ask.Fail(this, "Lỗi: " + ex.Message);
             }
         }
 
@@ -407,7 +434,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
             using var f = new RecordFuelForm(_api!, tripId.Value);
             if (f.ShowDialog(FindForm()) == DialogResult.OK)
             {
-                MessageBox.Show(FindForm(), "Đã ghi nhận đổ xăng thành công.", "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                Toast.Show(this, "✅ Đã ghi nhận đổ xăng.");
             }
         }
 
@@ -422,12 +449,12 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
                 var result = await _api.Trips.SyncCalendarAsync(tripId.Value);
                 var message = $"Tài xế: {(result.DriverSynced ? "✅ Đã đồng bộ" : "⚠️ " + (result.DriverMessage ?? "Không đồng bộ được"))}\n" +
                               $"Khách hàng: {(result.CustomerSynced ? "✅ Đã đồng bộ" : "⚠️ " + (result.CustomerMessage ?? "Không đồng bộ được"))}";
-                MessageBox.Show(FindForm(), message, "Kết quả đồng bộ Google Calendar", MessageBoxButtons.OK,
-                    result.DriverSynced || result.CustomerSynced ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
+                Toast.Show(this, "🗓️ Đồng bộ lịch Google\n" + message,
+                    result.DriverSynced && result.CustomerSynced ? ToastKind.Success : ToastKind.Warning);
             }
             catch (Exception ex)
             {
-                MessageBox.Show(FindForm(), "Lỗi: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                Ask.Fail(this, "Lỗi: " + ex.Message);
             }
         }
 
@@ -465,7 +492,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
 
                 if (est.Message is not null && est.EstimatedCost is null)
                 {
-                    MessageBox.Show(FindForm(), est.Message, "Chưa ước tính được", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    Ask.Fail(this, est.Message);
                     return;
                 }
 
@@ -486,7 +513,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
             }
             catch (Exception ex)
             {
-                MessageBox.Show(FindForm(), "Lỗi: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                Ask.Fail(this, "Lỗi: " + ex.Message);
             }
         }
 
@@ -525,7 +552,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
                 // không phải lỗi; không có số liệu thì mới là "không ước tính được".
                 if (result.Message is not null && result.DistanceKm <= 0)
                 {
-                    MessageBox.Show(FindForm(), result.Message, "Không ước tính được", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    Ask.Fail(this, result.Message);
                     return;
                 }
                 if (result.Message is not null)
@@ -550,7 +577,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
             }
             catch (Exception ex)
             {
-                MessageBox.Show(FindForm(), "Lỗi: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                Ask.Fail(this, "Lỗi: " + ex.Message);
             }
             finally { SetBusy(false); }
         }
@@ -564,9 +591,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
 
             if (trip.FromLat is null || trip.FromLng is null || trip.ToLat is null || trip.ToLng is null)
             {
-                MessageBox.Show(FindForm(),
-                    "Chuyến này thiếu tọa độ (điểm khách hàng chưa chọn từ gợi ý VietMap, hoặc kho chưa có tọa độ) — không vẽ được lộ trình.",
-                    "Thiếu tọa độ", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                Ask.Fail(this, "Chuyến này thiếu tọa độ (điểm khách hàng chưa chọn từ gợi ý VietMap, hoặc kho chưa có tọa độ) — không vẽ được lộ trình.");
                 return;
             }
 
@@ -586,7 +611,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
             }
             catch (Exception ex)
             {
-                MessageBox.Show(FindForm(), "Lỗi tải lộ trình: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                Ask.Fail(this, "Lỗi tải lộ trình: " + ex.Message);
             }
         }
 
@@ -597,13 +622,14 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
         }
 
         private void ShowNoSelection()
-            => MessageBox.Show(FindForm(), "Vui lòng chọn 1 chuyến trong danh sách trước.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            => Toast.Show(this, "👆 Chọn 1 chuyến trong danh sách trước.", ToastKind.Info);
 
         private async Task LoadAsync()
         {
             if (_api is null) return;
             lblStatus.Text = "Đang tải...";
             lblStatus.ForeColor = Theme.TextSecondary;
+            _overlay.Loading = true;
             try
             {
                 _trips = await _api.Trips.GetTripsAsync();
@@ -620,6 +646,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
                 lblStatus.Text = "Lỗi: " + ex.Message;
                 lblStatus.ForeColor = Theme.Danger;
             }
+            finally { _overlay.Loading = false; }
         }
 
         private const string WaitingPickupText = "⏳ Chờ lấy hàng xong";

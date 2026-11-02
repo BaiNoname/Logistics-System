@@ -24,7 +24,18 @@ namespace TruckingSystem.Desktop.Common
             login.LoginSucceeded += (api, username) =>
             {
                 login.Hide();
-                ShowMain(api, username);
+                try
+                {
+                    ShowMain(api, username);
+                }
+                catch (Exception ex)
+                {
+                    // Lỗi lúc dựng màn chính: KHÔNG để app "biến mất" (màn đăng nhập đã ẩn, màn chính không hiện) —
+                    // báo lỗi rồi hiện lại màn đăng nhập.
+                    MessageBox.Show("Không mở được màn hình chính: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    login.Show();
+                    return;
+                }
                 // Đóng hẳn màn đăng nhập cũ (trước đây chỉ ẩn: mỗi lần đăng xuất -> đăng nhập lại lại tích thêm 1 màn ẩn).
                 // Chạy sau khi nút Đăng nhập xử lý xong để không giải phóng form giữa chừng.
                 login.BeginInvoke(new Action(login.Close));

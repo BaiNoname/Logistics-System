@@ -35,7 +35,8 @@ public record TransportOrderListItemDto(
     int ActiveTripCount = 0, // số chuyến chưa hủy — Desktop dùng để khóa nút "Chia xe" khi đơn đã chia rồi
     DateTime? CommittedDeliveryDate = null, // hạn giao (giờ VN) — để lọc "quá hạn / sắp tới hạn"
     string? WarehouseName = null,           // kho trung chuyển — để lọc theo kho
-    string? ContractCode = null             // mã hợp đồng (null = đơn không theo hợp đồng)
+    string? ContractCode = null,            // mã hợp đồng (null = đơn không theo hợp đồng)
+    int OverdueStorageDays = 0              // hàng nằm kho quá hạn giao bao nhiêu ngày mà CHƯA chọn do bên nào (0 = không)
 );
 
 /// <summary>LegType: Pickup / Delivery / Return — cùng 1 lô hàng đi qua nhiều chặng, nên
@@ -83,5 +84,16 @@ public record TransportOrderDetailDto(
     string PickupMethod, int CustomerId, int WarehouseId, string WarehouseName,
     int? PickupLocationId = null, int? DropoffLocationId = null, // để form Sửa đơn chọn đúng Địa điểm theo Id
     double? WarehouseLat = null, double? WarehouseLng = null,   // lộ trình đơn đi QUA kho trung chuyển
-    int? ContractId = null, string? ContractCode = null          // hợp đồng của đơn (tuỳ chọn)
+    int? ContractId = null, string? ContractCode = null,         // hợp đồng của đơn (tuỳ chọn)
+    string? AllocateBlockReason = null, // đơn chờ Chia xe mà CHƯA chia được (hàng khách chưa mang tới đủ / kho thiếu khu) — Desktop mờ nút + ghi lý do
+    string? LateWarning = null,          // chuyến chưa chạy / đang chạy đã KHÔNG KỊP hạn giao — câu giải thích (null = ổn)
+    DateTime? SuggestedDeadline = null,  // ngày giao sớm nhất nếu xuất phát ngay — gợi ý khi dời hạn
+    OverdueStorageDto? OverdueStorage = null // hàng nằm kho quá hạn giao (null = không)
 );
+
+/// <summary>Hàng nằm kho sau hạn giao: số ngày, m³ đang nằm kho, đơn giá kho, phí ƯỚC TÍNH, và đã chọn do bên nào
+/// (Decision null = chưa chọn -> mặc định công ty chịu, Desktop báo đỏ; "Customer" / "Company").</summary>
+public record OverdueStorageDto(int Days, decimal VolumeM3, decimal RatePerM3PerDay, decimal EstimatedFee, string? Decision);
+
+/// <summary>Chọn bên chịu phí lưu kho cho phần hàng nằm kho quá hạn: Party = "Customer" | "Company"; Reason bắt buộc khi Customer.</summary>
+public record StorageResponsibilityRequest(string Party, string? Reason);

@@ -161,7 +161,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             try { await action.Run(order); }
             catch (Exception ex)
             {
-                MessageBox.Show(FindForm(), "Lỗi: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                Ask.Fail(this, "Lỗi: " + ex.Message);
             }
             finally { _running = false; }
         }
@@ -289,8 +289,8 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
 
         private async Task ConfirmAsync(TransportOrderListItem o)
         {
-            if (MessageBox.Show(FindForm(), $"Xác nhận đơn {o.Code}? Sau khi xác nhận sẽ KHÔNG sửa được nữa (chỉ có thể hủy).",
-                    "Xác nhận đơn hàng", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
+            if (!Ask.Confirm(this, $"Xác nhận đơn {o.Code}?",
+                    "Sau khi xác nhận sẽ KHÔNG sửa được đơn nữa (chỉ có thể hủy). Bước tiếp theo: chia xe.", "✅ Xác nhận đơn")) return;
             var result = await _api!.TransportOrders.ConfirmOrderAsync(o.Id);
             await LoadAsync(); // đơn có thể vừa bị người khác đổi -> nút theo dữ liệu mới
             SetStatus(result.Success ? $"✅ Đã xác nhận đơn {o.Code} — bước tiếp: 🚚 Chia xe." : "⚠️ " + result.Message,
@@ -299,11 +299,11 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
 
         private async Task CancelAsync(TransportOrderListItem o)
         {
-            if (MessageBox.Show(FindForm(), $"Bạn có chắc chắn muốn HỦY đơn {o.Code} không? Không thể hoàn tác.",
-                    "Xác nhận hủy đơn", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes) return;
+            if (!Ask.Confirm(this, $"Hủy đơn {o.Code}?", "Đơn bị hủy hẳn, không hoàn tác được.",
+                    "❌ Hủy đơn", danger: true, cancelText: "Giữ đơn")) return;
             var result = await _api!.TransportOrders.CancelOrderAsync(o.Id);
             await LoadAsync();
-            if (result.Success && !string.IsNullOrEmpty(result.Message))
+            if (result.Success && !string.IsNullOrEmpty(result.Message)) // cảnh báo quan trọng (VD xe lấy hàng đang chạy) -> giữ hộp thoại
                 MessageBox.Show(FindForm(), result.Message, "Đã hủy đơn — cần lưu ý", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             SetStatus(result.Success ? $"❌ Đã hủy đơn {o.Code}." : "⚠️ " + result.Message,
                 result.Success ? Theme.TextSecondary : Theme.Warning);
@@ -340,10 +340,9 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             var stops = OrderDetailForm.BuildRouteStops(detail);
             if (stops.Count < 2)
             {
-                MessageBox.Show(FindForm(),
+                Ask.Fail(this,
                     "Chưa đủ tọa độ để vẽ lộ trình (cần kho trung chuyển và điểm giao có tọa độ" +
-                    (detail.PickupMethod == "SelfDelivery" ? "" : ", cùng điểm lấy hàng") + ").",
-                    "Thiếu tọa độ", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    (detail.PickupMethod == "SelfDelivery" ? "" : ", cùng điểm lấy hàng") + ").");
                 return;
             }
             using var f = new RouteMapForm(_api, detail.Code, stops);

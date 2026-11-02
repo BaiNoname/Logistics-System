@@ -1,4 +1,4 @@
-using System.Windows.Forms;
+﻿using System.Windows.Forms;
 using TruckingSystem.Desktop.Common;
 using TruckingSystem.Desktop.DTO_TransportOrderManagement;
 
@@ -10,10 +10,22 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
         private List<TransportOrderListItem> _orders = new();
         // Đang Chia xe (VietMap + thuật toán có thể mất vài giây) -> khóa nút, chống bấm 2 lần.
         private bool _allocating;
+        private ScreenKit.GridOverlay _overlay = null!; // bảng trống / đang tải (Common/ScreenKit.cs)
+
 
         public TransportOrdersControl()
         {
             InitializeComponent();
+            // Bảng trống có hướng dẫn · phím tắt · nút "?" (mẫu UX đợt 6).
+            _overlay = ScreenKit.Overlay(grid, () => _orders.Count, "Chưa có đơn vận chuyển nào",
+                "Tạo đơn đầu tiên cho khách — sau đó xác nhận và chia xe.", ("➕ Tạo đơn mới", () => btnCreate.PerformClick()),
+                () => { _pendingOnly = false; filterBar.ClearFilters(); BindGrid(); });
+            ScreenKit.Shortcuts(this, grid, null, () => btnCreate.PerformClick(), () => _ = OpenDetailAsync());
+            ScreenKit.Help(this, "orders", "Quản lý đơn của khách từ lúc tạo đến khi giao xong.",
+                new[] { "Tạo đơn (➕ Tạo đơn mới)", "Kiểm tra thông tin rồi ✅ Xác nhận đơn", "🚚 Chia xe — hệ thống tự xếp xe + tài xế", "Theo dõi tiến độ; nhấp đúp 1 đơn để xem chi tiết" },
+                "Ctrl+N tạo đơn · Enter mở chi tiết · F5 làm mới · Ctrl+F tìm nhanh");
+            new ToolTip().SetToolTip(btnCreate, "Tạo đơn mới (Ctrl+N)");
+            new ToolTip().SetToolTip(btnRefresh, "Tải lại danh sách (F5)");
             Theme.StyleGrid(grid);
             GridLayout.FitColumns(grid); // cột vừa nội dung, nhiều cột thì cuộn ngang thay vì cắt chữ
 
@@ -33,8 +45,12 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             filterBar.AddChoice("customer", "Khách hàng", Array.Empty<string>());
             filterBar.AddChoice("warehouse", "Kho", Array.Empty<string>());
             filterBar.FilterChanged += (_, _) => BindGrid();
+            FilterMemory.Attach(filterBar, "orders"); // nhớ bộ lọc khi chuyển màn rồi quay lại
             SetupModernLook();
             SetupActions(); // thanh nút gọn + menu chuột phải + thẻ "Đơn đang chọn" (TransportOrdersControl.Actions.cs)
+            // Dải nhắc việc (giải thích số đỏ trên menu): đơn nháp chờ xác nhận + đơn chờ chia xe, bật / tắt "chỉ xem các việc này".
+            KpiStrip.InsertRow(root, _pendingBanner, root.GetRow(_card));
+            _pendingBanner.FilterToggled += (_, on) => { _pendingOnly = on; BindGrid(); };
 
             Load += async (_, _) => await LoadAsync();
         }
@@ -48,12 +64,25 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
 
             GridDecor.HoverRows(grid);
             GridDecor.Pills(grid, "Trạng_thái", (text, _) => GridDecor.StatusTone(text));
-            GridDecor.Pills(grid, "Hạn_giao", (_, row) => OrderAt(row) is { } o ? DeadlineGroup(o) switch
+            GridDecor.Pills(grid, "Hạn_giao", (_, row) => OrderAt(row) is { } o ? o.OverdueStorageDays > 0 ? GridDecor.Red : DeadlineGroup(o) switch
             {
                 DeadlineOverdue => GridDecor.Red,
                 DeadlineSoon => GridDecor.Amber,
                 _ => null,
             } : null);
+            // "Tiến độ" = phần trăm số hàng của đơn ĐÃ GIAO tới khách — rê chuột vào ô / tiêu đề cột để xem giải thích.
+            grid.CellToolTipTextNeeded += (_, e) =>
+            {
+                if (e.ColumnIndex < 0 || grid.Columns[e.ColumnIndex].Name != "Tiến_độ") return;
+                if (e.RowIndex < 0) { e.ToolTipText = "Tiến độ = phần trăm số hàng của đơn đã giao tới khách"; return; }
+                if (OrderAt(e.RowIndex) is { } o)
+                    e.ToolTipText = o.Status switch
+                    {
+                        "Draft" => "Đơn nháp — chưa xác nhận, chưa vận chuyển",
+                        "Cancelled" => "Đơn đã hủy",
+                        _ => $"Đã giao {o.ProgressPercent:0.##}% số hàng của đơn tới khách",
+                    };
+            };
             GridDecor.ProgressBars(grid, "Tiến_độ", row =>
             {
                 if (OrderAt(row) is not { } o || o.Status is "Draft" or "Cancelled") return null;
@@ -100,6 +129,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             if (_api is null) return;
             lblStatus.Text = "Đang tải...";
             lblStatus.ForeColor = Theme.TextSecondary;
+            _overlay.Loading = true;
             try
             {
                 _orders = await _api.TransportOrders.GetTransportOrdersAsync();
@@ -114,6 +144,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                 lblStatus.Text = "Lỗi: " + ex.Message;
                 lblStatus.ForeColor = Theme.Danger;
             }
+            finally { _overlay.Loading = false; }
         }
 
         private const string DeadlineOverdue = "Quá hạn (chưa xong)";
@@ -137,10 +168,24 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             filterBar.ShowOnlySearch(search);
         }
 
+        private readonly PendingBanner _pendingBanner = new();
+        private bool _pendingOnly;
+
+        private static bool IsPending(TransportOrderListItem o)
+            => o.Status == "Draft" || (o.Status == "Confirmed" && o.ActiveTripCount == 0) || o.OverdueStorageDays > 0;
+
+        /// <summary>Mở từ số đỏ trên menu trái: bỏ bộ lọc cũ, chỉ hiện đơn chờ xác nhận / chờ chia xe.</summary>
+        public void ShowPendingOnly()
+        {
+            _pendingOnly = true;
+            FilterMemory.Cancel(filterBar);
+        }
+
         private void BindGrid()
         {
             var keepId = grid.CurrentRow?.Cells["Id"].Value as int?;
             var rows = _orders.Where(o =>
+                    (!_pendingOnly || IsPending(o)) &&
                     filterBar.Is("status", TranslateStatus(o.Status)) &&
                     filterBar.Is("deadline", DeadlineGroup(o)) &&
                     filterBar.Is("customer", o.CustomerName) &&
@@ -156,9 +201,18 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                 Khách_hàng = o.CustomerName,
                 Trạng_thái = TranslateStatus(o.Status),
                 Tiến_độ = $"{o.ProgressPercent}%",
-                Hạn_giao = o.CommittedDeliveryDate?.ToString("dd/MM/yyyy") ?? "—",
+                // Ghi luôn số ngày: "01/11 · trễ 1 ngày" / "mai" / "còn 7 ngày" (đơn đã xong / hủy chỉ ghi ngày).
+                Hạn_giao = ScreenKit.Deadline(o.CommittedDeliveryDate, done: o.Status is "Done" or "Cancelled")
+                           + (o.OverdueStorageDays > 0 ? " · 📦 nằm kho quá hạn — chưa rõ do ai" : ""),
             }).ToList();
             filterBar.SetCount(rows.Count, _orders.Count);
+            var drafts = _orders.Count(o => o.Status == "Draft");
+            var waitAlloc = _orders.Count(o => o.Status == "Confirmed" && o.ActiveTripCount == 0);
+            var overdue = _orders.Count(o => o.OverdueStorageDays > 0);
+            _pendingBanner.Update(string.Join(" · ", new[] { drafts > 0 ? $"{drafts} đơn nháp chờ xác nhận" : null,
+                waitAlloc > 0 ? $"{waitAlloc} đơn chờ chia xe" : null,
+                overdue > 0 ? $"{overdue} đơn hàng nằm kho quá hạn, chưa xác định do ai" : null }.Where(x => x is not null)),
+                drafts + waitAlloc + overdue, _pendingOnly);
             if (keepId is int id)
                 foreach (DataGridViewRow r in grid.Rows)
                     if (r.Cells["Id"].Value is int rid && rid == id) { grid.CurrentCell = r.Cells["Mã_đơn"]; break; }
@@ -179,7 +233,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             if (_api is null) return;
             if (grid.CurrentRow is null)
             {
-                MessageBox.Show(FindForm(), "Vui lòng chọn 1 đơn hàng trong danh sách trước.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                Toast.Show(this, "👆 " + "Vui lòng chọn 1 đơn hàng trong danh sách trước.", ToastKind.Info);
                 return;
             }
 
@@ -197,7 +251,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
 
                 if (!result.Trips.Any())
                 {
-                    MessageBox.Show(FindForm(), result.Message ?? "Không có xe nào rảnh để chia.", "Không thể chia xe", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    Ask.Fail(this, result.Message ?? "Không có xe nào rảnh để chia.");
                     await LoadAsync(); // VD người khác vừa chia xe đơn này -> danh sách + nút cập nhật
                     return;
                 }
@@ -218,7 +272,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             }
             catch (Exception ex)
             {
-                MessageBox.Show(FindForm(), "Lỗi khi chia xe: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                Ask.Fail(this, "Lỗi khi chia xe: " + ex.Message);
             }
             finally
             {

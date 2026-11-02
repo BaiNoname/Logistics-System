@@ -1,4 +1,4 @@
-using System.Drawing;
+﻿using System.Drawing;
 using System.Windows.Forms;
 using TruckingSystem.Desktop.Common;
 using TruckingSystem.Desktop.DTO_TransportOrderManagement;
@@ -31,6 +31,10 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             // Bố cục (thanh nút gồm cả "📦 Hàng chờ nhập kho", sơ đồ Dock Fill, khung thử Best-Fit)
             // nằm hết trong WarehousesControl.Designer.cs — tự co giãn, không còn Resize tính tay.
             InitializeComponent();
+            // Từ ngữ thống nhất: "kệ" (đặt bằng code, không sửa Designer).
+            lblTestTitle.Text = "🧪  Thử gợi ý kệ (Best-Fit) — CHỈ GỢI Ý, không nhập kho";
+            lblCargoLineId.Text = "Chọn đơn hàng → dòng hàng cần thử xếp kệ:";
+            btnSuggest.Text = "🔍  Gợi ý kệ";
 
             // Chống giật/nhòe hình khi vẽ động nhiều Panel lồng nhau (sơ đồ Zone/Bin) —
             // Panel không cho set DoubleBuffered trực tiếp từ ngoài (protected),
@@ -103,13 +107,17 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             foreach (var b in new[] { btnCreateWarehouse, btnEditWarehouse, btnManageZones, btnDeleteWarehouse })
                 toolbar.Controls.Remove(b);
             var manage = new ContextMenuStrip();
-            manage.Items.Add(MenuItem("➕  Thêm kho mới", BtnCreateWarehouse_Click));
-            manage.Items.Add(MenuItem("✏️  Sửa thông tin kho đang chọn", BtnEditWarehouse_Click));
-            manage.Items.Add(MenuItem("🏗️  Quản lý khu vực / vị trí lưu trữ", BtnManageZones_Click));
-            manage.Items.Add(new ToolStripSeparator());
+            var create = MenuItem("➕  Thêm kho mới", BtnCreateWarehouse_Click);
+            var edit = MenuItem("✏️  Sửa thông tin kho đang chọn (kích thước, cửa, phí lưu kho)", BtnEditWarehouse_Click);
+            manage.Items.Add(create);
+            manage.Items.Add(edit);
+            manage.Items.Add(MenuItem("🏗️  Quản lý khu vực và kệ", BtnManageZones_Click));
+            var sep = new ToolStripSeparator();
+            manage.Items.Add(sep);
             var delete = MenuItem("🗑️  Xóa kho đang chọn", BtnDeleteWarehouse_Click);
             delete.ForeColor = Theme.Danger;
             manage.Items.Add(delete);
+            _adminItems.AddRange(new ToolStripItem[] { create, edit, sep, delete });
             ModernMenu.Apply(manage);
             _btnManage = ToolbarButton("⚙️ Quản lý kho ▾");
             _btnManage.Click += (_, _) =>
@@ -129,6 +137,10 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             KpiStrip.InsertRow(root, _summary, root.GetRow(lblStatus));
 
             // Cửa sổ thấp: giữ sơ đồ kho cao tối thiểu ~320 px, thiếu chỗ thì cả màn cuộn xuống được.
+            SetupTaskTiles(); // 3 ô "việc hôm nay" (WarehousesControl.Tiles.cs)
+            ScreenKit.Help(this, "warehouses", "Việc hằng ngày ở kho trung chuyển: nhập hàng xe về, xuất hàng lên xe giao, nhận hàng khách mang tới.",
+                new[] { "Chọn kho ở ô \"Chọn kho\"", "Bấm 1 trong 3 ô việc phía trên (ô xanh = đang có việc chờ)", "Rê chuột lên 1 kệ trên sơ đồ để xem hàng bên trong; bấm để sửa" },
+                "Esc đóng cửa sổ đang mở · Enter = nút chính của cửa sổ");
             ScrollFit.Enable(this, root, zonesPanel, LogicalToDeviceUnits(320));
         }
 
@@ -219,7 +231,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             var x = S(16);
             if (_sumBins == 0)
             {
-                TextRenderer.DrawText(g, "Kho chưa có ô kệ nào — vào ⚙️ Quản lý kho ▾ để thêm khu vực / vị trí.", Theme.FontNormal,
+                TextRenderer.DrawText(g, "Kho chưa có kệ nào — vào ⚙️ Quản lý kho ▾ để thêm khu và kệ.", Theme.FontNormal,
                     new Rectangle(x, 0, r.Width - x, r.Height), Theme.TextSecondary, flags);
                 return;
             }
@@ -253,7 +265,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                 TextRenderer.DrawText(g, text, font, new Rectangle(x, 0, r.Width, r.Height), color, flags);
                 x += TextRenderer.MeasureText(g, text, font, Size.Empty, flags).Width;
             }
-            Part($"{_sumUsed:0.#} / {_sumCap:0.#} m³ · {_sumBins} ô kệ", Theme.TextSecondary, Theme.FontNormal);
+            Part($"{_sumUsed:0.#} / {_sumCap:0.#} m³ · {_sumBins} kệ", Theme.TextSecondary, Theme.FontNormal);
             if (_sumFull > 0) { Part(" · ", Theme.TextSecondary, Theme.FontNormal); Part($"{_sumFull} ô gần đầy", Theme.Danger, Theme.FontBold); }
             Part($" · {_sumEmpty} ô trống", Theme.TextSecondary, Theme.FontNormal);
 
@@ -314,7 +326,13 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
         public WarehousesControl(ApiServices api) : this()
         {
             _api = api;
+            // Thu gọn theo vai trò (mẫu D2): Nhân viên kho chỉ thấy việc hằng ngày + khu vực & kệ; thêm / sửa / xóa kho,
+            // phí lưu kho là việc của Quản trị / Điều phối (chỉ ẩn trên giao diện — server vẫn kiểm tra quyền như cũ).
+            if (!api.Connection.IsInRole("Admin", "Dispatcher"))
+                foreach (var it in _adminItems) it.Visible = false;
         }
+
+        private readonly List<ToolStripItem> _adminItems = new();
 
         /// <summary>🙋 Nhận hàng KHÁCH TỰ MANG TỚI kho (đơn "Khách tự mang tới").</summary>
         private void BtnManualStock_Click(object? sender, EventArgs e) => OpenManualStock(ManualStockMode.Receive);
@@ -326,7 +344,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
         {
             if (_api is null || cboWarehouse.SelectedValue is not int warehouseId)
             {
-                MessageBox.Show(FindForm(), "Vui lòng chọn 1 kho trước.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                Toast.Show(this, "👆 " + "Vui lòng chọn 1 kho trước.", ToastKind.Info);
                 return;
             }
             using var f = new ManualStockForm(_api, warehouseId, mode);
@@ -339,7 +357,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
         {
             if (_api is null || cboWarehouse.SelectedItem is not WarehouseListItem warehouse)
             {
-                MessageBox.Show(FindForm(), "Vui lòng chọn 1 kho trước.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                Toast.Show(this, "👆 " + "Vui lòng chọn 1 kho trước.", ToastKind.Info);
                 return;
             }
             using var f = new PendingReceiptsForm(_api, warehouse.Id, warehouse.Name);
@@ -356,7 +374,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
         {
             if (_api is null || cboWarehouse.SelectedItem is not WarehouseListItem warehouse)
             {
-                MessageBox.Show(FindForm(), "Vui lòng chọn 1 kho trước.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                Toast.Show(this, "👆 " + "Vui lòng chọn 1 kho trước.", ToastKind.Info);
                 return;
             }
             using var f = new TripIssuesForm(_api, warehouse.Id, warehouse.Name);
@@ -382,11 +400,15 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                 var lines = await new TruckingSystem.Desktop.SERVICE_WarehouseManagement.PendingReceiptApiService(_api.Connection).GetPendingAsync(warehouseId);
                 if (IsDisposed || loadId != _pendingCountLoadId) return;
                 btnPendingReceipts.Text = lines.Count > 0 ? $"{baseText} ({lines.Count} chờ)" : baseText;
+                var inTrips = lines.Select(l => l.TripId).Distinct().Count();
                 // Số chuyến giao SẴN SÀNG xuất (hàng đã nhập kho đủ, chờ kho soạn + bốc lên xe).
                 var issueLines = await new TruckingSystem.Desktop.SERVICE_WarehouseManagement.TripIssueApiService(_api.Connection).GetAsync(warehouseId);
                 if (IsDisposed || loadId != _pendingCountLoadId) return;
                 var ready = issueLines.Where(l => l.CanIssue).Select(l => l.TripId).Distinct().Count();
                 btnTripIssues.Text = ready > 0 ? $"📤 Xuất kho theo chuyến ({ready} chờ)" : "📤 Xuất kho theo chuyến";
+                var today = DateTime.Today;
+                var urgent = issueLines.Where(l => l.CanIssue && l.LatestStart is DateTime ls && ls.Date <= today).Select(l => l.TripId).Distinct().Count();
+                UpdateTiles(inTrips, ready, urgent);
             }
             catch
             {
@@ -396,12 +418,13 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
 
         private void BtnManageZones_Click(object? sender, EventArgs e)
         {
-            if (_api is null || cboWarehouse.SelectedValue is not int warehouseId)
+            if (_api is null || cboWarehouse.SelectedItem is not WarehouseListItem warehouse)
             {
-                MessageBox.Show(FindForm(), "Vui lòng chọn 1 kho trước.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                Toast.Show(this, "👆 " + "Vui lòng chọn 1 kho trước.", ToastKind.Info);
                 return;
             }
-            using var f = new ManageZonesForm(_api, warehouseId);
+            // 1 cửa sổ 2 cột: khu bên trái, sơ đồ + kệ bên phải (thay cho mở lồng Quản lý khu → Vị trí lưu trữ).
+            using var f = new WarehouseLayoutForm(_api, warehouse);
             f.ShowDialog(FindForm());
             _ = LoadZonesAsync(); // vẽ lại sơ đồ ngay khi đóng form — có thể vừa thêm khu/vị trí mới
         }
@@ -410,7 +433,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
         {
             if (_api is null || cboWarehouse.SelectedItem is not WarehouseListItem warehouse)
             {
-                MessageBox.Show(FindForm(), "Vui lòng chọn 1 kho trước.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                Toast.Show(this, "👆 " + "Vui lòng chọn 1 kho trước.", ToastKind.Info);
                 return;
             }
             using var f = new EditWarehouseForm(_api, warehouse);
@@ -426,24 +449,21 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             if (_api is null || cboWarehouse.SelectedValue is not int warehouseId) return;
             if (cboWarehouse.SelectedItem is not WarehouseListItem warehouse) return;
 
-            var confirm = MessageBox.Show(FindForm(),
-                $"Xóa hẳn kho \"{warehouse.Name}\"? Toàn bộ khu vực/vị trí bên trong (nếu chưa có hàng) sẽ bị xóa theo. Không thể hoàn tác.",
-                "Xác nhận xóa kho", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
-            if (confirm != DialogResult.Yes) return;
+            if (!Ask.Confirm(this, $"Xóa kho \"{warehouse.Name}\"?", "Toàn bộ khu và kệ bên trong (nếu chưa có hàng) bị xóa theo. Không hoàn tác được.", "🗑 Xóa kho", danger: true)) return;
 
             try
             {
                 var result = await _api.Warehouses.DeleteWarehouseAsync(warehouseId);
                 if (!result.Success)
                 {
-                    MessageBox.Show(FindForm(), result.Message ?? "Không thể xóa kho.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    Ask.Fail(this, result.Message ?? "Không thể xóa kho.");
                     return;
                 }
                 await LoadWarehousesAsync();
             }
             catch (Exception ex)
             {
-                MessageBox.Show(FindForm(), "Lỗi: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                Ask.Fail(this, "Lỗi: " + ex.Message);
             }
         }
 
@@ -536,7 +556,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                 var warnings = new List<string>();
                 if (missingSize) warnings.Add("⚠️ kho chưa khai báo kích thước thật, đang hiện tạm theo tỉ lệ mặc định");
                 if (!_currentHasDoor) warnings.Add("⚠️ kho chưa khai báo vị trí cửa — chưa ưu tiên gần/xa cửa được (vào Sửa kho để khai báo)");
-                lblStatus.Text = $"{zones.Count} khu vực — bấm vào khu / ô để sửa, rê chuột vào ô để xem hàng bên trong" +
+                lblStatus.Text = $"{zones.Count} khu vực — bấm vào khu / kệ để sửa, rê chuột vào kệ để xem hàng bên trong" +
                                  string.Concat(warnings.Select(w => "   " + w));
                 lblStatus.ForeColor = warnings.Count > 0 ? Theme.Warning : Theme.TextSecondary;
             }
@@ -834,7 +854,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
         private async Task OpenEditZoneAsync(WarehouseZoneItem zone)
         {
             if (_api is null) return;
-            using var f = new EditZoneForm(_api, zone);
+            using var f = new EditZoneForm(_api, zone, cboWarehouse.SelectedValue is int whId ? whId : 0);
             if (f.ShowDialog(FindForm()) == DialogResult.OK) await LoadZonesAsync();
         }
 
@@ -843,7 +863,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
         private async Task OpenEditBinAsync(StorageBinItem bin, WarehouseZoneItem zone)
         {
             if (_api is null) return;
-            using var f = new EditBinForm(_api, bin, zone.Name, zone.WidthMeters, zone.HeightMeters);
+            using var f = new EditBinForm(_api, bin, zone.Name, zone.WidthMeters, zone.HeightMeters, zone.Id);
             if (f.ShowDialog(FindForm()) == DialogResult.OK) await LoadZonesAsync();
         }
 

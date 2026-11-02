@@ -15,6 +15,7 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
         public ManageVehicleDocumentsForm()
         {
             InitializeComponent();
+            TruckingSystem.Desktop.Common.DialogFit.Enable(this, root); // vừa màn hình mọi máy, bảng không bị ép mất chữ
             TruckingSystem.Desktop.Common.DialogKeys.Enable(this); // Esc = đóng
             Theme.StyleGrid(grid);
             grid.CellDoubleClick += async (_, e) => { if (e.RowIndex >= 0) await OpenSelectedFileAsync(); };
@@ -116,28 +117,26 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
         {
             if (_api is null || grid.CurrentRow is null)
             {
-                MessageBox.Show(FindForm(), "Vui lòng chọn 1 giấy tờ trước.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                Toast.Show(this, "👆 " + "Vui lòng chọn 1 giấy tờ trước.", ToastKind.Info);
                 return;
             }
             var id = (int)grid.CurrentRow.Cells["Id"].Value;
 
-            var confirm = MessageBox.Show(FindForm(), "Xóa hẳn giấy tờ này? Không thể hoàn tác.",
-                "Xác nhận xóa", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
-            if (confirm != DialogResult.Yes) return;
+            if (!Ask.Confirm(this, "Xóa giấy tờ này?", "Giấy tờ bị xóa hẳn, không hoàn tác được.", "🗑 Xóa giấy tờ", danger: true)) return;
 
             try
             {
                 var result = await _api.Vehicles.DeleteDocumentAsync(id);
                 if (!result.Success)
                 {
-                    MessageBox.Show(FindForm(), result.Message ?? "Không thể xóa.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    Ask.Fail(this, result.Message ?? "Không thể xóa.");
                     return;
                 }
                 await LoadAsync();
             }
             catch (Exception ex)
             {
-                MessageBox.Show(FindForm(), "Lỗi: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                Ask.Fail(this, "Lỗi: " + ex.Message);
             }
         }
 

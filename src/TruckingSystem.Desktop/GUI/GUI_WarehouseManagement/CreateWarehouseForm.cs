@@ -44,7 +44,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
         {
             if (string.IsNullOrWhiteSpace(txtName.Text))
             {
-                lblStatus.Text = "Vui lòng nhập tên kho.";
+                FieldHint.Show(txtName, lblStatus, "Vui lòng nhập tên kho."); // tô đỏ + nhảy vào đúng ô
                 return;
             }
             if (_api is null) return;
@@ -57,7 +57,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             }
             if (numLength.Value <= 0 || numWidth.Value <= 0)
             {
-                lblStatus.Text = "Vui lòng nhập Chiều dài và Chiều rộng kho (mét) — dùng để vẽ sơ đồ kho.";
+                FieldHint.Show(numLength, lblStatus, "Vui lòng nhập Chiều dài và Chiều rộng kho (mét) — dùng để vẽ sơ đồ kho."); // tô đỏ + nhảy vào đúng ô
                 return;
             }
 

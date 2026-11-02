@@ -16,6 +16,10 @@ namespace TruckingSystem.Desktop.SERVICE_WarehouseManagement
         public Task<List<WarehouseListItem>> GetWarehousesAsync()
             => _conn.GetAsync<List<WarehouseListItem>>("/api/warehouses")!;
 
+        /// <summary>Số việc chờ cho chấm đỏ menu — 1 lần gọi, chỉ đếm.</summary>
+        public Task<WorkCountsItem?> GetWorkCountsAsync()
+            => _conn.GetAsync<WorkCountsItem>("/api/warehouses/work-counts");
+
         /// <summary>Tạo kho mới — cho phép có nhiều kho ở nhiều địa điểm (TP.HCM, Hà Nội, Đà Nẵng...).</summary>
         public Task<WarehouseListItem> CreateWarehouseAsync(string name, string? address, decimal? capacityM3, decimal? lengthMeters, decimal? widthMeters, double? lat, double? lng, string? doorSide = null, decimal? doorOffsetMeters = null,
             decimal storageFeePerM3PerDay = 0)

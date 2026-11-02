@@ -15,10 +15,18 @@ namespace TruckingSystem.Desktop.GUI_DriverManagement
     {
         private ApiServices? _api;
         private List<DriverListItem> _drivers = new();
+        private ScreenKit.GridOverlay _overlay = null!; // bảng trống / đang tải (Common/ScreenKit.cs)
+
 
         public DriversControl()
         {
             InitializeComponent();
+            _overlay = ScreenKit.Overlay(grid, () => _drivers.Count, "Chưa có tài xế nào",
+                "Tài xế = nhân viên có chức danh Tài xế — thêm ở màn Nhân viên.", null, () => filterBar.ClearFilters());
+            ScreenKit.Shortcuts(this, grid, null, null, () => { if (grid.CurrentRow is { } r) Grid_CellDoubleClick(grid, new DataGridViewCellEventArgs(0, r.Index)); });
+            ScreenKit.Help(this, "drivers", "Hồ sơ tài xế, bằng lái và ngày làm việc.",
+                new[] { "Tài xế chưa có hồ sơ: bấm Tạo hồ sơ", "Đăng ký ngày làm — chỉ tài xế có ngày làm mới được chia chuyến", "Theo dõi cảnh báo bằng lái / giấy khám sắp hết hạn" },
+                "Enter mở chi tiết · F5 làm mới · Ctrl+F tìm nhanh");
             Theme.StyleGrid(grid);
             GridLayout.FitColumns(grid); // cột vừa nội dung, nhiều cột thì cuộn ngang thay vì cắt chữ
             Load += (_, _) => Theme.UniformButtons(toolbar); // nút đều nhau, xuống dòng vẫn thẳng cột
@@ -34,6 +42,7 @@ namespace TruckingSystem.Desktop.GUI_DriverManagement
             filterBar.AddChoice("warning", "Cảnh báo", new[] { WarnYes, WarnNo });
             filterBar.AddChoice("warehouse", "Kho", Array.Empty<string>());
             filterBar.FilterChanged += (_, _) => BindGrid();
+            FilterMemory.Attach(filterBar, "drivers"); // nhớ bộ lọc khi chuyển màn rồi quay lại
             SetupModernLook();
             SetupRowMenu();
             Load += async (_, _) => await LoadAsync();
@@ -181,7 +190,7 @@ namespace TruckingSystem.Desktop.GUI_DriverManagement
                         ("Liên hệ", d.Phone ?? "—"),
                         ("Chức danh / kho", $"{d.PositionName ?? "—"} · {WarehouseText(d)}"),
                         ("Kinh nghiệm", d.YearsOfExperience is int y ? $"{y} năm" : "—"),
-                        ("# Bằng lái & sức khỏe", ""),
+                        ("# Bằng lái và sức khỏe", ""),
                         ("Hồ sơ", d.HasProfile ? "✅ " + d.ProfileStatus : "⛔ Chưa có hồ sơ"),
                         ("Bằng lái", d.HasProfile ? $"{d.LicenseNumber ?? "—"} · hạng {d.LicenseClass ?? "—"}" : "—"),
                         ("Hạn bằng lái", ExpiryText(d.LicenseExpiryDate)),
@@ -226,8 +235,7 @@ namespace TruckingSystem.Desktop.GUI_DriverManagement
             if (d is null) return;
             if (!d.HasProfile)
             {
-                MessageBox.Show(FindForm(), $"{d.FullName} chưa có hồ sơ tài xế — bấm \"Tạo hồ sơ\" trước rồi mới đăng ký ngày làm.",
-                    "Chưa có hồ sơ", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                Toast.Show(this, "👆 " + $"{d.FullName} chưa có hồ sơ tài xế — bấm \"Tạo hồ sơ\" trước rồi mới đăng ký ngày làm.", ToastKind.Info);
                 return;
             }
 
@@ -250,7 +258,7 @@ namespace TruckingSystem.Desktop.GUI_DriverManagement
         {
             var d = Selected();
             if (d is null)
-                MessageBox.Show(FindForm(), "Vui lòng chọn 1 tài xế trong danh sách trước.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                Toast.Show(this, "👆 " + "Vui lòng chọn 1 tài xế trong danh sách trước.", ToastKind.Info);
             return d;
         }
 
@@ -261,6 +269,7 @@ namespace TruckingSystem.Desktop.GUI_DriverManagement
             selectEmployeeId ??= Selected()?.EmployeeId;
             lblStatus.Text = "Đang tải...";
             lblStatus.ForeColor = Theme.TextSecondary;
+            _overlay.Loading = true;
             try
             {
                 _drivers = await _api.Drivers.GetDriversAsync();
@@ -279,6 +288,7 @@ namespace TruckingSystem.Desktop.GUI_DriverManagement
                 lblStatus.Text = "Lỗi: " + ex.Message;
                 lblStatus.ForeColor = Theme.Danger;
             }
+            finally { _overlay.Loading = false; }
         }
 
         private void Grid_CellFormatting(object? sender, DataGridViewCellFormattingEventArgs e)

@@ -22,6 +22,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
         public StorageFeeForm()
         {
             InitializeComponent();
+            TruckingSystem.Desktop.Common.DialogFit.Enable(this, root); // vừa màn hình mọi máy, bảng không bị ép mất chữ
             Anim.FadeIn(this);
 
             // 4 thẻ theo câu hỏi của người dùng: ĐÃ phát sinh bao nhiêu · nếu hàng còn nằm kho tới hết hạn mới thì

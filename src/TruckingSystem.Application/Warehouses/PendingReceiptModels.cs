@@ -7,7 +7,8 @@
 public record PendingReceiptLineDto(int TripId, int TransportOrderId, string OrderCode, string CustomerName,
     string DriverName, string PlateNumber, DateTime? ArrivedAt,
     int CargoLineId, string CargoType, string ZoneType, bool WholeUnits,
-    decimal QtyPlanned, decimal QtyReceived, decimal QtyPending);
+    decimal QtyPlanned, decimal QtyReceived, decimal QtyPending,
+    DateTime? DeliveryLatestStart = null); // chặng Giao của đơn phải xuất phát trước ngày này (null = chưa chia / không có hạn) — hàng gấp nhập trước
 
 /// <summary>Nhập THỦ CÔNG 1 phần hàng của chuyến Lấy hàng vào 1 vị trí do người dùng chọn.
 /// BinId = null: để Best-Fit tự chọn (có thể chia nhiều vị trí) cho riêng số lượng này.</summary>

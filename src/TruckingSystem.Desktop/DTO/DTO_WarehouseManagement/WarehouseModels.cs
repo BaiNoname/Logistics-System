@@ -15,8 +15,31 @@
         public decimal StorageFeePerM3PerDay { get; set; }
         public double? Lat { get; set; }
         public double? Lng { get; set; }
+        /// <summary>Loại khu kho đang có (khu có vị trí): "Normal" / "Fragile" / "Hazmat". null = API cũ chưa trả về.</summary>
+        public List<string>? ZoneTypes { get; set; }
 
         public override string ToString() => Name;
+    }
+
+    /// <summary>Số việc chờ cho menu trái — xem API GET /api/warehouses/work-counts. -1 = không có quyền xem.</summary>
+    public class WorkCountsItem
+    {
+        public int DraftOrders { get; set; }
+        public int OrdersWaitAllocation { get; set; }
+        public int TripsWaitApproval { get; set; }
+        /// <summary>Đơn có hàng nằm kho quá hạn giao, chưa chọn do bên nào.</summary>
+        public int OrdersOverdueStorage { get; set; }
+        public List<WarehouseWorkCountItem> Warehouses { get; set; } = new();
+    }
+
+    public class WarehouseWorkCountItem
+    {
+        public int WarehouseId { get; set; }
+        public string Name { get; set; } = "";
+        public int InTrips { get; set; }
+        public int OutTrips { get; set; }
+        /// <summary>Chuyến chờ xuất phải xuất phát hôm nay hoặc đã quá mốc.</summary>
+        public int UrgentOut { get; set; }
     }
 
     public class WarehouseZoneItem
@@ -97,6 +120,10 @@
         public decimal QtyOnHand { get; set; }
         public string OrderCode { get; set; } = "";
         public override string ToString() => $"{CargoType} — khai {QtyTotal:0.##}, trong kho {QtyOnHand:0.##}";
+        /// <summary>Chữ ở ô chọn dòng hàng của màn "Nhận hàng khách mang tới": thấy ngay dòng nào còn phải nhập.</summary>
+        public string ReceiveText => QtyRemaining > 0
+            ? $"{CargoType} — chưa nhập {QtyRemaining:0.##}/{QtyTotal:0.##}"
+            : $"✅ {CargoType} — đã nhập đủ {QtyTotal:0.##}";
     }
 
     public class WarehouseTransactionItem

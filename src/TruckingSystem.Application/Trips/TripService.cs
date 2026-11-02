@@ -796,14 +796,8 @@ WHERE ""Id"" = {tripId}");
 
         var driver = await _db.DriverProfiles
             .Where(dp => dp.EmployeeId == trip.DriverEmployeeId)
-            .Select(dp => new {
-                dp.LicenseExpiryDate,
-                dp.LicenseClass,
-                dp.HealthCertExpiryDate,
-                EmpStatus = dp.Employee.Status,
-                dp.Employee.FullName,
-                PositionName = dp.Employee.Position != null ? dp.Employee.Position.Name : null
-            })
+            .Select(dp => new { dp.LicenseExpiryDate, dp.LicenseClass, dp.HealthCertExpiryDate, EmpStatus = dp.Employee.Status, dp.Employee.FullName,
+                                PositionName = dp.Employee.Position != null ? dp.Employee.Position.Name : null })
             .FirstOrDefaultAsync();
         if (driver is null) return "Tài xế của chuyến này chưa có hồ sơ tài xế.";
         if (driver.EmpStatus != EmployeeStatus.Active)
@@ -1691,7 +1685,7 @@ WHERE ""Id"" = {tripId}");
         var docsByVehicle = (await VehicleDocumentRules.GetLatestAsync(_db)).ToLookup(d => d.VehicleId);
         var vehicles = await _db.Vehicles
             .OrderBy(v => v.PlateNumber)
-            .Select(v => new { v.Id, v.PlateNumber, v.Status, v.WarehouseId, v.CapacityQty, v.CapacityKg, v.CapacityM3 })
+            .Select(v => new { v.Id, v.PlateNumber, v.Status, v.WarehouseId, v.CapacityQty, v.CapacityKg, v.CapacityM3, v.VehicleType })
             .ToListAsync();
         var vehicleOptions = new List<ReassignOptionDto>();
         foreach (var v in vehicles)
@@ -1724,19 +1718,11 @@ WHERE ""Id"" = {tripId}");
         var driverPositionIds = await DriverPositionRules.DriverPositionIdsAsync(_db);
         var drivers = await _db.DriverProfiles
             .OrderBy(dp => dp.Employee.FullName)
-            .Select(dp => new {
-                dp.EmployeeId,
-                dp.Employee.FullName,
-                dp.Employee.Code,
-                EmpStatus = dp.Employee.Status,
-                dp.Employee.PositionId,
-                dp.LicenseExpiryDate,
-                dp.LicenseClass,
-                dp.WarehouseId,
-                dp.HealthCertExpiryDate
-            })
+            .Select(dp => new { dp.EmployeeId, dp.Employee.FullName, dp.Employee.Code, EmpStatus = dp.Employee.Status, dp.Employee.PositionId,
+                                dp.LicenseExpiryDate, dp.LicenseClass, dp.WarehouseId, dp.HealthCertExpiryDate })
             .ToListAsync();
         var driverOptions = new List<ReassignOptionDto>();
+        var usableVehicleIds = vehicleOptions.Where(o => o.Eligible).Select(o => o.Id).ToHashSet();
         foreach (var d in drivers)
         {
             string? reason = null;
@@ -1755,7 +1741,12 @@ WHERE ""Id"" = {tripId}");
             else eligible = true;
             // Hạng bằng hiện kèm tên — hạng bằng phải hợp với XE được chọn (kiểm tra khi bấm Lưu).
             var text = $"{d.FullName} ({d.Code}) — bằng {d.LicenseClass}" + (isCurrent ? " (tài xế hiện tại)" : "");
-            driverOptions.Add(new ReassignOptionDto(d.EmployeeId, text, eligible, reason));
+            // Cặp tài xế + xe không hợp hạng bằng (chỉ xét các xe dùng được) — báo trước, đúng quy tắc lúc Lưu.
+            var cannotDrive = vehicles.Where(v => usableVehicleIds.Contains(v.Id))
+                .Select(v => (v.Id, Reason: DriverLicenseRules.BlockReason(d.LicenseClass, v.CapacityKg, v.VehicleType)))
+                .Where(x => x.Reason is not null)
+                .ToDictionary(x => x.Id, x => x.Reason!);
+            driverOptions.Add(new ReassignOptionDto(d.EmployeeId, text, eligible, reason, cannotDrive.Count > 0 ? cannotDrive : null));
         }
 
         return (vehicleOptions, driverOptions);

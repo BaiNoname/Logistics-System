@@ -20,5 +20,7 @@
         public decimal QtyPlanned { get; set; }
         public decimal QtyReceived { get; set; }
         public decimal QtyPending { get; set; }
+        /// <summary>Chặng Giao của đơn phải xuất phát trước ngày này (null = chưa chia / không có hạn / API cũ).</summary>
+        public DateTime? DeliveryLatestStart { get; set; }
     }
 }

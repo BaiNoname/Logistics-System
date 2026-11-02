@@ -14,10 +14,20 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
         public EditBinForm()
         {
             InitializeComponent();
+            TruckingSystem.Desktop.Common.DialogFit.Enable(this, root); // vừa màn hình mọi máy, bảng không bị ép mất chữ
             TruckingSystem.Desktop.Common.DialogKeys.Enable(this, btnSave); // Esc = đóng, Enter = Lưu
+            // Từ ngữ thống nhất: "kệ" (đặt bằng code, không sửa Designer).
+            lblCode.Text = "Mã kệ * (VD: C-01)";
+            lblWidth.Text = "Chiều rộng kệ (mét) *";
+            lblHeight.Text = "Chiều cao kệ (mét) *";
+            lblDistanceFromDoor.Text = "🚪 Khoảng cách tới cửa (mét) — hệ thống TỰ TÍNH từ vị trí cửa kho";
+            lblNote.Text = "💡 Hệ thống tự kiểm tra: kệ không được đè lên kệ khác, không được vượt ra ngoài ranh giới khu vực.";
+            btnSave.Text = "💾 Lưu kệ";
+            Text = "Sửa kệ";
         }
 
-        public EditBinForm(ApiServices api, StorageBinItem bin, string zoneName, decimal zoneWidth, decimal zoneHeight) : this()
+        /// <param name="zoneId">Khu của kệ — có thì hiện sơ đồ xem trước (0 = không hiện).</param>
+        public EditBinForm(ApiServices api, StorageBinItem bin, string zoneName, decimal zoneWidth, decimal zoneHeight, int zoneId = 0) : this()
         {
             _api = api;
             _binId = bin.Id;
@@ -33,6 +43,8 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             SetSafe(numWidth, bin.WidthMeters);
             SetSafe(numHeight, bin.HeightMeters);
             SetSafe(numDistanceFromDoor, bin.DistanceFromDoorMeters);
+            PlacementSetup.Bin(this, inputs, numPosX, numPosY, numWidth, numHeight, lblPosX, lblPosY, lblWidth, lblHeight,
+                btnSave, () => txtCode.Text.Trim(), api, zoneId, zoneName, zoneWidth, zoneHeight, bin.Id);
         }
 
         private static void SetSafe(NumericUpDown n, decimal value)
@@ -46,17 +58,17 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
         {
             if (string.IsNullOrWhiteSpace(txtCode.Text))
             {
-                lblStatus.Text = "Vui lòng nhập mã vị trí.";
+                FieldHint.Show(txtCode, lblStatus, "Vui lòng nhập mã kệ."); // tô đỏ + nhảy vào đúng ô
                 return;
             }
             if (numCapacity.Value <= 0)
             {
-                lblStatus.Text = "Sức chứa phải lớn hơn 0.";
+                FieldHint.Show(numCapacity, lblStatus, "Sức chứa phải lớn hơn 0."); // tô đỏ + nhảy vào đúng ô
                 return;
             }
             if (numWidth.Value <= 0 || numHeight.Value <= 0)
             {
-                lblStatus.Text = "Chiều rộng/cao vị trí phải lớn hơn 0.";
+                FieldHint.Show(numWidth, lblStatus, "Chiều rộng/cao kệ phải lớn hơn 0."); // tô đỏ + nhảy vào đúng ô
                 return;
             }
             if (_api is null) return;

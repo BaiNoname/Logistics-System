@@ -19,7 +19,16 @@ public record BinContentItemDto(string OrderCode, string CustomerName, string Ca
 
 public record StorageBinDto(int Id, string Code, decimal CapacityM3, decimal CurrentUsedM3, decimal MaxWeightKg, decimal PosX, decimal PosY, decimal WidthMeters, decimal HeightMeters, decimal DistanceFromDoorMeters, List<BinContentItemDto> Contents);
 public record WarehouseListItemDto(int Id, string Name, string? Address, decimal? CapacityM3, decimal? LengthMeters, decimal? WidthMeters, double? Lat, double? Lng, string? DoorSide = null, decimal? DoorOffsetMeters = null,
-    decimal StorageFeePerM3PerDay = 0); // phí lưu kho (đ/m³/ngày) khi khách dời hạn giao
+    decimal StorageFeePerM3PerDay = 0, // phí lưu kho (đ/m³/ngày) khi khách dời hạn giao
+    List<string>? ZoneTypes = null); // loại khu kho đang có (khu có vị trí): "Normal" / "Fragile" / "Hazmat" — màn Tạo đơn báo trước kho thiếu khu
+
+/// <summary>SỐ VIỆC CHỜ cho menu trái — 1 lần gọi, chỉ đếm (thay cho tải nguyên danh sách đơn, chuyến
+/// và 2 lần gọi cho MỖI kho như trước -> đăng nhập xong phải chờ lâu mới thấy số).
+/// Phần đơn / chuyến = -1 khi tài khoản không có quyền xem (Nhân viên kho).</summary>
+public record WorkCountsDto(int DraftOrders, int OrdersWaitAllocation, int TripsWaitApproval, List<WarehouseWorkCountDto> Warehouses,
+    int OrdersOverdueStorage = 0); // đơn có hàng nằm kho quá hạn giao, chưa chọn do bên nào
+/// <summary>UrgentOut: chuyến chờ xuất có mốc "phải xuất phát trước" là hôm nay hoặc đã qua.</summary>
+public record WarehouseWorkCountDto(int WarehouseId, string Name, int InTrips, int OutTrips, int UrgentOut = 0);
 
 /// <summary>Tạo kho mới — cho phép công ty có NHIỀU kho ở nhiều địa điểm khác
 /// nhau (VD: TP.HCM, Hà Nội, Đà Nẵng), mỗi kho kích thước thật riêng để vẽ
@@ -96,6 +105,9 @@ public record StockPerformer(int? EmployeeId, string? UserName);
 /// này, hoặc đã từng nhập/xuất hàng tại kho này.</summary>
 /// <summary>PickupMethod + QtyOnHand (hàng của đơn đang nằm trong kho này) — để màn Kho lọc đúng
 /// đơn cho từng việc: "Nhận hàng khách mang tới" (đơn khách tự mang tới, đang xử lý) và
-/// "Xuất hàng tồn" (đơn đã Hoàn tất / Hủy còn hàng trong kho).</summary>
+/// "Xuất hàng tồn" (đơn đã Hoàn tất / Hủy còn hàng trong kho).
+/// IsHomeWarehouse: kho này đúng là kho trung chuyển ghi trên đơn (đơn chỉ "đi ngang" qua kho này thì
+/// không nhập tay vào đây được). HasQtyToReceive: còn dòng hàng chưa nhập đủ số khai báo.</summary>
 public record WarehouseOrderDto(int Id, string Code, string CustomerName, string Status,
-    string PickupMethod = "CompanyPickup", decimal QtyOnHand = 0);
+    string PickupMethod = "CompanyPickup", decimal QtyOnHand = 0,
+    bool IsHomeWarehouse = true, bool HasQtyToReceive = true);

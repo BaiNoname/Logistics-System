@@ -16,6 +16,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
         public ManageTripExpensesForm()
         {
             InitializeComponent();
+            TruckingSystem.Desktop.Common.DialogFit.Enable(this, root); // vừa màn hình mọi máy, bảng không bị ép mất chữ
             TruckingSystem.Desktop.Common.DialogKeys.Enable(this); // Esc = đóng
             Theme.StyleGrid(grid);
             cboType.Items.AddRange(new object[]
@@ -69,14 +70,12 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
             if (_api is null || !btnAddExpense.Enabled) return;
             if (numAmount.Value <= 0)
             {
-                lblStatus.Text = "Số tiền phải lớn hơn 0.";
-                lblStatus.ForeColor = Theme.Warning;
+                FieldHint.Show(numAmount, lblStatus, "Số tiền phải lớn hơn 0."); // tô đỏ + nhảy vào đúng ô
                 return;
             }
             if ((cboType.SelectedItem as ComboOption)?.Value == "Other" && string.IsNullOrWhiteSpace(txtNote.Text))
             {
-                lblStatus.Text = "Chi phí loại \"Chi phí khác\" phải ghi chú là chi cho việc gì.";
-                lblStatus.ForeColor = Theme.Warning;
+                FieldHint.Show(cboType, lblStatus, "Chi phí loại \"Chi phí khác\" phải ghi chú là chi cho việc gì."); // tô đỏ + nhảy vào đúng ô
                 return;
             }
             // Khóa nút trong lúc chờ server — bấm 2 lần trước đây tạo 2 khoản chi trùng.
@@ -105,28 +104,26 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
         {
             if (_api is null || grid.CurrentRow is null)
             {
-                MessageBox.Show(FindForm(), "Vui lòng chọn 1 khoản chi phí trước.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                Toast.Show(this, "👆 " + "Vui lòng chọn 1 khoản chi phí trước.", ToastKind.Info);
                 return;
             }
             var id = (int)grid.CurrentRow.Cells["Id"].Value;
 
-            var confirm = MessageBox.Show(FindForm(), "Xóa hẳn khoản chi phí này? Không thể hoàn tác.",
-                "Xác nhận xóa", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
-            if (confirm != DialogResult.Yes) return;
+            if (!Ask.Confirm(this, "Xóa khoản chi phí này?", "Khoản chi bị xóa hẳn, không hoàn tác được.", "🗑 Xóa khoản chi", danger: true)) return;
 
             try
             {
                 var result = await _api.Trips.DeleteExpenseAsync(id);
                 if (!result.Success)
                 {
-                    MessageBox.Show(FindForm(), result.Message ?? "Không thể xóa.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    Ask.Fail(this, result.Message ?? "Không thể xóa.");
                     return;
                 }
                 await LoadAsync();
             }
             catch (Exception ex)
             {
-                MessageBox.Show(FindForm(), "Lỗi: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                Ask.Fail(this, "Lỗi: " + ex.Message);
             }
         }
 

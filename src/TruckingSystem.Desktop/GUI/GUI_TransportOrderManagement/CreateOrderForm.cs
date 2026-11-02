@@ -1,4 +1,4 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using TruckingSystem.Desktop.Common;
 using TruckingSystem.Desktop.DTO_CustomerManagement;
 using TruckingSystem.Desktop.DTO_LocationManagement;
@@ -40,6 +40,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
         public CreateOrderForm()
         {
             InitializeComponent();
+            TruckingSystem.Desktop.Common.DialogFit.Enable(this, root); // vừa màn hình mọi máy, bảng không bị ép mất chữ
             TruckingSystem.Desktop.Common.DialogKeys.Enable(this); // Esc = đóng
             Anim.FadeIn(this); // cửa sổ hiện dần lên
 
@@ -54,7 +55,17 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             _estimateTimer.Tick += async (_, _) => { _estimateTimer.Stop(); await SuggestDeadlineAsync(); };
             cboPickupLocation.SelectedIndexChanged += (_, _) => RequestEstimate();
             cboDropoffLocation.SelectedIndexChanged += (_, _) => RequestEstimate();
-            cboWarehouse.SelectedIndexChanged += (_, _) => RequestEstimate();
+            cboWarehouse.SelectedIndexChanged += (_, _) => { if (!_bindingWarehouses) { RequestEstimate(); UpdateZoneWarning(); } };
+            // Đổi dòng hàng (tích Nguy hiểm / Dễ vỡ, thêm / xóa dòng) -> ghi chú lại các kho thiếu khu.
+            _cargoLines.ListChanged += (_, _) => { if (_warehouses.Count > 0) BindWarehouses(); };
+            // Ô tích Nguy hiểm / Dễ vỡ: chốt ngay khi tích (không đợi rời ô) rồi ghi chú lại kho.
+            gridCargoLines.CurrentCellDirtyStateChanged += (_, _) =>
+            {
+                if (gridCargoLines.IsCurrentCellDirty && gridCargoLines.CurrentCell is DataGridViewCheckBoxCell)
+                    gridCargoLines.CommitEdit(DataGridViewDataErrorContexts.Commit);
+            };
+            gridCargoLines.CellValueChanged += (_, e) => { if (e.RowIndex >= 0 && _warehouses.Count > 0) BindWarehouses(); };
+            SetupSections(); // 3 khối ① ② ③ + tóm tắt + chân [Đóng] [💾 Lưu đơn] (CreateOrderForm.Steps.cs)
             rbSelfDelivery.CheckedChanged += (_, _) => RequestEstimate();
             FormClosed += (_, _) => _estimateTimer.Dispose();
 
@@ -103,6 +114,14 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             // sau dấu thập phân (dễ đọc nhầm "500,000" thành năm trăm nghìn).
             colPackageCount.DefaultCellStyle.Format = "#,##0";
             colQtyTotal.DefaultCellStyle.Format = "#,##0.##";
+            // Tiêu đề cột đủ chữ (không viết tắt KL / TT / SL) + rê chuột lên tiêu đề hiện giải thích.
+            colWeightKg.HeaderText = "Khối lượng (kg)";
+            colVolumeM3.HeaderText = "Thể tích (m³)";
+            colQtyTotal.HeaderText = "Số lượng";
+            colPackageCount.ToolTipText = "Số kiện / thùng thực tế (để kiểm hàng khi giao nhận)";
+            colQtyTotal.ToolTipText = "Đơn vị hệ thống dùng để chia xe và nhập / xuất kho (thường = số kiện)";
+            colIsFragile.ToolTipText = "Hàng dễ vỡ: chỉ xếp vào khu Hàng dễ vỡ trong kho";
+            colIsHazmat.ToolTipText = "Hàng nguy hiểm: chỉ xếp vào khu Hàng nguy hiểm trong kho";
             colWeightKg.DefaultCellStyle.Format = "#,##0.##";
             colVolumeM3.DefaultCellStyle.Format = "#,##0.####";
             gridCargoLines.DataSource = _cargoLines;
@@ -153,18 +172,72 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             if (_api is null) return;
             try
             {
-                var warehouses = await _api.Warehouses.GetWarehousesAsync();
-                cboWarehouse.DataSource = warehouses.Select(w => new
-                {
-                    w.Id,
-                    DisplayText = w.Lat.HasValue ? w.Name : $"{w.Name} (⚠️ chưa có tọa độ)",
-                }).ToList();
-                cboWarehouse.DisplayMember = "DisplayText";
-                cboWarehouse.ValueMember = "Id";
+                _warehouses = await _api.Warehouses.GetWarehousesAsync();
+                BindWarehouses();
             }
             catch (Exception ex)
             {
                 lblStatus.Text = "Không tải được danh sách kho: " + ex.Message;
+            }
+        }
+
+        // ================= Kho thiếu khu cho loại hàng của đơn: báo NGAY ở ô chọn kho =================
+        // (trước đây phải bấm Lưu mới bị server từ chối "kho chưa có khu Hàng nguy hiểm...").
+        private List<TruckingSystem.Desktop.DTO_WarehouseManagement.WarehouseListItem> _warehouses = new();
+        private bool _bindingWarehouses;
+        private string? _zoneMsg;
+
+        private static string ZoneName(string z) => z switch { "Hazmat" => "Hàng nguy hiểm", "Fragile" => "Hàng dễ vỡ", _ => "Hàng thường" };
+
+        /// <summary>Loại khu đơn cần (mỗi dòng hàng: nguy hiểm > dễ vỡ > thường) — giống quy tắc server.</summary>
+        private List<string> NeededZones()
+            => _cargoLines.Select(c => c.IsHazmat ? "Hazmat" : c.IsFragile ? "Fragile" : "Normal").Distinct().ToList();
+
+        /// <summary>null = kho đủ khu (hoặc API cũ chưa trả loại khu) / ngược lại: các khu còn thiếu.</summary>
+        private List<string>? MissingZones(TruckingSystem.Desktop.DTO_WarehouseManagement.WarehouseListItem w)
+        {
+            if (w.ZoneTypes is null) return null;
+            var missing = NeededZones().Where(z => !w.ZoneTypes.Contains(z)).ToList();
+            return missing.Count == 0 ? null : missing;
+        }
+
+        private void BindWarehouses()
+        {
+            var keep = cboWarehouse.SelectedValue;
+            _bindingWarehouses = true;
+            try
+            {
+                cboWarehouse.DataSource = _warehouses.Select(w =>
+                {
+                    var notes = new List<string>();
+                    if (!w.Lat.HasValue) notes.Add("chưa có tọa độ");
+                    if (MissingZones(w) is { } m) notes.Add("chưa có khu " + string.Join(", ", m.Select(ZoneName)));
+                    return new { w.Id, DisplayText = notes.Count == 0 ? w.Name : $"{w.Name} (⚠️ {string.Join("; ", notes)})" };
+                }).ToList();
+                cboWarehouse.DisplayMember = "DisplayText";
+                cboWarehouse.ValueMember = "Id";
+                if (keep is int id) cboWarehouse.SelectedValue = id;
+            }
+            finally { _bindingWarehouses = false; }
+            UpdateZoneWarning();
+        }
+
+        /// <summary>Kho đang chọn thiếu khu cho hàng của đơn -> dòng cảnh báo cam (xóa khi đã hợp).</summary>
+        private void UpdateZoneWarning()
+        {
+            var w = cboWarehouse.SelectedValue is int id ? _warehouses.FirstOrDefault(x => x.Id == id) : null;
+            var missing = w is null ? null : MissingZones(w);
+            if (missing is not null)
+            {
+                _zoneMsg = $"⚠️ Kho \"{w!.Name}\" chưa có khu {string.Join(", ", missing.Select(ZoneName))} cho hàng của đơn — " +
+                           "hàng sẽ không nhập kho được. Chọn kho khác, hoặc thêm khu ở màn Kho → Quản lý khu vực trước.";
+                lblStatus.Text = _zoneMsg;
+                lblStatus.ForeColor = Theme.Warning;
+            }
+            else if (_zoneMsg is not null && lblStatus.Text == _zoneMsg)
+            {
+                lblStatus.Text = "";
+                _zoneMsg = null;
             }
         }
 
@@ -497,7 +570,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
         {
             if (cboCustomer.SelectedValue is null)
             {
-                lblStatus.Text = "Vui lòng chọn khách hàng.";
+                FieldHint.Show(cboCustomer, lblStatus, "Vui lòng chọn khách hàng."); // tô đỏ + nhảy vào đúng ô
                 return;
             }
             var pickupLoc = cboPickupLocation.SelectedItem as LocationItem;
@@ -519,7 +592,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             }
             if (cboWarehouse.SelectedValue is not int warehouseId)
             {
-                lblStatus.Text = "Vui lòng chọn kho trung chuyển.";
+                FieldHint.Show(cboWarehouse, lblStatus, "Vui lòng chọn kho trung chuyển."); // tô đỏ + nhảy vào đúng ô
                 return;
             }
             if (_api is null) return;

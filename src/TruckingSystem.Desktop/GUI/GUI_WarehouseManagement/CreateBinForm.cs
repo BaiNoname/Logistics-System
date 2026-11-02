@@ -15,7 +15,16 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
         public CreateBinForm()
         {
             InitializeComponent();
+            TruckingSystem.Desktop.Common.DialogFit.Enable(this, root); // vừa màn hình mọi máy, bảng không bị ép mất chữ
             TruckingSystem.Desktop.Common.DialogKeys.Enable(this, btnSave); // Esc = đóng, Enter = Lưu
+            // Từ ngữ thống nhất: "kệ" (đặt bằng code, không sửa Designer).
+            lblCode.Text = "Mã kệ * (VD: C-01)";
+            lblWidth.Text = "Chiều rộng kệ (mét) *";
+            lblHeight.Text = "Chiều cao kệ (mét) *";
+            lblDistanceFromDoor.Text = "🚪 Khoảng cách tới cửa (mét) — hệ thống TỰ TÍNH từ vị trí cửa kho";
+            lblNote.Text = "💡 Hệ thống tự kiểm tra: kệ không được đè lên kệ khác, không được vượt ra ngoài ranh giới khu vực.";
+            btnSave.Text = "💾 Lưu kệ";
+            Text = "Thêm kệ mới";
         }
 
         public CreateBinForm(ApiServices api, int zoneId, string zoneName, decimal zoneWidth, decimal zoneHeight) : this()
@@ -23,7 +32,9 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             _api = api;
             _zoneId = zoneId;
             lblZoneInfo.Text = $"Khu vực \"{zoneName}\" — kích thước {zoneWidth}m x {zoneHeight}m (X: 0–{zoneWidth}, Y: 0–{zoneHeight})";
-            lblCode.Text = "Mã vị trí * (tự sinh — có thể sửa)";
+            lblCode.Text = "Mã kệ * (tự sinh — có thể sửa)";
+            PlacementSetup.Bin(this, inputs, numPosX, numPosY, numWidth, numHeight, lblPosX, lblPosY, lblWidth, lblHeight,
+                btnSave, () => txtCode.Text.Trim(), api, zoneId, zoneName, zoneWidth, zoneHeight, null);
             Load += async (_, _) => await SuggestCodeAsync(zoneName);
         }
 
@@ -79,17 +90,17 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
         {
             if (string.IsNullOrWhiteSpace(txtCode.Text))
             {
-                lblStatus.Text = "Vui lòng nhập mã vị trí.";
+                FieldHint.Show(txtCode, lblStatus, "Vui lòng nhập mã kệ."); // tô đỏ + nhảy vào đúng ô
                 return;
             }
             if (numCapacity.Value <= 0)
             {
-                lblStatus.Text = "Sức chứa phải lớn hơn 0.";
+                FieldHint.Show(numCapacity, lblStatus, "Sức chứa phải lớn hơn 0."); // tô đỏ + nhảy vào đúng ô
                 return;
             }
             if (numWidth.Value <= 0 || numHeight.Value <= 0)
             {
-                lblStatus.Text = "Chiều rộng/cao vị trí phải lớn hơn 0.";
+                FieldHint.Show(numWidth, lblStatus, "Chiều rộng/cao kệ phải lớn hơn 0."); // tô đỏ + nhảy vào đúng ô
                 return;
             }
             if (_api is null) return;
