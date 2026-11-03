@@ -20,12 +20,20 @@ namespace TruckingSystem.Desktop.SERVICE_TripManagement
             => _conn.PostAsync<TripActionResultItem>($"/api/trips/{id}/start", new { })!;
 
         /// <summary>InProgress -> Completed.</summary>
-        public Task<TripActionResultItem> CompleteTripAsync(int id)
-            => _conn.PostAsync<TripActionResultItem>($"/api/trips/{id}/complete", new { })!;
+        /// <param name="storageParty">Chuyến giao cuối mà hàng nằm kho quá hạn chưa chọn do ai: "Company" / "Customer".</param>
+        public Task<TripActionResultItem> CompleteTripAsync(int id, string? storageParty = null, string? storageReason = null)
+            => _conn.PostAsync<TripActionResultItem>($"/api/trips/{id}/complete", new { storageParty, storageReason })!;
 
         /// <summary>Duyệt xác nhận "đã xong" của tài xế — PendingConfirmation -> Completed thật sự.</summary>
-        public Task<TripActionResultItem> ApproveCompletionAsync(int id)
-            => _conn.PostAsync<TripActionResultItem>($"/api/trips/{id}/approve-completion", new { })!;
+        public Task<TripActionResultItem> ApproveCompletionAsync(int id, string? storageParty = null, string? storageReason = null)
+            => _conn.PostAsync<TripActionResultItem>($"/api/trips/{id}/approve-completion", new { storageParty, storageReason })!;
+
+        /// <summary>Thông tin cho hộp duyệt: chuyến giao cuối? hàng nằm kho quá hạn chưa chọn do ai? (API cũ: lỗi -> null).</summary>
+        public async Task<FinishCheckItem?> GetFinishCheckAsync(int id)
+        {
+            try { return await _conn.GetAsync<FinishCheckItem>($"/api/trips/{id}/finish-check"); }
+            catch { return null; }
+        }
 
         /// <summary>Từ chối xác nhận của tài xế — đẩy chuyến quay lại Đang chạy.</summary>
         public Task<TripActionResultItem> RejectCompletionAsync(int id)

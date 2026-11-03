@@ -116,8 +116,7 @@ namespace TruckingSystem.Desktop.GUI_Shared
                 ApplyPeriod();
                 if (_period != "c") await LoadAsync(); // "Tự chọn ngày": chọn ngày xong mới bấm Xem
             };
-            _filterBar.Controls.Add(_periodBox);
-            _filterBar.Controls.SetChildIndex(_periodBox, _filterBar.Controls.GetChildIndex(lblPeriod) + 1);
+            // Ô chọn kỳ nằm ở đầu trang (chỉ hiện khi cửa sổ hẹp — rộng thì là hàng nút chọn kỳ), xem DashboardControl.Modern.cs.
             ButtonStyles.Secondary(_btnRefresh);
         }
 
@@ -125,11 +124,11 @@ namespace TruckingSystem.Desktop.GUI_Shared
         /// (null = luôn hiện). Đổi trang: khối của trang khác ẩn đi và hàng của nó co về 0.</summary>
         private void BuildLayout()
         {
-            _lblTitle.Text = "📊 Tổng quan";
+            BuildHeader();
 
-            _pages.Add(PageOverview, "📊 Tổng quan", "Số liệu chính và những việc cần chú ý");
-            _pages.Add(PageFinance, "💰 Tài chính", "Chi phí chi tiết, lãi / lỗ từng đơn");
-            _pages.Add(PageFuel, "⛽ Nhiên liệu", "So sánh xăng dự kiến – theo km thực chạy – đã đổ");
+            _pages.Add(PageOverview, "Tổng quan", "Số liệu chính và những việc cần chú ý");
+            _pages.Add(PageFinance, "Tài chính", "Chi phí chi tiết, lãi / lỗ từng đơn");
+            _pages.Add(PageFuel, "Nhiên liệu", "So sánh xăng dự kiến – theo km thực chạy – đã đổ");
             _pages.Margin = new Padding(0, 4, 0, 12);
             _pages.Changed += (_, _) => ApplyPage();
 
@@ -171,25 +170,26 @@ namespace TruckingSystem.Desktop.GUI_Shared
             _chartCosts.Margin = new Padding(0, 0, 0, 16);
             _grid.Margin = new Padding(0, 0, 0, 12);
 
-            AddRow(_lblTitle, null);
-            AddRow(_filterBar, null);
+            AddRow(_header, null);
+            AddRow(_filterBar, null); // chỉ hiện khi "Tự chọn ngày" (ô từ ngày / đến ngày + nút Xem)
             AddRow(_pages, null);
-            // 📊 Tổng quan
-            AddRow(_kpiMain, PageOverview);
-            AddRow(_attention, PageOverview);
-            AddRow(_chartMonthly, PageOverview, 300);
+            // 📊 Tổng quan: thẻ chia đều + (biểu đồ tháng | Cần chú ý)
+            AddRow(_mainCards, PageOverview);
+            AddRow(_ovRow, PageOverview, 330);
+            _ovRowIndex = dashLayout.RowCount - 1;
             // 💰 Tài chính
-            AddRow(_kpiFinance, PageFinance);
+            AddRow(_finCards, PageFinance);
             AddRow(_chartCosts, PageFinance, 250);
             AddRow(ordersHeader, PageFinance);
             AddRow(_ordersFilter, PageFinance);
             AddRow(_grid, PageFinance, 440);
             // ⛽ Nhiên liệu
-            AddRow(_kpiFuel, PageFuel);
+            AddRow(_fuelCards, PageFuel);
             AddRow(fuelHeader, PageFuel);
             AddRow(_fuelFilter, PageFuel);
             AddRow(_gridFuel, PageFuel, 420);
             dashLayout.ResumeLayout(true);
+            BuildOverviewRow();
         }
 
         private void AddRow(Control c, string? page, int height = 0)
@@ -222,7 +222,7 @@ namespace TruckingSystem.Desktop.GUI_Shared
             for (var i = 0; i < _rows.Count; i++)
             {
                 var (c, p, h) = _rows[i];
-                var show = p is null || p == page;
+                var show = (p is null || p == page) && (c != _filterBar || _period == "c");
                 c.Visible = show;
                 dashLayout.RowStyles[i] = h > 0 ? new RowStyle(SizeType.Absolute, show ? h : 0) : new RowStyle(SizeType.AutoSize);
             }
@@ -248,6 +248,7 @@ namespace TruckingSystem.Desktop.GUI_Shared
             var today = DateTime.Today;
             var custom = _period == "c";
             lblFrom.Visible = lblTo.Visible = _dtpFrom.Visible = _dtpTo.Visible = custom;
+            if (_rows.Count > 0) ApplyPage(); // hàng chọn ngày chỉ hiện khi "Tự chọn ngày"
             _dtpFrom.Enabled = _dtpTo.Enabled = custom;
             _btnRefresh.Text = custom ? "🔄 Xem" : "🔄 Làm mới";
             if (custom) ButtonStyles.Primary(_btnRefresh); else ButtonStyles.Secondary(_btnRefresh);
@@ -332,6 +333,8 @@ namespace TruckingSystem.Desktop.GUI_Shared
                 RenderGrid(_report);
                 RenderFuelControl(_report);
                 RenderAttention(_report, availableVehicles, totalVehicles, blockedVehicles);
+                dashLayout.PerformLayout(); // hàng thẻ vừa dựng lại -> xếp lại chiều cao 1 lần (CardGrid không tự ép giữa chừng)
+                ApplyOverviewLayout();
                 _chartMonthly.Invalidate();
                 _chartCosts.Invalidate();
 
@@ -353,19 +356,19 @@ namespace TruckingSystem.Desktop.GUI_Shared
 
         private void RenderMainKpis(ProfitReport r, ProfitReport? p, string prevLabel)
         {
-            ClearCards(_kpiMain);
-            _kpiMain.Controls.Add(MakeCard("💰", "Doanh thu", ReportFormat.Money(r.Revenue), Theme.Primary, Theme.TextPrimary,
+            ClearCards(_mainCards);
+            _mainCards.Controls.Add(MakeCard("💰", "Doanh thu", ReportFormat.Money(r.Revenue), Theme.Primary, Theme.TextPrimary,
                 Delta(r.Revenue, p?.Revenue, prevLabel, higherIsBetter: true, out var c1) ?? $"Đã thu {ReportFormat.Money(r.Collected)}",
                 $"{ReportFormat.FullMoney(r.Revenue)} (theo hóa đơn) — đã thu {ReportFormat.FullMoney(r.Collected)}", big: true, subColor: c1,
                 link: "Xem từng đơn", onClick: ShowAllOrders));
-            _kpiMain.Controls.Add(MakeCard("💸", "Chi phí", ReportFormat.Money(r.TotalCost), Theme.Warning, Theme.TextPrimary,
+            _mainCards.Controls.Add(MakeCard("💸", "Chi phí", ReportFormat.Money(r.TotalCost), Theme.Warning, Theme.TextPrimary,
                 Delta(r.TotalCost, p?.TotalCost, prevLabel, higherIsBetter: false, out var c2) ?? $"Xăng {ReportFormat.Money(r.FuelCost)}",
                 $"{ReportFormat.FullMoney(r.TotalCost)} = xăng {ReportFormat.FullMoney(r.FuelCost)} + phát sinh / sự cố {ReportFormat.FullMoney(r.ExpenseCost + r.IncidentCost)}",
                 big: true, subColor: c2, link: "Xem cơ cấu chi phí", onClick: () => GoTo(PageFinance, _chartCosts)));
 
             var isProfit = r.Profit >= 0;
             var profitColor = isProfit ? Theme.Success : Theme.Danger;
-            _kpiMain.Controls.Add(MakeCard(isProfit ? "📈" : "📉", isProfit ? "Lãi" : "Lỗ", ReportFormat.Money(r.Profit), profitColor, profitColor,
+            _mainCards.Controls.Add(MakeCard(isProfit ? "📈" : "📉", isProfit ? "Lãi" : "Lỗ", ReportFormat.Money(r.Profit), profitColor, profitColor,
                 r.MarginPercent.HasValue ? $"Biên lợi nhuận {r.MarginPercent:0.#}%" : "Chưa có doanh thu",
                 ReportFormat.FullMoney(r.Profit) + (p is not null ? $" — {prevLabel}: {ReportFormat.FullMoney(p.Profit)}" : ""), big: true,
                 link: "Xem đơn bị lỗ", onClick: () => ShowOrders("đơn hoàn tất bị lỗ", o => o.Status == "Done" && o.Profit < 0)));
@@ -373,7 +376,7 @@ namespace TruckingSystem.Desktop.GUI_Shared
             // Tỉ lệ giao ĐÚNG HẠN: đơn hoàn tất có hạn giao, ngày xong chặng Giao cuối ≤ hạn giao.
             var judged = r.OnTimeOrders + r.LateOrders;
             var prevJudged = (p?.OnTimeOrders ?? 0) + (p?.LateOrders ?? 0);
-            _kpiMain.Controls.Add(MakeCard("⏱️", "Giao đúng hạn",
+            _mainCards.Controls.Add(MakeCard("⏱️", "Giao đúng hạn",
                 judged > 0 ? ReportFormat.Percent(r.OnTimeOrders, judged) : "—",
                 Theme.Success, r.LateOrders > 0 ? Theme.Warning : Theme.TextPrimary,
                 judged == 0 ? "Chưa có đơn hoàn tất"
@@ -407,77 +410,32 @@ namespace TruckingSystem.Desktop.GUI_Shared
 
         private void RenderAttention(ProfitReport r, int availableVehicles, int totalVehicles, int blockedVehicles)
         {
-            _attention.SuspendLayout();
-            ClearCards(_attention);
-            _attention.Controls.Add(new Label
-            {
-                Text = "⚠️ Cần chú ý",
-                AutoSize = true,
-                Font = Theme.FontSectionTitle,
-                ForeColor = Theme.TextPrimary,
-                Margin = new Padding(0, 0, 0, 6),
-            });
-
-            var count = 0;
-            void Item(string text, Color color, Action go)
-            {
-                count++;
-                var l = new Label
-                {
-                    Text = $"{text}   → Xem",
-                    AutoSize = true,
-                    Font = Theme.FontNormal,
-                    ForeColor = color,
-                    Cursor = Cursors.Hand,
-                    Margin = new Padding(4, 3, 0, 3),
-                };
-                l.MouseEnter += (_, _) => l.Font = LinkFont;
-                l.MouseLeave += (_, _) => l.Font = Theme.FontNormal;
-                l.Click += (_, _) => go();
-                _attention.Controls.Add(l);
-            }
+            // Danh sách thẻ (AttentionView — DashboardControl.Modern.cs): việc đỏ (gấp) xếp trên, vàng xếp dưới; bấm cả dòng để mở.
+            var items = new List<AttentionView.Item>();
+            void Item(string icon, string text, int count, bool danger, Action go) => items.Add(new AttentionView.Item(icon, text, count, danger, go));
 
             var doneLoss = r.Orders.Count(o => o.Status == "Done" && o.Profit < 0);
             var flagged = r.FuelControl?.Count(x => x.Flagged) ?? 0;
             var cancelledWithCost = r.Orders.Count(o => o.Status == "Cancelled" && o.TotalCost > 0);
 
-            if (r.UninvoicedDoneOrders > 0)
-                Item($"🧾 {r.UninvoicedDoneOrders} đơn đã xong nhưng chưa xuất hóa đơn", Theme.Warning,
-                    () => ShowOrders("đơn đã xong chưa xuất hóa đơn", o => o.Status == "Done" && !o.HasInvoice));
-            if (doneLoss > 0)
-                Item($"📉 {doneLoss} đơn hoàn tất bị lỗ", Theme.Danger,
-                    () => ShowOrders("đơn hoàn tất bị lỗ", o => o.Status == "Done" && o.Profit < 0));
             if (r.LateOrders > 0)
-                Item($"⏱️ {r.LateOrders} đơn giao trễ hạn", Theme.Danger, () => ShowOrders("đơn giao trễ hạn", o => DeliveryGroup(o) == DeliveryLate));
+                Item("⏱️", "Đơn giao trễ hạn", r.LateOrders, true, () => ShowOrders("đơn giao trễ hạn", o => DeliveryGroup(o) == DeliveryLate));
+            if (doneLoss > 0)
+                Item("📉", "Đơn hoàn tất bị lỗ", doneLoss, true, () => ShowOrders("đơn hoàn tất bị lỗ", o => o.Status == "Done" && o.Profit < 0));
             if (cancelledWithCost > 0)
-                Item($"🕳️ {cancelledWithCost} đơn bị hủy sau khi xe đã chạy — mất {ReportFormat.Money(r.CancelledOrdersCost)}", Theme.Danger,
+                Item("🕳️", $"Đơn hủy sau khi xe đã chạy — mất {ReportFormat.Money(r.CancelledOrdersCost)}", cancelledWithCost, true,
                     () => ShowOrders("đơn hủy mất chi phí", o => o.Status == "Cancelled" && o.TotalCost > 0));
             if (flagged > 0)
-                Item($"🚩 {flagged} chuyến tốn xăng bất thường (lệch quá 15%)", Theme.Danger, () => ShowFuel("state", FuelFlagged));
-            if (r.TripsUsingFuelEstimate > 0)
-                Item($"⛽ {r.TripsUsingFuelEstimate} chuyến chưa nhập hóa đơn xăng", Theme.Warning, () => ShowFuel("actual", FuelNoActual));
+                Item("🚩", "Chuyến tốn xăng bất thường (lệch > 15%)", flagged, true, () => ShowFuel("state", FuelFlagged));
             if (blockedVehicles > 0)
-                Item($"📄 {blockedVehicles} xe hết hạn / thiếu giấy tờ — không chạy được", Theme.Danger, () => OpenMenu("Đội xe"));
+                Item("📄", "Xe hết hạn / thiếu giấy tờ — không chạy được", blockedVehicles, true, () => OpenMenu("Đội xe"));
+            if (r.UninvoicedDoneOrders > 0)
+                Item("🧾", "Đơn đã xong chưa xuất hóa đơn", r.UninvoicedDoneOrders, false,
+                    () => ShowOrders("đơn đã xong chưa xuất hóa đơn", o => o.Status == "Done" && !o.HasInvoice));
+            if (r.TripsUsingFuelEstimate > 0)
+                Item("⛽", "Chuyến chưa nhập hóa đơn xăng", r.TripsUsingFuelEstimate, false, () => ShowFuel("actual", FuelNoActual));
 
-            if (count == 0)
-                _attention.Controls.Add(new Label
-                {
-                    Text = "✅ Không có gì bất thường trong kỳ này.",
-                    AutoSize = true,
-                    Font = Theme.FontNormal,
-                    ForeColor = Theme.Success,
-                    Margin = new Padding(4, 3, 0, 3),
-                });
-            if (totalVehicles > 0)
-                _attention.Controls.Add(new Label
-                {
-                    Text = $"🚛 Xe sẵn sàng chạy lúc này: {availableVehicles}/{totalVehicles}",
-                    AutoSize = true,
-                    Font = Theme.FontSmall,
-                    ForeColor = Theme.TextSecondary,
-                    Margin = new Padding(4, 8, 0, 0),
-                });
-            _attention.ResumeLayout(true);
+            _attnView.SetData(items, availableVehicles, totalVehicles);
         }
 
         /// <summary>Thẻ Doanh thu -> bảng lãi / lỗ TẤT CẢ đơn trong kỳ (bỏ lọc).</summary>
@@ -535,87 +493,32 @@ namespace TruckingSystem.Desktop.GUI_Shared
 
         private void RenderFinanceKpis(ProfitReport r)
         {
-            ClearCards(_kpiFinance);
-            _kpiFinance.Controls.Add(MakeCard("⛽", "Chi phí xăng", ReportFormat.Money(r.FuelCost), Theme.Primary, Theme.TextPrimary,
+            ClearCards(_finCards);
+            _finCards.Controls.Add(MakeCard("⛽", "Chi phí xăng", ReportFormat.Money(r.FuelCost), Theme.Primary, Theme.TextPrimary,
                 $"{ReportFormat.Percent(r.FuelCost, r.TotalCost)} tổng chi phí",
                 $"{ReportFormat.FullMoney(r.FuelCost)} = xăng đã đổ (hóa đơn) + tạm tính theo km thực chạy cho chuyến chưa nhập hóa đơn"));
-            _kpiFinance.Controls.Add(MakeCard("⚠️", "Sự cố + phát sinh", ReportFormat.Money(r.IncidentCost + r.ExpenseCost), Theme.Danger, Theme.TextPrimary,
+            _finCards.Controls.Add(MakeCard("⚠️", "Sự cố + phát sinh", ReportFormat.Money(r.IncidentCost + r.ExpenseCost), Theme.Danger, Theme.TextPrimary,
                 $"Riêng sự cố: {ReportFormat.Money(r.IncidentCost)}", ReportFormat.FullMoney(r.IncidentCost + r.ExpenseCost)));
-            _kpiFinance.Controls.Add(MakeCard("❌", "Đơn bị hủy", r.CancelledOrders.ToString(), Theme.Danger,
+            _finCards.Controls.Add(MakeCard("❌", "Đơn bị hủy", r.CancelledOrders.ToString(), Theme.Danger,
                 r.CancelledOrders > 0 ? Theme.Danger : Theme.TextPrimary,
                 r.CancelledOrdersCost > 0 ? $"Mất {ReportFormat.Money(r.CancelledOrdersCost)} chi phí" : $"Trên {r.TotalOrders} đơn trong kỳ",
                 "Chi phí mất do hủy đơn: xe đã chạy / trả hàng nhưng không thu được tiền — " + ReportFormat.FullMoney(r.CancelledOrdersCost)));
-            _kpiFinance.Controls.Add(MakeCard("🧾", "Chưa xuất hóa đơn", r.UninvoicedDoneOrders.ToString(), Theme.Warning,
+            _finCards.Controls.Add(MakeCard("🧾", "Chưa xuất hóa đơn", r.UninvoicedDoneOrders.ToString(), Theme.Warning,
                 r.UninvoicedDoneOrders > 0 ? Theme.Warning : Theme.TextPrimary,
                 r.UninvoicedDoneOrders > 0 ? "Đơn đã xong, chưa tính vào doanh thu" : "Đã xuất đủ hóa đơn", null));
         }
 
-        /// <summary>Thẻ số liệu (sinh theo dữ liệu nên tạo bằng code). big = thẻ chính ở trang Tổng quan (to hơn).</summary>
-        private Panel MakeCard(string icon, string label, string value, Color accent, Color valueColor, string sub, string? tooltip,
+        /// <summary>Thẻ số liệu kiểu mới (DashCard — DashboardControl.Modern.cs): ô biểu tượng + nhãn, số to + đơn vị nhỏ,
+        /// nhãn màu so sánh, dòng "Xem … →" (cả thẻ bấm được). Rê chuột: chú thích số đầy đủ.</summary>
+        private Control MakeCard(string icon, string label, string value, Color accent, Color valueColor, string sub, string? tooltip,
             bool big = false, Color? subColor = null, string? link = null, Action? onClick = null)
         {
-            int S(int v) => LogicalToDeviceUnits(v);
-
-            var card = new TableLayoutPanel
+            var card = new DashCard
             {
-                Size = big ? new Size(S(260), S(link is null ? 122 : 142)) : new Size(S(220), S(104)),
-                Margin = new Padding(0, 0, S(14), S(10)),
-                Padding = new Padding(S(14), S(8), S(8), S(6)),
-                BackColor = Theme.CardBg,
-                ColumnCount = 2,
-                RowCount = 3,
+                IconText = icon, Label = label, Value = value, ValueColor = valueColor, Accent = accent,
+                Sub = sub, SubColor = subColor, Link = onClick is null ? null : link, Clicked = onClick,
             };
-            card.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-            card.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            card.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            card.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            card.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            card.Paint += (_, e) =>
-            {
-                using var pen = new Pen(Theme.BorderColor);
-                e.Graphics.DrawRectangle(pen, 0, 0, card.Width - 1, card.Height - 1);
-                using var brush = new SolidBrush(accent);
-                e.Graphics.FillRectangle(brush, 0, 0, S(4), card.Height);
-            };
-
-            var lblIcon = new Label { Text = icon, Font = KpiIconFont, AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, 0, S(6), 0) };
-            var lblLabel = new Label { Text = label, Font = big ? Theme.FontBold : Theme.FontSmall, ForeColor = Theme.TextSecondary, AutoSize = true, Anchor = AnchorStyles.Left, Margin = Padding.Empty };
-            var lblValue = new Label { Text = value, Font = big ? KpiBigValueFont : KpiValueFont, ForeColor = valueColor, AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, S(2), 0, 0) };
-            var lblSub = new Label
-            {
-                Text = sub,
-                Font = Theme.FontSmall,
-                ForeColor = subColor ?? Theme.TextSecondary,
-                Dock = DockStyle.Fill,
-                TextAlign = ContentAlignment.BottomLeft,
-                AutoEllipsis = true,
-                Margin = Padding.Empty,
-            };
-            card.Controls.Add(lblIcon, 0, 0);
-            card.Controls.Add(lblLabel, 1, 0);
-            card.Controls.Add(lblValue, 0, 1);
-            card.SetColumnSpan(lblValue, 2);
-            card.Controls.Add(lblSub, 0, 2);
-            card.SetColumnSpan(lblSub, 2);
-
-            // "Xem … →": cả thẻ bấm được, mở đúng chỗ xem chi tiết con số này (góp ý UX: thẻ số trước đây không bấm được).
-            if (link is not null && onClick is not null)
-            {
-                card.RowCount = 4;
-                card.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-                var lblLink = new Label { Text = link + " →", AutoSize = true, Font = Theme.FontSmall, ForeColor = Theme.Primary, Margin = new Padding(0, S(2), 0, 0) };
-                card.Controls.Add(lblLink, 0, 3);
-                card.SetColumnSpan(lblLink, 2);
-                card.Cursor = Cursors.Hand;
-                foreach (Control c in card.Controls) { c.Cursor = Cursors.Hand; c.Click += (_, _) => onClick(); }
-                card.Click += (_, _) => onClick();
-            }
-
-            if (tooltip is not null)
-            {
-                _tip.SetToolTip(card, tooltip);
-                foreach (Control c in card.Controls) _tip.SetToolTip(c, tooltip);
-            }
+            if (tooltip is not null) _tip.SetToolTip(card, tooltip);
             return card;
         }
 
@@ -751,19 +654,19 @@ namespace TruckingSystem.Desktop.GUI_Shared
             var rows = r.FuelControl ?? new List<FuelControlRowItem>();
             var flagged = rows.Count(x => x.Flagged);
 
-            ClearCards(_kpiFuel);
-            _kpiFuel.Controls.Add(MakeCard("🗺️", "Xăng dự kiến", ReportFormat.Money(r.FuelPlannedCost), Theme.Primary, Theme.TextPrimary,
+            ClearCards(_fuelCards);
+            _fuelCards.Controls.Add(MakeCard("🗺️", "Xăng dự kiến", ReportFormat.Money(r.FuelPlannedCost), Theme.Primary, Theme.TextPrimary,
                 "Theo km tuyến đường lúc lập chuyến", ReportFormat.FullMoney(r.FuelPlannedCost)));
-            _kpiFuel.Controls.Add(MakeCard("📡", "Xăng theo km thực chạy", ReportFormat.Money(r.FuelNormCost), Theme.Primary, Theme.TextPrimary,
+            _fuelCards.Controls.Add(MakeCard("📡", "Xăng theo km thực chạy", ReportFormat.Money(r.FuelNormCost), Theme.Primary, Theme.TextPrimary,
                 // "Chênh dự kiến" chỉ so trên các chuyến hoàn tất có ĐỦ cả 2 số (2 tổng ở trên có thể gồm 2 tập chuyến khác nhau).
                 r.FuelComparedTripCount > 0
                     ? $"Chênh dự kiến {DeviationText(r.FuelNormCostCompared, r.FuelPlannedCostCompared)} ({r.FuelComparedTripCount} chuyến)"
                     : "Chưa có chuyến xong đủ số liệu để so",
                 ReportFormat.FullMoney(r.FuelNormCost)));
-            _kpiFuel.Controls.Add(MakeCard("🧾", "Xăng đã đổ (hóa đơn)", ReportFormat.Money(r.FuelActualCost), Theme.Warning, Theme.TextPrimary,
+            _fuelCards.Controls.Add(MakeCard("🧾", "Xăng đã đổ (hóa đơn)", ReportFormat.Money(r.FuelActualCost), Theme.Warning, Theme.TextPrimary,
                 r.TripsUsingFuelEstimate > 0 ? $"{r.TripsUsingFuelEstimate} chuyến chưa nhập hóa đơn" : "Đã nhập đủ hóa đơn",
                 ReportFormat.FullMoney(r.FuelActualCost)));
-            _kpiFuel.Controls.Add(MakeCard("🚩", "Chuyến bất thường", $"{flagged}/{rows.Count}", Theme.Danger,
+            _fuelCards.Controls.Add(MakeCard("🚩", "Chuyến bất thường", $"{flagged}/{rows.Count}", Theme.Danger,
                 flagged > 0 ? Theme.Danger : Theme.TextPrimary,
                 flagged > 0 ? "Lệch quá 15% — tô đỏ, nằm đầu bảng" : "Không có chuyến bất thường", null));
 
@@ -854,16 +757,15 @@ namespace TruckingSystem.Desktop.GUI_Shared
 
         // ================= Biểu đồ (vẽ tay, không cần thư viện ngoài) =================
 
-        private void ChartMonthly_Paint(object? sender, PaintEventArgs e) => PaintMonthlyChart(e.Graphics, _chartMonthly.ClientRectangle);
+        private void ChartMonthly_Paint(object? sender, PaintEventArgs e) => PaintMonthlyChartModern(e.Graphics, _chartMonthly.ClientRectangle);
 
         private void ChartCosts_Paint(object? sender, PaintEventArgs e) => PaintCostChart(e.Graphics, _chartCosts.ClientRectangle);
 
-        private static void DrawFrame(Graphics g, Rectangle rect, string title)
+        /// <summary>Khung biểu đồ: thẻ trắng bo góc (DrawCard) — tiêu đề bỏ biểu tượng đầu cho gọn.</summary>
+        private void DrawFrame(Graphics g, Rectangle rect, string title)
         {
-            using var borderPen = new Pen(Theme.BorderColor);
-            g.DrawRectangle(borderPen, 0, 0, rect.Width - 1, rect.Height - 1);
-            using var titleBrush = new SolidBrush(Theme.TextPrimary);
-            g.DrawString(title, Theme.FontBold, titleBrush, 12, 10);
+            var space = title.IndexOf(' ');
+            DrawCard(g, rect, space > 0 && !char.IsLetterOrDigit(title[0]) ? title[(space + 1)..] : title);
         }
 
         private static void DrawEmpty(Graphics g, Rectangle rect, string text)
@@ -967,7 +869,8 @@ namespace TruckingSystem.Desktop.GUI_Shared
 
                 var barW = Math.Max(2f, (float)(item.Amount / max) * barMaxW);
                 using var barBrush = new SolidBrush(Palette[i % Palette.Length]);
-                g.FillRectangle(barBrush, barLeft, y + 4, barW, rowH - 14);
+                using (var barPath = Anim.RoundRect(new RectangleF(barLeft, y + 4, barW, rowH - 14), (rowH - 14) / 2f))
+                    g.FillPath(barBrush, barPath);
 
                 var amountText = $"{ReportFormat.FullMoney(item.Amount)} ({ReportFormat.Percent(item.Amount, total)})";
                 g.DrawString(amountText, Theme.FontSmall, subBrush, new RectangleF(barLeft + barMaxW + 8, y, amountW, rowH - 6), ellipsis);
@@ -988,8 +891,7 @@ namespace TruckingSystem.Desktop.GUI_Shared
         public DashboardChartPanel()
         {
             DoubleBuffered = true;
-            ResizeRedraw = true;
-            BackColor = Theme.CardBg;
+            ResizeRedraw = true; // nền theo màu trang (thẻ trắng bo góc tự vẽ trong DrawCard)
         }
     }
 }

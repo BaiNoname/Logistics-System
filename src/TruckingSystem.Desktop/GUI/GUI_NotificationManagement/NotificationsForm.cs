@@ -1,4 +1,4 @@
-using TruckingSystem.Desktop.Common;
+﻿using TruckingSystem.Desktop.Common;
 using TruckingSystem.Desktop.DTO_NotificationManagement;
 
 namespace TruckingSystem.Desktop.GUI_NotificationManagement
@@ -39,6 +39,7 @@ namespace TruckingSystem.Desktop.GUI_NotificationManagement
         public NotificationsForm(ApiServices api) : this()
         {
             _api = api;
+            UpdateButtons(); // khóa sẵn "Mở" / "Đánh dấu" khi chưa chọn dòng — không hiện sáng rồi tải xong mới mờ
             Load += async (_, _) => await LoadAsync();
         }
 

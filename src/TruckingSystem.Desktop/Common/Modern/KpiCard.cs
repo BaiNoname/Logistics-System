@@ -164,8 +164,8 @@ namespace TruckingSystem.Desktop.Common
         private void EnsureFonts()
         {
             if (_titleFont is not null) return;
-            _titleFont = new Font(Font.FontFamily, Font.SizeInPoints * 0.9f, FontStyle.Bold);
-            _valueFont = new Font(Font.FontFamily, Font.SizeInPoints * 1.65f, FontStyle.Bold);
+            _titleFont = new Font("Segoe UI Semibold", Font.SizeInPoints * 0.92f, FontStyle.Regular); // nhãn chữ thường, nét vừa (mẫu tong_quan)
+            _valueFont = new Font("Segoe UI Semibold", Font.SizeInPoints * 1.65f, FontStyle.Regular); // số to nét vừa, dễ đọc hơn chữ đậm
             _captionFont = new Font(Font.FontFamily, Font.SizeInPoints * 0.88f, FontStyle.Regular);
             _iconFont = new Font("Segoe UI Emoji", Font.SizeInPoints * 1.15f, FontStyle.Regular);
         }
@@ -222,7 +222,9 @@ namespace TruckingSystem.Desktop.Common
 
             // Biểu tượng trong vòng tròn màu nhạt.
             var icon = IconBounds(card);
-            using (var ib = new SolidBrush(Color.FromArgb(_selected ? 46 : 30, Accent))) g.FillEllipse(ib, icon);
+            using (var ib = new SolidBrush(Color.FromArgb(_selected ? 46 : 30, Accent)))
+            using (var ip = Anim.RoundRect(icon, S(10)))
+                g.FillPath(ib, ip); // ô biểu tượng bo tròn vuông
             TextRenderer.DrawText(g, Icon, _iconFont, icon, Accent,
                 TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
 
@@ -230,7 +232,7 @@ namespace TruckingSystem.Desktop.Common
             var left = card.X + S(18);
             var textWidth = icon.Left - left - S(6);
             var titleRect = new Rectangle(left, card.Y + S(9), textWidth, _titleFont!.Height);
-            TextRenderer.DrawText(g, Title.ToUpper(Vi), _titleFont, titleRect, Theme.TextSecondary,
+            TextRenderer.DrawText(g, Title, _titleFont, titleRect, Theme.TextSecondary,
                 TextFormatFlags.Left | TextFormatFlags.EndEllipsis | TextFormatFlags.SingleLine | TextFormatFlags.NoPadding);
 
             var valueText = ((int)Math.Round(_shown)).ToString("N0", Vi);

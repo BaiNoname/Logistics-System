@@ -45,6 +45,8 @@ namespace TruckingSystem.Desktop.GUI_DriverManagement
             FilterMemory.Attach(filterBar, "drivers"); // nhớ bộ lọc khi chuyển màn rồi quay lại
             SetupModernLook();
             SetupRowMenu();
+            // Ẩn / khóa sẵn các nút theo "chưa chọn dòng" TRƯỚC khi màn hiện — không còn cảnh hiện cả loạt nút rồi tải xong mới ẩn đi.
+            UpdateButtons();
             Load += async (_, _) => await LoadAsync();
         }
 

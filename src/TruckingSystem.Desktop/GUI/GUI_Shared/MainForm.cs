@@ -64,6 +64,7 @@ namespace TruckingSystem.Desktop.GUI_Shared
         {
             Text = "Logistics System";
             sidebar.Controls.Add(_sideBorder); // viền phải menu
+            SetupLook(); // menu dải màu trời, mục chọn bo tròn, ô tìm + nút chọn buổi bo tròn (MainForm.Look.cs)
 
             // Logo: vẽ tay (trời theo chế độ + đồi + đường + xe nhỏ + chữ).
             lblLogo.Visible = false;
@@ -71,7 +72,7 @@ namespace TruckingSystem.Desktop.GUI_Shared
             typeof(Control).GetProperty("DoubleBuffered",
                     System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
                 .SetValue(logoPanel, true);
-            logoPanel.Paint += (_, e) => DayScene.PaintLogo(e.Graphics, logoPanel.ClientSize, _mode);
+            logoPanel.Paint += (_, e) => { if (!PaintMiniLogo(e.Graphics)) DayScene.PaintLogo(e.Graphics, logoPanel.ClientSize, _mode); };
             logoPanel.Resize += (_, _) => logoPanel.Invalidate();
 
             btnLogout.FlatAppearance.BorderSize = 1;
@@ -108,13 +109,17 @@ namespace TruckingSystem.Desktop.GUI_Shared
                     UseVisualStyleBackColor = false,
                 };
                 b.FlatAppearance.BorderSize = 0;
+                SetDoubleBuffered(b);
+                TrackHot(b);
+                var mode = m;
+                b.Paint += (_, e) => PaintModeButton(e.Graphics, b, mode);
                 b.Click += (_, _) => ApplyMode(m, save: true);
                 tip.SetToolTip(b, $"Đổi màu khung giao diện sang chế độ {m.Name.Substring(m.Name.IndexOf(' ') + 1)}");
                 _modeButtons.Add((b, m));
                 _modeBar.Controls.Add(b);
             }
             // Đầu thanh trên: ô TÌM NHANH toàn hệ thống + 4 nút chế độ màu.
-            _topLeft.Controls.Add(_searchBox);
+            _topLeft.Controls.Add(_searchHost); // ô tìm nằm trong khung bo tròn (MainForm.Look.cs)
             _topLeft.Controls.Add(_modeBar);
             topBarLayout.Controls.Add(_topLeft, 0, 0);
         }
@@ -136,12 +141,21 @@ namespace TruckingSystem.Desktop.GUI_Shared
 
             topBar.BackColor = m.Top;
             btnNotifications.BackColor = m.Top;
+            lblAvatar.BackColor = m.Top;
+            btnNotifications.Invalidate();
+            lblAvatar.Invalidate();
             btnNotifications.FlatAppearance.MouseOverBackColor = m.SideHover;
             lblUser.ForeColor = m.TopText;
             lblRole.ForeColor = m.TopSubText;
             BackColor = content.BackColor = m.Content;
 
-            _modeBar.BackColor = m.Night ? DayScene.Hex("#0F172A") : DayScene.Hex("#E2E8F0");
+            _modeBar.BackColor = m.Seg;
+            // Nút chính trong các màn phần của Nhân tô dải màu theo buổi (ModernLook).
+            ModernLook.SetAccent(m.Strip[0], DayScene.Mix(m.Strip[1], Color.Black, 0.15f));
+            content.Invalidate(true);
+            _searchBox.BackColor = SearchFill;
+            _searchBox.ForeColor = m.Night ? DayScene.Hex("#EEF2FF") : DayScene.Hex("#0F172A");
+            _searchHost.BackColor = m.Top;
             foreach (var (b, bm) in _modeButtons)
             {
                 var on = bm == m;
@@ -150,8 +164,14 @@ namespace TruckingSystem.Desktop.GUI_Shared
                 b.FlatAppearance.MouseOverBackColor = on ? Color.White : m.Night ? DayScene.Hex("#1E293B") : DayScene.Hex("#F1F5F9");
             }
             ResumeLayout(true);
+            if (_navCollapsed) RestyleNav(); // menu đang thu gọn: tô lại nhóm đang chứa màn hiện tại
+            if (_navToggle is not null) { _navToggle.BackColor = m.Side; _navToggle.ForeColor = m.SideText; }
             logoPanel.Invalidate();
             topBarBorder.Invalidate();
+            _searchHost.Invalidate(true);
+            _modeBar.Invalidate(true);
+            navPanel.Invalidate(true);
+            sidebarBottom.Invalidate(true);
             if (save) DayScene.SaveMode(m);
         }
 
@@ -160,6 +180,7 @@ namespace TruckingSystem.Desktop.GUI_Shared
             b.BackColor = active ? _mode.Active : _mode.Side;
             b.ForeColor = active ? Color.White : _mode.SideText;
             b.FlatAppearance.MouseOverBackColor = active ? _mode.ActiveHover : _mode.SideHover;
+            b.Invalidate(); // nền tự vẽ (PaintNavItem) không tự vẽ lại khi màu nút không đổi
         }
 
         public MainForm(ApiServices api, string username) : this()
@@ -174,6 +195,7 @@ namespace TruckingSystem.Desktop.GUI_Shared
             // Màn đầu tiên theo vai trò: mục đầu tiên tài khoản được xem (Quản trị / Điều phối / Kế toán: Tổng quan —
             // Kế toán tự vào trang Tài chính; Nhân viên kho: Kho trung chuyển).
             SetupResponsive(); // co giãn thanh trên theo bề ngang cửa sổ (MainForm.Responsive.cs)
+            SetupNavCollapse(); // menu trái thu còn biểu tượng khi cửa sổ hẹp (MainForm.NavCollapse.cs)
             if (_navButtons.Count > 0) NavigateTo(_navButtons[0], _buildOf[_navButtons[0]]);
             SetupGlobalSearch();
             SetupMenuBadges();
@@ -234,7 +256,7 @@ namespace TruckingSystem.Desktop.GUI_Shared
                     {
                         var header = MakeNavHeader(group);
                         var g = group;
-                        header.Click += (_, _) => ToggleGroup(g);
+                        header.Click += (_, _) => { if (!_navCollapsed) ToggleGroup(g); }; // thu gọn: bấm = bảng nổi (NavCollapse)
                         navPanel.Controls.Add(header);
                         _navHeaders.Add(header);
                     }
@@ -282,7 +304,7 @@ namespace TruckingSystem.Desktop.GUI_Shared
             _openGroup = group;
             navPanel.SuspendLayout();
             foreach (var (btn, g) in _groupOf)
-                btn.Visible = g.Length == 0 || g == group;
+                btn.Visible = g.Length == 0 || (!_navCollapsed && g == group); // menu thu gọn: mục con xem qua bảng nổi
             foreach (var h in _navHeaders) StyleGroupHeader(h);
             navPanel.ResumeLayout(true);
             if (save) SaveOpenGroup(group);
@@ -294,7 +316,7 @@ namespace TruckingSystem.Desktop.GUI_Shared
             var open = g == _openGroup;
             var holdsCurrent = _activeNavButton is not null && _groupOf.TryGetValue(_activeNavButton, out var ag) && ag == g;
             h.BackColor = _mode.Side;
-            h.ForeColor = holdsCurrent && !open ? _mode.Active : _mode.SideText;
+            h.ForeColor = _mode.SideText; // nhóm đang chứa màn hiện tại: viên mờ (PaintNavItem)
             h.FlatAppearance.MouseOverBackColor = _mode.SideHover;
             h.Invalidate(); // vẽ lại mũi tên ▸ / ▾
         }
@@ -352,8 +374,12 @@ namespace TruckingSystem.Desktop.GUI_Shared
                 UseVisualStyleBackColor = false,
             };
             h.FlatAppearance.BorderSize = 0;
+            SetDoubleBuffered(h);
+            TrackHot(h);
+            h.Paint += (_, e) => PaintNavItem(e.Graphics, h); // nền + chữ trước, mũi tên vẽ chồng lên sau
             h.Paint += (_, e) =>
             {
+                if (_navCollapsed) return; // thu gọn: không vẽ mũi tên
                 var arrow = (string)h.Tag! == _openGroup ? "▾" : "▸";
                 var r = new Rectangle(h.Width - LogicalToDeviceUnits(32), 0, LogicalToDeviceUnits(24), h.Height);
                 TextRenderer.DrawText(e.Graphics, arrow, h.Font, r, h.ForeColor,
@@ -383,6 +409,9 @@ namespace TruckingSystem.Desktop.GUI_Shared
             };
             btn.FlatAppearance.BorderSize = 0;
             btn.FlatAppearance.MouseOverBackColor = _mode.SideHover;
+            SetDoubleBuffered(btn);
+            TrackHot(btn);
+            btn.Paint += (_, e) => PaintNavItem(e.Graphics, btn); // gắn đầu tiên: số đỏ / biểu tượng thu gọn vẽ chồng lên sau
             return btn;
         }
 
@@ -481,12 +510,18 @@ namespace TruckingSystem.Desktop.GUI_Shared
 
             // GIẢI PHÓNG màn cũ (trước đây chỉ Controls.Clear(): mỗi lần bấm menu, màn cũ — bảng, thẻ, đồng hồ hẹn giờ
             // bên trong — vẫn nằm trong bộ nhớ và có cái vẫn chạy ngầm -> dùng lâu app chậm dần).
-            var old = content.Controls.Cast<Control>().ToList();
-            content.Controls.Clear();
-            foreach (var c in old) c.Dispose();
-            var control = buildControl();
-            control.Dock = DockStyle.Fill;
-            content.Controls.Add(control);
+            BeginContentSwap(); // ngưng vẽ trong lúc đổi màn -> màn mới hiện ra 1 lần, không hiện lần lượt (MainForm.Look.cs)
+            try
+            {
+                var old = content.Controls.Cast<Control>().ToList();
+                content.Controls.Clear();
+                foreach (var c in old) c.Dispose();
+                var control = buildControl();
+                control.Dock = DockStyle.Fill;
+                content.Controls.Add(control);
+            }
+            finally { EndContentSwap(); }
+            if (_navCollapsed) RestyleNav();
             RefreshMenuBadgesSoon(); // vừa rời màn trước (có thể vừa làm xong việc) -> đếm lại số việc chờ trên menu
         }
     }

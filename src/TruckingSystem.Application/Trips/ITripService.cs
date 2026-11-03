@@ -12,12 +12,14 @@ public interface ITripService
     /// <summary>InProgress -> Completed TRỰC TIẾP (Dispatcher tự bấm trên
     /// Desktop = tự họ đã duyệt luôn, KHÔNG qua bước Chờ xác nhận — bước đó
     /// chỉ áp dụng khi TÀI XẾ tự báo qua app, xem ConfirmArrivalAsync).</summary>
-    Task<TripActionResult> CompleteAsync(int id);
+    Task<TripActionResult> CompleteAsync(int id, FinishTripRequest? request = null, string? userId = null, string? userName = null);
 
     /// <summary>Vận hành (Dispatcher) DUYỆT xác nhận "đã xong" của tài xế —
     /// PendingConfirmation -> Completed THẬT SỰ (lúc này mới nhập/xuất kho,
     /// trả xe rảnh, tính tiến độ đơn).</summary>
-    Task<TripActionResult> ApproveCompletionAsync(int id);
+    Task<TripActionResult> ApproveCompletionAsync(int id, FinishTripRequest? request = null, string? userId = null, string? userName = null);
+    /// <summary>Thông tin cho hộp duyệt: chuyến giao cuối? hàng nằm kho quá hạn (chưa chọn do ai)?</summary>
+    Task<FinishCheckDto?> GetFinishCheckAsync(int id);
 
     /// <summary>Vận hành TỪ CHỐI xác nhận của tài xế (VD bấm nhầm) — đẩy
     /// chuyến quay lại Đang chạy (InProgress) để tài xế tiếp tục/báo lại.</summary>

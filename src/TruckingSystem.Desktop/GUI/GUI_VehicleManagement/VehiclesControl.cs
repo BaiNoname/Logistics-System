@@ -35,6 +35,8 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
             FilterMemory.Attach(filterBar, "vehicles"); // nhớ bộ lọc khi chuyển màn rồi quay lại
             SetupModernLook();
             SetupRowActions();
+            // Ẩn / khóa sẵn các nút theo "chưa chọn dòng" TRƯỚC khi màn hiện — không còn cảnh hiện cả loạt nút rồi tải xong mới ẩn đi.
+            btnEdit.Enabled = btnDocuments.Enabled = btnFuelLevel.Enabled = false;
             Load += async (_, _) => await LoadAsync();
         }
 

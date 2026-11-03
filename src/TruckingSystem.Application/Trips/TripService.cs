@@ -205,28 +205,28 @@ public class TripService : ITripService
     /// duyệt luôn (họ đang trực tiếp thao tác), nên hoàn tất NGAY — KHÔNG qua
     /// bước "Chờ xác nhận" (bước đó chỉ áp dụng khi TÀI XẾ tự báo qua app, xem
     /// ConfirmArrivalAsync + ApproveCompletionAsync).</summary>
-    public async Task<TripActionResult> CompleteAsync(int id)
+    public async Task<TripActionResult> CompleteAsync(int id, FinishTripRequest? request = null, string? userId = null, string? userName = null)
     {
         var trip = await LoadTripForArrivalAsync(id);
         if (trip is null) return new TripActionResult(false, "Không tìm thấy chuyến.");
         if (trip.Status != TripStatus.InProgress)
             return new TripActionResult(false, "Chỉ có thể hoàn tất chuyến đang ở trạng thái Đang chạy (InProgress).");
 
-        return await FinalizeTripAsync(trip, TripStatus.InProgress);
+        return await FinalizeTripAsync(trip, TripStatus.InProgress, request, userId, userName);
     }
 
     /// <summary>Vận hành (Dispatcher) DUYỆT xác nhận "đã xong" của tài xế —
     /// PendingConfirmation -> Completed THẬT SỰ (lúc này mới xuất kho chuyến Trả hàng / hàng
     /// Lấy về chuyển sang "Chờ nhập kho",
     /// trả xe rảnh, tính tiến độ đơn — xem HandleArrivalAsync).</summary>
-    public async Task<TripActionResult> ApproveCompletionAsync(int id)
+    public async Task<TripActionResult> ApproveCompletionAsync(int id, FinishTripRequest? request = null, string? userId = null, string? userName = null)
     {
         var trip = await LoadTripForArrivalAsync(id);
         if (trip is null) return new TripActionResult(false, "Không tìm thấy chuyến.");
         if (trip.Status != TripStatus.PendingConfirmation)
             return new TripActionResult(false, "Chuyến này không ở trạng thái Chờ xác nhận.");
 
-        return await FinalizeTripAsync(trip, TripStatus.PendingConfirmation);
+        return await FinalizeTripAsync(trip, TripStatus.PendingConfirmation, request, userId, userName);
     }
 
     /// <summary>Hoàn tất THẬT SỰ 1 chuyến (dùng chung cho Dispatcher tự Hoàn tất
@@ -235,9 +235,56 @@ public class TripService : ITripService
     /// hợp), Rollback toàn bộ: chuyến GIỮ NGUYÊN trạng thái cũ, báo lỗi rõ ràng
     /// cho Dispatcher xử lý (thêm vị trí kho...) rồi bấm lại — thay vì như trước:
     /// chuyến thành "Hoàn tất" nhưng hàng không hề vào kho.</summary>
-    private async Task<TripActionResult> FinalizeTripAsync(Trip trip, TripStatus expectedStatus)
+    public async Task<FinishCheckDto?> GetFinishCheckAsync(int id)
     {
+        var trip = await _db.Trips.Where(t => t.Id == id)
+            .Select(t => new { t.Id, t.TransportOrderId, t.LegType, t.TransportOrder.Code, t.TransportOrder.WarehouseId }).FirstOrDefaultAsync();
+        if (trip is null) return null;
+        var last = trip.LegType == TripLegType.Delivery
+            && !await _db.Trips.AnyAsync(t => t.TransportOrderId == trip.TransportOrderId && t.Id != trip.Id && t.LegType == TripLegType.Delivery
+                                              && (t.Status == TripStatus.Planned || t.Status == TripStatus.InProgress || t.Status == TripStatus.PendingConfirmation));
+        var overdue = await TruckingSystem.Application.TransportOrders.OverdueStorageRules.LoadAsync(_db, new[] { trip.TransportOrderId });
+        if (!overdue.TryGetValue(trip.TransportOrderId, out var item))
+            return new FinishCheckDto(last, trip.Code, null, 0, 0, null, null);
+        var rate = await _db.Warehouses.Where(w => w.Id == trip.WarehouseId).Select(w => w.StorageFeePerM3PerDay).FirstOrDefaultAsync();
+        string? reason = null;
+        if (item.Decision is not null)
+            reason = (await _db.DeliveryDeadlineChanges.Where(c => c.TransportOrderId == trip.TransportOrderId && c.IsFeeOnly && c.OldDate != null)
+                    .OrderByDescending(c => c.Id).Select(c => new { c.OldDate, c.Reason }).ToListAsync())
+                .FirstOrDefault(c => c.OldDate!.Value.Date == item.Due)?.Reason;
+        return new FinishCheckDto(last, trip.Code, item.Due, item.Days, Math.Round(item.M3Days * rate, 0), item.Decision?.ToString(), reason);
+    }
+
+    private async Task<TripActionResult> FinalizeTripAsync(Trip trip, TripStatus expectedStatus,
+        FinishTripRequest? request = null, string? userId = null, string? userName = null)
+    {
+        // CHỐT PHÍ LƯU KHO trước khi đơn Hoàn tất: chuyến GIAO cuối cùng (không còn chặng giao nào khác chưa xong) mà hàng
+        // của đơn từng nằm kho quá hạn giao CHƯA chọn do ai -> bắt chọn (Desktop hỏi ngay trong hộp duyệt). Tài xế (app) và
+        // kho không bị chặn — chỉ bước duyệt / hoàn tất của Vận hành.
+        string? storageError = null;
+        var needsStorageDecision = false;
+        if (trip.LegType == TripLegType.Delivery
+            && !await _db.Trips.AnyAsync(t => t.TransportOrderId == trip.TransportOrderId && t.Id != trip.Id && t.LegType == TripLegType.Delivery
+                                              && (t.Status == TripStatus.Planned || t.Status == TripStatus.InProgress || t.Status == TripStatus.PendingConfirmation)))
+        {
+            var overdue = await TruckingSystem.Application.TransportOrders.OverdueStorageRules.LoadAsync(_db, new[] { trip.TransportOrderId });
+            if (overdue.TryGetValue(trip.TransportOrderId, out var item) && item.Decision is null)
+            {
+                needsStorageDecision = true;
+                if (string.IsNullOrWhiteSpace(request?.StorageParty))
+                    return new TripActionResult(false,
+                        $"Hàng của đơn đã nằm kho {item.Days} ngày sau hạn giao ({item.Due:dd/MM/yyyy}) mà chưa xác định do ai — " +
+                        "chọn \"Do công ty\" hoặc \"Do khách hàng\" (ghi lý do) trong hộp duyệt rồi duyệt lại.");
+            }
+        }
+
         await using var transaction = await _db.Database.BeginTransactionAsync();
+        if (needsStorageDecision)
+        {
+            storageError = await TruckingSystem.Application.TransportOrders.OverdueStorageRules.ApplyDecisionAsync(
+                _db, trip.TransportOrderId, request!.StorageParty, request.StorageReason, userId, userName);
+            if (storageError is not null) return new TripActionResult(false, storageError);
+        }
 
         // Chặn 2 thao tác hoàn tất chồng nhau (Dispatcher bấm Hoàn tất đúng lúc tài
         // xế bấm Đã xong, hoặc bấm Duyệt 2 lần) -> trước đây có thể nhập kho 2 lần.

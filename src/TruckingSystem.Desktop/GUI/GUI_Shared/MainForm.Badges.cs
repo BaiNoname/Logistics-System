@@ -26,7 +26,7 @@ namespace TruckingSystem.Desktop.GUI_Shared
         {
             if (_api is null) return;
             foreach (var b in _navButtons) b.Paint += (_, e) => PaintBadge(e.Graphics, b, CountFor(b), arrowSpace: false);
-            foreach (var h in _navHeaders) h.Paint += (_, e) => PaintBadge(e.Graphics, h, (string)h.Tag! == _openGroup ? 0 : GroupCount((string)h.Tag!), arrowSpace: true);
+            foreach (var h in _navHeaders) h.Paint += (_, e) => PaintBadge(e.Graphics, h, (string)h.Tag! == _openGroup && !_navCollapsed ? 0 : GroupCount((string)h.Tag!), arrowSpace: true);
 
             _badgeTimer.Tick += async (_, _) => await RefreshMenuBadgesAsync();
             _badgeSoon.Tick += async (_, _) => { _badgeSoon.Stop(); await RefreshMenuBadgesAsync(); };
@@ -197,10 +197,12 @@ namespace TruckingSystem.Desktop.GUI_Shared
             if (count <= 0) return;
             var text = count > 99 ? "99+" : count.ToString();
             var size = TextRenderer.MeasureText(g, text, BadgeFont, Size.Empty, TextFormatFlags.NoPadding);
-            var h = LogicalToDeviceUnits(18);
-            var w = Math.Max(h, size.Width + LogicalToDeviceUnits(10));
-            var right = b.Width - LogicalToDeviceUnits(arrowSpace ? 36 : 12);
-            var rect = new Rectangle(right - w, (b.Height - h) / 2, w, h);
+            var h = LogicalToDeviceUnits(_navCollapsed ? 16 : 18);
+            var w = Math.Max(h, size.Width + LogicalToDeviceUnits(_navCollapsed ? 6 : 10));
+            // Menu thu gọn: chấm số nhỏ ở góc trên phải biểu tượng.
+            var rect = _navCollapsed
+                ? new Rectangle(b.Width - w - LogicalToDeviceUnits(2), LogicalToDeviceUnits(2), w, h)
+                : new Rectangle(b.Width - LogicalToDeviceUnits(arrowSpace ? 36 : 12) - w, (b.Height - h) / 2, w, h);
             g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
             using (var path = DayScene.Round(rect.X, rect.Y, rect.Width, rect.Height, h / 2f))
             using (var bg = new SolidBrush(Theme.Danger))

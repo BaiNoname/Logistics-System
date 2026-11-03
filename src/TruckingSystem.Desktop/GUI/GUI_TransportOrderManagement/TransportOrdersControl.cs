@@ -52,6 +52,13 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             KpiStrip.InsertRow(root, _pendingBanner, root.GetRow(_card));
             _pendingBanner.FilterToggled += (_, on) => { _pendingOnly = on; BindGrid(); };
 
+            // Ẩn / khóa sẵn các nút theo "chưa chọn dòng" TRƯỚC khi màn hiện — không còn cảnh hiện cả loạt nút rồi tải xong mới ẩn đi.
+            // (không gọi UpdateSelectionUi: thẻ sẽ báo nhầm "Chưa có đơn nào" khi chưa tải xong)
+            if (_btnEdit != null) _btnEdit.Visible = false;
+            if (_btnConfirm != null) _btnConfirm.Visible = false;
+            btnAllocate.Visible = false;
+            foreach (var b in new[] { _btnDetail, _btnDeadline, _btnTools })
+                if (b != null) b.Enabled = false;
             Load += async (_, _) => await LoadAsync();
         }
 

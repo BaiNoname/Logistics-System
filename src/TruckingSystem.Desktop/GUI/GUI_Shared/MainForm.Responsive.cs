@@ -35,7 +35,7 @@
                     b.Text = compact && space > 0 ? m.Name[..space] : m.Name;
                 }
             }
-            if (_searchBox.Visible) _searchBox.Width = S(level switch { 2 => 160, 1 => 220, _ => 340 });
+            _searchHost.Width = S(level switch { 2 => 160, 1 => 220, _ => 340 });
             ResumeLayout(true);
         }
     }

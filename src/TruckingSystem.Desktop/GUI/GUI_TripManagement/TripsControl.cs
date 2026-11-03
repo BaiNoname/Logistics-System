@@ -56,6 +56,8 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
             // Dải nhắc việc (giải thích số đỏ trên menu): chuyến tài xế báo xong chờ duyệt.
             KpiStrip.InsertRow(root, _pendingBanner, root.GetRow(_selectedBar));
             _pendingBanner.FilterToggled += (_, on) => { _pendingOnly = on; BindGrid(); };
+            // Ẩn / khóa sẵn các nút theo "chưa chọn dòng" TRƯỚC khi màn hiện — không còn cảnh hiện cả loạt nút rồi tải xong mới ẩn đi.
+            UpdatePrimaryButtons(null); // (không gọi UpdateActionButtons: thẻ sẽ báo nhầm "Chưa có chuyến nào" khi chưa tải xong)
             Load += async (_, _) => await LoadAsync();
         }
 
@@ -277,14 +279,16 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
             if (tripId is null) { ShowNoSelection(); return; }
 
             var completeLeg = _trips.FirstOrDefault(t => t.Id == tripId.Value)?.LegType;
-            if (!Ask.Confirm(this, $"Hoàn tất chuyến #{tripId.Value}?",
+            // Chuyến giao cuối mà hàng nằm kho quá hạn chưa chọn do ai -> hỏi luôn trong hộp (TripsControl.Finish.cs).
+            var (go, party, reason) = await AskFinishAsync(tripId.Value, $"Hoàn tất chuyến #{tripId.Value}?",
                     "Xe đã tới nơi, hàng đã giao / nhận xong." +
                     (completeLeg == "Pickup" ? "\n\nHàng lấy về sẽ ở trạng thái \"Chờ nhập kho\" — nhập kho ở màn Kho → 📦 Nhập hàng từ chuyến." : ""),
-                    $"✅ Hoàn tất chuyến #{tripId.Value}")) return;
+                    $"✅ Hoàn tất chuyến #{tripId.Value}");
+            if (!go) return;
 
             try
             {
-                var result = await _api!.Trips.CompleteTripAsync(tripId.Value);
+                var result = await _api!.Trips.CompleteTripAsync(tripId.Value, party, reason);
                 if (!result.Success)
                 {
                     Ask.Fail(this, result.Message ?? "Không thể hoàn tất chuyến.");
@@ -378,11 +382,12 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
                 "Return" => "Sau khi duyệt, hàng sẽ được XUẤT KHO trả lại đối tác và xe được trả về trạng thái rảnh.",
                 _ => "Sau khi duyệt, chuyến giao hàng hoàn tất; xe được trả về trạng thái rảnh nếu không còn chuyến nào khác.",
             };
-            if (!Ask.Confirm(this, $"Duyệt chuyến #{tripId.Value}?", approveText, $"✅ Duyệt chuyến #{tripId.Value}")) return;
+            var (go, party, reason) = await AskFinishAsync(tripId.Value, $"Duyệt chuyến #{tripId.Value}?", approveText, $"✅ Duyệt chuyến #{tripId.Value}");
+            if (!go) return;
 
             try
             {
-                var result = await _api!.Trips.ApproveCompletionAsync(tripId.Value);
+                var result = await _api!.Trips.ApproveCompletionAsync(tripId.Value, party, reason);
                 if (!result.Success)
                 {
                     Ask.Fail(this, result.Message ?? "Không thể duyệt.");
