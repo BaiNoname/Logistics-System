@@ -143,8 +143,10 @@ public partial class ContractsControl : BaseUserControl
             Trạng_thái = c.StatusText,
             Ngày_bắt_đầu = c.StartDate.ToString("dd/MM/yyyy"),
             Ngày_kết_thúc = c.EndDate?.ToString("dd/MM/yyyy") ?? "Không thời hạn",
-            Loại_hợp_đồng = c.PriceListName ?? "—",
-            Bảng_giá = c.TariffRule?.DisplayName ?? "—",
+            Loại_hợp_đồng = c.TypeText,
+            Ưu_đãi = c.DiscountPercent.HasValue ? $"{c.DiscountPercent:0.##}%" : "—",
+            Bảng_giá = c.PriceListName ?? "—",
+            Chi_tiết_giá = c.TariffRule?.DisplayName ?? "—",
             Phụ_lục = c.AppendixText,
         }).ToList();
         if (grid.Columns["Id"] is not null) grid.Columns["Id"]!.Visible = false;

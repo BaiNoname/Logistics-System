@@ -33,6 +33,18 @@ public static class DependencyInjection
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         // NHẬT KÝ HỆ THỐNG tự động: mỗi lần lưu database ghi lại thêm / sửa / xóa + người thao tác.
+        services.AddDataProtection();
+        services.AddScoped<TruckingSystem.Application.FreightChat.IFreightChatContext, FreightChatContext>();
+        services.AddHttpClient<FreightGemini>();
+        services.AddHttpClient<FreightOpenAiChat>();
+        // FreightChat:Provider chọn AI hội thoại (Gemini mặc định / OpenAICompatible); embedding luôn dùng Gemini.
+        if (FreightAi.UsesOpenAiCompatible(configuration))
+            services.AddScoped<TruckingSystem.Application.FreightChat.IFreightChatAi>(sp => sp.GetRequiredService<FreightOpenAiChat>());
+        else
+            services.AddScoped<TruckingSystem.Application.FreightChat.IFreightChatAi>(sp => sp.GetRequiredService<FreightGemini>());
+        services.AddScoped<TruckingSystem.Application.FreightChat.IFreightEmbedding>(sp => sp.GetRequiredService<FreightGemini>());
+        services.AddScoped<TruckingSystem.Application.FreightChat.IFreightVectorStore, FreightVectorStore>();
+        services.AddHostedService<FreightIndexWorker>();
         services.AddHttpContextAccessor();
         services.AddScoped<AuditSaveChangesInterceptor>();
         services.AddDbContext<AppDbContext>((sp, options) =>

@@ -14,7 +14,7 @@ public partial class TariffRuleForm : BaseForm
     public TariffRuleForm()
     {
         InitializeComponent();
-        _perKm.Maximum = _perTon.Maximum = _fragile.Maximum = _hazmat.Maximum = TariffRule.MaximumPrice;
+        _perKm.Maximum = _perTon.Maximum = TariffRule.MaximumPrice;
     }
 
     public TariffRuleForm(ApiServices api, PriceListItem priceList, IReadOnlyCollection<TariffRuleItem> rules, TariffRuleItem? item = null) : this()
@@ -36,8 +36,6 @@ public partial class TariffRuleForm : BaseForm
             _vehicleType.Text = item.VehicleType;
             _perKm.Value = item.PricePerKm;
             _perTon.Value = item.PricePerTon;
-            _fragile.Value = item.SurchargeFragile;
-            _hazmat.Value = item.SurchargeHazmat;
         }
         _save.Click += async (_, _) => await SaveAsync();
         FormClosing += (_, e) => e.Cancel = _saving;
@@ -48,7 +46,7 @@ public partial class TariffRuleForm : BaseForm
         if (_saving) return;
         _errors.Clear();
         ValidateChildren();
-        try { TariffRule.Validate(_vehicleType.Text, _perKm.Value, _perTon.Value, _fragile.Value, _hazmat.Value); }
+        try { TariffRule.Validate(_vehicleType.Text, _perKm.Value, _perTon.Value, 0, 0); }
         catch (ArgumentException ex)
         {
             _errors.SetError(_vehicleType, ex.Message);
@@ -62,9 +60,9 @@ public partial class TariffRuleForm : BaseForm
         try
         {
             if (_item is null)
-                await _api.Pricing.CreateTariffRuleAsync(_priceList.Id, _vehicleType.Text.Trim(), _perKm.Value, _perTon.Value, _fragile.Value, _hazmat.Value);
+                await _api.Pricing.CreateTariffRuleAsync(_priceList.Id, _vehicleType.Text.Trim(), _perKm.Value, _perTon.Value);
             else
-                await _api.Pricing.UpdateTariffRuleAsync(_priceList.Id, _item.Id, _vehicleType.Text.Trim(), _perKm.Value, _perTon.Value, _fragile.Value, _hazmat.Value);
+                await _api.Pricing.UpdateTariffRuleAsync(_priceList.Id, _item.Id, _vehicleType.Text.Trim(), _perKm.Value, _perTon.Value);
             _saving = false;
             DialogResult = DialogResult.OK;
             Close();

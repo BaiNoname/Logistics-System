@@ -128,6 +128,240 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("TruckingSystem.Domain.Entities.AttendanceAdjustmentRequest", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<int>("EmployeeId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Note")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<DateTime?>("RequestedCheckInAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime?>("RequestedCheckOutAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("ReviewNote")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime?>("ReviewedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("ReviewedBy")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime>("WorkDate")
+                        .HasColumnType("date");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex(new[] { "EmployeeId", "WorkDate" }, "IX_AttendanceAdjustmentRequests_EmployeeId_WorkDate");
+
+                    b.HasIndex(new[] { "EmployeeId", "WorkDate" }, "IX_AttendanceAdjustmentRequests_OnePending")
+                        .IsUnique()
+                        .HasFilter("\"Status\" = 'Pending'");
+
+                    b.ToTable("AttendanceAdjustmentRequests");
+                });
+
+            modelBuilder.Entity("TruckingSystem.Domain.Entities.AttendanceQrCode", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<int>("WarehouseId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("WorkDate")
+                        .HasColumnType("date");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Token")
+                        .IsUnique();
+
+                    b.HasIndex("WarehouseId", "WorkDate")
+                        .IsUnique();
+
+                    b.ToTable("AttendanceQrCodes");
+                });
+
+            modelBuilder.Entity("TruckingSystem.Domain.Entities.AttendanceRecord", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("AdjustedCheckInAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime?>("AdjustedCheckOutAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<int?>("AdjustmentRequestId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("CheckInAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<int?>("CheckInWarehouseId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("CheckOutAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<int?>("CheckOutWarehouseId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<int>("EmployeeId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime>("WorkDate")
+                        .HasColumnType("date");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AdjustmentRequestId");
+
+                    b.HasIndex("CheckInWarehouseId");
+
+                    b.HasIndex("CheckOutWarehouseId");
+
+                    b.HasIndex("WorkDate");
+
+                    b.HasIndex("EmployeeId", "WorkDate")
+                        .IsUnique();
+
+                    b.ToTable("AttendanceRecords");
+                });
+
+            modelBuilder.Entity("TruckingSystem.Domain.Entities.AttendanceScan", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<double?>("AccuracyMeters")
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<double?>("DistanceMeters")
+                        .HasColumnType("double precision");
+
+                    b.Property<int>("EmployeeId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsMockLocation")
+                        .HasColumnType("boolean");
+
+                    b.Property<double?>("Lat")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("Lng")
+                        .HasColumnType("double precision");
+
+                    b.Property<int?>("QrCodeId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("RejectReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("Result")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime>("ScannedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<int?>("WarehouseId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("WorkDate")
+                        .HasColumnType("date");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("QrCodeId");
+
+                    b.HasIndex("WarehouseId");
+
+                    b.HasIndex("WorkDate");
+
+                    b.HasIndex("EmployeeId", "WorkDate");
+
+                    b.ToTable("AttendanceScans");
+                });
+
             modelBuilder.Entity("TruckingSystem.Domain.Entities.AuditLog", b =>
                 {
                     b.Property<int>("Id")
@@ -241,6 +475,9 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.Property<int>("CustomerId")
                         .HasColumnType("integer");
 
+                    b.Property<decimal?>("DiscountPercent")
+                        .HasColumnType("numeric(18,2)");
+
                     b.Property<DateTime?>("EndDate")
                         .HasColumnType("timestamp without time zone");
 
@@ -255,6 +492,9 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     b.Property<string>("Terms")
                         .HasColumnType("text");
+
+                    b.Property<int?>("Type")
+                        .HasColumnType("integer");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp without time zone");
@@ -498,6 +738,45 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Departments");
+                });
+
+            modelBuilder.Entity("TruckingSystem.Domain.Entities.DriverKpiRate", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("AmountPerPoint")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<decimal>("KmPerPoint")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<decimal>("VehicleFactor")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("VehicleType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("VehicleType")
+                        .IsUnique();
+
+                    b.ToTable("DriverKpiRates", t =>
+                        {
+                            t.HasCheckConstraint("CK_DriverKpiRate_Positive", "\"VehicleFactor\" > 0 AND \"AmountPerPoint\" > 0 AND \"KmPerPoint\" > 0");
+                        });
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.DriverProfile", b =>
@@ -1181,7 +1460,7 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     b.ToTable("MonthlyAttendances", t =>
                         {
-                            t.HasCheckConstraint("CK_MonthlyAttendance_Days", "\"StandardDays\" > 0 AND \"StandardDays\" <= 31 AND \"WorkedDays\" >= 0 AND \"PaidLeaveDays\" >= 0 AND \"HolidayDays\" >= 0 AND \"UnpaidLeaveDays\" >= 0 AND \"WorkedDays\" + \"PaidLeaveDays\" + \"HolidayDays\" + \"UnpaidLeaveDays\" <= \"StandardDays\" AND \"WeekdayOvertimeHours\" >= 0 AND \"RestDayOvertimeHours\" >= 0 AND \"HolidayOvertimeHours\" >= 0");
+                            t.HasCheckConstraint("CK_MonthlyAttendance_Days", "\"StandardDays\" > 0 AND \"StandardDays\" <= 31 AND \"WorkedDays\" >= 0 AND \"PaidLeaveDays\" >= 0 AND \"HolidayDays\" >= 0 AND \"UnpaidLeaveDays\" >= 0 AND \"WorkedDays\" + \"PaidLeaveDays\" + \"HolidayDays\" + \"UnpaidLeaveDays\" <= CASE WHEN \"DriverWorkDates\" IS NOT NULL THEN 31 ELSE \"StandardDays\" END AND \"WeekdayOvertimeHours\" >= 0 AND \"RestDayOvertimeHours\" >= 0 AND \"HolidayOvertimeHours\" >= 0");
                         });
                 });
 
@@ -1277,6 +1556,9 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.Property<bool>("IsAdjustment")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("IsDriverKpi")
+                        .HasColumnType("boolean");
+
                     b.Property<int>("Kind")
                         .HasColumnType("integer");
 
@@ -1301,6 +1583,94 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.ToTable("PayrollItems", t =>
                         {
                             t.HasCheckConstraint("CK_PayrollItem_Amount", "\"Amount\" > 0 AND \"CalculatedAmount\" >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("TruckingSystem.Domain.Entities.PayrollKpiPolicy", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime>("EffectiveFrom")
+                        .HasColumnType("date");
+
+                    b.Property<string>("FactorsJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<decimal>("KmPerPoint")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("TargetPoints")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EffectiveFrom")
+                        .IsUnique();
+
+                    b.ToTable("PayrollKpiPolicies", t =>
+                        {
+                            t.HasCheckConstraint("CK_PayrollKpiPolicy_Positive", "\"KmPerPoint\" > 0 AND \"TargetPoints\" > 0");
+                        });
+                });
+
+            modelBuilder.Entity("TruckingSystem.Domain.Entities.PayrollMonthlyAdjustment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("EmployeeId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Month")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EmployeeId");
+
+                    b.HasIndex("Year", "Month", "EmployeeId");
+
+                    b.ToTable("PayrollMonthlyAdjustments", t =>
+                        {
+                            t.HasCheckConstraint("CK_PayrollMonthlyAdjustment_Valid", "\"Amount\" > 0 AND \"Month\" BETWEEN 1 AND 12 AND \"Year\" BETWEEN 2000 AND 2100");
                         });
                 });
 
@@ -1371,6 +1741,9 @@ namespace TruckingSystem.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<int>("CalculationVersion")
+                        .HasColumnType("integer");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp without time zone");
 
@@ -1408,6 +1781,12 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.Property<decimal>("HolidayOvertimeHours")
                         .HasColumnType("numeric(18,2)");
 
+                    b.Property<decimal>("KpiPoints")
+                        .HasColumnType("numeric(24,8)");
+
+                    b.Property<decimal>("KpiTarget")
+                        .HasColumnType("numeric(18,2)");
+
                     b.Property<decimal>("MonthlySalary")
                         .HasColumnType("numeric(18,2)");
 
@@ -1432,6 +1811,10 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     b.Property<DateTime>("SalaryEffectiveFrom")
                         .HasColumnType("date");
+
+                    b.Property<string>("SourceSnapshot")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<decimal>("StandardDays")
                         .HasColumnType("numeric(18,2)");
@@ -1761,6 +2144,54 @@ namespace TruckingSystem.Infrastructure.Migrations
                         {
                             t.HasCheckConstraint("CK_StorageBin_CurrentUsedM3_NonNegative", "\"CurrentUsedM3\" >= 0");
                         });
+                });
+
+            modelBuilder.Entity("TruckingSystem.Domain.Entities.SurchargeLine", b =>
+                {
+                    b.Property<int>("SurchargeListId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("Percent")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.HasKey("SurchargeListId", "Kind");
+
+                    b.ToTable("SurchargeLine");
+                });
+
+            modelBuilder.Entity("TruckingSystem.Domain.Entities.SurchargeList", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateOnly>("EffectiveDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<bool>("Published")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EffectiveDate")
+                        .IsUnique()
+                        .HasFilter("\"Published\"");
+
+                    b.ToTable("SurchargeLists");
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.TariffRule", b =>
@@ -2307,6 +2738,16 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.Property<string>("Address")
                         .HasColumnType("text");
 
+                    b.Property<int>("AttendanceMaxAccuracyMeters")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(100);
+
+                    b.Property<int>("AttendanceRadiusMeters")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(150);
+
                     b.Property<decimal?>("CapacityM3")
                         .HasColumnType("numeric(18,2)");
 
@@ -2627,6 +3068,83 @@ namespace TruckingSystem.Infrastructure.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("TruckingSystem.Domain.Entities.AttendanceAdjustmentRequest", b =>
+                {
+                    b.HasOne("TruckingSystem.Domain.Entities.Employee", "Employee")
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Employee");
+                });
+
+            modelBuilder.Entity("TruckingSystem.Domain.Entities.AttendanceQrCode", b =>
+                {
+                    b.HasOne("TruckingSystem.Domain.Entities.Warehouse", "Warehouse")
+                        .WithMany()
+                        .HasForeignKey("WarehouseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Warehouse");
+                });
+
+            modelBuilder.Entity("TruckingSystem.Domain.Entities.AttendanceRecord", b =>
+                {
+                    b.HasOne("TruckingSystem.Domain.Entities.AttendanceAdjustmentRequest", null)
+                        .WithMany()
+                        .HasForeignKey("AdjustmentRequestId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("TruckingSystem.Domain.Entities.Warehouse", "CheckInWarehouse")
+                        .WithMany()
+                        .HasForeignKey("CheckInWarehouseId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("TruckingSystem.Domain.Entities.Warehouse", "CheckOutWarehouse")
+                        .WithMany()
+                        .HasForeignKey("CheckOutWarehouseId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("TruckingSystem.Domain.Entities.Employee", "Employee")
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CheckInWarehouse");
+
+                    b.Navigation("CheckOutWarehouse");
+
+                    b.Navigation("Employee");
+                });
+
+            modelBuilder.Entity("TruckingSystem.Domain.Entities.AttendanceScan", b =>
+                {
+                    b.HasOne("TruckingSystem.Domain.Entities.Employee", "Employee")
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("TruckingSystem.Domain.Entities.AttendanceQrCode", "QrCode")
+                        .WithMany()
+                        .HasForeignKey("QrCodeId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("TruckingSystem.Domain.Entities.Warehouse", "Warehouse")
+                        .WithMany()
+                        .HasForeignKey("WarehouseId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Employee");
+
+                    b.Navigation("QrCode");
+
+                    b.Navigation("Warehouse");
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.CargoLine", b =>
@@ -2972,6 +3490,17 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.Navigation("PayrollSlip");
                 });
 
+            modelBuilder.Entity("TruckingSystem.Domain.Entities.PayrollMonthlyAdjustment", b =>
+                {
+                    b.HasOne("TruckingSystem.Domain.Entities.Employee", "Employee")
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Employee");
+                });
+
             modelBuilder.Entity("TruckingSystem.Domain.Entities.PayrollSlip", b =>
                 {
                     b.HasOne("TruckingSystem.Domain.Entities.Employee", "Employee")
@@ -3064,6 +3593,15 @@ namespace TruckingSystem.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("WarehouseZone");
+                });
+
+            modelBuilder.Entity("TruckingSystem.Domain.Entities.SurchargeLine", b =>
+                {
+                    b.HasOne("TruckingSystem.Domain.Entities.SurchargeList", null)
+                        .WithMany("Lines")
+                        .HasForeignKey("SurchargeListId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.TariffRule", b =>
@@ -3352,6 +3890,11 @@ namespace TruckingSystem.Infrastructure.Migrations
             modelBuilder.Entity("TruckingSystem.Domain.Entities.StorageBin", b =>
                 {
                     b.Navigation("Assignments");
+                });
+
+            modelBuilder.Entity("TruckingSystem.Domain.Entities.SurchargeList", b =>
+                {
+                    b.Navigation("Lines");
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.TransportOrder", b =>

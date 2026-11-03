@@ -27,7 +27,7 @@ public static class InvoicePricing
         return decimal.Round((decimal)km, 6);
     }
 
-    public static List<InvoiceLine> CalculateLines(TransportOrder order, TariffRule tariff, decimal? distanceKm, string source)
+    public static List<InvoiceLine> CalculateLines(TransportOrder order, TariffRule tariff, decimal? distanceKm, string source, SurchargePolicy? policy = null)
     {
         if (order.Status != TransportOrderStatus.Done)
             throw new InvalidOperationException("Chỉ được lập hóa đơn cho đơn hàng đã hoàn thành.");
@@ -44,8 +44,18 @@ public static class InvoicePricing
             Add("Cước theo km", distanceKm ?? 0, tariff.PricePerKm);
             // CargoLine.WeightKg is the total weight, shared by pickup and delivery legs.
             Add("Cước theo tấn", order.CargoLines.Sum(c => c.WeightKg) / 1000m, tariff.PricePerTon);
-            if (order.CargoLines.Any(c => c.IsFragile)) Add("Phụ phí hàng dễ vỡ", 1, tariff.SurchargeFragile);
-            if (order.CargoLines.Any(c => c.IsHazmat)) Add("Phụ phí hàng nguy hiểm", 1, tariff.SurchargeHazmat);
+            var basis = lines.Sum(l => l.Amount);
+            if (order.CargoLines.Any(c => c.IsFragile))
+                AddFee("Phụ phí hàng dễ vỡ", policy?.FragilePercent, tariff.SurchargeFragile);
+            if (order.CargoLines.Any(c => c.IsHazmat))
+                AddFee("Phụ phí hàng nguy hiểm", policy?.HazmatPercent, tariff.SurchargeHazmat);
+
+            void AddFee(string name, decimal? rate, decimal legacy)
+            {
+                if (rate is decimal percent)
+                    Add($"{name} ({percent:0.##}% × {basis:N2} đ)", 1, SurchargePolicy.Charge(basis, percent));
+                else Add(name, 1, legacy);
+            }
             _ = Invoice.Create(order, lines.Sum(l => l.Amount));
         }
         catch (OverflowException)

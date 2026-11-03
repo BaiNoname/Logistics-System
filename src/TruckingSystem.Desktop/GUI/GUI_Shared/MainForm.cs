@@ -202,9 +202,11 @@ namespace TruckingSystem.Desktop.GUI_Shared
                 ("👥", "Khách hàng", new[] { "Admin", "Dispatcher", "Accountant" }, () => new CustomersControl(_api)),
                 ("📄", "Hợp đồng", new[] { "Admin", "Dispatcher", "Accountant" }, () => new ContractsControl(_api)),
                 ("📎", "Phụ lục hợp đồng", new[] { "Admin", "Dispatcher", "Accountant" }, () => new ContractAppendicesControl(_api)),
+                ("%", "Phụ phí", new[] { "Admin", "Dispatcher", "Accountant" }, () => new TruckingSystem.Desktop.GUI.GUI_SurchargeManagement.SurchargeControl(_api)),
                 ("₫", "Bảng giá", new[] { "Admin", "Dispatcher", "Accountant" }, () => new PricingControl(_api)),
                 ("🧑‍💼", "Nhân viên", new[] { "Admin", "Dispatcher" }, () => new EmployeesControl(_api)),
-                ("₫", "Công & lương", new[] { "Admin", "Dispatcher", "Accountant" }, () => new TruckingSystem.Desktop.GUI_PayrollManagement.PayrollControl(_api)),
+                ("₫", "Bảng lương", new[] { "Admin", "Accountant" }, () => new TruckingSystem.Desktop.GUI_PayrollManagement.PayrollControl(_api)),
+                ("🕘", "Chấm công QR", new[] { "Admin", "Dispatcher" }, () => new TruckingSystem.Desktop.GUI_AttendanceManagement.AttendanceControl(_api)),
                 ("🚕", "Tài xế", new[] { "Admin", "Dispatcher" }, () => new DriversControl(_api)),
                 ("🧭", "Nguồn lực theo kho", new[] { "Admin", "Dispatcher" }, () => new TruckingSystem.Desktop.GUI_ResourceManagement.ResourcesControl(_api)),
                 ("🧾", "Hóa đơn", new[] { "Admin", "Accountant" }, () => new InvoicesControl(_api)),
@@ -328,8 +330,8 @@ namespace TruckingSystem.Desktop.GUI_Shared
             if (t == "Tổng quan") return "";
             if (t is "Đơn vận chuyển" or "Chuyến xe" or "Chuyến (Trip)" or "Kho trung chuyển") return "VẬN HÀNH";
             if (t is "Đội xe" or "Tài xế" or "Nguồn lực theo kho" or "Địa điểm" or "Nhiên liệu") return "TÀI NGUYÊN";
-            if (t is "Khách hàng" or "Hợp đồng" or "Phụ lục hợp đồng" or "Bảng giá" or "Hóa đơn") return "KINH DOANH";
-            if (t == "Nhân viên" || t.Contains("lương", StringComparison.OrdinalIgnoreCase)) return "NHÂN SỰ";
+            if (t is "Khách hàng" or "Hợp đồng" or "Phụ lục hợp đồng" or "Bảng giá" or "Phụ phí" or "Hóa đơn") return "KINH DOANH";
+            if (t is "Nhân viên" or "Chấm công QR" || t.Contains("lương", StringComparison.OrdinalIgnoreCase)) return "NHÂN SỰ";
             return "HỆ THỐNG";
         }
 

@@ -40,9 +40,11 @@ namespace TruckingSystem.Desktop.Common
         public CustomerApiService Customers { get; }
         public ContractApiService Contracts { get; }
         public ContractAppendixApiService ContractAppendices { get; }
+        public SERVICE_SurchargeManagement.SurchargeApiService Surcharges { get; }
         public PricingApiService Pricing { get; }
         public EmployeeApiService Employees { get; }
         public TruckingSystem.Desktop.SERVICE_PayrollManagement.PayrollApiService Payroll { get; }
+        public TruckingSystem.Desktop.SERVICE_AttendanceManagement.AttendanceApiService Attendance { get; }
         public DriverApiService Drivers { get; }
         public InvoiceApiService Invoices { get; }
         public LocationApiService Locations { get; }
@@ -67,9 +69,11 @@ namespace TruckingSystem.Desktop.Common
             Customers = new CustomerApiService(Connection);
             Contracts = new ContractApiService(Connection);
             ContractAppendices = new ContractAppendixApiService(Connection);
+            Surcharges = new(Connection);
             Pricing = new PricingApiService(Connection);
             Employees = new EmployeeApiService(Connection);
             Payroll = new TruckingSystem.Desktop.SERVICE_PayrollManagement.PayrollApiService(Connection);
+            Attendance = new TruckingSystem.Desktop.SERVICE_AttendanceManagement.AttendanceApiService(Connection);
             Drivers = new DriverApiService(Connection);
             Invoices = new InvoiceApiService(Connection);
             Locations = new LocationApiService(Connection);

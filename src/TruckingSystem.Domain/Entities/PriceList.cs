@@ -4,10 +4,10 @@ namespace TruckingSystem.Domain.Entities;
 
 public class PriceList : BaseEntity
 {
-    public void EnsureTariffRulesEditable()
+    public void EnsureEditable()
     {
         if (Status != PriceListStatus.Active)
-            throw new InvalidOperationException("Chi tiết giá chỉ được xem khi bảng giá không còn đang áp dụng.");
+            throw new InvalidOperationException("Không thể sửa bảng giá đã ngừng áp dụng.");
     }
 
     public static void Validate(string? name, DateTime effectiveDate, DateTime today)

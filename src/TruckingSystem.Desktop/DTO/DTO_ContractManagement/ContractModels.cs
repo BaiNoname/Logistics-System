@@ -12,6 +12,14 @@ public class ContractListItem
     };
 
     public int Id { get; set; }
+    public string? Type { get; set; }
+    public decimal? DiscountPercent { get; set; }
+    public string TypeText => Type switch
+    {
+        "OneTime" => "Hợp đồng vận chuyển một lần",
+        "LongTerm" => "Hợp đồng vận chuyển dài hạn",
+        _ => "Chưa phân loại",
+    };
     public int CustomerId { get; set; }
     public string Code { get; set; } = "";
     public string CustomerName { get; set; } = "";

@@ -82,7 +82,7 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             lblStatus.Text = "Đang tải...";
             try
             {
-                _employees = (await _api.Employees.GetEmployeesAsync()).Where(e => !e.IsDriver).ToList();
+                _employees = await _api.Employees.GetEmployeesAsync();
                 grid.DataSource = _employees.Select(e => new
                 {
                     e.Id,

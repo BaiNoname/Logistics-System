@@ -6,4 +6,6 @@ public record CopyPriceListRequest(string Name);
 public record TariffRuleDto(int Id, int PriceListId, string VehicleType, decimal PricePerKm,
     decimal PricePerTon, decimal SurchargeFragile, decimal SurchargeHazmat);
 public record SaveTariffRuleRequest(string VehicleType, decimal PricePerKm,
-    decimal PricePerTon, decimal SurchargeFragile, decimal SurchargeHazmat);
+    decimal PricePerTon, decimal? SurchargeFragile = null, decimal? SurchargeHazmat = null);
+
+public record SurchargeRates(DateOnly EffectiveDate, decimal FragilePercent, decimal HazmatPercent);

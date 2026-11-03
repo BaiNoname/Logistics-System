@@ -21,6 +21,9 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
 
     // Nhóm A — Nhân viên & Phân quyền
     public DbSet<Employee> Employees => Set<Employee>();
+    public DbSet<PayrollKpiPolicy> PayrollKpiPolicies => Set<PayrollKpiPolicy>();
+    public DbSet<PayrollMonthlyAdjustment> PayrollMonthlyAdjustments => Set<PayrollMonthlyAdjustment>();
+    public DbSet<DriverKpiRate> DriverKpiRates => Set<DriverKpiRate>();
     public DbSet<EmployeeSalary> EmployeeSalaries => Set<EmployeeSalary>();
     public DbSet<PayrollPeriod> PayrollPeriods => Set<PayrollPeriod>();
     public DbSet<MonthlyAttendance> MonthlyAttendances => Set<MonthlyAttendance>();
@@ -34,6 +37,10 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
     public DbSet<Permission> Permissions => Set<Permission>();
     public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<AttendanceQrCode> AttendanceQrCodes => Set<AttendanceQrCode>();
+    public DbSet<AttendanceScan> AttendanceScans => Set<AttendanceScan>();
+    public DbSet<AttendanceRecord> AttendanceRecords => Set<AttendanceRecord>();
+    public DbSet<AttendanceAdjustmentRequest> AttendanceAdjustmentRequests => Set<AttendanceAdjustmentRequest>();
 
     // Nhóm B — Khách hàng & Kinh doanh
     public DbSet<Customer> Customers => Set<Customer>();
@@ -42,6 +49,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
     public DbSet<Contract> Contracts => Set<Contract>();
     public DbSet<ContractAppendix> ContractAppendices => Set<ContractAppendix>();
     public DbSet<PriceList> PriceLists => Set<PriceList>();
+    public DbSet<SurchargeList> SurchargeLists => Set<SurchargeList>();
     public DbSet<TariffRule> TariffRules => Set<TariffRule>();
     public DbSet<SalesOrder> SalesOrders => Set<SalesOrder>();
 
@@ -91,6 +99,15 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder); // BẮT BUỘC gọi trước để Identity tự cấu hình bảng của nó
+
+        builder.Entity<SurchargeList>(e =>
+        {
+            e.Property(p => p.Name).HasMaxLength(150);
+            e.Property(p => p.Revision).IsConcurrencyToken();
+            e.HasIndex(p => p.EffectiveDate).IsUnique().HasFilter("\"Published\"");
+            e.HasMany(p => p.Lines).WithOne().HasForeignKey(l => l.SurchargeListId);
+        });
+        builder.Entity<SurchargeLine>().HasKey(l => new { l.SurchargeListId, l.Kind });
 
         // ---- RolePermission: khóa chính ghép (RoleId, PermissionId) ----
         builder.Entity<RolePermission>(e =>
@@ -233,6 +250,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
             e.HasOne(a => a.TariffRule).WithMany().HasForeignKey(a => a.TariffRuleId).OnDelete(DeleteBehavior.Restrict);
         });
         PayrollConfiguration.Configure(builder);
+        AttendanceConfiguration.Configure(builder);
 
         // ---- Kiểu decimal cho tiền tệ/số lượng — chỉ định precision rõ ràng cho PostgreSQL ----
         foreach (var property in builder.Model.GetEntityTypes()
@@ -241,6 +259,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
         {
             property.SetColumnType("numeric(18,2)");
         }
+
+        builder.Entity<PayrollSlip>().Property(s => s.KpiPoints).HasColumnType("numeric(24,8)");
 
         // ---- THỂ TÍCH (m³) cần 4 chữ số thập phân — đặt SAU vòng lặp trên (vòng lặp
         // ép mọi decimal về 2 chữ số). Với 2 chữ số, món hàng 0,004 m³ bị lưu thành 0,00

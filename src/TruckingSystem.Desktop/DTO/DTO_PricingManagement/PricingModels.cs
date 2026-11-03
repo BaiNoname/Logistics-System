@@ -10,8 +10,8 @@ public record PriceListItem(int Id, string Name, DateTime EffectiveDate, int Rul
     };
 }
 public record TariffRuleItem(int Id, int PriceListId, string VehicleType, decimal PricePerKm,
-    decimal PricePerTon, decimal SurchargeFragile, decimal SurchargeHazmat)
+    decimal PricePerTon)
 {
     public string DisplayName => $"{VehicleType} · {PricePerKm:N2} đ/km · {PricePerTon:N2} đ/tấn";
-    public string Details => $"Giá/km: {PricePerKm:N2} đ · Giá/tấn: {PricePerTon:N2} đ\nPhụ phí dễ vỡ: {SurchargeFragile:N2} đ · Phụ phí nguy hiểm: {SurchargeHazmat:N2} đ";
+    public string Details => $"Giá/km: {PricePerKm:N2} đ · Giá/tấn: {PricePerTon:N2} đ";
 }

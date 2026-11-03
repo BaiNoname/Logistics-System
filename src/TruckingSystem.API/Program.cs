@@ -1,3 +1,5 @@
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.RateLimiting;
 using TruckingSystem.Application;
 using TruckingSystem.Infrastructure;
 
@@ -57,6 +59,13 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = 429;
+    options.AddPolicy("freight-chat", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+});
 var app = builder.Build();
 
 app.UseMiddleware<TruckingSystem.API.Middleware.DbConflictMiddleware>();
@@ -71,6 +80,7 @@ app.UseHttpsRedirection();
 app.UseStaticFiles(); // phục vụ wwwroot/track.html cho trang tracking công khai
 app.UseCors("ReactApp");
 app.UseAuthentication();
+app.UseRateLimiter();
 app.UseAuthorization();
 app.MapControllers();
 

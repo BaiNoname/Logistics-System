@@ -9,6 +9,14 @@ namespace TruckingSystem.API.Controllers;
 [Authorize(Roles = "Admin,Dispatcher,Accountant")]
 public class PriceListsController(IPricingService service) : ControllerBase
 {
+    [HttpGet("surcharges")]
+    public async Task<IActionResult> HistoricalRates([FromServices] TruckingSystem.Application.Surcharges.ISurchargeListService lists)
+        => Ok((await lists.ListAsync()).Where(p => p.Published)
+            .Select(p => new SurchargeRates(p.EffectiveDate, p.FragilePercent, p.HazmatPercent)));
+
+    [HttpPost("surcharges")]
+    public IActionResult RetiredSurchargeWrite() => StatusCode(410, new { message = "Vui lòng cập nhật Desktop và công bố từ mục Phụ phí." });
+
     [HttpGet]
     public async Task<ActionResult<List<PriceListDto>>> GetAll()
         => Ok(await service.GetPriceListsAsync());
@@ -42,6 +50,7 @@ public class PriceListsController(IPricingService service) : ControllerBase
     {
         try { return await service.UpdatePriceListAsync(id, request) ? NoContent() : NotFound(); }
         catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
+        catch (InvalidOperationException ex) { return Conflict(new { message = ex.Message }); }
     }
 
     [HttpDelete("{id:int}")]

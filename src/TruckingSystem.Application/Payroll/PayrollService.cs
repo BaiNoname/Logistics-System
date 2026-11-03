@@ -38,8 +38,13 @@ public partial class PayrollService(IApplicationDbContext db) : IPayrollService
     {
         var rates = await db.EmployeeSalaries.AsNoTracking().Where(s => s.EmployeeId == employeeId)
             .OrderBy(s => s.EffectiveFrom).ToListAsync();
-        return rates.Select((s, i) => new SalaryDto(s.Id, s.EffectiveFrom,
-            i + 1 < rates.Count ? rates[i + 1].EffectiveFrom.AddDays(-1) : null, s.MonthlySalary, s.Reason)).ToList();
+        var today = VnClock.Today;
+        return rates.Select((s, i) =>
+        {
+            DateTime? effectiveTo = i + 1 < rates.Count ? rates[i + 1].EffectiveFrom.AddDays(-1) : null;
+            return new SalaryDto(s.Id, s.EffectiveFrom, effectiveTo, s.MonthlySalary, s.Reason,
+                s.EmployeeId, s.UpdatedAt ?? s.CreatedAt, PayrollRules.SalaryStatus(s.EffectiveFrom, effectiveTo, today));
+        }).ToList();
     }
     //thêm lương mới
     public Task<PayrollResult> AddSalaryAsync(int employeeId, SalaryRequest request, string actor) => WriteAsync(async () =>
@@ -52,8 +57,8 @@ public partial class PayrollService(IApplicationDbContext db) : IPayrollService
         if (from.Year < 2000 || from.Year > 2100 || from < employee.HireDate.Date
             || (employee.TerminationDate.HasValue && from > employee.TerminationDate.Value.Date))
             return Fail("Ngày hiệu lực phải thuộc thời gian làm việc, từ năm 2000 đến 2100.");
-        if (from.Day != 26 && from != employee.HireDate.Date)
-            return Fail("Mức lương áp dụng từ ngày 26 đầu kỳ; nhân viên/tài xế mới có thể áp dụng từ ngày vào làm.");
+        if (from.Day != 1 && from != employee.HireDate.Date)
+            return Fail("Mức lương áp dụng từ ngày 1 đầu kỳ; nhân viên/tài xế mới có thể áp dụng từ ngày vào làm.");
         var latest = await db.EmployeeSalaries.Where(s => s.EmployeeId == employeeId)
             .OrderByDescending(s => s.EffectiveFrom).FirstOrDefaultAsync();
         if (latest is not null && from <= latest.EffectiveFrom)
@@ -74,97 +79,6 @@ public partial class PayrollService(IApplicationDbContext db) : IPayrollService
     public Task<List<PayrollPeriodDto>> GetPeriodsAsync() => db.PayrollPeriods.AsNoTracking()
         .OrderByDescending(p => p.Year).ThenByDescending(p => p.Month)
         .Select(p => new PayrollPeriodDto(p.Id, p.Year, p.Month, p.Revision, p.CreatedBy, p.ApprovedAt, p.ApprovedBy)).ToListAsync();
-    //  tạo kỳ lương mới
-    public Task<PayrollResult> CreatePeriodAsync(PeriodRequest request, string actor) => WriteAsync(async () =>
-    {
-        if (!ValidPeriod(request.Year, request.Month)) return Fail("Kỳ lương phải từ tháng 1–12, năm 2000–2100.");
-        var existing = await db.PayrollPeriods.FirstOrDefaultAsync(p => p.Year == request.Year && p.Month == request.Month);
-        if (existing is not null) return new(true, Id: existing.Id);
-        db.PayrollPeriods.Add(new PayrollPeriod { Year = request.Year, Month = request.Month, CreatedBy = actor });
-        Audit(actor, "Create", "PayrollPeriod", null, request);
-        return new(true);
-    });
-    //lấy danh sách công
-    public Task<List<AttendanceDto>> GetAttendanceAsync(int periodId) => db.MonthlyAttendances.AsNoTracking()
-        .Where(a => a.PayrollPeriodId == periodId).OrderBy(a => a.Employee.FullName)
-        .Select(a => new AttendanceDto(a.EmployeeId, a.Employee.Code, a.Employee.FullName, a.StandardDays,
-            a.WorkedDays, a.PaidLeaveDays, a.HolidayDays, a.UnpaidLeaveDays, a.WeekdayOvertimeHours,
-            a.RestDayOvertimeHours, a.HolidayOvertimeHours, a.Note, a.ConfirmedAt, a.ConfirmedBy,
-            a.DriverWorkDates, a.WorkFrom, a.WorkTo)).ToListAsync();
-    //lưu công
-    public Task<PayrollResult> SaveAttendanceAsync(int periodId, int employeeId, AttendanceRequest request, string actor) => WriteAsync(async () =>
-    {
-        var period = await db.PayrollPeriods.FindAsync(periodId);
-        var error = PeriodError(period, request.Revision);
-        if (error is not null) return Fail(error);
-        if (await db.PayrollSlips.AnyAsync(s => s.PayrollPeriodId == periodId && s.EmployeeId == employeeId))
-            return Fail("Xóa phiếu lương nháp trước khi sửa công, sau đó xác nhận công và lập lại phiếu.");
-        var employee = await EmployeeAsync(employeeId);
-        if (employee is not null && IsDriver(employee))
-            return Fail("Công tài xế phải lấy từ lịch làm việc; chọn Lấy công tài xế.");
-        var range = PayrollRules.PeriodRange(period!.Year, period.Month);
-        var attendance = new MonthlyAttendance
-        {
-            WorkFrom = range.From,
-            WorkTo = range.To,
-            EmployeeId = employeeId,
-            PayrollPeriodId = periodId,
-            StandardDays = request.StandardDays,
-            WorkedDays = request.WorkedDays,
-            PaidLeaveDays = request.PaidLeaveDays,
-            HolidayDays = request.HolidayDays,
-            UnpaidLeaveDays = request.UnpaidLeaveDays,
-            WeekdayOvertimeHours = request.WeekdayOvertimeHours,
-            RestDayOvertimeHours = request.RestDayOvertimeHours,
-            HolidayOvertimeHours = request.HolidayOvertimeHours,
-            Note = request.Note?.Trim() ?? ""
-        };
-        error = AttendanceError(employee, period!, attendance);
-        if (error is not null) return Fail(error);
-        var existing = await db.MonthlyAttendances.FirstOrDefaultAsync(a => a.PayrollPeriodId == periodId && a.EmployeeId == employeeId);
-        if (existing is null) db.MonthlyAttendances.Add(attendance);
-        else
-        {
-            existing.StandardDays = attendance.StandardDays;
-            existing.WorkFrom = attendance.WorkFrom;
-            existing.WorkTo = attendance.WorkTo;
-            existing.WorkedDays = attendance.WorkedDays;
-            existing.PaidLeaveDays = attendance.PaidLeaveDays;
-            existing.HolidayDays = attendance.HolidayDays;
-            existing.UnpaidLeaveDays = attendance.UnpaidLeaveDays;
-            existing.WeekdayOvertimeHours = attendance.WeekdayOvertimeHours;
-            existing.RestDayOvertimeHours = attendance.RestDayOvertimeHours;
-            existing.HolidayOvertimeHours = attendance.HolidayOvertimeHours;
-            existing.Note = attendance.Note;
-            existing.DriverWorkDates = null;
-            existing.ConfirmedAt = null;
-            existing.ConfirmedBy = null;
-            existing.UpdatedAt = DateTime.UtcNow;
-        }
-        Touch(period!);
-        Audit(actor, "SaveAttendance", "MonthlyAttendance", employeeId, new { periodId, request });
-        return new(true);
-    });
-    //xác nhận công
-    public Task<PayrollResult> ConfirmAttendanceAsync(int periodId, int employeeId, RevisionRequest request, string actor) => WriteAsync(async () =>
-    {
-        var period = await db.PayrollPeriods.FindAsync(periodId);
-        var error = PeriodError(period, request.Revision);
-        if (error is not null) return Fail(error);
-        var attendance = await db.MonthlyAttendances.FirstOrDefaultAsync(a => a.PayrollPeriodId == periodId && a.EmployeeId == employeeId);
-        if (attendance is null) return Fail("Chưa nhập công cho nhân viên.");
-        var employee = await EmployeeAsync(employeeId);
-        error = AttendanceError(employee, period!, attendance);
-        if (error is not null) return Fail(error);
-        error = await DriverScheduleErrorAsync(employee!, period!, attendance);
-        if (error is not null) return Fail(error);
-        if (attendance.ConfirmedAt.HasValue) return new(true);
-        attendance.ConfirmedAt = DateTime.UtcNow;
-        attendance.ConfirmedBy = actor;
-        Touch(period!);
-        Audit(actor, "ConfirmAttendance", "MonthlyAttendance", attendance.Id, new { periodId, employeeId });
-        return new(true);
-    });
     //lấy danh sách phiếu lương
     public async Task<List<PayrollSlipDto>> GetSlipsAsync(int periodId)
     {
@@ -173,56 +87,8 @@ public partial class PayrollService(IApplicationDbContext db) : IPayrollService
         return slips.Select(ToDto).ToList();
     }
     //tạo phiếu lương nháp
-    public Task<PayrollResult> GenerateSlipAsync(int periodId, int employeeId, RevisionRequest request, string actor) => WriteAsync(async () =>
-    {
-        var period = await db.PayrollPeriods.FindAsync(periodId);
-        var error = PeriodError(period, request.Revision);
-        if (error is not null) return Fail(error);
-        var existing = await db.PayrollSlips.FirstOrDefaultAsync(s => s.PayrollPeriodId == periodId && s.EmployeeId == employeeId);
-        if (existing is not null) return new(true, "Phiếu đã tồn tại. Xóa phiếu nháp nếu cần tính lại.", existing.Id);
-        var employee = await EmployeeAsync(employeeId);
-        var attendance = await db.MonthlyAttendances.FirstOrDefaultAsync(a => a.PayrollPeriodId == periodId && a.EmployeeId == employeeId);
-        if (attendance?.ConfirmedAt is null) return Fail("Cần nhập và xác nhận công trước khi lập phiếu lương.");
-        error = AttendanceError(employee, period!, attendance);
-        if (error is not null) return Fail(error);
-        error = await DriverScheduleErrorAsync(employee!, period!, attendance);
-        if (error is not null) return Fail(error);
-        var salary = await SalaryForAsync(employee!, period!);
-        if (salary is null) return Fail("Chưa có mức lương áp dụng trọn kỳ 26–25. Kiểm tra ngày hiệu lực trong lịch sử mức lương.");
-        var earned = PayrollRules.Prorate(salary.MonthlySalary, attendance.StandardDays,
-            attendance.WorkedDays + attendance.PaidLeaveDays + attendance.HolidayDays);
-        db.PayrollSlips.Add(new PayrollSlip
-        {
-            EmployeeId = employeeId,
-            PayrollPeriodId = periodId,
-            EmployeeCode = employee!.Code,
-            EmployeeName = employee.FullName,
-            DepartmentName = employee.Department?.Name ?? "",
-            PositionName = employee.Position?.Name ?? "",
-            MonthlySalary = salary.MonthlySalary,
-            SalaryEffectiveFrom = salary.EffectiveFrom,
-            StandardDays = attendance.StandardDays,
-            WorkedDays = attendance.WorkedDays,
-            PaidLeaveDays = attendance.PaidLeaveDays,
-            HolidayDays = attendance.HolidayDays,
-            UnpaidLeaveDays = attendance.UnpaidLeaveDays,
-            WeekdayOvertimeHours = attendance.WeekdayOvertimeHours,
-            RestDayOvertimeHours = attendance.RestDayOvertimeHours,
-            HolidayOvertimeHours = attendance.HolidayOvertimeHours,
-            AttendanceNote = attendance.Note,
-            AttendanceConfirmedBy = attendance.ConfirmedBy!,
-            AttendanceConfirmedAt = attendance.ConfirmedAt.Value,
-            EarnedSalary = earned,
-            GrossIncome = earned,
-            NetPay = earned,
-            DriverWorkDates = attendance.DriverWorkDates,
-            WorkFrom = attendance.WorkFrom,
-            WorkTo = attendance.WorkTo
-        });
-        Touch(period!);
-        Audit(actor, "Generate", "PayrollSlip", null, new { periodId, employeeId });
-        return new(true);
-    });
+    public Task<PayrollResult> GenerateSlipAsync(int periodId, int employeeId, RevisionRequest request, string actor)
+        => Task.FromResult(Fail("Chức năng lập từng phiếu đã được thay bằng Tạo / tính lại toàn bộ bảng lương tháng."));
     //xóa phiếu lương nháp
     public Task<PayrollResult> DeleteDraftSlipAsync(int slipId, RevisionRequest request, string actor) => WriteAsync(async () =>
     {
@@ -241,6 +107,7 @@ public partial class PayrollService(IApplicationDbContext db) : IPayrollService
         var slip = await SlipAsync(slipId);
         var error = PeriodError(slip?.PayrollPeriod, request.Revision, adjustment);
         if (error is not null) return Fail(error);
+        if (slip!.CalculationVersion == 2) return Fail("Dùng danh sách cộng/trừ theo tháng; bảng đã chốt thì ghi điều chỉnh ở tháng chưa chốt.");
         if (adjustment && !slip!.PayrollPeriod.ApprovedAt.HasValue) return Fail("Chỉ điều chỉnh sau duyệt; phiếu nháp dùng khoản cộng/trừ.");
         if (!Enum.TryParse<PayrollItemKind>(request.Kind, out var kind) || !Enum.IsDefined(kind)) return Fail("Loại khoản không hợp lệ.");
         if (!PayrollRules.ValidMoney(request.Amount) || !ValidReason(request.Reason))
@@ -274,8 +141,10 @@ public partial class PayrollService(IApplicationDbContext db) : IPayrollService
         var slip = await SlipAsync(slipId);
         var error = PeriodError(slip?.PayrollPeriod, request.Revision);
         if (error is not null) return Fail(error);
+        if (slip!.CalculationVersion == 2) return Fail("Xóa khoản tại danh sách cộng/trừ tháng, sau đó tính lại bảng nháp.");
         var item = slip!.Items.FirstOrDefault(i => i.Id == itemId);
         if (item is null) return Fail("Không tìm thấy khoản cộng/trừ.");
+        if (item.IsDriverKpi) return Fail("KPI tự tính theo chuyến; xóa và lập lại phiếu nháp để tính lại.");
         if (item.Kind != PayrollItemKind.Deduction && slip.NetPay < item.CalculatedAmount)
             return Fail("Xóa khoản này sẽ làm thực lĩnh âm; kiểm tra khoản khấu trừ trước.");
         slip.Items.Remove(item);
@@ -294,36 +163,24 @@ public partial class PayrollService(IApplicationDbContext db) : IPayrollService
         var employees = await GetEmployeesAsync(period!.Year, period.Month);
         var range = PayrollRules.PeriodRange(period.Year, period.Month);
         if (VnClock.Today < range.To)
-            return Fail("Chưa đến ngày chốt lương (ngày 25 của tháng). Chỉ được lập phiếu nháp trước ngày chốt.");
+            return Fail("Chưa đến ngày chốt lương (ngày cuối tháng). Chỉ được lập phiếu nháp trước ngày chốt.");
         var slips = await db.PayrollSlips.Include(s => s.Items).Where(s => s.PayrollPeriodId == periodId).ToListAsync();
         if (slips.Count == 0 || !employees.Select(e => e.Id).Order().SequenceEqual(slips.Select(s => s.EmployeeId).Order()))
             return Fail("Phải có đúng một phiếu cho mỗi nhân viên thuộc kỳ (kể cả công bằng 0). Kiểm tra danh sách và phiếu còn thiếu/thừa.");
-        foreach (var slip in slips)
+        if (slips.Any(s => s.CalculationVersion == 2))
         {
-            if (slip.WorkFrom != range.From || slip.WorkTo != range.To)
-                return Fail($"{slip.EmployeeCode}: phiếu nháp chưa theo kỳ 26–25; xóa phiếu nháp, kiểm tra/nhập lại công và lập lại phiếu.");
-            var employee = await EmployeeAsync(slip.EmployeeId);
-            var attendance = await db.MonthlyAttendances.FirstOrDefaultAsync(a => a.PayrollPeriodId == periodId && a.EmployeeId == slip.EmployeeId);
-            if (attendance?.ConfirmedAt is null) return Fail($"{slip.EmployeeCode}: công chưa xác nhận.");
-            error = AttendanceError(employee, period, attendance);
-            if (error is not null) return Fail($"{slip.EmployeeCode}: {error}");
-            error = await DriverScheduleErrorAsync(employee!, period, attendance);
-            if (error is not null) return Fail($"{slip.EmployeeCode}: {error}");
-            if (slip.DriverWorkDates != attendance.DriverWorkDates)
-                return Fail($"{slip.EmployeeCode}: nguồn công đã thay đổi; xóa phiếu nháp và lập lại.");
-            var salary = await SalaryForAsync(employee!, period);
-            if (salary is null || salary.MonthlySalary != slip.MonthlySalary || salary.EffectiveFrom != slip.SalaryEffectiveFrom)
-                return Fail($"{slip.EmployeeCode}: mức lương đã thay đổi; xóa phiếu nháp và lập lại trước khi duyệt.");
-            var hours = slip.WeekdayOvertimeHours + slip.RestDayOvertimeHours + slip.HolidayOvertimeHours;
-            if (hours > 0 && !slip.Items.Any(i => i.Kind == PayrollItemKind.Overtime))
-                return Fail($"{slip.EmployeeCode}: có giờ tăng ca nhưng chưa nhập tiền tăng ca và căn cứ tính.");
+            var current = await CalculateMonthAsync(period, actor);
+            if (current.Errors.Count > 0) return Fail(string.Join(Environment.NewLine, current.Errors));
+            if (slips.Any(s => s.CalculationVersion != 2 || current.Slips.SingleOrDefault(c => c.EmployeeId == s.EmployeeId)?.SourceSnapshot != s.SourceSnapshot))
+                return Fail("Công, chuyến, mức lương, cấu hình hoặc khoản cộng/trừ đã thay đổi. Tính lại toàn bộ tháng trước khi chốt.");
+            period.ApprovedAt = DateTime.UtcNow;
+            period.ApprovedBy = actor;
+            foreach (var s in slips) s.ApprovedNetPay = s.NetPay;
+            Touch(period);
+            Audit(actor, "Approve", "PayrollPeriod", periodId, new { Count = slips.Count, NetPay = slips.Sum(s => s.NetPay) });
+            return new(true);
         }
-        period.ApprovedAt = DateTime.UtcNow;
-        period.ApprovedBy = actor;
-        foreach (var slip in slips) slip.ApprovedNetPay = slip.NetPay;
-        Touch(period);
-        Audit(actor, "Approve", "PayrollPeriod", periodId, new { Count = slips.Count, NetPay = slips.Sum(s => s.NetPay) });
-        return new(true);
+        return Fail("Bảng nháp còn theo cơ chế cũ. Đối chiếu, chuyển khoản tay vào danh sách cộng/trừ tháng, xóa nháp cũ rồi tạo lại toàn bộ tháng trước khi chốt.");
     });
     //chi trả phiếu lương
     public Task<PayrollResult> PayAsync(int slipId, PaymentRequest request, string actor) => WriteAsync(async () =>
@@ -364,7 +221,8 @@ public partial class PayrollService(IApplicationDbContext db) : IPayrollService
     {
         var range = PayrollRules.PeriodRange(period.Year, period.Month);
         var effective = employee.HireDate.Date > range.From ? employee.HireDate.Date : range.From;
-        var salary = await db.EmployeeSalaries.Where(s => s.EmployeeId == employee.Id && s.EffectiveFrom <= range.To)
+        var employedTo = employee.TerminationDate?.Date < range.To ? employee.TerminationDate.Value.Date : range.To;
+        var salary = await db.EmployeeSalaries.Where(s => s.EmployeeId == employee.Id && s.EffectiveFrom <= employedTo)
             .OrderByDescending(s => s.EffectiveFrom).FirstOrDefaultAsync();
         // shortcut: aggregate attendance cannot split mid-cycle rates; use daily attendance when supporting mid-cycle changes.
         return salary is not null && salary.EffectiveFrom <= effective ? salary : null;
@@ -381,33 +239,6 @@ public partial class PayrollService(IApplicationDbContext db) : IPayrollService
         return !allowApproved && period.ApprovedAt.HasValue ? "Kỳ lương đã duyệt và khóa." : null;
     }
     private static void Touch(PayrollPeriod period) { period.Revision++; period.UpdatedAt = DateTime.UtcNow; }
-    private static string? AttendanceError(Employee? employee, PayrollPeriod period, MonthlyAttendance a)
-    {
-        if (employee is null) return "Nhân viên/tài xế không tồn tại.";
-        if (IsDriver(employee) != (a.DriverWorkDates is not null))
-            return "Nhóm nhân viên/tài xế đã thay đổi hoặc chưa lấy công từ lịch; nhập/lấy lại công trước khi tính lương.";
-        if (employee.Status == EmployeeStatus.Terminated && !employee.TerminationDate.HasValue)
-            return "Bổ sung ngày nghỉ việc thực tế trước khi tính công/lương.";
-        var (start, end) = PayrollRules.PeriodRange(period.Year, period.Month);
-        if (a.WorkFrom != start || a.WorkTo != end)
-            return "Công chưa theo kỳ 26–25; xóa phiếu nháp nếu có, kiểm tra/nhập lại công trước khi xác nhận.";
-        if (employee.HireDate.Date > end || employee.TerminationDate?.Date < start) return "Nhân viên không làm việc trong kỳ này.";
-        if (employee.HireDate.Year < 2000 || employee.TerminationDate?.Date < employee.HireDate.Date)
-            return "Kiểm tra ngày vào/nghỉ việc thực tế của nhân viên.";
-        var employedStart = employee.HireDate.Date > start ? employee.HireDate.Date : start;
-        var employedEnd = employee.TerminationDate?.Date < end ? employee.TerminationDate.Value.Date : end;
-        var quantities = new[] { a.StandardDays, a.WorkedDays, a.PaidLeaveDays, a.HolidayDays, a.UnpaidLeaveDays,
-            a.WeekdayOvertimeHours, a.RestDayOvertimeHours, a.HolidayOvertimeHours };
-        if (quantities.Any(q => !PayrollRules.ValidQuantity(q) || q > 744)) return "Công/giờ phải từ 0–744 và tối đa 2 chữ số thập phân.";
-        var days = a.WorkedDays + a.PaidLeaveDays + a.HolidayDays + a.UnpaidLeaveDays;
-        if (a.StandardDays <= 0 || a.StandardDays > (end - start).Days + 1)
-            return "Công chuẩn phải lớn hơn 0 và không vượt số ngày trong kỳ công.";
-        if (days > a.StandardDays || days > (employedEnd - employedStart).Days + 1)
-            return "Tổng công làm/nghỉ/lễ vượt công chuẩn hoặc thời gian làm việc trong kỳ.";
-        if (a.WeekdayOvertimeHours + a.RestDayOvertimeHours + a.HolidayOvertimeHours > ((employedEnd - employedStart).Days + 1) * 24)
-            return "Giờ tăng ca vượt thời gian làm việc trong kỳ.";
-        return a.Note.Length > 500 ? "Ghi chú công tối đa 500 ký tự." : null;
-    }
     private static void Recalculate(PayrollSlip slip)
     {
         slip.GrossIncome = slip.EarnedSalary + slip.Items.Where(i => i.Kind != PayrollItemKind.Deduction).Sum(i => i.CalculatedAmount);
@@ -436,8 +267,8 @@ public partial class PayrollService(IApplicationDbContext db) : IPayrollService
         s.AttendanceConfirmedBy, s.AttendanceConfirmedAt, s.EarnedSalary, s.GrossIncome, s.Deductions, s.NetPay,
         s.ApprovedNetPay, s.PaidAmount, s.NetPay - s.PaidAmount, PayrollRules.PaymentStatus(s.NetPay, s.PaidAmount),
         s.Items.OrderBy(i => i.Id).Select(i => new PayrollItemDto(i.Id, i.Kind.ToString(), i.Amount,
-            i.ProrateByAttendance, i.CalculatedAmount, i.Reason, i.IsAdjustment, i.CreatedBy, i.CreatedAt)).ToList(),
+            i.ProrateByAttendance, i.CalculatedAmount, i.Reason, i.IsAdjustment, i.CreatedBy, i.CreatedAt, i.IsDriverKpi)).ToList(),
         s.Payments.OrderBy(p => p.PaidOn).ThenBy(p => p.Id).Select(p => new SalaryPaymentDto(p.Id, p.Amount,
             p.PaidOn, p.Method, p.Reference, p.RecordedBy)).ToList(),
-        s.DriverWorkDates is not null, s.DriverWorkDates, s.WorkFrom, s.WorkTo);
+        s.DriverWorkDates is not null, s.DriverWorkDates, s.WorkFrom, s.WorkTo, s.CalculationVersion, s.KpiPoints, s.KpiTarget);
 }

@@ -37,6 +37,7 @@ public static class DependencyInjection
         services.AddScoped<ICustomerService, CustomerService>();
         services.AddScoped<IContractService, ContractService>();
         services.AddScoped<IContractAppendixService, ContractAppendixService>();
+        services.AddScoped<Surcharges.ISurchargeListService, Surcharges.SurchargeListService>();
         services.AddScoped<IPricingService, PricingService>();
         services.AddScoped<TruckingSystem.Application.Notifications.INotificationService, TruckingSystem.Application.Notifications.NotificationService>();
         services.AddScoped<TruckingSystem.Application.AuditLogs.IAuditLogService, TruckingSystem.Application.AuditLogs.AuditLogService>();
@@ -46,6 +47,7 @@ public static class DependencyInjection
         services.AddScoped<ITripIssueService, TripIssueService>();
         services.AddScoped<IEmployeeService, EmployeeService>();
         services.AddScoped<Payroll.IPayrollService, Payroll.PayrollService>();
+        services.AddScoped<Attendance.IAttendanceService, Attendance.AttendanceService>();
         services.AddScoped<ISystemManagementService, SystemManagementService>();
         services.AddScoped<IInvoiceService, InvoiceService>();
         services.AddScoped<IVehicleAllocationService, VehicleAllocationService>();
@@ -55,6 +57,7 @@ public static class DependencyInjection
         services.AddScoped<ITripVideoService, TripVideoService>();
         services.AddScoped<ITripPhotoService, TripPhotoService>();
         services.AddScoped<IResourceOverviewService, ResourceOverviewService>();
+        services.AddScoped<FreightChat.FreightChatService>();
         return services;
     }
 }

@@ -13,7 +13,7 @@ public class ContractAppendixForm : BaseForm
     private readonly DateTimePicker _effective = new() { Format = DateTimePickerFormat.Custom, CustomFormat = "dd/MM/yyyy", AccessibleName = "Ngày có hiệu lực" };
     private readonly ComboBox _priceList = new() { DropDownStyle = ComboBoxStyle.DropDownList, AccessibleName = "Bảng giá" };
     private readonly ComboBox _tariff = new() { DropDownStyle = ComboBoxStyle.DropDownList, DropDownWidth = 950, AccessibleName = "Chi tiết bảng giá" };
-    private readonly Label _prices = new() { AutoSize = true, MaximumSize = new Size(650, 0), ForeColor = Theme.TextSecondary, AccessibleName = "Đơn giá và phụ phí" };
+    private readonly Label _prices = new() { AutoSize = true, MaximumSize = new Size(650, 0), ForeColor = Theme.TextSecondary, AccessibleName = "Đơn giá vận chuyển" };
     private readonly Label _status = new() { AutoSize = true, MaximumSize = new Size(650, 0), ForeColor = Theme.Danger };
     private readonly Button _save = Theme.MakePrimaryButton("Lưu", 100);
     private readonly FlowLayoutPanel _fields = new() { Dock = DockStyle.Fill, AutoScroll = true, FlowDirection = FlowDirection.TopDown, WrapContents = false, Padding = new Padding(24) };

@@ -39,8 +39,6 @@ public class PricingService(IApplicationDbContext db) : IPricingService
                 VehicleType = r.VehicleType,
                 PricePerKm = r.PricePerKm,
                 PricePerTon = r.PricePerTon,
-                SurchargeFragile = r.SurchargeFragile,
-                SurchargeHazmat = r.SurchargeHazmat,
             }).ToList(),
         };
         source.Status = PriceListStatus.Inactive;
@@ -52,10 +50,11 @@ public class PricingService(IApplicationDbContext db) : IPricingService
 
     public async Task<bool> UpdatePriceListAsync(int id, SavePriceListRequest request)
     {
-        PriceList.Validate(request.Name, request.EffectiveDate, VnClock.Today);
-        var status = ParseStatus(request.Status);
         var priceList = await db.PriceLists.FindAsync(id);
         if (priceList is null) return false;
+        priceList.EnsureEditable();
+        PriceList.Validate(request.Name, request.EffectiveDate, VnClock.Today);
+        var status = ParseStatus(request.Status);
         priceList.Name = request.Name.Trim();
         priceList.EffectiveDate = request.EffectiveDate.Date;
         priceList.Status = status ?? (priceList.Status == PriceListStatus.Active ? PriceListStatus.Active : PriceListStatus.Inactive);
@@ -88,7 +87,7 @@ public class PricingService(IApplicationDbContext db) : IPricingService
         var priceList = await db.PriceLists.AsNoTracking().FirstOrDefaultAsync(p => p.Id == priceListId);
         if (priceList is null)
             throw new ArgumentException("Bảng giá không tồn tại. Vui lòng làm mới danh sách.");
-        priceList.EnsureTariffRulesEditable();
+        priceList.EnsureEditable();
         var rule = new TariffRule { PriceListId = priceListId };
         Apply(rule, request);
         db.TariffRules.Add(rule);
@@ -103,7 +102,7 @@ public class PricingService(IApplicationDbContext db) : IPricingService
         var rule = await db.TariffRules.Include(r => r.PriceList)
             .FirstOrDefaultAsync(r => r.Id == id && r.PriceListId == priceListId);
         if (rule is null) return false;
-        rule.PriceList.EnsureTariffRulesEditable();
+        rule.PriceList.EnsureEditable();
         Apply(rule, request);
         rule.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync();
@@ -115,7 +114,7 @@ public class PricingService(IApplicationDbContext db) : IPricingService
         var rule = await db.TariffRules.Include(r => r.PriceList)
             .FirstOrDefaultAsync(r => r.Id == id && r.PriceListId == priceListId);
         if (rule is null) return false;
-        rule.PriceList.EnsureTariffRulesEditable();
+        rule.PriceList.EnsureEditable();
         if (await db.Contracts.AnyAsync(c => c.TariffRuleId == id))
             throw new InvalidOperationException("Không thể xóa chi tiết bảng giá đang được hợp đồng sử dụng.");
         if (await db.ContractAppendices.AnyAsync(a => a.TariffRuleId == id))
@@ -144,14 +143,15 @@ public class PricingService(IApplicationDbContext db) : IPricingService
 
     private static void Validate(SaveTariffRuleRequest request)
         => TariffRule.Validate(request.VehicleType, request.PricePerKm, request.PricePerTon,
-            request.SurchargeFragile, request.SurchargeHazmat);
+            request.SurchargeFragile ?? 0, request.SurchargeHazmat ?? 0);
 
     private static void Apply(TariffRule rule, SaveTariffRuleRequest request)
     {
+        if ((request.SurchargeFragile.HasValue && request.SurchargeFragile != rule.SurchargeFragile) ||
+            (request.SurchargeHazmat.HasValue && request.SurchargeHazmat != rule.SurchargeHazmat))
+            throw new InvalidOperationException("Phụ phí chỉ được quản lý trong mục Phụ phí.");
         rule.VehicleType = request.VehicleType.Trim();
         rule.PricePerKm = request.PricePerKm;
         rule.PricePerTon = request.PricePerTon;
-        rule.SurchargeFragile = request.SurchargeFragile;
-        rule.SurchargeHazmat = request.SurchargeHazmat;
     }
 }

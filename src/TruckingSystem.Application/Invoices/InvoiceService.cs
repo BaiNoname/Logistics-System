@@ -1,4 +1,5 @@
 using System.Data;
+using TruckingSystem.Application.Pricing;
 using Microsoft.EntityFrameworkCore;
 using TruckingSystem.Application.Common;
 using TruckingSystem.Application.Common.Interfaces;
@@ -87,7 +88,8 @@ public class InvoiceService : IInvoiceService
         }
         var source = $"HĐ {contract.Code}" + (appendix is null ? "" : $", PL {appendix.Code}")
             + $", ngày áp dụng {pricingDate:dd/MM/yyyy}";
-        var lines = InvoicePricing.CalculateLines(order, tariff, distance, source);
+        var policy = await SurchargeLookup.AtAsync(_db, pricingDate);
+        var lines = InvoicePricing.CalculateLines(order, tariff, distance, source, policy);
         var otherCosts = await _db.TripExpenses.Where(e => e.Trip.TransportOrderId == orderId)
             .SumAsync(e => (decimal?)e.Amount) ?? 0m;
         return new InvoiceQuoteDto(orderId, contract.Code, appendix?.Code, pricingDate, tariff.VehicleType,

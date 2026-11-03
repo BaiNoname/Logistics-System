@@ -17,8 +17,6 @@ partial class PricingControl
     private void InitializeComponent()
     {
         components = new System.ComponentModel.Container();
-        DataGridViewCellStyle _surchargeHazmatColumnStyle = new DataGridViewCellStyle();
-        DataGridViewCellStyle _surchargeFragileColumnStyle = new DataGridViewCellStyle();
         DataGridViewCellStyle _pricePerTonColumnStyle = new DataGridViewCellStyle();
         DataGridViewCellStyle _pricePerKmColumnStyle = new DataGridViewCellStyle();
         DataGridViewCellStyle _effectiveDateColumnStyle = new DataGridViewCellStyle();
@@ -40,8 +38,6 @@ partial class PricingControl
         _vehicleTypeColumn = new DataGridViewTextBoxColumn();
         _pricePerKmColumn = new DataGridViewTextBoxColumn();
         _pricePerTonColumn = new DataGridViewTextBoxColumn();
-        _surchargeFragileColumn = new DataGridViewTextBoxColumn();
-        _surchargeHazmatColumn = new DataGridViewTextBoxColumn();
         _listsTab = new TabPage();
         _rulesTab = new TabPage();
         _rulesLayout = new TableLayoutPanel();
@@ -184,22 +180,6 @@ partial class PricingControl
         _pricePerTonColumnStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
         _pricePerTonColumn.DefaultCellStyle = _pricePerTonColumnStyle;
         _rulesGrid.Columns.Add(_pricePerTonColumn);
-        _surchargeFragileColumn.Name = "_surchargeFragileColumn";
-        _surchargeFragileColumn.DataPropertyName = "SurchargeFragile";
-        _surchargeFragileColumn.HeaderText = "Phụ phí dễ vỡ (đ)";
-        _surchargeFragileColumn.FillWeight = 100;
-        _surchargeFragileColumnStyle.Format = "N2";
-        _surchargeFragileColumnStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
-        _surchargeFragileColumn.DefaultCellStyle = _surchargeFragileColumnStyle;
-        _rulesGrid.Columns.Add(_surchargeFragileColumn);
-        _surchargeHazmatColumn.Name = "_surchargeHazmatColumn";
-        _surchargeHazmatColumn.DataPropertyName = "SurchargeHazmat";
-        _surchargeHazmatColumn.HeaderText = "Phụ phí nguy hiểm (đ)";
-        _surchargeHazmatColumn.FillWeight = 100;
-        _surchargeHazmatColumnStyle.Format = "N2";
-        _surchargeHazmatColumnStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
-        _surchargeHazmatColumn.DefaultCellStyle = _surchargeHazmatColumnStyle;
-        _rulesGrid.Columns.Add(_surchargeHazmatColumn);
         _listsTab.Name = "_listsTab";
         _listsTab.Text = "Bảng giá";
         _listsTab.BackColor = Color.White;
@@ -302,8 +282,6 @@ partial class PricingControl
     private DataGridViewTextBoxColumn _vehicleTypeColumn = null!;
     private DataGridViewTextBoxColumn _pricePerKmColumn = null!;
     private DataGridViewTextBoxColumn _pricePerTonColumn = null!;
-    private DataGridViewTextBoxColumn _surchargeFragileColumn = null!;
-    private DataGridViewTextBoxColumn _surchargeHazmatColumn = null!;
     private TabPage _listsTab = null!;
     private TabPage _rulesTab = null!;
     private TableLayoutPanel _rulesLayout = null!;

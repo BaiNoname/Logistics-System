@@ -745,7 +745,7 @@ Màn Chuyến → chọn chuyến → **Xem lộ trình**:
 | Đường tím | Đoạn có video hành trình |
 
 ### 10.5. Quản lý hợp đồng (Desktop)
-- **Thêm hợp đồng**: mở **Hợp đồng → Thêm mới**, nhập mã, chọn khách hàng, ngày bắt đầu, ngày kết thúc (tuỳ chọn), bảng giá (tuỳ chọn) và điều khoản. Mã không được trùng; ngày kết thúc được phép bằng ngày bắt đầu.
+- **Thêm hợp đồng**: mở **Hợp đồng → Thêm mới**, nhập mã, chọn khách hàng, ngày bắt đầu, ngày kết thúc (tuỳ chọn), loại hợp đồng, bảng giá đang áp dụng và điều khoản. Hợp đồng dài hạn cần nhập ưu đãi 0–100% (tối đa 2 chữ số lẻ); hợp đồng một lần vô hiệu ô ưu đãi. Chưa có bảng giá đang áp dụng thì không tạo được hợp đồng. Mã không được trùng; ngày kết thúc được phép bằng ngày bắt đầu.
 - **Tìm và lọc**: ô tìm kiếm lọc theo mã hoặc tên khách hàng, kết hợp bộ lọc trạng thái Chưa hiệu lực / Đang hiệu lực / Hết hạn. Trạng thái tính theo ngày Việt Nam (UTC+7), bao gồm cả ngày kết thúc.
 - **Xem, sửa, xóa**: nhấp đúp một dòng hoặc bấm Chi tiết để xem toàn bộ nội dung; bấm Sửa để cập nhật. Xóa phải xác nhận. Hợp đồng đã được đơn hàng sử dụng thì không xóa được và không đổi được khách hàng.
 
@@ -833,3 +833,134 @@ Sau khi xóa: để `Seed:DemoData = false`, rồi chọn lại kho đóng quân
 - `TestCase_Sprint1.docx`: Xe, Nhiên liệu, Tài xế, Địa điểm (129 test case)
 - `TestCase_Sprint2.docx`: Đơn vận chuyển, Chia xe, Chuyến, Bản đồ, GPS & video, Kho, Thông báo (268 test case)
 - `TestCase_Sprint2_Nhan_DinhDangBaoCao.docx`: Sprint 2 theo định dạng báo cáo (Test Case ID / Name / Test Data / Expected Result, có mã FR)
+
+
+## Bảng lương tháng — quy trình mới
+
+Chọn tháng để tự tải dữ liệu. **Tạo / tính lại bảng lương** tính toàn bộ nhân viên trong một transaction, tự tạo kỳ nếu chưa có. Thiếu dữ liệu của bất kỳ người nào thì trả danh sách lỗi và giữ nguyên toàn bộ bảng cũ. **Chốt lương** là bước riêng (Admin); bảng đã chốt không tính lại.
+
+- Nhân viên thường: giờ vào/ra hiệu lực từ module chấm công (điều chỉnh đã duyệt ưu tiên giờ gốc). Đủ 8 giờ = 1 công; từ 4 đến dưới 8 giờ = 0,5 công; dưới 4 giờ = 0. Mỗi ngày tối đa 1 công; chưa tự trừ giờ nghỉ trưa hoặc cộng tăng ca. Các ngày có bản ghi hợp lệ đều tính, ngày không có bản ghi không tự sinh công; không có dữ liệu cả tháng, thiếu lượt quét hoặc điều chỉnh đang chờ thì chặn tính. Lương = LCB/công chuẩn × công hưởng lương; công chuẩn là số ngày T2–T7 trong tháng.
+- Tài xế: **LCB × (P / điểm chuẩn tháng)**. P = tổng `(0,5 + km chuyến/K) × H loại xe của chuyến`. Tỷ lệ không giới hạn 100%; không chia LCB theo ngày làm/ngày nghỉ việc, không lấy lịch đăng ký công. Chỉ tính chuyến Completed có StartTime, EndTime trong tháng theo giờ VN, dùng EstimatedDistanceKm. Chưa có km hợp lệ hoặc H tương ứng thì báo lỗi. Không có chuyến hợp lệ ⇒ P=0. Tổng điểm làm tròn 8 số lẻ, tiền lương cuối cùng làm tròn đến đồng.
+- **Cấu hình KPI** (Admin): K chung, điểm chuẩn chung, H theo loại xe; hiệu lực từ ngày 1. Chọn lịch sử để xem/sao chép sang ngày hiệu lực mới; lưu cùng ngày là cập nhật cấu hình có audit. Chưa có điểm chuẩn thì không tự quy đổi cấu hình đồng/điểm cũ. Thay cấu hình không đổi phiếu đã chốt.
+- **Cộng / trừ tháng** là danh sách riêng theo nhân viên và tháng, có loại, số tiền dương và lý do. Có thể nhập trước khi tạo bảng; tính lại không xóa danh sách. Các khoản là số tiền thực tế, không tự chia theo công/KPI. Sau thay đổi phải tính lại nháp trước khi chốt. Tháng đã chốt khóa thêm/xóa khoản.
+- Trước chốt, hệ thống đối chiếu nguồn công, chuyến, cấu hình, LCB và danh sách cộng/trừ với bản chụp khi tính. Có thay đổi thì yêu cầu tính lại. Chỉ chi trả phiếu đã chốt; vẫn giữ mức lương/lịch sử, xem chi tiết, xuất HTML và ghi nhận chi trả.
+- Đã bỏ Mở kỳ/Tải kỳ, nhập/sửa/xác nhận công trong module lương, lấy công tài xế, cấu hình đồng/điểm và tạo từng phiếu. Menu lương dành Admin/Accountant; Dispatcher xử lý công ở module Chấm công QR.
+- Phiếu nháp cũ không tự chuyển/xóa: xuất đối chiếu, chuyển khoản tay sang danh sách tháng, dùng **Xóa nháp cũ**, rồi tạo lại tháng. Phiếu đã chốt và bảng dữ liệu cũ được giữ; không chạy lại công thức mới lên lịch sử.
+
+### Triển khai và kiểm chứng lương
+
+Migration mới `20261102115836_RebuildMonthlyPayroll` chỉ thêm bảng cấu hình, bảng khoản tháng và cột bản chụp/điểm KPI trên phiếu; không xóa dữ liệu cũ. Chưa apply vào database trong phiên triển khai. Cần kiểm tra/backup/apply các migration pending trong môi trường test, triển khai API/Desktop cùng phiên bản và cấu hình điểm chuẩn trước khi vận hành. Down migration sẽ xóa các thông tin mới; không rollback tùy tiện.
+
+API mới: POST `api/payroll/months/generate` (Year, Month, Revision; 0 nếu chưa có kỳ), GET/PUT `kpi-policies`, GET/POST/DELETE `monthly-adjustments`. Các endpoint nhập/lấy/xác nhận công và mở kỳ cũ đã gỡ; lập từng phiếu/cấu hình đồng-điểm trả lỗi hướng dẫn chuyển luồng mới. Không dùng client cũ cho luồng này.
+
+```powershell
+dotnet run --project tools/PayrollSelfCheck/PayrollSelfCheck.csproj --no-restore -p:UseSharedCompilation=false -p:BuildInParallel=false
+```
+
+Self-check dùng EF InMemory, không thay thế PostgreSQL transaction/constraint hay HTTP authorization/end-to-end. Ảnh UI và SQL migration offline nằm trong thư mục build của harness. Solution vẫn tham chiếu UnitTests không có trong checkout; build API/Desktop trực tiếp.
+
+### Bổ sung loại hợp đồng và ưu đãi (docs/HopDong.md)
+
+- Loại hợp đồng tách riêng khỏi bảng giá công ty. Chọn một lần hoặc dài hạn, rồi chọn bảng giá Active. Form hợp đồng không chọn dòng chi tiết giá. Nếu nhiều bảng giá Active, người dùng chọn bảng phù hợp; trạng thái Active theo module giá hiện tại, không tự diễn giải lại theo ngày hiệu lực.
+- API `/api/contracts` giữ routes và quyền Admin/Dispatcher/Accountant. Request/response thêm `Type` (`OneTime`/`LongTerm`) và `DiscountPercent` (số JSON). POST bắt buộc Type và PriceListId hợp lệ/Active; LongTerm bắt buộc DiscountPercent từ 0–100, tối đa 2 chữ số lẻ. OneTime chỉ nhận null/0 và lưu null. PUT bỏ cả hai trường mới giữ nguyên giá trị cũ; gửi LongTerm phải kèm phần trăm.
+- Bảng giá ngừng áp dụng không được sửa tên, ngày hiệu lực, trạng thái hoặc chi tiết giá. Có thể sao chép để tạo bảng giá mới; API từ chối sửa bảng cũ bằng HTTP 409.
+- Hợp đồng cũ giữ loại/ưu đãi null, hiển thị chưa phân loại; không suy đoán loại từ ngày hoặc tên bảng giá. Khi sửa được giữ bảng giá lịch sử, kể cả đã ngừng áp dụng. Không đổi khách hàng/xóa hợp đồng đã được đơn bán hàng hoặc đơn vận chuyển sử dụng.
+- **Phần trăm hiện chỉ được lưu trong hợp đồng**, chưa tự trừ tiền đơn/hóa đơn. Đặc tả chưa xác định cơ sở giảm, phụ phí, làm tròn hay thời điểm chốt. Không tự giới hạn số đơn của loại một lần.
+- Cần áp dụng migration `AddContractTypeAndDiscount` qua quy trình triển khai đã kiểm tra backup/môi trường trước khi chạy API mới; migration chỉ thêm hai cột nullable, không cập nhật lịch sử. Chưa áp dụng trong phiên này. Rollback Down xóa hai cột và mất metadata mới; không chạy tùy tiện. Cập nhật Desktop cùng API vì client cũ thiếu Type sẽ không tạo mới được.
+
+Kiểm tra độc lập, không truy cập database thật hoặc chạy seed:
+
+```powershell
+dotnet run --project tools/ContractSelfCheck/ContractSelfCheck.csproj -p:UseSharedCompilation=false -p:BuildInParallel=false
+```
+
+Công cụ dùng EF InMemory cho service và Npgsql chỉ để kiểm tra model/sinh SQL offline, render form WinForms và kiểm tra lỗi nhập liệu. SQL và ảnh nằm trong thư mục build công cụ. Không thay thế PostgreSQL integration hoặc HTTP có xác thực.
+
+
+## Chấm công QR qua điện thoại (TruckingSystem.EmployeeApp)
+
+Ứng dụng .NET MAUI (Android) **nằm ngoài repo này** và không có trong `TruckingSystem.sln` (build solution không cần workload MAUI). Mã nguồn hiện để tại `D:\04. Other\TruckingSystem.EmployeeApp` trên máy người phụ trách app. App gồm 5 chức năng: đăng nhập, trang chủ/trạng thái hôm nay, quét QR để Check-in/Check-out, lịch sử chấm công, gửi yêu cầu điều chỉnh. Ứng dụng chỉ gọi `TruckingSystem.API`, không truy cập PostgreSQL. Giao diện theo DESIGN.md (Apple): một màu nhấn Action Blue `#0066CC`, nền parchment, nút pill, thẻ bo 18 px, không đổ bóng.
+
+**Quy tắc đã chốt**
+- Địa điểm chấm công là **Kho** hiện có (cần Lat/Lng). Mỗi kho có bán kính cho phép (mặc định 150 m) và sai số GPS tối đa (mặc định 100 m); Admin sửa trên Desktop.
+- Một QR cho mỗi kho mỗi ngày (giờ VN), nhiều nhân viên quét chung. Nội dung QR `TSATT:<token>` ngẫu nhiên; backend tra ra kho/ngày.
+- Mỗi lượt quét gửi QR + vị trí GPS (độ chính xác, cờ vị trí giả lập). Backend kiểm tra tài khoản → hồ sơ nhân viên (`Employee.UserId`, không nhận EmployeeId từ thiết bị), QR đúng ngày, kho có tọa độ, khoảng cách/sai số, vị trí giả lập và trạng thái.
+- 1 ca/ngày, không ca đêm: lần hợp lệ đầu = Check-in; lần sau (cách ≥ 1 phút) ứng dụng hỏi xác nhận rồi mới Check-out. Được Check-out ở kho khác. Sau Check-out không quét thêm. **Giờ ghi nhận do máy chủ quyết định.**
+- Mọi lượt quét (kể cả bị từ chối kèm lý do) lưu vào nhật ký gốc `AttendanceScans`, không sửa/xóa.
+- Điều chỉnh: nhân viên đề xuất giờ vào và/hoặc giờ ra kèm lý do, giải thích (không đính kèm), chỉ cho ngày trong 7 ngày gần nhất, mỗi ngày tối đa 1 yêu cầu chờ duyệt. Admin/Dispatcher duyệt/từ chối (từ chối phải ghi lý do) trên Desktop. Duyệt ghi giờ vào `AdjustedCheckInAt/AdjustedCheckOutAt`, giữ nguyên giờ quét gốc, lưu người/thời điểm duyệt.
+- Tài xế kết thúc chuyến ngoài kho: gửi yêu cầu điều chỉnh (lý do "Làm việc ngoài cơ sở").
+- Dữ liệu QR/GPS **không tự thành công tính lương**: bảng công lương vẫn nhập/xác nhận ở "Công & lương".
+- Tài khoản đăng nhập được Mobile nếu đang hoạt động **và** gắn với hồ sơ nhân viên chưa nghỉ việc. Hiện chỉ seed (`driver1`, `driver2`) có liên kết; chưa có màn hình Desktop để gắn tài khoản với nhân viên.
+
+**API** (`api/attendance`, cần JWT)
+- Mobile: `GET me`, `POST scan`, `GET me/history?from=&to=`, `GET me/adjustments`, `POST me/adjustments`, `GET adjustment-reasons`.
+- Desktop (Admin/Dispatcher): `GET sites`, `PUT sites/{warehouseId}` (chỉ Admin), `GET sites/{warehouseId}/qr?date=`, `GET records?from=&to=`, `GET scans?date=`, `GET adjustments?status=`, `POST adjustments/{id}/review`.
+- Giờ trong request/response là giờ Việt Nam không kèm múi giờ; DB lưu UTC.
+
+**Desktop** → menu **Nhân sự › Chấm công QR**: phát/lưu PNG/in QR theo kho và ngày (từ hôm nay tới 30 ngày sau), cấu hình bán kính/sai số, duyệt yêu cầu điều chỉnh, xem bảng chấm công, nhật ký quét.
+
+**Database**: migration `20261102111437_AddMobileQrAttendance` chỉ thêm 4 bảng (`AttendanceQrCodes`, `AttendanceScans`, `AttendanceRecords`, `AttendanceAdjustmentRequests`) và 2 cột của `Warehouses` có giá trị mặc định 150/100 cho kho cũ. Sao lưu rồi chạy:
+```bash
+dotnet ef database update --project src/TruckingSystem.Infrastructure --startup-project src/TruckingSystem.API
+```
+
+**Chạy ứng dụng điện thoại**
+
+1. Chạy API cho điện thoại nhận được (ở thư mục gốc repo, cmd; không chạy API bằng VS cùng lúc). WinForms trong lúc này đăng nhập bằng `http://localhost:8081`; chạy API bằng VS như thường thì quay lại `https://localhost:8080`:
+```bash
+dotnet run --project src/TruckingSystem.API --urls http://0.0.0.0:8081
+```
+2. Mở firewall cổng 8081 một lần (cmd quyền Administrator):
+```bash
+netsh advfirewall firewall add rule name="TruckingSystem API 8081" dir=in action=allow protocol=TCP localport=8081
+```
+3. Cắm điện thoại (đã bật Gỡ lỗi USB), rồi ở **thư mục của app** build và cài:
+```bash
+dotnet build -f net10.0-android -t:Run
+```
+- Cần .NET 10 SDK + workload `maui`/`android`. Bản `net10.0-windows` chỉ để xem giao diện (không quét camera; có ô dán nội dung QR để thử).
+- Ở màn đăng nhập bấm **Máy chủ** để nhập địa chỉ API: máy ảo Android `http://10.0.2.2:8081`; điện thoại thật dùng IP LAN của máy chạy API (API phải lắng nghe trên địa chỉ đó, mở firewall). `usesCleartextTraffic` đang bật cho http nội bộ; triển khai thật nên dùng https và tắt cờ này.
+- Quyền cần cấp: Camera, Vị trí.
+
+**Kiểm tra**: `dotnet run --project tools/AttendanceSelfCheck/AttendanceSelfCheck.csproj -p:UseSharedCompilation=false` (80 kiểm tra: quy tắc GPS/QR, Check-in/out, xác nhận, quét lặp, điều chỉnh/duyệt, migration offline, render màn Desktop). EF InMemory không chứng minh ràng buộc SQL, tranh chấp đồng thời hay phân quyền HTTP.
+
+**Giới hạn**: QR theo ngày có thể bị chụp/chuyển tiếp; GPS có sai số và có thể bị giả mạo (chỉ chặn cờ mock của Android). MVP không chống dùng chung tài khoản. Chưa có ca đêm/nhiều ca, chưa nối dữ liệu chấm công vào bảng công lương.
+
+
+## Freight chatbot (Desktop, Gemini/OpenAI-compatible + vector RAG)
+
+Open **Mo chat bot** on the login screen after setting the API server URL. The window is a conversation view: customer messages appear as right-aligned bubbles, assistant replies on the left with option chips (vehicle, address, confirm) and a quote card. Type the itinerary and cargo for every leg (including the return leg); Enter sends, Shift+Enter adds a line. Click an option chip to choose; chips from earlier turns are disabled. Right-click a message to copy it. **Cuộc trò chuyện mới** starts over. Confirm the full itinerary before quoting. Changing the request clears previous confirmations. Conversations expire after 30 minutes and are not stored in the database.
+
+- Chat provider: `FreightChat:Provider` = `Gemini` (default) or `OpenAICompatible` (any `/chat/completions` API: NVIDIA NIM, OpenAI, Groq...). Changing provider only needs configuration; Application/API/Desktop are unchanged.
+  - `Gemini`: model `FreightChat:Model` (default `gemini-3.8-flash`); key priority `FreightChat:ApiKey`, `GEMINI_API_KEY`, then `Gemini:ApiKey`.
+  - `OpenAICompatible`: `FreightChat:BaseUrl`, `FreightChat:Model`, `FreightChat:ApiKey` (HTTPS only), each falling back to the existing `Nvidia:BaseUrl`/`Nvidia:Model`/`Nvidia:ApiKey`. Tested with `nvidia/nemotron-3.5-lightning-30b-a3b`. `FreightChat:DisableThinking` sends `chat_template_kwargs.enable_thinking=false`; it defaults to true for `*.nvidia.com` because reasoning mode took 24–31 s and could exhaust tokens before returning JSON. Other providers may reject that field, so leave it false for them. Vietnamese is not an officially listed Nemotron language; run `--live-ai` after changing model.
+  - Environment overrides use `FreightChat__ApiKey` etc. Do not commit keys. The example JSON is documentation only; merge settings into local configuration or use environment variables.
+- Natural replies (server controls, AI phrases): the server still decides every step (missing data, vehicle/place options, confirmation, pricing). After that, a second AI call writes a short opening that answers the customer's side question from the active public price list, politely declines out-of-scope requests, or acknowledges the message. The server then appends its own required question/summary/quote verbatim, so a required step can never be dropped. Sentences in the opening that ask the customer a question, copy earlier server lines/option labels, or repeat a greeting after the first turn are removed, and at most 3 sentences are kept. The opening is discarded (server text only) when it contains a number absent from the server facts or the customer's messages, a question mark, markup/JSON/links, exceeds 1,000 characters, or the AI call fails. Disable with `FreightChat:NaturalReplies=false` to halve AI usage. Reply calls time out after 20 s.
+- Embeddings: `gemini-embedding-001`, 768 normalized dimensions; document/query task types are distinct. Embeddings always use Gemini; with `OpenAICompatible` chat they read only `GEMINI_API_KEY`/`Gemini:ApiKey`, never the chat provider key. Switching embedding provider needs a new migration if dimensions change, plus a re-index.
+- Reuse existing `VietMap:RouteApiKey` and `VietMap:MapApiKey` settings. Quotes use car-route distances, not truck-restriction routing.
+- Requires PostgreSQL with the **pgvector server extension installed**. Review and apply migration `20261102160000_AddFreightVectors` in a backed-up test environment first. It adds the extension and an Infrastructure-owned SQL vector table; the table is accessed through parameterized Npgsql commands, not Domain vector types. Down drops only the index table and preserves the shared extension. No existing tariff data is modified.
+- The background worker synchronizes at startup and every minute, embedding changed documents only. Missing/obsolete index records cannot produce quotes. Initial synchronization requires working AI credentials and quota. No vector-specific client package is needed: existing Npgsql passes parameterized vector text to PostgreSQL casts.
+- Public endpoint: `POST /api/public/freight-chat`, body `{ "message": "...", "context": null, "selection": null }`. Carry the returned opaque protected context into the next request; use returned option IDs as selection. Never construct context or supply prices. Limit: 2,000 characters/message, 20 context messages, 10 legs, 10 requests/minute/IP. Persist Data Protection keys across deployments if conversations must survive restarts; multiple API instances must share keys. Behind a proxy, configure trusted forwarding explicitly; otherwise clients share the proxy IP limit.
+- The latest active effective price list is public to this endpoint. Highest ID breaks same-date ties. Each leg charges distance and weight. After the first global surcharge period starts, each applicable cargo surcharge is calculated once on the entire itinerary. Older tariffs use fixed fees per leg. Empty legs charge distance only. Quotes exclude VAT, tolls, loading and fees outside the tariff; no contract discounts, orders or invoices are created.
+
+Verification (build projects directly; the solution references a missing UnitTests project):
+
+```powershell
+dotnet build src/TruckingSystem.API/TruckingSystem.API.csproj --no-restore -m:1 -p:UseSharedCompilation=false
+dotnet build src/TruckingSystem.Desktop/TruckingSystem.Desktop.csproj --no-restore -m:1 -p:UseSharedCompilation=false
+dotnet run --project tools/FreightQuoteSelfCheck/FreightQuoteSelfCheck.csproj -p:UseSharedCompilation=false -p:BuildInParallel=false
+```
+
+Add `-- --live-ai` to send two real Vietnamese test messages (round trip with kg/tấn and fragile cargo; prompt injection with hazardous cargo) to the configured chat provider. It uses quota and prints the extracted itinerary, never keys.
+
+The self-check covers pricing and the conversation with fake AI/maps/vector retrieval, plus protected-context integrity. `--probe-db` performs only a read-only pgvector availability check using configured connection settings. It does not install extensions or apply migrations. Real PostgreSQL vector retrieval, HTTP rate limiting, live Gemini/VietMap and interactive Desktop need a configured integration environment.
+
+### Bảng phụ phí
+
+Mục **Phụ phí** trong nhóm Kinh doanh quản lý các bảng độc lập với bảng giá xe. Admin/Kế toán tạo nháp, nhập tên, ngày và hai dòng tỷ lệ (dễ vỡ, nguy hiểm). Có thể sao chép một bảng, sửa bản nháp rồi công bố. Điều phối chỉ xem. Ngày công bố có hiệu lực sớm nhất từ ngày mai theo giờ Việt Nam, mỗi ngày chỉ một bảng được công bố. Bảng đã công bố bị khóa.
+
+Hóa đơn chọn bảng đã công bố theo ngày bắt đầu chuyến đầu của đơn; báo giá chọn theo ngày tra cứu. Mỗi loại phí bằng tỷ lệ nhân tổng cước km và tấn trước chiết khấu, làm tròn hai chữ số và thu một lần trên toàn đơn. Trước kỳ đầu, hệ thống dùng phí cố định lịch sử. Chi tiết bảng giá xe chỉ quản lý giá/km và giá/tấn.
+
+Áp migration **SplitSurchargeLists** trước khi khởi động bản API mới và cập nhật Desktop cùng đợt. Migration chuyển mỗi kỳ cũ thành một bảng đã công bố với hai dòng, bảo toàn hóa đơn đã lưu. Nếu chưa có kỳ nào, người quản lý tạo và công bố kỳ đầu. API mới dùng GET/POST `/api/surcharge-lists`, PUT theo ID, POST theo ID với hậu tố `/copy` hoặc `/publish`. Endpoint đọc kỳ cũ tiếp tục trả bảng đã công bố; endpoint ghi cũ trả HTTP 410.
+
+Chạy `dotnet run --project tools/FreightQuoteSelfCheck` và `dotnet run --project tools/ContractSelfCheck` để kiểm tra.

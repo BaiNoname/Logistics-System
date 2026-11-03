@@ -25,6 +25,9 @@ namespace TruckingSystem.Application.Common.Interfaces;
 public interface IApplicationDbContext
 {
     DbSet<Employee> Employees { get; }
+    DbSet<PayrollKpiPolicy> PayrollKpiPolicies { get; }
+    DbSet<PayrollMonthlyAdjustment> PayrollMonthlyAdjustments { get; }
+    DbSet<DriverKpiRate> DriverKpiRates { get; }
     DbSet<EmployeeSalary> EmployeeSalaries { get; }
     DbSet<PayrollPeriod> PayrollPeriods { get; }
     DbSet<MonthlyAttendance> MonthlyAttendances { get; }
@@ -35,6 +38,10 @@ public interface IApplicationDbContext
     DbSet<Position> Positions { get; }
     DbSet<DriverProfile> DriverProfiles { get; }
     DbSet<AuditLog> AuditLogs { get; }
+    DbSet<AttendanceQrCode> AttendanceQrCodes { get; }
+    DbSet<AttendanceScan> AttendanceScans { get; }
+    DbSet<AttendanceRecord> AttendanceRecords { get; }
+    DbSet<AttendanceAdjustmentRequest> AttendanceAdjustmentRequests { get; }
 
     DbSet<Customer> Customers { get; }
     DbSet<CustomerContact> CustomerContacts { get; }
@@ -42,6 +49,7 @@ public interface IApplicationDbContext
     DbSet<Contract> Contracts { get; }
     DbSet<ContractAppendix> ContractAppendices { get; }
     DbSet<PriceList> PriceLists { get; }
+    DbSet<SurchargeList> SurchargeLists { get; }
     DbSet<TariffRule> TariffRules { get; }
     DbSet<SalesOrder> SalesOrders { get; }
 

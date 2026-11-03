@@ -1,4 +1,5 @@
 using TruckingSystem.Domain.Common;
+using TruckingSystem.Domain.Enums;
 
 namespace TruckingSystem.Domain.Entities;
 
@@ -17,6 +18,20 @@ public class Contract : BaseEntity
             throw new ArgumentException("Ngày kết thúc không được trước ngày bắt đầu.");
     }
 
+    public static void ValidateDiscount(ContractType type, decimal? discountPercent)
+    {
+        if (!Enum.IsDefined(type)) throw new ArgumentException("Loại hợp đồng không hợp lệ.");
+        if (type == ContractType.OneTime && discountPercent is not null and not 0)
+            throw new ArgumentException("Hợp đồng một lần không áp dụng ưu đãi.");
+        if (type == ContractType.LongTerm && !discountPercent.HasValue)
+            throw new ArgumentException("Vui lòng nhập phần trăm ưu đãi cho hợp đồng dài hạn.");
+        if (discountPercent is < 0 or > 100 ||
+            (discountPercent.HasValue && decimal.Round(discountPercent.Value, 2) != discountPercent.Value))
+            throw new ArgumentException("Ưu đãi phải từ 0 đến 100%, tối đa 2 chữ số thập phân.");
+    }
+
+    public ContractType? Type { get; set; }
+    public decimal? DiscountPercent { get; set; }
     public int CustomerId { get; set; }
     public Customer Customer { get; set; } = null!;
 

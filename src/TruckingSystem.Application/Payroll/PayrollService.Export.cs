@@ -21,18 +21,19 @@ public partial class PayrollService
             <!doctype html><html lang="vi"><meta charset="utf-8"><title>Phiếu lương {{H(s.EmployeeCode)}}</title>
             <style>body{font:15px 'Segoe UI',sans-serif;max-width:900px;margin:32px auto;color:#0f172a;padding:16px}h1{font-size:24px}table{border-collapse:collapse;width:100%;margin:16px 0}th,td{border:1px solid #cbd5e1;padding:8px;text-align:left;overflow-wrap:anywhere}th{background:#f1f5f9}td.money{text-align:right}tr{break-inside:avoid}@media print{body{margin:0;max-width:none} }</style>
             <h1>PHIẾU LƯƠNG THÁNG {{period.Month:00}}/{{period.Year}}</h1>
-            <p>{{(s.IsDriver ? "TÀI XẾ — LỊCH ĐĂNG KÝ" : "NHÂN VIÊN — CÔNG TỔNG HỢP")}}<br>Kỳ công: {{(s.WorkFrom ?? new DateTime(period.Year, period.Month, 1)):dd/MM/yyyy}}–{{(s.WorkTo ?? new DateTime(period.Year, period.Month, 1).AddMonths(1).AddDays(-1)):dd/MM/yyyy}}</p>
+            <p>{{(s.IsDriver ? (s.CalculationVersion == 2 ? "TÀI XẾ — LƯƠNG THEO TỶ LỆ KPI" : "TÀI XẾ — LỊCH ĐĂNG KÝ") : "NHÂN VIÊN — CÔNG HƯỞNG LƯƠNG")}}<br>Kỳ công: {{(s.WorkFrom ?? new DateTime(period.Year, period.Month, 1)):dd/MM/yyyy}}–{{(s.WorkTo ?? new DateTime(period.Year, period.Month, 1).AddMonths(1).AddDays(-1)):dd/MM/yyyy}}</p>
             <p>{{(period.ApprovedAt.HasValue ? "ĐÃ DUYỆT" : "BẢN NHÁP – CHƯA DUYỆT")}} · Phiếu #{{s.Id}}</p>
             <p><strong>{{H(s.EmployeeCode)}} — {{H(s.EmployeeName)}}</strong><br>Phòng ban: {{H(s.DepartmentName)}} · Chức danh: {{H(s.PositionName)}}</p>
             <p>Lương tháng: {{Money(s.MonthlySalary)}} · Hiệu lực: {{s.SalaryEffectiveFrom:dd/MM/yyyy}}<br>
-            Công chuẩn: {{s.StandardDays}} · Làm việc: {{s.WorkedDays}} · Nghỉ hưởng lương: {{s.PaidLeaveDays}} · Lễ hưởng lương: {{s.HolidayDays}} · Nghỉ không lương: {{s.UnpaidLeaveDays}}<br>
-            Tăng ca (giờ) — ngày thường: {{s.WeekdayOvertimeHours}} · ngày nghỉ: {{s.RestDayOvertimeHours}} · ngày lễ: {{s.HolidayOvertimeHours}}<br>
-            Xác nhận công: {{H(s.AttendanceConfirmedBy)}} · {{s.AttendanceConfirmedAt.AddHours(7):dd/MM/yyyy HH:mm}} (VN)<br>{{H(s.AttendanceNote)}}</p>
+            {{(s.CalculationVersion == 2 && s.IsDriver
+                ? $"Điểm KPI: {s.KpiPoints:0.########} · Điểm chuẩn: {s.KpiTarget} · Tỷ lệ KPI: {(s.KpiTarget > 0 ? s.KpiPoints / s.KpiTarget : 0):P2}"
+                : $"Công chuẩn: {s.StandardDays} · Làm việc: {s.WorkedDays} · Nghỉ hưởng lương: {s.PaidLeaveDays} · Lễ hưởng lương: {s.HolidayDays} · Nghỉ không lương: {s.UnpaidLeaveDays}")}}<br>
+            {{(s.CalculationVersion == 2 ? "Lập bảng" : "Xác nhận công")}}: {{H(s.AttendanceConfirmedBy)}} · {{s.AttendanceConfirmedAt.AddHours(7):dd/MM/yyyy HH:mm}} (VN)<br>{{H(s.AttendanceNote).Replace(Environment.NewLine, "<br>")}}</p>
             <table><thead><tr><th>Khoản</th><th>Căn cứ / lý do</th><th>Cách tính</th><th>Số tiền</th></tr></thead><tbody>
-            <tr><td>Lương theo công</td><td>Lương tháng / công chuẩn × (làm + nghỉ hưởng lương + lễ)</td><td>Theo công</td><td class="money">{{Money(s.EarnedSalary)}}</td></tr>
+            <tr><td>{{(s.CalculationVersion == 2 && s.IsDriver ? "Lương theo KPI" : "Lương theo công")}}</td><td>{{(s.CalculationVersion == 2 && s.IsDriver ? "LCB × (P / điểm chuẩn), không giới hạn 100%" : "Lương tháng / công chuẩn × công hưởng lương")}}</td><td>{{(s.CalculationVersion == 2 && s.IsDriver ? "Theo tỷ lệ KPI" : "Theo công")}}</td><td class="money">{{Money(s.EarnedSalary)}}</td></tr>
             """);
-        if (s.IsDriver)
-            html.Append($"<tr><td>Ngày công tài xế</td><td colspan=\"3\">Chốt ngày 25; mỗi ngày đăng ký tính 1 công. {H(s.DriverWorkDates)}</td></tr>");
+        if (s.IsDriver && s.CalculationVersion != 2)
+            html.Append($"<tr><td>Ngày công tài xế</td><td colspan=\"3\">Mỗi ngày đăng ký riêng biệt trong kỳ công của phiếu tính 1 công. {H(s.DriverWorkDates)}</td></tr>");
         foreach (var item in s.Items)
             html.Append($"<tr><td>{Kind(item.Kind)}{(item.IsAdjustment ? " (điều chỉnh sau duyệt)" : "")}</td><td>{H(item.Reason)}</td><td>{(item.ProrateByAttendance ? Money(item.Amount) + " × công hưởng / công chuẩn" : "Cố định")}</td><td class=\"money\">{(item.Kind == "Deduction" ? "−" : "+")}{Money(item.CalculatedAmount)}</td></tr>");
         html.Append($"</tbody></table><p>Tổng thu nhập: <strong>{Money(s.GrossIncome)}</strong> · Khấu trừ: {Money(s.Deductions)}<br>Thực lĩnh: <strong>{Money(s.NetPay)}</strong><br>");
