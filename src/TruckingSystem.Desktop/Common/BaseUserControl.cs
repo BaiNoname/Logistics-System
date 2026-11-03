@@ -1,4 +1,4 @@
-using System.Drawing;
+﻿using System.Drawing;
 using System.Windows.Forms;
 
 namespace TruckingSystem.Desktop.Common
@@ -17,6 +17,7 @@ namespace TruckingSystem.Desktop.Common
         protected override void OnLoad(EventArgs e)
         {
             UiStyle.ApplyDefaults(this);
+            if (ModernLook.IsMine(GetType())) ModernLook.Apply(this); // kiểu mới chỉ cho màn phần của Nhân
             base.OnLoad(e);
         }
     }

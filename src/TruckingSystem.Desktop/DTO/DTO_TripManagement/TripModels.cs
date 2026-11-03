@@ -129,3 +129,16 @@ public class TripWarehouseProgressItem
     public decimal QtyPlanned { get; set; }
     public decimal QtyDone { get; set; }
 }
+
+/// <summary>Thông tin cho hộp Hoàn tất / Duyệt chuyến — xem API GET /api/trips/{id}/finish-check.</summary>
+public class FinishCheckItem
+{
+    public bool IsLastDelivery { get; set; }
+    public string OrderCode { get; set; } = "";
+    public DateTime? Due { get; set; }
+    public int OverdueDays { get; set; }
+    public decimal EstimatedFee { get; set; }
+    /// <summary>null = chưa chọn; "Customer" / "Company".</summary>
+    public string? Decision { get; set; }
+    public string? DecisionReason { get; set; }
+}

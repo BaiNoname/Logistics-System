@@ -20,6 +20,8 @@
             private readonly (string Text, Action Run)? _create;
             private readonly Action? _clearFilter;
             private bool _loading;
+            private readonly Button? _btnClear, _btnCreate;
+            private bool _showClear, _showCreate; // (không đọc Button.Visible: luôn false khi khung đang ẩn)
             private string _title = "", _hint = "";
 
             internal GridOverlay(DataGridView grid, Func<int> total, string emptyTitle, string emptyHint, (string, Action)? create, Action? clearFilter)
@@ -27,6 +29,10 @@
                 _grid = grid; _total = total; _emptyTitle = emptyTitle; _emptyHint = emptyHint; _create = create; _clearFilter = clearFilter;
                 grid.Controls.Add(_panel);
                 _panel.Controls.Add(_buttons);
+                // 2 nút tạo SẴN 1 lần, lúc làm mới chỉ bật / tắt hiện — không thêm / xóa control mỗi lần bảng đổi dữ liệu
+                // (trước đây Clear + Add liên tục, có lúc lỗi "Index was out of range" ngay dòng _buttons.Controls.Add).
+                if (clearFilter is not null) _btnClear = MakeButton("✖ Bỏ lọc", clearFilter, primary: false);
+                if (create is { } c) _btnCreate = MakeButton(c.Item1, c.Item2, primary: true);
                 _panel.Paint += Paint;
                 _panel.Resize += (_, _) => { _panel.Invalidate(); PlaceButtons(); };
                 grid.DataBindingComplete += (_, _) => Refresh();
@@ -45,24 +51,26 @@
 
             public void Refresh()
             {
-                if (_grid.IsDisposed) return;
+                if (_grid.IsDisposed || _grid.Disposing || _panel.IsDisposed || _buttons.IsDisposed) return;
                 var empty = _grid.Rows.Count == 0;
                 var show = empty && (_loading || _grid.DataSource is not null);
                 if (show)
                 {
-                    _buttons.Controls.Clear();
+                    _showClear = _showCreate = false;
                     if (_loading) { _title = "⏳ Đang tải…"; _hint = ""; }
                     else if (_total() > 0)
                     {
                         _title = "Không có dòng nào khớp bộ lọc / ô tìm";
                         _hint = $"Có {_total()} dòng đang bị bộ lọc ẩn đi.";
-                        if (_clearFilter is not null) AddButton("✖ Bỏ lọc", _clearFilter, primary: false);
+                        _showClear = _btnClear is not null;
                     }
                     else
                     {
                         _title = _emptyTitle; _hint = _emptyHint;
-                        if (_create is { } c) AddButton(c.Text, c.Run, primary: true);
+                        _showCreate = _btnCreate is not null;
                     }
+                    if (_btnClear is not null) _btnClear.Visible = _showClear;
+                    if (_btnCreate is not null) _btnCreate.Visible = _showCreate;
                     Place();
                     PlaceButtons();
                 }
@@ -70,12 +78,13 @@
                 if (show) { _panel.BringToFront(); _panel.Invalidate(); }
             }
 
-            private void AddButton(string text, Action run, bool primary)
+            private Button MakeButton(string text, Action run, bool primary)
             {
-                var b = new Button { Text = text, AutoSize = true, MinimumSize = new Size(_grid.LogicalToDeviceUnits(110), _grid.LogicalToDeviceUnits(34)), Margin = new Padding(6, 0, 6, 0) };
+                var b = new Button { Text = text, AutoSize = true, MinimumSize = new Size(_grid.LogicalToDeviceUnits(110), _grid.LogicalToDeviceUnits(34)), Margin = new Padding(6, 0, 6, 0), Visible = false };
                 if (primary) ButtonStyles.Primary(b); else ButtonStyles.Secondary(b);
                 b.Click += (_, _) => run();
                 _buttons.Controls.Add(b);
+                return b;
             }
 
             private void Place()
@@ -88,7 +97,7 @@
             {
                 var y = _panel.Height / 2 + _grid.LogicalToDeviceUnits(18);
                 _buttons.Location = new Point(Math.Max(0, (_panel.Width - _buttons.PreferredSize.Width) / 2), y);
-                _buttons.Visible = _buttons.Controls.Count > 0;
+                _buttons.Visible = _showClear || _showCreate;
             }
 
             private void Paint(object? sender, PaintEventArgs e)

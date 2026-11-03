@@ -6,7 +6,13 @@ namespace TruckingSystem.Desktop.GUI_Shared
     public sealed record UiMode(
         string Key, string Name, Color SkyTop, Color SkyBottom, Color Hill, Color Road, Color Sun, bool Night,
         Color Side, Color SideText, Color SideHeader, Color SideHover, Color Active, Color ActiveHover,
-        Color Top, Color TopText, Color TopSubText, Color Content, Color[] Strip, Color LogoText);
+        Color Top, Color TopText, Color TopSubText, Color Content, Color[] Strip, Color LogoText,
+        Color SideMid = default, Color SideBottom = default, Color ActiveEnd = default, Color ActiveText = default,
+        Color Seg = default, Color SegText = default)
+    {
+        /// <summary>Menu trái tô dải màu trời từ trên (Side) xuống dưới (SideMid -> SideBottom) như cảnh ở màn đăng nhập.</summary>
+        public Color[] SideStops => new[] { Side, SideMid.IsEmpty ? Side : SideMid, SideBottom.IsEmpty ? Side : SideBottom };
+    }
 
     /// <summary>VẼ TAY dùng chung cho màn đăng nhập ("1 ngày giao hàng") và logo menu trái: xe tải, kho, khách hàng,
     /// đồi, cây, thùng hàng; bảng màu 4 chế độ + lưu chế độ đã chọn. Không dùng hình ảnh / thư viện ngoài.
@@ -257,20 +263,29 @@ namespace TruckingSystem.Desktop.GUI_Shared
 
         // ================= 4 chế độ màu của khung màn chính =================
 
+        // Mẫu 4_buoi đã duyệt: menu trái mang màu bầu trời của buổi đó (dải màu trên -> dưới), mục đang chọn là viên bo tròn.
         public static readonly UiMode[] Modes =
         {
-            new("dawn", "🌅 Bình minh", Hex("#FBCFE8"), Hex("#FEF3C7"), Hex("#FCD34D"), Hex("#78716C"), Hex("#FB923C"), false,
-                Hex("#FFF7ED"), Hex("#7C2D12"), Hex("#C2410C"), Hex("#FFEDD5"), Hex("#EA580C"), Hex("#C2410C"),
-                Color.White, Hex("#0F172A"), Hex("#64748B"), Hex("#FFFAF5"), new[] { Hex("#F9A8D4"), Hex("#FDBA74"), Hex("#FDE68A") }, Hex("#0F172A")),
-            new("noon", "☀️ Trưa", Hex("#7DD3FC"), Hex("#E0F2FE"), Hex("#A7F3D0"), Hex("#475569"), Hex("#FDE047"), false,
-                Hex("#F0F9FF"), Hex("#334155"), Hex("#64748B"), Hex("#DBEAFE"), Hex("#2563EB"), Hex("#1D4ED8"),
-                Color.White, Hex("#0F172A"), Hex("#64748B"), Hex("#F1F5F9"), new[] { Hex("#7DD3FC"), Hex("#6EE7B7"), Hex("#FACC15") }, Hex("#0F172A")),
-            new("eve", "🌇 Chiều", Hex("#FB923C"), Hex("#FDE68A"), Hex("#FDBA74"), Hex("#57534E"), Hex("#F97316"), false,
-                Hex("#FFF1E6"), Hex("#431407"), Hex("#9A3412"), Hex("#FED7AA"), Hex("#C2410C"), Hex("#9A3412"),
-                Hex("#FFFBF5"), Hex("#0F172A"), Hex("#78716C"), Hex("#FDF6EE"), new[] { Hex("#F97316"), Hex("#F472B6"), Hex("#A855F7") }, Hex("#0F172A")),
+            new("dawn", "🌅 Bình minh", Hex("#F9A8D4"), Hex("#FDE68A"), Hex("#F59E0B"), Hex("#78716C"), Hex("#FB7185"), false,
+                Hex("#FBCFE8"), Hex("#831843"), Hex("#BE185D"), Hex("#FDE2EF"), Hex("#EC4899"), Hex("#DB2777"),
+                Color.White, Hex("#0F172A"), Hex("#64748B"), Hex("#FFF6F9"), new[] { Hex("#EC4899"), Hex("#F97316"), Hex("#FACC15") }, Hex("#831843"),
+                SideMid: Hex("#FED7AA"), SideBottom: Hex("#FEF3C7"), ActiveEnd: Hex("#F97316"), ActiveText: Color.White,
+                Seg: Hex("#FCE7F3"), SegText: Hex("#9D174D")),
+            new("noon", "☀️ Trưa", Hex("#38BDF8"), Hex("#E0F2FE"), Hex("#4ADE80"), Hex("#475569"), Hex("#FDE047"), false,
+                Hex("#0284C7"), Hex("#F0F9FF"), Hex("#BAE6FD"), Hex("#0EA5E9"), Color.White, Hex("#F0F9FF"),
+                Color.White, Hex("#0F172A"), Hex("#64748B"), Hex("#F0F7FC"), new[] { Hex("#0EA5E9"), Hex("#22D3EE"), Hex("#34D399") }, Color.White,
+                SideMid: Hex("#0EA5E9"), SideBottom: Hex("#38BDF8"), ActiveEnd: Hex("#F0F9FF"), ActiveText: Hex("#0369A1"),
+                Seg: Hex("#E0F2FE"), SegText: Hex("#0369A1")),
+            new("eve", "🌇 Chiều", Hex("#F97316"), Hex("#F472B6"), Hex("#9A3412"), Hex("#44403C"), Hex("#FDE68A"), false,
+                Hex("#F97316"), Hex("#FFF1F2"), Hex("#FED7AA"), Hex("#FB923C"), Color.White, Hex("#FFF7ED"),
+                Hex("#FFFBF7"), Hex("#0F172A"), Hex("#78716C"), Hex("#FDF5F0"), new[] { Hex("#F97316"), Hex("#EC4899"), Hex("#8B5CF6") }, Color.White,
+                SideMid: Hex("#DB2777"), SideBottom: Hex("#6D28D9"), ActiveEnd: Hex("#FFF7ED"), ActiveText: Hex("#C2410C"),
+                Seg: Hex("#FFEDD5"), SegText: Hex("#9A3412")),
             new("night", "🌙 Tối", Hex("#0F172A"), Hex("#1E3A8A"), Hex("#1E293B"), Hex("#0F172A"), Hex("#F1F5F9"), true,
-                Hex("#0F172A"), Hex("#CBD5E1"), Hex("#64748B"), Hex("#1E293B"), Hex("#3B82F6"), Hex("#2563EB"),
-                Hex("#1E293B"), Hex("#F1F5F9"), Hex("#94A3B8"), Hex("#E2E8F0"), new[] { Hex("#1E3A8A"), Hex("#6366F1"), Hex("#A855F7") }, Color.White),
+                Hex("#0B1026"), Hex("#C7D2FE"), Hex("#818CF8"), Hex("#1E1B4B"), Hex("#6366F1"), Hex("#4F46E5"),
+                Hex("#111735"), Hex("#EEF2FF"), Hex("#A5B4FC"), Hex("#E6EAF5"), new[] { Hex("#6366F1"), Hex("#A855F7"), Hex("#EC4899") }, Color.White,
+                SideMid: Hex("#1E1B4B"), SideBottom: Hex("#312E81"), ActiveEnd: Hex("#A855F7"), ActiveText: Color.White,
+                Seg: Hex("#1E1B4B"), SegText: Hex("#A5B4FC")),
         };
 
         public static UiMode ModeByKey(string? key) => Modes.FirstOrDefault(m => m.Key == key) ?? Modes[1];
@@ -336,6 +351,9 @@ namespace TruckingSystem.Desktop.GUI_Shared
             DrawTruck(g, 0, 0, 0, moving: false, night: m.Night ? 1 : 0);
             g.Restore(st);
 
+            if (m.LogoText.GetBrightness() > 0.8f) // chữ trắng trên nền trời sáng: thêm bóng mờ cho dễ đọc
+                using (var shadow = new SolidBrush(Color.FromArgb(90, 15, 23, 42)))
+                    g.DrawString("Logistics System", LogoFont, shadow, 15, 23.5f);
             using var title = new SolidBrush(m.LogoText);
             g.DrawString("Logistics System", LogoFont, title, 14, 22);
         }

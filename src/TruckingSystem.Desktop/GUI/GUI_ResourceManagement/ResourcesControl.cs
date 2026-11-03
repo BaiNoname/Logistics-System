@@ -90,6 +90,8 @@ namespace TruckingSystem.Desktop.GUI_ResourceManagement
                 if (gridDrivers.Rows[e.RowIndex].Cells["EmployeeId"].Value is int id && _data.Drivers.FirstOrDefault(x => x.EmployeeId == id) is { CanRunToday: false } d)
                     e.ToolTipText = d.CurrentTrip is not null ? "Đang chạy " + d.CurrentTrip : d.BlockReason ?? "";
             };
+            // Ẩn / khóa sẵn các nút theo "chưa chọn dòng" TRƯỚC khi màn hiện — không còn cảnh hiện cả loạt nút rồi tải xong mới ẩn đi.
+            UpdateButtons();
             Load += async (_, _) => await LoadAsync();
         }
 

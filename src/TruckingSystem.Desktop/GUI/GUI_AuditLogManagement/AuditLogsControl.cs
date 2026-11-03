@@ -1,4 +1,4 @@
-using TruckingSystem.Desktop.Common;
+﻿using TruckingSystem.Desktop.Common;
 using TruckingSystem.Desktop.DTO_AuditLogManagement;
 
 namespace TruckingSystem.Desktop.GUI_AuditLogManagement
@@ -60,6 +60,7 @@ namespace TruckingSystem.Desktop.GUI_AuditLogManagement
             btnExport.FlatAppearance.BorderColor = btnMore.FlatAppearance.BorderColor;
             btnExport.Click += (_, _) => ExportExcel();
             dateBar.Controls.Add(btnExport);
+            btnMore.Enabled = false; // "Xem thêm" chỉ sáng khi đã tải và còn dòng cũ hơn
             Load += async (_, _) => await LoadAsync(append: false);
         }
 

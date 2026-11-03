@@ -41,9 +41,9 @@ namespace TruckingSystem.Desktop.GUI_Shared
         private void SetupGlobalSearch()
         {
             // Chỉ Quản trị / Điều phối được xem đủ đơn, chuyến, xe, tài xế -> vai trò khác ẩn ô tìm.
-            if (_api is null || !_api.Connection.IsInRole("Admin", "Dispatcher")) { _searchBox.Visible = false; return; }
+            if (_api is null || !_api.Connection.IsInRole("Admin", "Dispatcher")) { _searchBox.Visible = false; _searchHost.Visible = false; return; }
 
-            _searchBox.Width = LogicalToDeviceUnits(340);
+            _searchHost.Width = LogicalToDeviceUnits(340); // ô chữ tự bám bề ngang khung bo tròn (PlaceSearchBox)
             _searchList.ItemHeight = LogicalToDeviceUnits(44);
             _searchList.Width = LogicalToDeviceUnits(460);
             Controls.Add(_searchList);
@@ -163,7 +163,7 @@ namespace TruckingSystem.Desktop.GUI_Shared
             _searchList.SelectedIndex = results.Count > 0 ? 0 : -1;
             _searchList.EndUpdate();
 
-            var p = PointToClient(_searchBox.PointToScreen(new Point(0, _searchBox.Height + LogicalToDeviceUnits(4))));
+            var p = PointToClient(_searchHost.PointToScreen(new Point(0, _searchHost.Height + LogicalToDeviceUnits(4))));
             _searchList.Location = p;
             _searchList.Height = Math.Min(_searchList.Items.Count, 8) * _searchList.ItemHeight + 2;
             _searchList.Visible = true;

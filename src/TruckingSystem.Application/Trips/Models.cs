@@ -125,3 +125,12 @@ public record ReassignOptionsDto(int TripId, List<int> AffectedTripIds, int Curr
     List<ReassignOptionDto> Vehicles, List<ReassignOptionDto> Drivers, string? Message);
 
 public record ReassignTripRequest(int VehicleId, int DriverEmployeeId);
+
+/// <summary>Hoàn tất / Duyệt chuyến: chuyến GIAO cuối làm đơn Hoàn tất mà hàng từng nằm kho quá hạn giao CHƯA chọn do ai
+/// -> phải gửi kèm StorageParty ("Customer" | "Company") + StorageReason (bắt buộc khi Customer). Không có thì bỏ trống.</summary>
+public record FinishTripRequest(string? StorageParty = null, string? StorageReason = null);
+
+/// <summary>Kiểm tra TRƯỚC khi Hoàn tất / Duyệt chuyến (Desktop dựng hộp duyệt): chuyến này có làm đơn Hoàn tất không, và hàng
+/// của đơn có nằm kho quá hạn giao không (bao nhiêu ngày, phí ước tính, đã chọn do ai — null = chưa chọn).</summary>
+public record FinishCheckDto(bool IsLastDelivery, string OrderCode, DateTime? Due, int OverdueDays, decimal EstimatedFee,
+    string? Decision, string? DecisionReason);

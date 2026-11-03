@@ -33,18 +33,28 @@ public class TripsController : ControllerBase
     }
 
     [HttpPost("{id:int}/complete")]
-    public async Task<ActionResult<TripActionResult>> Complete(int id)
+    public async Task<ActionResult<TripActionResult>> Complete(int id, [FromBody] FinishTripRequest? request)
     {
-        var result = await _tripService.CompleteAsync(id);
+        var result = await _tripService.CompleteAsync(id, request,
+            User.FindFirstValue(ClaimTypes.NameIdentifier), User.FindFirstValue(ClaimTypes.Name));
         if (result.Success) await _tripService.ResyncCalendarIfSyncedAsync(id, PublicBaseUrl);
         return Ok(result); // luôn 200 OK — Desktop tự đọc result.Success/Message, tránh PostAsync throw exception khi 400 làm mất thông báo rõ ràng
     }
 
+    /// <summary>Thông tin cho hộp duyệt / hoàn tất: chuyến giao cuối? hàng nằm kho quá hạn chưa chọn do ai?</summary>
+    [HttpGet("{id:int}/finish-check")]
+    public async Task<ActionResult<FinishCheckDto>> FinishCheck(int id)
+    {
+        var result = await _tripService.GetFinishCheckAsync(id);
+        return result is null ? NotFound() : Ok(result);
+    }
+
     /// <summary>Vận hành DUYỆT xác nhận "đã xong" của tài xế — PendingConfirmation -> Completed thật sự.</summary>
     [HttpPost("{id:int}/approve-completion")]
-    public async Task<ActionResult<TripActionResult>> ApproveCompletion(int id)
+    public async Task<ActionResult<TripActionResult>> ApproveCompletion(int id, [FromBody] FinishTripRequest? request)
     {
-        var result = await _tripService.ApproveCompletionAsync(id);
+        var result = await _tripService.ApproveCompletionAsync(id, request,
+            User.FindFirstValue(ClaimTypes.NameIdentifier), User.FindFirstValue(ClaimTypes.Name));
         if (result.Success) await _tripService.ResyncCalendarIfSyncedAsync(id, PublicBaseUrl);
         return Ok(result);
     }
