@@ -7,10 +7,10 @@ public record ContractAppendixItem(int Id, string Code, int ContractId, string C
 }
 
 public record AppendixTariffOption(int Id, string PriceListName, string VehicleType,
-    decimal PricePerKm, decimal PricePerTon, decimal SurchargeFragile, decimal SurchargeHazmat, int PriceListId = 0)
+    decimal PricePerKm, decimal PricePerTon, int PriceListId = 0)
 {
     public string Name => $"{PriceListName} · {VehicleType} · {PricePerKm:N2} đ/km · {PricePerTon:N2} đ/tấn";
-    public string Details => $"Giá/km: {PricePerKm:N2} đ · Giá/tấn: {PricePerTon:N2} đ\nPhụ phí dễ vỡ: {SurchargeFragile:N2} đ · Phụ phí nguy hiểm: {SurchargeHazmat:N2} đ";
+    public string Details => $"Giá/km: {PricePerKm:N2} đ · Giá/tấn: {PricePerTon:N2} đ";
 }
 
 public record ContractAppendixLookups(List<ContractOption> Contracts, List<AppendixTariffOption> TariffRules)

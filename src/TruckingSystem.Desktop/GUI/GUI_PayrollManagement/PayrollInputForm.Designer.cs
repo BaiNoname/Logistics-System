@@ -15,29 +15,6 @@ partial class PayrollInputForm
     private void InitializeComponent()
     {
         _sections = new TabControl();
-        _attendancePage = new TabPage();
-        _attendancePageLayout = new TableLayoutPanel();
-        AttendancePeriod = new Label();
-        AttendanceWarning = new Label();
-        EmploymentDates = new Label();
-        StandardDaysLabel = new Label();
-        StandardDays = new NumericUpDown();
-        WorkedDaysLabel = new Label();
-        WorkedDays = new NumericUpDown();
-        PaidLeaveDaysLabel = new Label();
-        PaidLeaveDays = new NumericUpDown();
-        HolidayDaysLabel = new Label();
-        HolidayDays = new NumericUpDown();
-        UnpaidLeaveDaysLabel = new Label();
-        UnpaidLeaveDays = new NumericUpDown();
-        WeekdayOvertimeHoursLabel = new Label();
-        WeekdayOvertimeHours = new NumericUpDown();
-        RestDayOvertimeHoursLabel = new Label();
-        RestDayOvertimeHours = new NumericUpDown();
-        HolidayOvertimeHoursLabel = new Label();
-        HolidayOvertimeHours = new NumericUpDown();
-        AttendanceNoteLabel = new Label();
-        AttendanceNote = new TextBox();
         _salaryPage = new TabPage();
         _salaryPageLayout = new TableLayoutPanel();
         SalaryHistory = new DataGridView();
@@ -49,13 +26,6 @@ partial class PayrollInputForm
         SalaryReasonLabel = new Label();
         SalaryReason = new TextBox();
         SalaryHint = new Label();
-        _driverPage = new TabPage();
-        _driverPageLayout = new TableLayoutPanel();
-        DriverPeriod = new Label();
-        DriverStandardDaysLabel = new Label();
-        DriverStandardDays = new NumericUpDown();
-        DriverDates = new TextBox();
-        DriverHint = new Label();
         _itemPage = new TabPage();
         _itemPageLayout = new TableLayoutPanel();
         ItemKindLabel = new Label();
@@ -67,10 +37,6 @@ partial class PayrollInputForm
         ItemReasonLabel = new Label();
         ItemReason = new TextBox();
         ItemHint = new Label();
-        _deletePage = new TabPage();
-        _deletePageLayout = new TableLayoutPanel();
-        ItemToDeleteLabel = new Label();
-        ItemToDelete = new ComboBox();
         _paymentPage = new TabPage();
         _paymentPageLayout = new TableLayoutPanel();
         PaymentBalance = new Label();
@@ -96,29 +62,14 @@ partial class PayrollInputForm
         _cancel = new Button();
         _save = new Button();
         _sections.SuspendLayout();
-        _attendancePage.SuspendLayout();
-        _attendancePageLayout.SuspendLayout();
-        ((System.ComponentModel.ISupportInitialize)StandardDays).BeginInit();
-        ((System.ComponentModel.ISupportInitialize)WorkedDays).BeginInit();
-        ((System.ComponentModel.ISupportInitialize)PaidLeaveDays).BeginInit();
-        ((System.ComponentModel.ISupportInitialize)HolidayDays).BeginInit();
-        ((System.ComponentModel.ISupportInitialize)UnpaidLeaveDays).BeginInit();
-        ((System.ComponentModel.ISupportInitialize)WeekdayOvertimeHours).BeginInit();
-        ((System.ComponentModel.ISupportInitialize)RestDayOvertimeHours).BeginInit();
-        ((System.ComponentModel.ISupportInitialize)HolidayOvertimeHours).BeginInit();
         _salaryPage.SuspendLayout();
         _salaryPageLayout.SuspendLayout();
         ((System.ComponentModel.ISupportInitialize)SalaryHistory).BeginInit();
         SalaryEditor.SuspendLayout();
         ((System.ComponentModel.ISupportInitialize)SalaryAmount).BeginInit();
-        _driverPage.SuspendLayout();
-        _driverPageLayout.SuspendLayout();
-        ((System.ComponentModel.ISupportInitialize)DriverStandardDays).BeginInit();
         _itemPage.SuspendLayout();
         _itemPageLayout.SuspendLayout();
         ((System.ComponentModel.ISupportInitialize)ItemAmount).BeginInit();
-        _deletePage.SuspendLayout();
-        _deletePageLayout.SuspendLayout();
         _paymentPage.SuspendLayout();
         _paymentPageLayout.SuspendLayout();
         ((System.ComponentModel.ISupportInitialize)PaymentAmount).BeginInit();
@@ -132,11 +83,8 @@ partial class PayrollInputForm
         // 
         // _sections
         // 
-        _sections.Controls.Add(_attendancePage);
         _sections.Controls.Add(_salaryPage);
-        _sections.Controls.Add(_driverPage);
         _sections.Controls.Add(_itemPage);
-        _sections.Controls.Add(_deletePage);
         _sections.Controls.Add(_paymentPage);
         _sections.Controls.Add(_detailsPage);
         _sections.Dock = DockStyle.Fill;
@@ -146,338 +94,6 @@ partial class PayrollInputForm
         _sections.SelectedIndex = 0;
         _sections.Size = new Size(720, 527);
         _sections.TabIndex = 0;
-        // 
-        // _attendancePage
-        // 
-        _attendancePage.AutoScroll = true;
-        _attendancePage.Controls.Add(_attendancePageLayout);
-        _attendancePage.Location = new Point(4, 26);
-        _attendancePage.Name = "_attendancePage";
-        _attendancePage.Size = new Size(712, 497);
-        _attendancePage.TabIndex = 0;
-        _attendancePage.Text = "Công nhân viên";
-        _attendancePage.UseVisualStyleBackColor = true;
-        // 
-        // _attendancePageLayout
-        // 
-        _attendancePageLayout.AutoSize = true;
-        _attendancePageLayout.ColumnCount = 2;
-        _attendancePageLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 43F));
-        _attendancePageLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 57F));
-        _attendancePageLayout.Controls.Add(AttendancePeriod, 0, 0);
-        _attendancePageLayout.Controls.Add(AttendanceWarning, 0, 1);
-        _attendancePageLayout.Controls.Add(EmploymentDates, 0, 2);
-        _attendancePageLayout.Controls.Add(StandardDaysLabel, 0, 3);
-        _attendancePageLayout.Controls.Add(StandardDays, 1, 3);
-        _attendancePageLayout.Controls.Add(WorkedDaysLabel, 0, 4);
-        _attendancePageLayout.Controls.Add(WorkedDays, 1, 4);
-        _attendancePageLayout.Controls.Add(PaidLeaveDaysLabel, 0, 5);
-        _attendancePageLayout.Controls.Add(PaidLeaveDays, 1, 5);
-        _attendancePageLayout.Controls.Add(HolidayDaysLabel, 0, 6);
-        _attendancePageLayout.Controls.Add(HolidayDays, 1, 6);
-        _attendancePageLayout.Controls.Add(UnpaidLeaveDaysLabel, 0, 7);
-        _attendancePageLayout.Controls.Add(UnpaidLeaveDays, 1, 7);
-        _attendancePageLayout.Controls.Add(WeekdayOvertimeHoursLabel, 0, 8);
-        _attendancePageLayout.Controls.Add(WeekdayOvertimeHours, 1, 8);
-        _attendancePageLayout.Controls.Add(RestDayOvertimeHoursLabel, 0, 9);
-        _attendancePageLayout.Controls.Add(RestDayOvertimeHours, 1, 9);
-        _attendancePageLayout.Controls.Add(HolidayOvertimeHoursLabel, 0, 10);
-        _attendancePageLayout.Controls.Add(HolidayOvertimeHours, 1, 10);
-        _attendancePageLayout.Controls.Add(AttendanceNoteLabel, 0, 11);
-        _attendancePageLayout.Controls.Add(AttendanceNote, 1, 11);
-        _attendancePageLayout.Dock = DockStyle.Top;
-        _attendancePageLayout.Location = new Point(0, 0);
-        _attendancePageLayout.Name = "_attendancePageLayout";
-        _attendancePageLayout.Padding = new Padding(12);
-        _attendancePageLayout.RowCount = 12;
-        _attendancePageLayout.RowStyles.Add(new RowStyle());
-        _attendancePageLayout.RowStyles.Add(new RowStyle());
-        _attendancePageLayout.RowStyles.Add(new RowStyle());
-        _attendancePageLayout.RowStyles.Add(new RowStyle());
-        _attendancePageLayout.RowStyles.Add(new RowStyle());
-        _attendancePageLayout.RowStyles.Add(new RowStyle());
-        _attendancePageLayout.RowStyles.Add(new RowStyle());
-        _attendancePageLayout.RowStyles.Add(new RowStyle());
-        _attendancePageLayout.RowStyles.Add(new RowStyle());
-        _attendancePageLayout.RowStyles.Add(new RowStyle());
-        _attendancePageLayout.RowStyles.Add(new RowStyle());
-        _attendancePageLayout.RowStyles.Add(new RowStyle());
-        _attendancePageLayout.Size = new Size(695, 543);
-        _attendancePageLayout.TabIndex = 0;
-        // 
-        // AttendancePeriod
-        // 
-        AttendancePeriod.AutoSize = true;
-        _attendancePageLayout.SetColumnSpan(AttendancePeriod, 2);
-        AttendancePeriod.Dock = DockStyle.Top;
-        AttendancePeriod.Location = new Point(16, 20);
-        AttendancePeriod.Margin = new Padding(4, 8, 4, 8);
-        AttendancePeriod.MaximumSize = new Size(660, 0);
-        AttendancePeriod.Name = "AttendancePeriod";
-        AttendancePeriod.Size = new Size(660, 19);
-        AttendancePeriod.TabIndex = 1;
-        AttendancePeriod.Text = "Kỳ công: ngày 26 tháng trước đến ngày 25 tháng này.";
-        // 
-        // AttendanceWarning
-        // 
-        AttendanceWarning.AutoSize = true;
-        _attendancePageLayout.SetColumnSpan(AttendanceWarning, 2);
-        AttendanceWarning.Dock = DockStyle.Top;
-        AttendanceWarning.ForeColor = Color.FromArgb(220, 38, 38);
-        AttendanceWarning.Location = new Point(16, 55);
-        AttendanceWarning.Margin = new Padding(4, 8, 4, 8);
-        AttendanceWarning.MaximumSize = new Size(660, 0);
-        AttendanceWarning.Name = "AttendanceWarning";
-        AttendanceWarning.Size = new Size(660, 19);
-        AttendanceWarning.TabIndex = 3;
-        AttendanceWarning.Text = "Công cũ chưa theo kỳ 26–25. Kiểm tra lại số công bên dưới trước khi lưu và xác nhận.";
-        // 
-        // EmploymentDates
-        // 
-        EmploymentDates.AutoSize = true;
-        _attendancePageLayout.SetColumnSpan(EmploymentDates, 2);
-        EmploymentDates.Dock = DockStyle.Top;
-        EmploymentDates.Location = new Point(16, 90);
-        EmploymentDates.Margin = new Padding(4, 8, 4, 8);
-        EmploymentDates.MaximumSize = new Size(660, 0);
-        EmploymentDates.Name = "EmploymentDates";
-        EmploymentDates.Size = new Size(660, 19);
-        EmploymentDates.TabIndex = 5;
-        EmploymentDates.Text = "Vào làm: … · Nghỉ việc: …";
-        // 
-        // StandardDaysLabel
-        // 
-        StandardDaysLabel.AutoSize = true;
-        StandardDaysLabel.Dock = DockStyle.Fill;
-        StandardDaysLabel.Location = new Point(16, 125);
-        StandardDaysLabel.Margin = new Padding(4, 8, 4, 8);
-        StandardDaysLabel.MaximumSize = new Size(660, 0);
-        StandardDaysLabel.Name = "StandardDaysLabel";
-        StandardDaysLabel.Size = new Size(280, 25);
-        StandardDaysLabel.TabIndex = 6;
-        StandardDaysLabel.Text = "Công chuẩn kỳ *";
-        StandardDaysLabel.TextAlign = ContentAlignment.MiddleLeft;
-        // 
-        // StandardDays
-        // 
-        StandardDays.AccessibleName = "Công chuẩn kỳ *";
-        StandardDays.DecimalPlaces = 2;
-        StandardDays.Dock = DockStyle.Top;
-        StandardDays.Location = new Point(304, 125);
-        StandardDays.Margin = new Padding(4, 8, 4, 8);
-        StandardDays.Maximum = new decimal(new int[] { 31, 0, 0, 0 });
-        StandardDays.Name = "StandardDays";
-        StandardDays.Size = new Size(375, 25);
-        StandardDays.TabIndex = 7;
-        StandardDays.ThousandsSeparator = true;
-        // 
-        // WorkedDaysLabel
-        // 
-        WorkedDaysLabel.AutoSize = true;
-        WorkedDaysLabel.Dock = DockStyle.Fill;
-        WorkedDaysLabel.Location = new Point(16, 166);
-        WorkedDaysLabel.Margin = new Padding(4, 8, 4, 8);
-        WorkedDaysLabel.MaximumSize = new Size(660, 0);
-        WorkedDaysLabel.Name = "WorkedDaysLabel";
-        WorkedDaysLabel.Size = new Size(280, 25);
-        WorkedDaysLabel.TabIndex = 8;
-        WorkedDaysLabel.Text = "Công làm việc";
-        WorkedDaysLabel.TextAlign = ContentAlignment.MiddleLeft;
-        // 
-        // WorkedDays
-        // 
-        WorkedDays.AccessibleName = "Công làm việc";
-        WorkedDays.DecimalPlaces = 2;
-        WorkedDays.Dock = DockStyle.Top;
-        WorkedDays.Location = new Point(304, 166);
-        WorkedDays.Margin = new Padding(4, 8, 4, 8);
-        WorkedDays.Maximum = new decimal(new int[] { 31, 0, 0, 0 });
-        WorkedDays.Name = "WorkedDays";
-        WorkedDays.Size = new Size(375, 25);
-        WorkedDays.TabIndex = 9;
-        WorkedDays.ThousandsSeparator = true;
-        // 
-        // PaidLeaveDaysLabel
-        // 
-        PaidLeaveDaysLabel.AutoSize = true;
-        PaidLeaveDaysLabel.Dock = DockStyle.Fill;
-        PaidLeaveDaysLabel.Location = new Point(16, 207);
-        PaidLeaveDaysLabel.Margin = new Padding(4, 8, 4, 8);
-        PaidLeaveDaysLabel.MaximumSize = new Size(660, 0);
-        PaidLeaveDaysLabel.Name = "PaidLeaveDaysLabel";
-        PaidLeaveDaysLabel.Size = new Size(280, 25);
-        PaidLeaveDaysLabel.TabIndex = 10;
-        PaidLeaveDaysLabel.Text = "Nghỉ hưởng lương";
-        PaidLeaveDaysLabel.TextAlign = ContentAlignment.MiddleLeft;
-        // 
-        // PaidLeaveDays
-        // 
-        PaidLeaveDays.AccessibleName = "Nghỉ hưởng lương";
-        PaidLeaveDays.DecimalPlaces = 2;
-        PaidLeaveDays.Dock = DockStyle.Top;
-        PaidLeaveDays.Location = new Point(304, 207);
-        PaidLeaveDays.Margin = new Padding(4, 8, 4, 8);
-        PaidLeaveDays.Maximum = new decimal(new int[] { 31, 0, 0, 0 });
-        PaidLeaveDays.Name = "PaidLeaveDays";
-        PaidLeaveDays.Size = new Size(375, 25);
-        PaidLeaveDays.TabIndex = 11;
-        PaidLeaveDays.ThousandsSeparator = true;
-        // 
-        // HolidayDaysLabel
-        // 
-        HolidayDaysLabel.AutoSize = true;
-        HolidayDaysLabel.Dock = DockStyle.Fill;
-        HolidayDaysLabel.Location = new Point(16, 248);
-        HolidayDaysLabel.Margin = new Padding(4, 8, 4, 8);
-        HolidayDaysLabel.MaximumSize = new Size(660, 0);
-        HolidayDaysLabel.Name = "HolidayDaysLabel";
-        HolidayDaysLabel.Size = new Size(280, 25);
-        HolidayDaysLabel.TabIndex = 12;
-        HolidayDaysLabel.Text = "Lễ hưởng lương";
-        HolidayDaysLabel.TextAlign = ContentAlignment.MiddleLeft;
-        // 
-        // HolidayDays
-        // 
-        HolidayDays.AccessibleName = "Lễ hưởng lương";
-        HolidayDays.DecimalPlaces = 2;
-        HolidayDays.Dock = DockStyle.Top;
-        HolidayDays.Location = new Point(304, 248);
-        HolidayDays.Margin = new Padding(4, 8, 4, 8);
-        HolidayDays.Maximum = new decimal(new int[] { 31, 0, 0, 0 });
-        HolidayDays.Name = "HolidayDays";
-        HolidayDays.Size = new Size(375, 25);
-        HolidayDays.TabIndex = 13;
-        HolidayDays.ThousandsSeparator = true;
-        // 
-        // UnpaidLeaveDaysLabel
-        // 
-        UnpaidLeaveDaysLabel.AutoSize = true;
-        UnpaidLeaveDaysLabel.Dock = DockStyle.Fill;
-        UnpaidLeaveDaysLabel.Location = new Point(16, 289);
-        UnpaidLeaveDaysLabel.Margin = new Padding(4, 8, 4, 8);
-        UnpaidLeaveDaysLabel.MaximumSize = new Size(660, 0);
-        UnpaidLeaveDaysLabel.Name = "UnpaidLeaveDaysLabel";
-        UnpaidLeaveDaysLabel.Size = new Size(280, 25);
-        UnpaidLeaveDaysLabel.TabIndex = 14;
-        UnpaidLeaveDaysLabel.Text = "Nghỉ không hưởng lương";
-        UnpaidLeaveDaysLabel.TextAlign = ContentAlignment.MiddleLeft;
-        // 
-        // UnpaidLeaveDays
-        // 
-        UnpaidLeaveDays.AccessibleName = "Nghỉ không hưởng lương";
-        UnpaidLeaveDays.DecimalPlaces = 2;
-        UnpaidLeaveDays.Dock = DockStyle.Top;
-        UnpaidLeaveDays.Location = new Point(304, 289);
-        UnpaidLeaveDays.Margin = new Padding(4, 8, 4, 8);
-        UnpaidLeaveDays.Maximum = new decimal(new int[] { 31, 0, 0, 0 });
-        UnpaidLeaveDays.Name = "UnpaidLeaveDays";
-        UnpaidLeaveDays.Size = new Size(375, 25);
-        UnpaidLeaveDays.TabIndex = 15;
-        UnpaidLeaveDays.ThousandsSeparator = true;
-        // 
-        // WeekdayOvertimeHoursLabel
-        // 
-        WeekdayOvertimeHoursLabel.AutoSize = true;
-        WeekdayOvertimeHoursLabel.Dock = DockStyle.Fill;
-        WeekdayOvertimeHoursLabel.Location = new Point(16, 330);
-        WeekdayOvertimeHoursLabel.Margin = new Padding(4, 8, 4, 8);
-        WeekdayOvertimeHoursLabel.MaximumSize = new Size(660, 0);
-        WeekdayOvertimeHoursLabel.Name = "WeekdayOvertimeHoursLabel";
-        WeekdayOvertimeHoursLabel.Size = new Size(280, 25);
-        WeekdayOvertimeHoursLabel.TabIndex = 16;
-        WeekdayOvertimeHoursLabel.Text = "Tăng ca ngày thường (giờ)";
-        WeekdayOvertimeHoursLabel.TextAlign = ContentAlignment.MiddleLeft;
-        // 
-        // WeekdayOvertimeHours
-        // 
-        WeekdayOvertimeHours.AccessibleName = "Tăng ca ngày thường (giờ)";
-        WeekdayOvertimeHours.DecimalPlaces = 2;
-        WeekdayOvertimeHours.Dock = DockStyle.Top;
-        WeekdayOvertimeHours.Location = new Point(304, 330);
-        WeekdayOvertimeHours.Margin = new Padding(4, 8, 4, 8);
-        WeekdayOvertimeHours.Maximum = new decimal(new int[] { 744, 0, 0, 0 });
-        WeekdayOvertimeHours.Name = "WeekdayOvertimeHours";
-        WeekdayOvertimeHours.Size = new Size(375, 25);
-        WeekdayOvertimeHours.TabIndex = 17;
-        WeekdayOvertimeHours.ThousandsSeparator = true;
-        // 
-        // RestDayOvertimeHoursLabel
-        // 
-        RestDayOvertimeHoursLabel.AutoSize = true;
-        RestDayOvertimeHoursLabel.Dock = DockStyle.Fill;
-        RestDayOvertimeHoursLabel.Location = new Point(16, 371);
-        RestDayOvertimeHoursLabel.Margin = new Padding(4, 8, 4, 8);
-        RestDayOvertimeHoursLabel.MaximumSize = new Size(660, 0);
-        RestDayOvertimeHoursLabel.Name = "RestDayOvertimeHoursLabel";
-        RestDayOvertimeHoursLabel.Size = new Size(280, 25);
-        RestDayOvertimeHoursLabel.TabIndex = 18;
-        RestDayOvertimeHoursLabel.Text = "Tăng ca ngày nghỉ (giờ)";
-        RestDayOvertimeHoursLabel.TextAlign = ContentAlignment.MiddleLeft;
-        // 
-        // RestDayOvertimeHours
-        // 
-        RestDayOvertimeHours.AccessibleName = "Tăng ca ngày nghỉ (giờ)";
-        RestDayOvertimeHours.DecimalPlaces = 2;
-        RestDayOvertimeHours.Dock = DockStyle.Top;
-        RestDayOvertimeHours.Location = new Point(304, 371);
-        RestDayOvertimeHours.Margin = new Padding(4, 8, 4, 8);
-        RestDayOvertimeHours.Maximum = new decimal(new int[] { 744, 0, 0, 0 });
-        RestDayOvertimeHours.Name = "RestDayOvertimeHours";
-        RestDayOvertimeHours.Size = new Size(375, 25);
-        RestDayOvertimeHours.TabIndex = 19;
-        RestDayOvertimeHours.ThousandsSeparator = true;
-        // 
-        // HolidayOvertimeHoursLabel
-        // 
-        HolidayOvertimeHoursLabel.AutoSize = true;
-        HolidayOvertimeHoursLabel.Dock = DockStyle.Fill;
-        HolidayOvertimeHoursLabel.Location = new Point(16, 412);
-        HolidayOvertimeHoursLabel.Margin = new Padding(4, 8, 4, 8);
-        HolidayOvertimeHoursLabel.MaximumSize = new Size(660, 0);
-        HolidayOvertimeHoursLabel.Name = "HolidayOvertimeHoursLabel";
-        HolidayOvertimeHoursLabel.Size = new Size(280, 25);
-        HolidayOvertimeHoursLabel.TabIndex = 20;
-        HolidayOvertimeHoursLabel.Text = "Tăng ca ngày lễ (giờ)";
-        HolidayOvertimeHoursLabel.TextAlign = ContentAlignment.MiddleLeft;
-        // 
-        // HolidayOvertimeHours
-        // 
-        HolidayOvertimeHours.AccessibleName = "Tăng ca ngày lễ (giờ)";
-        HolidayOvertimeHours.DecimalPlaces = 2;
-        HolidayOvertimeHours.Dock = DockStyle.Top;
-        HolidayOvertimeHours.Location = new Point(304, 412);
-        HolidayOvertimeHours.Margin = new Padding(4, 8, 4, 8);
-        HolidayOvertimeHours.Maximum = new decimal(new int[] { 744, 0, 0, 0 });
-        HolidayOvertimeHours.Name = "HolidayOvertimeHours";
-        HolidayOvertimeHours.Size = new Size(375, 25);
-        HolidayOvertimeHours.TabIndex = 21;
-        HolidayOvertimeHours.ThousandsSeparator = true;
-        // 
-        // AttendanceNoteLabel
-        // 
-        AttendanceNoteLabel.AutoSize = true;
-        AttendanceNoteLabel.Dock = DockStyle.Fill;
-        AttendanceNoteLabel.Location = new Point(16, 453);
-        AttendanceNoteLabel.Margin = new Padding(4, 8, 4, 8);
-        AttendanceNoteLabel.MaximumSize = new Size(660, 0);
-        AttendanceNoteLabel.Name = "AttendanceNoteLabel";
-        AttendanceNoteLabel.Size = new Size(280, 70);
-        AttendanceNoteLabel.TabIndex = 22;
-        AttendanceNoteLabel.Text = "Ghi chú / căn cứ công";
-        AttendanceNoteLabel.TextAlign = ContentAlignment.MiddleLeft;
-        // 
-        // AttendanceNote
-        // 
-        AttendanceNote.AccessibleName = "Ghi chú / căn cứ công";
-        AttendanceNote.Dock = DockStyle.Top;
-        AttendanceNote.Location = new Point(304, 453);
-        AttendanceNote.Margin = new Padding(4, 8, 4, 8);
-        AttendanceNote.MaxLength = 500;
-        AttendanceNote.Multiline = true;
-        AttendanceNote.Name = "AttendanceNote";
-        AttendanceNote.ScrollBars = ScrollBars.Vertical;
-        AttendanceNote.Size = new Size(375, 70);
-        AttendanceNote.TabIndex = 23;
         // 
         // _salaryPage
         // 
@@ -640,107 +256,7 @@ partial class PayrollInputForm
         SalaryHint.Name = "SalaryHint";
         SalaryHint.Size = new Size(648, 19);
         SalaryHint.TabIndex = 7;
-        SalaryHint.Text = "Mức lương từ ngày 26 đầu kỳ; mức đầu tiên có thể từ ngày vào làm.";
-        // 
-        // _driverPage
-        // 
-        _driverPage.AutoScroll = true;
-        _driverPage.Controls.Add(_driverPageLayout);
-        _driverPage.Location = new Point(4, 26);
-        _driverPage.Name = "_driverPage";
-        _driverPage.Size = new Size(712, 497);
-        _driverPage.TabIndex = 2;
-        _driverPage.Text = "Công tài xế";
-        _driverPage.UseVisualStyleBackColor = true;
-        // 
-        // _driverPageLayout
-        // 
-        _driverPageLayout.AutoSize = true;
-        _driverPageLayout.ColumnCount = 2;
-        _driverPageLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 43F));
-        _driverPageLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 57F));
-        _driverPageLayout.Controls.Add(DriverPeriod, 0, 0);
-        _driverPageLayout.Controls.Add(DriverStandardDaysLabel, 0, 1);
-        _driverPageLayout.Controls.Add(DriverStandardDays, 1, 1);
-        _driverPageLayout.Controls.Add(DriverDates, 0, 2);
-        _driverPageLayout.Controls.Add(DriverHint, 0, 3);
-        _driverPageLayout.Dock = DockStyle.Top;
-        _driverPageLayout.Location = new Point(0, 0);
-        _driverPageLayout.Name = "_driverPageLayout";
-        _driverPageLayout.Padding = new Padding(12);
-        _driverPageLayout.RowCount = 4;
-        _driverPageLayout.RowStyles.Add(new RowStyle());
-        _driverPageLayout.RowStyles.Add(new RowStyle());
-        _driverPageLayout.RowStyles.Add(new RowStyle());
-        _driverPageLayout.RowStyles.Add(new RowStyle());
-        _driverPageLayout.Size = new Size(712, 350);
-        _driverPageLayout.TabIndex = 0;
-        // 
-        // DriverPeriod
-        // 
-        DriverPeriod.AutoSize = true;
-        _driverPageLayout.SetColumnSpan(DriverPeriod, 2);
-        DriverPeriod.Dock = DockStyle.Top;
-        DriverPeriod.Location = new Point(16, 20);
-        DriverPeriod.Margin = new Padding(4, 8, 4, 8);
-        DriverPeriod.MaximumSize = new Size(660, 0);
-        DriverPeriod.Name = "DriverPeriod";
-        DriverPeriod.Size = new Size(660, 38);
-        DriverPeriod.TabIndex = 1;
-        DriverPeriod.Text = "Kỳ công: ngày 26 tháng trước đến ngày 25 tháng này.\nMỗi ngày đăng ký riêng biệt = 1 công. Chốt ngày 25.";
-        // 
-        // DriverStandardDaysLabel
-        // 
-        DriverStandardDaysLabel.AutoSize = true;
-        DriverStandardDaysLabel.Dock = DockStyle.Fill;
-        DriverStandardDaysLabel.Location = new Point(16, 74);
-        DriverStandardDaysLabel.Margin = new Padding(4, 8, 4, 8);
-        DriverStandardDaysLabel.MaximumSize = new Size(660, 0);
-        DriverStandardDaysLabel.Name = "DriverStandardDaysLabel";
-        DriverStandardDaysLabel.Size = new Size(287, 25);
-        DriverStandardDaysLabel.TabIndex = 2;
-        DriverStandardDaysLabel.Text = "Công chuẩn kỳ *";
-        DriverStandardDaysLabel.TextAlign = ContentAlignment.MiddleLeft;
-        // 
-        // DriverStandardDays
-        // 
-        DriverStandardDays.AccessibleName = "Công chuẩn kỳ *";
-        DriverStandardDays.DecimalPlaces = 2;
-        DriverStandardDays.Dock = DockStyle.Top;
-        DriverStandardDays.Location = new Point(311, 74);
-        DriverStandardDays.Margin = new Padding(4, 8, 4, 8);
-        DriverStandardDays.Maximum = new decimal(new int[] { 31, 0, 0, 0 });
-        DriverStandardDays.Name = "DriverStandardDays";
-        DriverStandardDays.Size = new Size(385, 25);
-        DriverStandardDays.TabIndex = 3;
-        DriverStandardDays.ThousandsSeparator = true;
-        // 
-        // DriverDates
-        // 
-        DriverDates.AccessibleName = "Ngày đăng ký làm việc trong kỳ";
-        _driverPageLayout.SetColumnSpan(DriverDates, 2);
-        DriverDates.Dock = DockStyle.Top;
-        DriverDates.Location = new Point(16, 115);
-        DriverDates.Margin = new Padding(4, 8, 4, 8);
-        DriverDates.Multiline = true;
-        DriverDates.Name = "DriverDates";
-        DriverDates.ReadOnly = true;
-        DriverDates.ScrollBars = ScrollBars.Vertical;
-        DriverDates.Size = new Size(680, 180);
-        DriverDates.TabIndex = 5;
-        // 
-        // DriverHint
-        // 
-        DriverHint.AutoSize = true;
-        _driverPageLayout.SetColumnSpan(DriverHint, 2);
-        DriverHint.Dock = DockStyle.Top;
-        DriverHint.Location = new Point(16, 311);
-        DriverHint.Margin = new Padding(4, 8, 4, 8);
-        DriverHint.MaximumSize = new Size(660, 0);
-        DriverHint.Name = "DriverHint";
-        DriverHint.Size = new Size(660, 19);
-        DriverHint.TabIndex = 7;
-        DriverHint.Text = "Lưu sẽ lấy lại lịch mới nhất và bỏ xác nhận công cũ. Kiểm tra, xác nhận công rồi lập phiếu.";
+        SalaryHint.Text = "Mức lương từ ngày 1 đầu kỳ; mức đầu tiên có thể từ ngày vào làm.";
         // 
         // _itemPage
         // 
@@ -893,58 +409,6 @@ partial class PayrollInputForm
         ItemHint.Size = new Size(660, 19);
         ItemHint.TabIndex = 9;
         ItemHint.Text = "Tiền tăng ca, thuế/bảo hiểm do kế toán xác định. Không nhập khoản ứng/trả vào khấu trừ.";
-        // 
-        // _deletePage
-        // 
-        _deletePage.AutoScroll = true;
-        _deletePage.Controls.Add(_deletePageLayout);
-        _deletePage.Location = new Point(4, 26);
-        _deletePage.Name = "_deletePage";
-        _deletePage.Size = new Size(712, 497);
-        _deletePage.TabIndex = 4;
-        _deletePage.Text = "Xóa khoản";
-        _deletePage.UseVisualStyleBackColor = true;
-        // 
-        // _deletePageLayout
-        // 
-        _deletePageLayout.AutoSize = true;
-        _deletePageLayout.ColumnCount = 2;
-        _deletePageLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 43F));
-        _deletePageLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 57F));
-        _deletePageLayout.Controls.Add(ItemToDeleteLabel, 0, 0);
-        _deletePageLayout.Controls.Add(ItemToDelete, 1, 0);
-        _deletePageLayout.Dock = DockStyle.Top;
-        _deletePageLayout.Location = new Point(0, 0);
-        _deletePageLayout.Name = "_deletePageLayout";
-        _deletePageLayout.Padding = new Padding(12);
-        _deletePageLayout.RowCount = 1;
-        _deletePageLayout.RowStyles.Add(new RowStyle());
-        _deletePageLayout.Size = new Size(712, 65);
-        _deletePageLayout.TabIndex = 0;
-        // 
-        // ItemToDeleteLabel
-        // 
-        ItemToDeleteLabel.AutoSize = true;
-        ItemToDeleteLabel.Dock = DockStyle.Fill;
-        ItemToDeleteLabel.Location = new Point(16, 20);
-        ItemToDeleteLabel.Margin = new Padding(4, 8, 4, 8);
-        ItemToDeleteLabel.MaximumSize = new Size(660, 0);
-        ItemToDeleteLabel.Name = "ItemToDeleteLabel";
-        ItemToDeleteLabel.Size = new Size(287, 25);
-        ItemToDeleteLabel.TabIndex = 0;
-        ItemToDeleteLabel.Text = "Khoản cần xóa";
-        ItemToDeleteLabel.TextAlign = ContentAlignment.MiddleLeft;
-        // 
-        // ItemToDelete
-        // 
-        ItemToDelete.AccessibleName = "Khoản cần xóa";
-        ItemToDelete.Dock = DockStyle.Top;
-        ItemToDelete.DropDownStyle = ComboBoxStyle.DropDownList;
-        ItemToDelete.Location = new Point(311, 20);
-        ItemToDelete.Margin = new Padding(4, 8, 4, 8);
-        ItemToDelete.Name = "ItemToDelete";
-        ItemToDelete.Size = new Size(385, 25);
-        ItemToDelete.TabIndex = 1;
         // 
         // _paymentPage
         // 
@@ -1312,18 +776,6 @@ partial class PayrollInputForm
         StartPosition = FormStartPosition.CenterParent;
         Text = "Nhập dữ liệu lương";
         _sections.ResumeLayout(false);
-        _attendancePage.ResumeLayout(false);
-        _attendancePage.PerformLayout();
-        _attendancePageLayout.ResumeLayout(false);
-        _attendancePageLayout.PerformLayout();
-        ((System.ComponentModel.ISupportInitialize)StandardDays).EndInit();
-        ((System.ComponentModel.ISupportInitialize)WorkedDays).EndInit();
-        ((System.ComponentModel.ISupportInitialize)PaidLeaveDays).EndInit();
-        ((System.ComponentModel.ISupportInitialize)HolidayDays).EndInit();
-        ((System.ComponentModel.ISupportInitialize)UnpaidLeaveDays).EndInit();
-        ((System.ComponentModel.ISupportInitialize)WeekdayOvertimeHours).EndInit();
-        ((System.ComponentModel.ISupportInitialize)RestDayOvertimeHours).EndInit();
-        ((System.ComponentModel.ISupportInitialize)HolidayOvertimeHours).EndInit();
         _salaryPage.ResumeLayout(false);
         _salaryPage.PerformLayout();
         _salaryPageLayout.ResumeLayout(false);
@@ -1332,20 +784,11 @@ partial class PayrollInputForm
         SalaryEditor.ResumeLayout(false);
         SalaryEditor.PerformLayout();
         ((System.ComponentModel.ISupportInitialize)SalaryAmount).EndInit();
-        _driverPage.ResumeLayout(false);
-        _driverPage.PerformLayout();
-        _driverPageLayout.ResumeLayout(false);
-        _driverPageLayout.PerformLayout();
-        ((System.ComponentModel.ISupportInitialize)DriverStandardDays).EndInit();
         _itemPage.ResumeLayout(false);
         _itemPage.PerformLayout();
         _itemPageLayout.ResumeLayout(false);
         _itemPageLayout.PerformLayout();
         ((System.ComponentModel.ISupportInitialize)ItemAmount).EndInit();
-        _deletePage.ResumeLayout(false);
-        _deletePage.PerformLayout();
-        _deletePageLayout.ResumeLayout(false);
-        _deletePageLayout.PerformLayout();
         _paymentPage.ResumeLayout(false);
         _paymentPage.PerformLayout();
         _paymentPageLayout.ResumeLayout(false);
@@ -1367,29 +810,6 @@ partial class PayrollInputForm
     #endregion
 
     private TabControl _sections = null!;
-    internal Label AttendancePeriod = null!;
-    internal Label AttendanceWarning = null!;
-    internal Label EmploymentDates = null!;
-    internal NumericUpDown StandardDays = null!;
-    internal NumericUpDown WorkedDays = null!;
-    internal NumericUpDown PaidLeaveDays = null!;
-    internal NumericUpDown HolidayDays = null!;
-    internal NumericUpDown UnpaidLeaveDays = null!;
-    internal NumericUpDown WeekdayOvertimeHours = null!;
-    internal NumericUpDown RestDayOvertimeHours = null!;
-    internal NumericUpDown HolidayOvertimeHours = null!;
-    internal TextBox AttendanceNote = null!;
-    private TabPage _attendancePage = null!;
-    private TableLayoutPanel _attendancePageLayout = null!;
-    internal Label StandardDaysLabel = null!;
-    internal Label WorkedDaysLabel = null!;
-    internal Label PaidLeaveDaysLabel = null!;
-    internal Label HolidayDaysLabel = null!;
-    internal Label UnpaidLeaveDaysLabel = null!;
-    internal Label WeekdayOvertimeHoursLabel = null!;
-    internal Label RestDayOvertimeHoursLabel = null!;
-    internal Label HolidayOvertimeHoursLabel = null!;
-    internal Label AttendanceNoteLabel = null!;
     internal DateTimePicker SalaryDate = null!;
     internal NumericUpDown SalaryAmount = null!;
     internal TextBox SalaryReason = null!;
@@ -1399,19 +819,8 @@ partial class PayrollInputForm
     internal Label SalaryAmountLabel = null!;
     internal Label SalaryReasonLabel = null!;
     internal DataGridView SalaryHistory = null!;
-    private DataGridViewTextBoxColumn SalaryHistoryEffectiveFromColumn = null!;
-    private DataGridViewTextBoxColumn SalaryHistoryEffectiveToColumn = null!;
-    private DataGridViewTextBoxColumn SalaryHistoryMonthlySalaryColumn = null!;
-    private DataGridViewTextBoxColumn SalaryHistoryReasonColumn = null!;
     private TabPage _salaryPage = null!;
     private TableLayoutPanel _salaryPageLayout = null!;
-    internal Label DriverPeriod = null!;
-    internal NumericUpDown DriverStandardDays = null!;
-    internal TextBox DriverDates = null!;
-    internal Label DriverHint = null!;
-    private TabPage _driverPage = null!;
-    private TableLayoutPanel _driverPageLayout = null!;
-    internal Label DriverStandardDaysLabel = null!;
     internal CheckBox ItemProrate = null!;
     internal ComboBox ItemKind = null!;
     internal NumericUpDown ItemAmount = null!;
@@ -1423,10 +832,6 @@ partial class PayrollInputForm
     internal Label ItemAmountLabel = null!;
     internal Label ItemProrateLabel = null!;
     internal Label ItemReasonLabel = null!;
-    internal ComboBox ItemToDelete = null!;
-    private TabPage _deletePage = null!;
-    private TableLayoutPanel _deletePageLayout = null!;
-    internal Label ItemToDeleteLabel = null!;
     internal TextBox PaymentReference = null!;
     internal Label PaymentBalance = null!;
     internal NumericUpDown PaymentAmount = null!;
@@ -1442,18 +847,7 @@ partial class PayrollInputForm
     internal Label DetailPeriod = null!;
     internal TextBox DetailSummary = null!;
     internal DataGridView DetailItems = null!;
-    private DataGridViewTextBoxColumn DetailItemsKindColumn = null!;
-    private DataGridViewTextBoxColumn DetailItemsAmountColumn = null!;
-    private DataGridViewTextBoxColumn DetailItemsProrateByAttendanceColumn = null!;
-    private DataGridViewTextBoxColumn DetailItemsCalculatedAmountColumn = null!;
-    private DataGridViewTextBoxColumn DetailItemsReasonColumn = null!;
-    private DataGridViewTextBoxColumn DetailItemsIsAdjustmentColumn = null!;
     internal DataGridView DetailPayments = null!;
-    private DataGridViewTextBoxColumn DetailPaymentsDateColumn = null!;
-    private DataGridViewTextBoxColumn DetailPaymentsAmountColumn = null!;
-    private DataGridViewTextBoxColumn DetailPaymentsMethodColumn = null!;
-    private DataGridViewTextBoxColumn DetailPaymentsReferenceColumn = null!;
-    private DataGridViewTextBoxColumn DetailPaymentsRecordedByColumn = null!;
     internal TextBox DetailDriverDates = null!;
     private TabPage _detailsPage = null!;
     private TableLayoutPanel _detailsPageLayout = null!;

@@ -7,6 +7,25 @@ internal static class PayrollConfiguration
 {
     public static void Configure(ModelBuilder builder)
     {
+        builder.Entity<PayrollKpiPolicy>(e =>
+        {
+            e.Property(p => p.EffectiveFrom).HasColumnType("date");
+            e.HasIndex(p => p.EffectiveFrom).IsUnique();
+            e.ToTable(t => t.HasCheckConstraint("CK_PayrollKpiPolicy_Positive", "\"KmPerPoint\" > 0 AND \"TargetPoints\" > 0"));
+        });
+        builder.Entity<PayrollMonthlyAdjustment>(e =>
+        {
+            e.HasOne(a => a.Employee).WithMany().HasForeignKey(a => a.EmployeeId).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(a => new { a.Year, a.Month, a.EmployeeId });
+            e.Property(a => a.Reason).HasMaxLength(500);
+            e.ToTable(t => t.HasCheckConstraint("CK_PayrollMonthlyAdjustment_Valid", "\"Amount\" > 0 AND \"Month\" BETWEEN 1 AND 12 AND \"Year\" BETWEEN 2000 AND 2100"));
+        });
+        builder.Entity<DriverKpiRate>(e =>
+        {
+            e.Property(r => r.VehicleType).HasMaxLength(100);
+            e.HasIndex(r => r.VehicleType).IsUnique();
+            e.ToTable(t => t.HasCheckConstraint("CK_DriverKpiRate_Positive", "\"VehicleFactor\" > 0 AND \"AmountPerPoint\" > 0 AND \"KmPerPoint\" > 0"));
+        });
         builder.Entity<Employee>().ToTable(t => t.HasCheckConstraint("CK_Employee_EmploymentDates",
             "\"TerminationDate\" IS NULL OR \"TerminationDate\" >= \"HireDate\"::date"));
         builder.Entity<EmployeeSalary>(e =>
@@ -33,7 +52,7 @@ internal static class PayrollConfiguration
             e.Property(a => a.WorkFrom).HasColumnType("date");
             e.Property(a => a.WorkTo).HasColumnType("date");
             e.ToTable(t => t.HasCheckConstraint("CK_MonthlyAttendance_Days",
-                "\"StandardDays\" > 0 AND \"StandardDays\" <= 31 AND \"WorkedDays\" >= 0 AND \"PaidLeaveDays\" >= 0 AND \"HolidayDays\" >= 0 AND \"UnpaidLeaveDays\" >= 0 AND \"WorkedDays\" + \"PaidLeaveDays\" + \"HolidayDays\" + \"UnpaidLeaveDays\" <= \"StandardDays\" AND \"WeekdayOvertimeHours\" >= 0 AND \"RestDayOvertimeHours\" >= 0 AND \"HolidayOvertimeHours\" >= 0"));
+                "\"StandardDays\" > 0 AND \"StandardDays\" <= 31 AND \"WorkedDays\" >= 0 AND \"PaidLeaveDays\" >= 0 AND \"HolidayDays\" >= 0 AND \"UnpaidLeaveDays\" >= 0 AND \"WorkedDays\" + \"PaidLeaveDays\" + \"HolidayDays\" + \"UnpaidLeaveDays\" <= CASE WHEN \"DriverWorkDates\" IS NOT NULL THEN 31 ELSE \"StandardDays\" END AND \"WeekdayOvertimeHours\" >= 0 AND \"RestDayOvertimeHours\" >= 0 AND \"HolidayOvertimeHours\" >= 0"));
         });
         builder.Entity<PayrollSlip>(e =>
         {

@@ -38,6 +38,13 @@ public class Warehouse : BaseEntity
     /// (hàng phải nằm kho thêm). 0 = kho không tính phí lưu kho.</summary>
     public decimal StorageFeePerM3PerDay { get; set; }
 
+    /// <summary>Kho cũng là ĐỊA ĐIỂM CHẤM CÔNG bằng QR: điện thoại phải nằm trong bán kính này
+    /// (mét, tính từ Lat/Lng của kho) thì lượt quét mới hợp lệ.</summary>
+    public int AttendanceRadiusMeters { get; set; } = 150;
+
+    /// <summary>Sai số GPS tối đa (mét) điện thoại báo về mà vẫn chấp nhận lượt quét.</summary>
+    public int AttendanceMaxAccuracyMeters { get; set; } = 100;
+
 
 
     public ICollection<GoodsReceipt> GoodsReceipts { get; set; } = new List<GoodsReceipt>();

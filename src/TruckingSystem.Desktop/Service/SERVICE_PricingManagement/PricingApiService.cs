@@ -24,14 +24,14 @@ public class PricingApiService(ApiConnection connection)
         => await connection.GetAsync<List<TariffRuleItem>>($"/api/price-lists/{priceListId}/tariff-rules") ?? new();
 
     public Task CreateTariffRuleAsync(int priceListId, string vehicleType, decimal pricePerKm,
-        decimal pricePerTon, decimal surchargeFragile, decimal surchargeHazmat)
+        decimal pricePerTon)
         => connection.PostAsync<object>($"/api/price-lists/{priceListId}/tariff-rules",
-            new { vehicleType, pricePerKm, pricePerTon, surchargeFragile, surchargeHazmat });
+            new { vehicleType, pricePerKm, pricePerTon });
 
     public Task UpdateTariffRuleAsync(int priceListId, int id, string vehicleType, decimal pricePerKm,
-        decimal pricePerTon, decimal surchargeFragile, decimal surchargeHazmat)
+        decimal pricePerTon)
         => connection.PutAsync<object>($"/api/price-lists/{priceListId}/tariff-rules/{id}",
-            new { vehicleType, pricePerKm, pricePerTon, surchargeFragile, surchargeHazmat });
+            new { vehicleType, pricePerKm, pricePerTon });
 
     public Task DeleteTariffRuleAsync(int priceListId, int id)
         => connection.DeleteAsync<object>($"/api/price-lists/{priceListId}/tariff-rules/{id}");

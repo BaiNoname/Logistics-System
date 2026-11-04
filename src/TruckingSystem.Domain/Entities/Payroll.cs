@@ -47,6 +47,10 @@ public class MonthlyAttendance : BaseEntity
 
 public class PayrollSlip : BaseEntity
 {
+    public int CalculationVersion { get; set; }
+    public string SourceSnapshot { get; set; } = "";
+    public decimal KpiPoints { get; set; }
+    public decimal KpiTarget { get; set; }
     public string? DriverWorkDates { get; set; }
     public DateTime? WorkFrom { get; set; }
     public DateTime? WorkTo { get; set; }
@@ -85,6 +89,7 @@ public enum PayrollItemKind { Allowance, Bonus, Overtime, Deduction }
 
 public class PayrollItem : BaseEntity
 {
+    public bool IsDriverKpi { get; set; }
     public int PayrollSlipId { get; set; }
     public PayrollSlip PayrollSlip { get; set; } = null!;
     public PayrollItemKind Kind { get; set; }
@@ -105,4 +110,32 @@ public class SalaryPayment : BaseEntity
     public string Method { get; set; } = "";
     public string Reference { get; set; } = "";
     public string RecordedBy { get; set; } = "";
+}
+
+public class DriverKpiRate : BaseEntity
+{
+    public string VehicleType { get; set; } = "";
+    public decimal VehicleFactor { get; set; }
+    public decimal AmountPerPoint { get; set; }
+    public decimal KmPerPoint { get; set; } = 200;
+}
+
+public class PayrollKpiPolicy : BaseEntity
+{
+    public DateTime EffectiveFrom { get; set; }
+    public decimal KmPerPoint { get; set; }
+    public decimal TargetPoints { get; set; }
+    public string FactorsJson { get; set; } = "[]";
+}
+
+public class PayrollMonthlyAdjustment : BaseEntity
+{
+    public int EmployeeId { get; set; }
+    public Employee Employee { get; set; } = null!;
+    public int Year { get; set; }
+    public int Month { get; set; }
+    public PayrollItemKind Kind { get; set; }
+    public decimal Amount { get; set; }
+    public string Reason { get; set; } = "";
+    public string CreatedBy { get; set; } = "";
 }

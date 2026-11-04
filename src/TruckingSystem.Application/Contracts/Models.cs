@@ -6,6 +6,8 @@ public class ContractListItemDto
         StartDate, EndDate, DateTime.UtcNow.AddHours(7)).ToString();
 
     public int Id { get; set; }
+    public string? Type { get; set; }
+    public decimal? DiscountPercent { get; set; }
     public int CustomerId { get; set; }
     public string Code { get; set; } = string.Empty;
     public string CustomerName { get; set; } = string.Empty;
@@ -35,6 +37,8 @@ public class ContractOptionDto
 
 public class SaveContractRequest
 {
+    public string? Type { get; set; }
+    public decimal? DiscountPercent { get; set; }
     public int CustomerId { get; set; }
     public string Code { get; set; } = string.Empty;
     public DateTime StartDate { get; set; }

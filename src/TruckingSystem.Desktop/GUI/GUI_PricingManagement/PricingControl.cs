@@ -56,8 +56,8 @@ public partial class PricingControl : BaseUserControl
         _create.Enabled = !_busy && (IsPriceLists || CanEditRules);
         _copy.Visible = IsPriceLists;
         _copy.Enabled = !_busy && IsPriceLists && SelectedList is not null;
-        _edit.Enabled = !_busy && (IsPriceLists ? SelectedList is not null : CanEditRules && SelectedRule is not null);
-        _delete.Enabled = _edit.Enabled && (!IsPriceLists || SelectedList?.ContractCount == 0);
+        _edit.Enabled = !_busy && (IsPriceLists ? SelectedList?.Status == "Active" : CanEditRules && SelectedRule is not null);
+        _delete.Enabled = !_busy && (IsPriceLists ? SelectedList?.ContractCount == 0 : CanEditRules && SelectedRule is not null);
         _refresh.Enabled = !_busy;
         _tabs.Enabled = !_busy;
     }
@@ -66,7 +66,7 @@ public partial class PricingControl : BaseUserControl
     {
         _status.ForeColor = Theme.TextSecondary;
         _status.Text = IsPriceLists
-            ? _lists.Count == 0 ? "Chưa có bảng giá. Chọn Thêm mới để tạo." : $"{_lists.Count} bảng giá · Bảng giá đang được hợp đồng sử dụng không thể xóa."
+            ? _lists.Count == 0 ? "Chưa có bảng giá. Chọn Thêm mới để tạo." : $"{_lists.Count} bảng giá · Bảng giá ngừng áp dụng không được sửa; bảng giá đang được hợp đồng sử dụng không thể xóa."
             : CurrentList is null ? "Tạo bảng giá trước khi thêm chi tiết giá."
             : !_rulesLoaded ? "Chưa tải được chi tiết giá. Chọn Làm mới để thử lại."
             : !CanEditRules ? $"{CurrentList.Name}: {_rules.Count} dòng giá · {CurrentList.StatusText} · Chỉ xem chi tiết giá."
@@ -132,7 +132,7 @@ public partial class PricingControl : BaseUserControl
         {
             if (IsPriceLists)
             {
-                if (!create && SelectedList is null) return;
+                if (!create && SelectedList?.Status != "Active") return;
                 using var form = new PriceListForm(_api, create ? null : SelectedList);
                 if (form.ShowDialog(FindForm()) == DialogResult.OK) await LoadAsync(form.SavedId);
             }

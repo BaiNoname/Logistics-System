@@ -17,11 +17,11 @@ public class ContractApiService(ApiConnection connection)
     public Task DeleteContractAsync(int id)
         => connection.DeleteAsync<object>($"/api/contracts/{id}");
 
-    public Task CreateContractAsync(int customerId, string code, DateTime startDate, DateTime? endDate, string? terms, int? priceListId, int? tariffRuleId = null)
-        => connection.PostAsync<object>("/api/contracts", new { customerId, code, startDate, endDate, terms, priceListId, tariffRuleId });
+    public Task CreateContractAsync(int customerId, string code, DateTime startDate, DateTime? endDate, string? terms, int? priceListId, int? tariffRuleId = null, string? type = null, decimal? discountPercent = null)
+        => connection.PostAsync<object>("/api/contracts", new { customerId, code, startDate, endDate, terms, priceListId, tariffRuleId, type, discountPercent });
 
-    public async Task UpdateContractAsync(int id, int customerId, string code, DateTime startDate, DateTime? endDate, string? terms, int? priceListId, int? tariffRuleId = null)
+    public async Task UpdateContractAsync(int id, int customerId, string code, DateTime startDate, DateTime? endDate, string? terms, int? priceListId, int? tariffRuleId = null, string? type = null, decimal? discountPercent = null)
     {
-        await connection.PutAsync<object>($"/api/contracts/{id}", new { customerId, code, startDate, endDate, terms, priceListId, tariffRuleId });
+        await connection.PutAsync<object>($"/api/contracts/{id}", new { customerId, code, startDate, endDate, terms, priceListId, tariffRuleId, type, discountPercent });
     }
 }

@@ -14,6 +14,44 @@ public class PayrollController(IPayrollService service) : ControllerBase
     private string Actor => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
     private ActionResult<PayrollResult> Result(PayrollResult result) => result.Success ? Ok(result) : BadRequest(result);
 
+    [HttpPost("months/generate")]
+    [Authorize(Roles = "Admin,Accountant")]
+    public async Task<ActionResult<PayrollResult>> GenerateMonth(GenerateMonthRequest request)
+        => Result(await service.GenerateMonthAsync(request, Actor));
+
+    [HttpGet("kpi-policies")]
+    [Authorize(Roles = "Admin,Accountant")]
+    public async Task<ActionResult<List<KpiPolicyDto>>> GetPolicies() => Ok(await service.GetKpiPoliciesAsync());
+
+    [HttpPut("kpi-policies")]
+    [Authorize(Roles = "Admin")]
+    public async Task<ActionResult<PayrollResult>> SavePolicy(SaveKpiPolicyRequest request)
+        => Result(await service.SaveKpiPolicyAsync(request, Actor));
+
+    [HttpGet("monthly-adjustments")]
+    [Authorize(Roles = "Admin,Accountant")]
+    public async Task<ActionResult<List<MonthlyAdjustmentDto>>> GetAdjustments([FromQuery, Range(2000, 2100)] int year,
+        [FromQuery, Range(1, 12)] int month) => Ok(await service.GetMonthlyAdjustmentsAsync(year, month));
+
+    [HttpPost("monthly-adjustments")]
+    [Authorize(Roles = "Admin,Accountant")]
+    public async Task<ActionResult<PayrollResult>> AddAdjustment(MonthlyAdjustmentRequest request)
+        => Result(await service.AddMonthlyAdjustmentAsync(request, Actor));
+
+    [HttpDelete("monthly-adjustments/{id:int}")]
+    [Authorize(Roles = "Admin,Accountant")]
+    public async Task<ActionResult<PayrollResult>> DeleteAdjustment(int id)
+        => Result(await service.DeleteMonthlyAdjustmentAsync(id, Actor));
+
+    [HttpGet("kpi-rates")]
+    [Authorize(Roles = "Admin,Accountant")]
+    public async Task<ActionResult<List<DriverKpiRateDto>>> GetKpiRates() => Ok(await service.GetKpiRatesAsync());
+
+    [HttpPut("kpi-rates")]
+    [Authorize(Roles = "Admin")]
+    public async Task<ActionResult<PayrollResult>> SaveKpiRates(List<DriverKpiRateDto> request)
+        => Result(await service.SaveKpiRatesAsync(request, Actor));
+
     [HttpGet("employees")]
     [Authorize(Roles = "Admin,Accountant,Dispatcher")]
     public async Task<ActionResult<List<PayrollEmployeeDto>>> GetEmployees(
@@ -32,38 +70,6 @@ public class PayrollController(IPayrollService service) : ControllerBase
     [HttpGet("periods")]
     [Authorize(Roles = "Admin,Accountant,Dispatcher")]
     public async Task<ActionResult<List<PayrollPeriodDto>>> GetPeriods() => Ok(await service.GetPeriodsAsync());
-
-    [HttpPost("periods")]
-    [Authorize(Roles = "Admin,Accountant")]
-    public async Task<ActionResult<PayrollResult>> CreatePeriod(PeriodRequest request)
-        => Result(await service.CreatePeriodAsync(request, Actor));
-
-    [HttpGet("periods/{periodId:int}/attendance")]
-    [Authorize(Roles = "Admin,Accountant,Dispatcher")]
-    public async Task<ActionResult<List<AttendanceDto>>> GetAttendance(int periodId) => Ok(await service.GetAttendanceAsync(periodId));
-
-    [HttpGet("periods/{periodId:int}/driver-attendance/{employeeId:int}")]
-    [Authorize(Roles = "Admin,Accountant,Dispatcher")]
-    public async Task<ActionResult<DriverPayrollDaysDto>> GetDriverWorkDays(int periodId, int employeeId)
-    {
-        var days = await service.GetDriverWorkDaysAsync(periodId, employeeId);
-        return days is null ? NotFound() : Ok(days);
-    }
-
-    [HttpPut("periods/{periodId:int}/driver-attendance/{employeeId:int}")]
-    [Authorize(Roles = "Admin,Dispatcher")]
-    public async Task<ActionResult<PayrollResult>> ImportDriverAttendance(int periodId, int employeeId, DriverAttendanceRequest request)
-        => Result(await service.ImportDriverAttendanceAsync(periodId, employeeId, request, Actor));
-
-    [HttpPut("periods/{periodId:int}/attendance/{employeeId:int}")]
-    [Authorize(Roles = "Admin,Dispatcher")]
-    public async Task<ActionResult<PayrollResult>> SaveAttendance(int periodId, int employeeId, AttendanceRequest request)
-        => Result(await service.SaveAttendanceAsync(periodId, employeeId, request, Actor));
-
-    [HttpPost("periods/{periodId:int}/attendance/{employeeId:int}/confirm")]
-    [Authorize(Roles = "Admin,Dispatcher")]
-    public async Task<ActionResult<PayrollResult>> ConfirmAttendance(int periodId, int employeeId, RevisionRequest request)
-        => Result(await service.ConfirmAttendanceAsync(periodId, employeeId, request, Actor));
 
     [HttpGet("periods/{periodId:int}/slips")]
     [Authorize(Roles = "Admin,Accountant")]

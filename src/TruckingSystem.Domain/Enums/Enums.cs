@@ -2,6 +2,12 @@ namespace TruckingSystem.Domain.Enums;
 
 public enum EmployeeStatus { Active, OnLeave, Terminated }
 
+// ---- Chấm công QR (Mobile) ----
+public enum AttendanceScanAction { None, CheckIn, CheckOut }
+public enum AttendanceScanResult { Accepted, Rejected }
+public enum AttendanceAdjustmentReason { ForgotScan, GpsError, NetworkError, WrongRecord, OffSiteWork, Other }
+public enum AttendanceAdjustmentStatus { Pending, Approved, Rejected }
+
 public enum TransportOrderStatus { Draft, Confirmed, InProgress, Done, Cancelled }
 
 public enum TripStatus { Planned, InProgress, Completed, Cancelled, PendingConfirmation }

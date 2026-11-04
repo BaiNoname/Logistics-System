@@ -42,6 +42,11 @@ public partial class PriceListForm : BaseForm
             _datePanel.Visible = false;
             _priceListStatusPanel.Visible = false;
         }
+        if (!copy && item is not null && item.Status != "Active")
+        {
+            _fields.Enabled = _save.Enabled = false;
+            _status.Text = "Không thể sửa bảng giá đã ngừng áp dụng. Có thể sao chép để tạo bảng giá mới.";
+        }
         _save.Click += async (_, _) => await SaveAsync();
         Shown += (_, _) => _name.Focus();
         FormClosing += (_, e) => e.Cancel = _saving;
@@ -49,7 +54,7 @@ public partial class PriceListForm : BaseForm
 
     private async Task SaveAsync()
     {
-        if (_saving) return;
+        if (_saving || !_copy && _item is not null && _item.Status != "Active") return;
         _errors.Clear();
         var today = DateTime.UtcNow.AddHours(7).Date;
         var effectiveDate = _copy ? today : _date.Value.Date;

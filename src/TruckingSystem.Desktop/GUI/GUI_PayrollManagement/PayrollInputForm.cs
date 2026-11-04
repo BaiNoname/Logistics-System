@@ -10,6 +10,38 @@ public partial class PayrollInputForm : BaseForm
     public PayrollInputForm()
     {
         InitializeComponent();
+        foreach (var (property, title, format) in new[]
+        {
+            ("Id", "ID", ""), ("EmployeeId", "ID nhân viên", ""),
+            ("MonthlySalary", "Lương tháng", "N0"), ("Status", "Trạng thái", ""),
+            ("EffectiveFrom", "Hiệu lực từ", "dd/MM/yyyy"), ("EffectiveTo", "Hiệu lực đến", "dd/MM/yyyy"),
+            ("UpdatedAt", "Cập nhật (VN)", "dd/MM/yyyy HH:mm"), ("Reason", "Căn cứ", "")
+        })
+            SalaryHistory.Columns.Add(new DataGridViewTextBoxColumn
+            {
+                Name = property, DataPropertyName = property, HeaderText = title,
+                DefaultCellStyle = new DataGridViewCellStyle { Format = format }
+            });
+        SalaryHistory.CellFormatting += (_, e) =>
+        {
+            if (e.ColumnIndex < 0) return;
+            if (SalaryHistory.Columns[e.ColumnIndex].Name == "Status" && e.Value is string status)
+                e.Value = status switch { "Active" => "Đang áp dụng", "Pending" => "Chưa hiệu lực", "Expired" => "Hết hiệu lực", _ => status };
+            if (SalaryHistory.Columns[e.ColumnIndex].Name == "UpdatedAt" && e.Value is DateTime updated)
+            {
+                e.Value = updated.AddHours(7).ToString("dd/MM/yyyy HH:mm");
+                e.FormattingApplied = true;
+            }
+        };
+        foreach (var (grid, columns) in new[]
+        {
+            (DetailItems, new[] { ("Kind", "Khoản"), ("Amount", "Số tiền"), ("ProrateByAttendance", "Theo công"),
+                ("CalculatedAmount", "Thành tiền"), ("Reason", "Căn cứ / KPI chuyến"), ("IsAdjustment", "Điều chỉnh") }),
+            (DetailPayments, new[] { ("Date", "Ngày"), ("Amount", "Số tiền"), ("Method", "Hình thức"),
+                ("Reference", "Chứng từ"), ("RecordedBy", "Người ghi") })
+        })
+            foreach (var (property, title) in columns)
+                grid.Columns.Add(new DataGridViewTextBoxColumn { Name = property, DataPropertyName = property, HeaderText = title });
         foreach (var grid in new[] { SalaryHistory, DetailItems, DetailPayments })
         {
             grid.AutoGenerateColumns = false;
@@ -26,11 +58,8 @@ public partial class PayrollInputForm : BaseForm
         Text = title;
         var page = section switch
         {
-            PayrollInputSection.Attendance => _attendancePage,
             PayrollInputSection.Salary => _salaryPage,
-            PayrollInputSection.DriverAttendance => _driverPage,
             PayrollInputSection.Item => _itemPage,
-            PayrollInputSection.DeleteItem => _deletePage,
             PayrollInputSection.Payment => _paymentPage,
             PayrollInputSection.Details => _detailsPage,
             _ => throw new ArgumentOutOfRangeException(nameof(section))
@@ -68,6 +97,17 @@ public partial class PayrollInputForm : BaseForm
     }
 
     public void ReadOnly() => _save.Visible = false;
+
+    internal void ShowSalarySummary(string text)
+    {
+        var summary = new Label { Text = text, AutoSize = true, Dock = DockStyle.Top, Padding = new Padding(12, 8, 12, 8) };
+        _salaryPageLayout.RowCount = 3;
+        _salaryPageLayout.RowStyles.Add(new RowStyle());
+        _salaryPageLayout.SetRow(SalaryHistory, 1);
+        _salaryPageLayout.SetRow(SalaryEditor, 2);
+        _salaryPageLayout.Controls.Add(summary, 0, 0);
+        _salaryPageLayout.SetColumnSpan(summary, 2);
+    }
     internal static void SetNumber(NumericUpDown input, decimal value, decimal? maximum = null)
     {
         if (maximum.HasValue) input.Maximum = maximum.Value;
@@ -82,4 +122,4 @@ public partial class PayrollInputForm : BaseForm
     private record ChoiceItem(string Value, string Text);
 }
 
-internal enum PayrollInputSection { Attendance, Salary, DriverAttendance, Item, DeleteItem, Payment, Details }
+internal enum PayrollInputSection { Salary, Item, Payment, Details }

@@ -409,7 +409,7 @@ namespace TruckingSystem.Desktop.GUI_Shared
             {
                 try
                 {
-                    var chatBot = new ChatBotForm();
+                    var chatBot = new ChatBotForm(new ApiServices(txtServerUrl.Text.Trim()).Connection);
                     chatBot.ShowDialog();
                 }
                 catch (Exception ex)

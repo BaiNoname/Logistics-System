@@ -16,6 +16,7 @@
     <PackageReference Include="Google.Apis.Calendar.v3" Version="1.34.0.1237" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2792.45" />
+    <PackageReference Include="QRCoder" Version="1.6.0" />
   </ItemGroup>
   <ItemGroup>
     <!-- Tái dùng enum/entity từ Domain thay vì định nghĩa lại DTO trùng lặp -->

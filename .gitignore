@@ -23,7 +23,9 @@ appsettings.json
 AGENTS.md
 /tests/*
 /docs/*
+HANDOFF.md
 note.md
+IMPLEMENTATION_STATUS.md
 # ==== Log/cache khác ====
 *.log
 *.tmp
