@@ -15,6 +15,9 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
         public CreateCustomerForm()
         {
             InitializeComponent();
+            DialogFit.Enable(this, root);
+            DialogKeys.Enable(this);
+            Anim.FadeIn(this);
             btnContacts.Click += (_, _) =>
             {
                 _contactsOpen = !_contactsOpen;
@@ -30,15 +33,19 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
             });
             cboType.SelectedIndex = 0;
             ApplyDesign();
+            _ = new AddressSuggestBinder(txtAddress, () => _api); // gợi ý địa chỉ VietMap khi gõ
         }
 
         /// <summary>Quy tắc design.md: nhãn bắt buộc có *, tiêu đề khối màu Primary, chân
         /// [Quét danh thiếp] [Người liên hệ] [Đóng] [💾 Lưu khách hàng] — chỉ 1 nút chính.</summary>
         private void ApplyDesign()
         {
-            lblPhone.Text = "Số điện thoại *";
-            lblType.Text = "Loại khách hàng *";
+            lblPhone.Text = "Số điện thoại *:";
+            lblType.Text = "Loại khách hàng *:";
             FormStyle.Section(lblFieldsTitle, lblScanTitle, lblContactsTitle);
+            lblFieldsTitle.Text = "① Thông tin khách hàng";
+            lblScanTitle.Text = "② Đối chiếu danh thiếp";
+            lblContactsTitle.Text = "③ Người liên hệ";
             txtAddress.AcceptsReturn = true; // Enter trong ô địa chỉ là xuống dòng, không bấm Lưu
             FormStyle.NoTab(txtCardDetails);
 
@@ -46,7 +53,8 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
             close.Margin = new Padding(8, 0, 0, 0);
             buttonBar.SuspendLayout();
             buttonBar.Controls.Clear(); // xếp phải -> trái
-            buttonBar.Controls.AddRange(new Control[] { btnSave, close, btnContacts, btnReadWithAi });
+            buttonBar.Controls.AddRange(new Control[] { btnContacts, btnReadWithAi });
+            FormStyle.EditorFooter(this, close, btnSave);
             buttonBar.ResumeLayout(true);
             FormStyle.SaveButton(btnSave);
             ButtonStyles.Secondary(btnContacts);
@@ -100,9 +108,9 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
             var name = new TextBox { Name = $"contactName{number}", AccessibleName = $"Họ tên người liên hệ {number}", Dock = DockStyle.Top, TabIndex = 0 };
             var phone = new TextBox { Name = $"contactPhone{number}", AccessibleName = $"Số điện thoại người liên hệ {number}", Dock = DockStyle.Top, TabIndex = 1 };
             var position = new TextBox { Name = $"contactPosition{number}", AccessibleName = $"Chức vụ người liên hệ {number}", Dock = DockStyle.Top, TabIndex = 2 };
-            panel.Controls.Add(new Label { Text = "Họ tên *", AutoSize = true, Anchor = AnchorStyles.Left }, 0, 1);
+            panel.Controls.Add(new Label { Text = "Họ tên *:", AutoSize = true, Anchor = AnchorStyles.Left }, 0, 1);
             panel.Controls.Add(name, 1, 1);
-            panel.Controls.Add(new Label { Text = "Điện thoại *", AutoSize = true, Anchor = AnchorStyles.Left }, 0, 2);
+            panel.Controls.Add(new Label { Text = "Điện thoại *:", AutoSize = true, Anchor = AnchorStyles.Left }, 0, 2);
             panel.Controls.Add(phone, 1, 2);
             panel.Controls.Add(new Label { Text = "Chức vụ", AutoSize = true, Anchor = AnchorStyles.Left }, 0, 3);
             panel.Controls.Add(position, 1, 3);

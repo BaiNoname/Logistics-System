@@ -16,6 +16,20 @@ public partial class PriceListForm : BaseForm
     public PriceListForm()
     {
         InitializeComponent();
+        _save.Text = "Lưu bảng giá";
+        Controls.Remove(_footer);
+        FormStyle.EditorFooter(this, _cancel, _save);
+        _footer.Dispose();
+        foreach (Control block in _fields.Controls)
+        {
+            block.Dock = DockStyle.Top;
+            block.TabIndex = _fields.Controls.GetChildIndex(block);
+            foreach (Control input in block.Controls)
+                input.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            FormStyle.FieldLabels(block.Controls.OfType<Label>().ToArray());
+        }
+        DialogKeys.Enable(this);
+        Anim.FadeIn(this);
     }
 
     public PriceListForm(ApiServices api, PriceListItem? item = null, bool copy = false) : this()
@@ -38,7 +52,7 @@ public partial class PriceListForm : BaseForm
             _save.Width = 200;
             _copyInfo.Text = $"Sao chép từ: {item!.Name}\nSao chép toàn bộ chi tiết giá. Bảng mới có hiệu lực từ hôm nay; bảng nguồn chuyển sang ngưng áp dụng khi lưu thành công.";
             _copyInfo.Visible = true;
-            _nameLabel.Text = "Tên bảng giá mới *";
+            _nameLabel.Text = "Tên bảng giá mới *:";
             _datePanel.Visible = false;
             _priceListStatusPanel.Visible = false;
         }

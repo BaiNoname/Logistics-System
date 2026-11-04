@@ -19,6 +19,9 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
         public CreateEmployeeForm()
         {
             InitializeComponent();
+            FormStyle.EditorFooter(this, FormStyle.NewCloseButton(this), btnSave);
+            DialogKeys.Enable(this);
+            Anim.FadeIn(this);
             dtpDateOfBirth.MaxDate = DateTime.UtcNow.AddHours(7).Date;
             dtpDateOfBirth.Checked = false;
             dtpHireDate.Value = DateTime.UtcNow.AddHours(7).Date;
@@ -32,6 +35,7 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             cboEmployeeStatus.DisplayMember = nameof(StatusOption.Text);
             cboEmployeeStatus.ValueMember = nameof(StatusOption.Value);
             Load += async (_, _) => await LoadLookupsAsync();
+            _ = new AddressSuggestBinder(txtAddress, () => _api); // gợi ý địa chỉ VietMap khi gõ
         }
 
         public CreateEmployeeForm(ApiServices api) : this()
@@ -58,7 +62,7 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             dtpTerminationDate.Value = employee.TerminationDate ?? DateTime.UtcNow.AddHours(7).Date;
             dtpTerminationDate.Checked = employee.TerminationDate.HasValue;
             Text = "Sửa thông tin nhân viên";
-            btnSave.Text = "Lưu thay đổi";
+            btnSave.Text = "💾 Lưu thay đổi";
         }
 
         private async Task LoadLookupsAsync()
@@ -87,24 +91,29 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
 
         private async void BtnSave_Click(object? sender, EventArgs e)
         {
-            if (string.IsNullOrWhiteSpace(txtCode.Text) || string.IsNullOrWhiteSpace(txtFullName.Text))
+            if (string.IsNullOrWhiteSpace(txtCode.Text))
             {
-                lblStatus.Text = "Vui lòng nhập đủ mã nhân viên và họ tên.";
+                FieldHint.Show(txtCode, lblStatus, "Vui lòng nhập mã nhân viên.");
+                return;
+            }
+            if (string.IsNullOrWhiteSpace(txtFullName.Text))
+            {
+                FieldHint.Show(txtFullName, lblStatus, "Vui lòng nhập họ tên nhân viên.");
                 return;
             }
             if (!IsValidPhoneNumber(txtPhone.Text))
             {
-                lblStatus.Text = $"Số điện thoại không hợp lệ.";
+                FieldHint.Show(txtPhone, lblStatus, "Vui lòng nhập số điện thoại hợp lệ.");
                 return;
             }
             if (cboDept.SelectedIndex == 0 || cboPos.SelectedIndex == 0)
             {
-                lblStatus.Text = "Vui lòng chọn ít nhất 1 phòng ban hoặc chức danh.";
+                FieldHint.Show(cboDept.SelectedIndex == 0 ? cboDept : cboPos, lblStatus, "Vui lòng chọn phòng ban và chức danh.");
                 return;
             }
             if (!rdoMale.Checked && !rdoFemale.Checked)
             {
-                lblStatus.Text = "Vui lòng chọn giới tính Nam hoặc Nữ.";
+                FieldHint.Show(pnlGender, lblStatus, "Vui lòng chọn giới tính Nam hoặc Nữ.");
                 return;
             }
             if (_api is null) return;
@@ -112,17 +121,17 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             if (!TruckingSystem.Domain.Entities.Employee.IsValidDateOfBirth(
                 dtpDateOfBirth.Checked ? dtpDateOfBirth.Value.Date : null, DateTime.UtcNow.AddHours(7).Date))
             {
-                lblStatus.Text = "Ngày sinh phải từ năm 1900 đến ngày hiện tại.";
+                FieldHint.Show(dtpDateOfBirth, lblStatus, "Ngày sinh phải từ năm 1900 đến ngày hiện tại.");
                 return;
             }
             if (dtpTerminationDate.Checked && dtpTerminationDate.Value.Date < dtpHireDate.Value.Date)
             {
-                lblStatus.Text = "Ngày nghỉ việc không được trước ngày vào làm.";
+                FieldHint.Show(dtpTerminationDate, lblStatus, "Ngày nghỉ việc không được trước ngày vào làm.");
                 return;
             }
             if ((string?)cboEmployeeStatus.SelectedValue == "Terminated" && !dtpTerminationDate.Checked)
             {
-                lblStatus.Text = "Vui lòng nhập ngày nghỉ việc thực tế.";
+                FieldHint.Show(dtpTerminationDate, lblStatus, "Vui lòng nhập ngày nghỉ việc thực tế.");
                 return;
             }
             btnSave.Enabled = false;

@@ -22,56 +22,79 @@ public class AccountEditorForm : BaseForm
     public AccountEditorForm(List<string> roles, AccountItem? account)
     {
         Text = account is null ? "Thêm tài khoản" : "Sửa tài khoản và phân quyền";
-        ClientSize = new Size(470, account is null ? 550 : 480);
-        MinimumSize = Size;
-        MaximumSize = Size;
-        FormBorderStyle = FormBorderStyle.FixedDialog;
+        ClientSize = new Size(520, account is null ? 640 : 570);
+        MinimumSize = new Size(440, 400);
         MaximizeBox = false;
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterParent;
-        BackColor = Color.White;
-
-        AddField("Tên đăng nhập *", _username, 22);
-        AddField("Email", _email, 92);
-        if (account is null) AddField("Mật khẩu *", _password, 162);
+        BackColor = Theme.CardBg;
+        var fields = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, ColumnCount = 1, Padding = new Padding(20, 16, 20, 16) };
+        fields.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        void Section(string text)
+        {
+            var label = new Label { Text = text, AutoSize = true, Margin = new Padding(3, 10, 3, 6) };
+            FormStyle.Section(label);
+            fields.Controls.Add(label);
+        }
+        void Field(string text, Control input)
+        {
+            fields.Controls.Add(new Label { Text = text, AutoSize = true, ForeColor = Theme.TextPrimary, Margin = new Padding(3, 6, 3, 4) });
+            input.Dock = DockStyle.Top;
+            input.Margin = new Padding(3, 0, 12, 6);
+            input.AccessibleName = text.TrimEnd(':');
+            input.TabIndex = fields.Controls.Count;
+            fields.Controls.Add(input);
+        }
+        Section("① Thông tin đăng nhập");
+        Field("Tên đăng nhập *:", _username);
+        Field("Email:", _email);
+        if (account is null) Field("Mật khẩu *:", _password);
         else
         {
             _username.Text = account.Username;
             _username.ReadOnly = true;
+            _username.TabStop = false;
             _email.Text = account.Email ?? "";
             _active.Checked = account.IsActive;
         }
-
-        var roleTop = account is null ? 238 : 168;
-        Controls.Add(new Label { Text = "Vai trò *", Left = 24, Top = roleTop, Width = 400, ForeColor = Theme.TextSecondary });
-        _roles.SetBounds(24, roleTop + 24, 420, 150);
+        Section("② Quyền truy cập");
+        _roles.Height = 150;
+        Field("Vai trò *:", _roles);
         foreach (var role in roles)
             _roles.Items.Add(role, account?.Roles.Contains(role, StringComparer.OrdinalIgnoreCase) == true);
-        Controls.Add(_roles);
-
-        _active.Left = 24;
-        _active.Top = roleTop + 190;
-        Controls.Add(_active);
-
+        _active.TabIndex = fields.Controls.Count;
+        fields.Controls.Add(_active);
+        var status = new Label { AutoSize = true, Dock = DockStyle.Fill, ForeColor = Theme.Danger };
+        _roles.ItemCheck += (_, _) => { FieldHint.Clear(_roles); status.Text = ""; };
+        fields.Controls.Add(status);
+        var scroll = new Panel { Dock = DockStyle.Fill, AutoScroll = true };
+        scroll.Controls.Add(fields);
+        Controls.Add(scroll);
         var save = Theme.MakePrimaryButton("Lưu tài khoản", 150);
-        save.SetBounds(294, roleTop + 228, 150, 38);
+        FormStyle.EditorFooter(this, FormStyle.NewCloseButton(this), save);
+        DialogKeys.Enable(this, save);
+        Anim.FadeIn(this);
         save.Click += (_, _) =>
         {
-            if (string.IsNullOrWhiteSpace(Username) || (account is null && string.IsNullOrWhiteSpace(Password)) || Roles.Length == 0)
+            if (string.IsNullOrWhiteSpace(Username))
             {
-                MessageBox.Show(this, "Nhập tên đăng nhập, mật khẩu và chọn ít nhất một vai trò.", "Thiếu thông tin", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                FieldHint.Show(_username, status, "Vui lòng nhập tên đăng nhập.");
+                return;
+            }
+            if (account is null && string.IsNullOrWhiteSpace(Password))
+            {
+                FieldHint.Show(_password, status, "Vui lòng nhập mật khẩu.");
+                return;
+            }
+            if (Roles.Length == 0)
+            {
+                FieldHint.Show(_roles, status, "Vui lòng chọn ít nhất một vai trò.");
                 return;
             }
             DialogResult = DialogResult.OK;
         };
-        Controls.Add(save);
+
         AcceptButton = save;
     }
 
-    private void AddField(string label, TextBox input, int top)
-    {
-        Controls.Add(new Label { Text = label, Left = 24, Top = top, Width = 420, ForeColor = Theme.TextSecondary });
-        input.SetBounds(24, top + 24, 420, 27);
-        Controls.Add(input);
-    }
 }

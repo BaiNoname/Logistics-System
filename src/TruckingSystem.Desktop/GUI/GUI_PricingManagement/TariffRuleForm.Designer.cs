@@ -17,7 +17,7 @@ partial class TariffRuleForm
     private void InitializeComponent()
     {
         components = new System.ComponentModel.Container();
-        _fields = new FlowLayoutPanel();
+        _fields = new TableLayoutPanel();
         _status = new Label();
         _errors = new ErrorProvider(components);
         _save = new Button();
@@ -45,8 +45,9 @@ partial class TariffRuleForm
         _fields.Name = "_fields";
         _fields.Dock = DockStyle.Fill;
         _fields.AutoScroll = true;
-        _fields.FlowDirection = FlowDirection.TopDown;
-        _fields.WrapContents = false;
+        _fields.ColumnCount = 1;
+        _fields.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+
         _fields.Padding = new Padding(24);
         _status.Name = "_status";
         _status.AutoSize = true;
@@ -193,7 +194,7 @@ partial class TariffRuleForm
 
     #endregion
 
-    private FlowLayoutPanel _fields = null!;
+    private TableLayoutPanel _fields = null!;
     private Label _status = null!;
     private ErrorProvider _errors = null!;
     private Button _save = null!;

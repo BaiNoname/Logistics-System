@@ -56,8 +56,12 @@ partial class InvoiceDetailForm
         root.Controls.Add(lblNote, 0, 2);
         root.Controls.Add(gridLines, 0, 3);
         root.Controls.Add(lblTotal, 0, 4);
-        root.Controls.Add(buttons, 0, 5);
         Controls.Add(root);
+        ButtonStyles.Footer(this, null, close);
+        buttons.Dispose();
+        DialogFit.Enable(this, root);
+        DialogKeys.Enable(this);
+        Anim.FadeIn(this);
         CancelButton = close;
         ResumeLayout(true);
     }

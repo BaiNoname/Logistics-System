@@ -66,6 +66,23 @@ namespace TruckingSystem.Desktop.Common
             status.Text = text;
         }
 
+        public static void EditorFooter(Form form, Button close, Button save)
+        {
+            SaveButton(save);
+            CloseButton(form, close);
+            save.AutoSize = true;
+            save.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+            save.MinimumSize = new Size(
+                Math.Max(form.LogicalToDeviceUnits(150), TextRenderer.MeasureText(save.Text, save.Font).Width + form.LogicalToDeviceUnits(32)),
+                form.LogicalToDeviceUnits(38));
+            close.MinimumSize = new Size(form.LogicalToDeviceUnits(96), form.LogicalToDeviceUnits(38));
+            ButtonStyles.Footer(form, new Label
+            {
+                Text = "* Trường bắt buộc", AutoSize = true,
+                Font = Theme.FontSmall, ForeColor = Theme.TextSecondary,
+            }, close, save);
+        }
+
         public static void NoTab(params Control[] controls)
         {
             foreach (var c in controls) c.TabStop = false;

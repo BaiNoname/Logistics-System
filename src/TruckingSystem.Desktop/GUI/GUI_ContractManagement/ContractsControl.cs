@@ -17,6 +17,7 @@ public partial class ContractsControl : BaseUserControl
     {
         InitializeComponent();
         Theme.StyleGrid(grid);
+        GridDecor.Pills(grid, "Trạng_thái", (text, _) => GridDecor.StatusTone(text));
         var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 4 };
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -52,6 +53,7 @@ public partial class ContractsControl : BaseUserControl
         layout.Controls.Add(lblStatus, 0, 2);
         layout.Controls.Add(grid, 0, 3);
         Controls.Add(layout);
+        Load += (_, _) => Theme.UniformButtons(toolbar);
         UpdateActions();
         Load += async (_, _) => await LoadAsync();
     }

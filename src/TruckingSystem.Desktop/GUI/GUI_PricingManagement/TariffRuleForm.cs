@@ -14,6 +14,20 @@ public partial class TariffRuleForm : BaseForm
     public TariffRuleForm()
     {
         InitializeComponent();
+        _save.Text = "Lưu dòng giá";
+        Controls.Remove(_footer);
+        FormStyle.EditorFooter(this, _cancel, _save);
+        _footer.Dispose();
+        foreach (Control block in _fields.Controls)
+        {
+            block.Dock = DockStyle.Top;
+            block.TabIndex = _fields.Controls.GetChildIndex(block);
+            foreach (Control input in block.Controls)
+                input.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            FormStyle.FieldLabels(block.Controls.OfType<Label>().ToArray());
+        }
+        DialogKeys.Enable(this);
+        Anim.FadeIn(this);
         _perKm.Maximum = _perTon.Maximum = TariffRule.MaximumPrice;
         // Chân cửa sổ chuẩn: [Đóng] [💾 Lưu].
         FormStyle.SaveButton(_save);

@@ -15,8 +15,37 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
         public ManageDriverScheduleForm()
         {
             InitializeComponent();
+            BackColor = Theme.CardBg;
+            MinimumSize = new Size(620, 440);
+            FormBorderStyle = FormBorderStyle.Sizable;
+            var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 4, Padding = new Padding(20, 16, 20, 16) };
+            layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+            layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            lblTitle.Text = "Lịch làm việc";
+            lblTitle.Font = Theme.FontSectionTitle;
+            var bar = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, WrapContents = true };
+            bar.Controls.AddRange(new Control[] { lblShiftDate, dtShiftDate, lblShiftType, cboShiftType, btnAddShift });
+            btnAddShift.Height = 38;
+            ButtonStyles.Primary(btnAddShift);
+            grid.Dock = DockStyle.Fill;
+            lblStatus.Dock = DockStyle.Fill;
+            layout.Controls.Add(lblTitle, 0, 0);
+            layout.Controls.Add(bar, 0, 1);
+            layout.Controls.Add(grid, 0, 2);
+            layout.Controls.Add(lblStatus, 0, 3);
+            Controls.Add(layout);
+            ButtonStyles.DangerLink(btnDeleteShift);
+            btnDeleteShift.AutoSize = true;
+            btnDeleteShift.Height = 38;
+            ButtonStyles.Footer(this, btnDeleteShift, FormStyle.NewCloseButton(this));
+            DialogKeys.Enable(this);
+            Anim.FadeIn(this);
             Theme.StyleGrid(grid);
             cboShiftType.Items.AddRange(new object[] { "Morning", "Afternoon", "Night", "FullDay" });
+            cboShiftType.FormattingEnabled = true;
+            cboShiftType.Format += (_, e) => e.Value = TranslateShift(e.ListItem?.ToString() ?? "");
             cboShiftType.SelectedIndex = 0;
             dtShiftDate.Value = DateTime.Today;
         }

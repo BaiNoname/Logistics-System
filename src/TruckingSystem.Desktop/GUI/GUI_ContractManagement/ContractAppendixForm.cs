@@ -16,7 +16,7 @@ public class ContractAppendixForm : BaseForm
     private readonly Label _prices = new() { AutoSize = true, MaximumSize = new Size(650, 0), ForeColor = Theme.TextSecondary, AccessibleName = "Đơn giá vận chuyển" };
     private readonly Label _status = new() { AutoSize = true, MaximumSize = new Size(650, 0), ForeColor = Theme.Danger };
     private readonly Button _save = Theme.MakePrimaryButton("Lưu", 100);
-    private readonly FlowLayoutPanel _fields = new() { Dock = DockStyle.Fill, AutoScroll = true, FlowDirection = FlowDirection.TopDown, WrapContents = false, Padding = new Padding(24) };
+    private readonly TableLayoutPanel _fields = new() { Dock = DockStyle.Fill, AutoScroll = true, ColumnCount = 1, RowCount = 8, Padding = new Padding(20, 16, 20, 16) };
     private bool _saving;
     private List<AppendixTariffOption> _tariffRules = new();
 
@@ -29,18 +29,30 @@ public class ContractAppendixForm : BaseForm
         Text = item is null ? "Thêm phụ lục hợp đồng" : "Sửa phụ lục hợp đồng";
         ClientSize = new Size(720, 670);
         BackColor = Theme.CardBg;
-        FormBorderStyle = FormBorderStyle.FixedDialog;
+        MinimumSize = new Size(520, 460);
         MaximizeBox = MinimizeBox = false;
         StartPosition = FormStartPosition.CenterParent;
+        _fields.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        for (var row = 0; row < 8; row++) _fields.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        void Field(string label, Control input)
+        {
+            var block = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, ColumnCount = 1, Margin = new Padding(0, 0, 0, 8) };
+            block.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            block.Controls.Add(new Label { Text = label, AutoSize = true, ForeColor = Theme.TextPrimary }, 0, 0);
+            input.Dock = DockStyle.Top;
+            block.Controls.Add(input, 0, 1);
+            block.TabIndex = _fields.Controls.Count;
+            _fields.Controls.Add(block);
+        }
         _code.Text = item?.Code ?? "";
         _issue.Value = item?.IssueDate ?? DateTime.UtcNow.AddHours(7).Date;
         _effective.Value = item?.EffectiveDate ?? DateTime.UtcNow.AddHours(7).Date;
-        _fields.Controls.Add(Theme.MakeLabeledInput("Mã phụ lục *", _code, 650));
-        _fields.Controls.Add(Theme.MakeLabeledInput("Mã hợp đồng *", _contract, 650));
-        _fields.Controls.Add(Theme.MakeLabeledInput("Ngày lập *", _issue, 650));
-        _fields.Controls.Add(Theme.MakeLabeledInput("Ngày có hiệu lực *", _effective, 650));
-        _fields.Controls.Add(Theme.MakeLabeledInput("Bảng giá *", _priceList, 650));
-        _fields.Controls.Add(Theme.MakeLabeledInput("Chi tiết bảng giá *", _tariff, 650));
+        Field("Mã phụ lục *:", _code);
+        Field("Mã hợp đồng *:", _contract);
+        Field("Ngày lập *:", _issue);
+        Field("Ngày có hiệu lực *:", _effective);
+        Field("Bảng giá *:", _priceList);
+        Field("Chi tiết bảng giá *:", _tariff);
         _fields.Controls.Add(_prices);
         _fields.Controls.Add(_status);
         _priceList.SelectedIndexChanged += (_, _) => BindTariffRules();
@@ -50,15 +62,15 @@ public class ContractAppendixForm : BaseForm
             _prices.Text = (_tariff.SelectedItem as AppendixTariffOption)?.Details ?? "";
             UpdateSaveEnabled();
         };
-        var footer = new FlowLayoutPanel { Dock = DockStyle.Bottom, Height = 68, Padding = new Padding(24, 10, 24, 10), FlowDirection = FlowDirection.RightToLeft };
         var cancel = Theme.MakeSecondaryButton("Đóng", 100);
         cancel.DialogResult = DialogResult.Cancel;
         _save.Text = "Lưu phụ lục";
         _save.Width = 150;
         FormStyle.SaveButton(_save); // chân [Đóng] [💾 Lưu phụ lục]
-        footer.Controls.AddRange(new Control[] { _save, cancel });
         Controls.Add(_fields);
-        Controls.Add(footer);
+        FormStyle.EditorFooter(this, cancel, _save);
+        DialogKeys.Enable(this);
+        Anim.FadeIn(this);
         AcceptButton = _save;
         CancelButton = cancel;
         _save.Enabled = _fields.Enabled = false;

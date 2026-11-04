@@ -144,7 +144,7 @@
             lblName.Name = "lblName";
             lblName.Size = new Size(480, 15);
             lblName.TabIndex = 0;
-            lblName.Text = "Tên khách hàng *";
+            lblName.Text = "Tên khách hàng *:";
             // 
             // txtName
             // 

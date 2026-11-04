@@ -13,4 +13,4 @@ public record InvoiceQuoteLineDto(string Description, decimal Quantity, decimal 
 public record InvoiceQuoteDto(int TransportOrderId, string ContractCode, string? AppendixCode,
     DateTime PricingDate, string VehicleType, decimal? DistanceKm, decimal WeightTons,
     decimal? EstimatedFuelLiters, decimal OtherCosts, decimal TotalAmount,
-    List<InvoiceQuoteLineDto> Lines, string? Note);
+    List<InvoiceQuoteLineDto> Lines, string? Note, bool StorageFeePending = false);

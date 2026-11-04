@@ -20,7 +20,6 @@ partial class PricingControl
         DataGridViewCellStyle _pricePerTonColumnStyle = new DataGridViewCellStyle();
         DataGridViewCellStyle _pricePerKmColumnStyle = new DataGridViewCellStyle();
         DataGridViewCellStyle _effectiveDateColumnStyle = new DataGridViewCellStyle();
-        _tabs = new TabControl();
         _listsGrid = new DataGridView();
         _rulesGrid = new DataGridView();
         _priceList = new ComboBox();
@@ -38,8 +37,8 @@ partial class PricingControl
         _vehicleTypeColumn = new DataGridViewTextBoxColumn();
         _pricePerKmColumn = new DataGridViewTextBoxColumn();
         _pricePerTonColumn = new DataGridViewTextBoxColumn();
-        _listsTab = new TabPage();
-        _rulesTab = new TabPage();
+        _listsTab = new Panel();
+        _rulesTab = new Panel();
         _rulesLayout = new TableLayoutPanel();
         _filter = new FlowLayoutPanel();
         _filterLabel = new Label();
@@ -48,7 +47,6 @@ partial class PricingControl
         _layout = new TableLayoutPanel();
         ((System.ComponentModel.ISupportInitialize)_listsGrid).BeginInit();
         ((System.ComponentModel.ISupportInitialize)_rulesGrid).BeginInit();
-        _tabs.SuspendLayout();
         _listsTab.SuspendLayout();
         _rulesTab.SuspendLayout();
         _rulesLayout.SuspendLayout();
@@ -56,10 +54,6 @@ partial class PricingControl
         _toolbar.SuspendLayout();
         _layout.SuspendLayout();
         SuspendLayout();
-        _tabs.Name = "_tabs";
-        _tabs.Dock = DockStyle.Fill;
-        _tabs.AccessibleName = "Quản lý bảng giá";
-        _tabs.SelectedIndex = 0;
         _listsGrid.Name = "_listsGrid";
         _listsGrid.Dock = DockStyle.Fill;
         _listsGrid.AccessibleName = "Danh sách bảng giá";
@@ -209,7 +203,6 @@ partial class PricingControl
         _rulesLayout.Controls.Add(_filter, 0, 0);
         _rulesLayout.Controls.Add(_rulesGrid, 0, 1);
         _rulesTab.Controls.Add(_rulesLayout);
-        _tabs.TabPages.AddRange(new TabPage[] { _listsTab, _rulesTab });
         _toolbar.Name = "_toolbar";
         _toolbar.Dock = DockStyle.Fill;
         _toolbar.AutoSize = true;
@@ -235,7 +228,8 @@ partial class PricingControl
         _layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         _layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 36));
         _layout.Controls.Add(_toolbar, 0, 0);
-        _layout.Controls.Add(_tabs, 0, 1);
+        _layout.Controls.Add(_listsTab, 0, 1);
+        _listsTab.Dock = DockStyle.Fill;
         _layout.Controls.Add(_status, 0, 2);
         BackColor = Theme.ContentBg;
         Padding = new Padding(20);
@@ -244,8 +238,6 @@ partial class PricingControl
         Name = "PricingControl";
         ((System.ComponentModel.ISupportInitialize)_listsGrid).EndInit();
         ((System.ComponentModel.ISupportInitialize)_rulesGrid).EndInit();
-        _tabs.ResumeLayout(false);
-        _tabs.PerformLayout();
         _listsTab.ResumeLayout(false);
         _listsTab.PerformLayout();
         _rulesTab.ResumeLayout(false);
@@ -264,7 +256,6 @@ partial class PricingControl
 
     #endregion
 
-    private TabControl _tabs = null!;
     private DataGridView _listsGrid = null!;
     private DataGridView _rulesGrid = null!;
     private ComboBox _priceList = null!;
@@ -282,8 +273,8 @@ partial class PricingControl
     private DataGridViewTextBoxColumn _vehicleTypeColumn = null!;
     private DataGridViewTextBoxColumn _pricePerKmColumn = null!;
     private DataGridViewTextBoxColumn _pricePerTonColumn = null!;
-    private TabPage _listsTab = null!;
-    private TabPage _rulesTab = null!;
+    private Panel _listsTab = null!;
+    private Panel _rulesTab = null!;
     private TableLayoutPanel _rulesLayout = null!;
     private FlowLayoutPanel _filter = null!;
     private Label _filterLabel = null!;

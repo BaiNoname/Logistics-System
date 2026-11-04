@@ -427,7 +427,7 @@ src/
 
 | Dịch vụ | Mục đích sử dụng |
 |---|---|
-| VietMap API | Gợi ý địa chỉ + tọa độ (thêm kho, địa điểm); tính tuyến đường thực tế (khoảng cách, thời gian); ảnh nền bản đồ cho màn xem lộ trình (Desktop) và điều hướng (app tài xế) |
+| VietMap API | Gợi ý địa chỉ + tọa độ (thêm kho, địa điểm; ô Địa chỉ của khách hàng và nhân viên); tính tuyến đường thực tế (khoảng cách, thời gian); ảnh nền bản đồ cho màn xem lộ trình (Desktop) và điều hướng (app tài xế) |
 | Google Calendar API | Đồng bộ lịch chuyến lên Google Calendar của tài xế và khách hàng, kèm link theo dõi công khai |
 | Gemini API | Đọc danh thiếp khách hàng (OCR + trích xuất trường) |
 | Cloudflare Tunnel | Đưa API từ máy chủ tại chỗ ra internet qua tên miền có HTTPS (app tài xế, trang theo dõi công khai) |
@@ -509,6 +509,8 @@ Khóa API cấu hình trong `appsettings.json` của API, không công khai tron
   - Mỗi ngày tính = m³ hàng của đơn còn trong kho cuối ngày × đơn giá **chốt lúc đổi hạn**.
   - Chỉ tính những ngày hàng thực sự còn nằm trong kho, trong khoảng khách xin dời. Mỗi ngày chỉ tính 1 lần.
   - Xem ở **Chi tiết đơn → 💰 Phí lưu kho** (tạm tính khi hàng còn trong kho, chốt khi hàng đã xuất).
+  - Khi lập hóa đơn, hệ thống cộng tổng **Chi phí khác** của các chuyến thuộc đơn và **Phí lưu kho** khách chịu. Mỗi khoản có tiền hiện thành một dòng trong bảng tính và chi tiết hóa đơn. Nhiên liệu ước tính chỉ dùng để đối chiếu.
+  - Nếu phí lưu kho còn tạm tính, chờ phí chốt rồi chọn **Tính lại** để lập hóa đơn. Hóa đơn đã lưu giữ nguyên số tiền tại thời điểm lập.
 
 ### 8.6. Đội xe & Tài xế
 - **Giấy tờ xe**: Đăng kiểm, Bảo hiểm, Phù hiệu bắt buộc. Gia hạn bằng cách thêm bản mới; không xóa bản đang là giấy tờ hợp lệ duy nhất cho chuyến chưa chạy.
@@ -775,6 +777,7 @@ Màn Chuyến → chọn chuyến → **Xem lộ trình**:
 | `dotnet ef` không chạy được | Dùng lệnh của Package Manager Console: `Add-Migration`, `Update-Database`. |
 | Xóa dữ liệu xong, mở API lại thấy dữ liệu mẫu quay về | `Seed:DemoData` đang bật → đặt `false`. |
 | Gõ địa chỉ kho / địa điểm mà không có gợi ý | Xem dòng chữ trong khung gợi ý: "Không tìm thấy" → gõ thêm phường / quận / tỉnh; "Không gọi được dịch vụ bản đồ" → kiểm tra `VietMap:RouteApiKey`, mạng, hạn mức key. |
+| Ô Địa chỉ khách hàng / nhân viên không hiện gợi ý | Gõ ít nhất 3 ký tự rồi chờ một chút. Ô này vẫn cho gõ tay khi VietMap lỗi hoặc tài khoản không có quyền tìm địa chỉ (Admin, Điều phối). Kiểm tra `VietMap:RouteApiKey` và mạng. |
 | Lưu kho / địa điểm báo "chưa có địa chỉ / tọa độ" | Chưa **bấm chọn** 1 dòng gợi ý (gõ tay không có tọa độ). Chọn xong phải thấy "✅ … (Lat, Lng)". |
 | Gọi API báo 403 | Tài khoản không đúng vai trò của màn hình đó (mục 8.11). |
 | Qua tên miền gặp 401/404 hoặc giao diện cũ, localhost thì đúng | Có máy khác (chạy code cũ) cũng đang chạy cùng tunnel → tắt cloudflared ở máy đó. |
@@ -804,7 +807,7 @@ Màn Chuyến → chọn chuyến → **Xem lộ trình**:
 - Đưa database và kho video lên đám mây (PostgreSQL managed; Cloudflare R2 / S3). Code đã tách `IVideoStorage` nên chỉ cần thêm 1 lớp cài đặt mới.
 - Chính sách lưu video có thời hạn (VD 30 ngày, giữ lại chuyến có sự cố); chỉ gửi video khi có Wi-Fi hoặc chỉ gửi đoạn quanh thời điểm sự cố.
 - Giao từng phần theo tồn kho thực tế; tối ưu ghép đơn cho cùng 1 xe.
-- Đưa phí lưu kho vào hóa đơn tự động; tính KPI đúng hạn chỉ theo các lần khách xin dời hạn.
+- Tính KPI đúng hạn chỉ theo các lần khách xin dời hạn.
 
 ---
 
@@ -957,10 +960,18 @@ The self-check covers pricing and the conversation with fake AI/maps/vector retr
 
 ### Bảng phụ phí
 
-Mục **Phụ phí** trong nhóm Kinh doanh quản lý các bảng độc lập với bảng giá xe. Admin/Kế toán tạo nháp, nhập tên, ngày và hai dòng tỷ lệ (dễ vỡ, nguy hiểm). Có thể sao chép một bảng, sửa bản nháp rồi công bố. Điều phối chỉ xem. Ngày công bố có hiệu lực sớm nhất từ ngày mai theo giờ Việt Nam, mỗi ngày chỉ một bảng được công bố. Bảng đã công bố bị khóa.
+Mục **Phụ phí** trong nhóm Kinh doanh quản lý các bảng độc lập với bảng giá xe. Admin/Kế toán nhập tên, ngày và hai dòng tỷ lệ (dễ vỡ, nguy hiểm), chọn **Lưu và áp dụng** để xác nhận và khóa bảng ngay trong một lần lưu. Có thể sao chép một bảng sang ngày hiệu lực mới; bản sao cũng được xác nhận khi lưu. Điều phối chỉ xem. Ngày hiệu lực sớm nhất từ ngày mai theo giờ Việt Nam, mỗi ngày chỉ một bảng được xác nhận. Bảng chỉ dùng tính phí từ ngày hiệu lực. Bản nháp cũ được giữ nguyên; mở **Chi tiết**, kiểm tra thông tin và chọn **Lưu và áp dụng** để xác nhận, không tự động kích hoạt dữ liệu cũ.
 
 Hóa đơn chọn bảng đã công bố theo ngày bắt đầu chuyến đầu của đơn; báo giá chọn theo ngày tra cứu. Mỗi loại phí bằng tỷ lệ nhân tổng cước km và tấn trước chiết khấu, làm tròn hai chữ số và thu một lần trên toàn đơn. Trước kỳ đầu, hệ thống dùng phí cố định lịch sử. Chi tiết bảng giá xe chỉ quản lý giá/km và giá/tấn.
 
-Áp migration **SplitSurchargeLists** trước khi khởi động bản API mới và cập nhật Desktop cùng đợt. Migration chuyển mỗi kỳ cũ thành một bảng đã công bố với hai dòng, bảo toàn hóa đơn đã lưu. Nếu chưa có kỳ nào, người quản lý tạo và công bố kỳ đầu. API mới dùng GET/POST `/api/surcharge-lists`, PUT theo ID, POST theo ID với hậu tố `/copy` hoặc `/publish`. Endpoint đọc kỳ cũ tiếp tục trả bảng đã công bố; endpoint ghi cũ trả HTTP 410.
+Áp migration **SplitSurchargeLists** trước khi khởi động bản API mới và cập nhật Desktop cùng đợt. Migration chuyển mỗi kỳ cũ thành một bảng đã công bố với hai dòng, bảo toàn hóa đơn đã lưu. Nếu chưa có kỳ nào, người quản lý tạo và lưu kỳ đầu. API dùng GET/POST `/api/surcharge-lists`, PUT theo ID và POST theo ID với hậu tố `/copy`; POST, PUT và sao chép đều xác nhận bảng trong cùng lần lưu, trả `Published = true`. Giữ nguyên cấu trúc request/response và endpoint `/publish` cho bản nháp cũ, nhưng Desktop không còn bước công bố riêng. Thay đổi luồng này không cần migration mới. Endpoint đọc kỳ cũ tiếp tục trả bảng đã công bố; endpoint ghi cũ trả HTTP 410.
+
+Kiểm tra luồng lưu phụ phí: `dotnet run --project tools/SurchargeSelfCheck -c Release`. Kiểm tra form tạo/sao chép/nháp cũ, lỗi API và quyền chỉ xem: `dotnet run --project tools/BusinessDesignSelfCheck -c Release` (Windows).
 
 Chạy `dotnet run --project tools/FreightQuoteSelfCheck` và `dotnet run --project tools/ContractSelfCheck` để kiểm tra.
+
+### Giao diện nhân sự và quản trị
+
+Nhân viên, Bảng lương, Chấm công QR, Quản lý tài khoản và Hệ thống áp dụng `design.md`: nút theo bốn theme, bảng sáng, nhãn trạng thái và form có chân Lưu/Đóng cố định. Ô tiền lương/chi trả/cộng trừ dùng quy ước chung: gõ `500` thành `500.000 đ`, hoặc nhập đủ số đồng. Cấu hình KPI mới không điền sẵn K; nhập theo cấu hình được duyệt. Các quyền và API giữ nguyên.
+
+Kiểm tra form và các trường hợp nhập thiếu với HTTP giả lập trên Windows: `dotnet run --project tools/PeopleDesignSelfCheck -c Release -p:UseSharedCompilation=false -p:BuildInParallel=false -p:NuGetAudit=false`. Ảnh render nằm trong thư mục `bin/Release/net8.0-windows` của self-check. Kiểm tra hồi quy gợi ý địa chỉ: `dotnet run --project tools/AddressSuggestSelfCheck -c Release`.

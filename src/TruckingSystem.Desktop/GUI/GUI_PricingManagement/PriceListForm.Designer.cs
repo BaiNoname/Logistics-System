@@ -17,7 +17,7 @@ partial class PriceListForm
     private void InitializeComponent()
     {
         components = new System.ComponentModel.Container();
-        _fields = new FlowLayoutPanel();
+        _fields = new TableLayoutPanel();
         _status = new Label();
         _errors = new ErrorProvider(components);
         _save = new Button();
@@ -43,8 +43,9 @@ partial class PriceListForm
         _fields.Name = "_fields";
         _fields.Dock = DockStyle.Fill;
         _fields.AutoScroll = true;
-        _fields.FlowDirection = FlowDirection.TopDown;
-        _fields.WrapContents = false;
+        _fields.ColumnCount = 1;
+        _fields.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+
         _fields.Padding = new Padding(24);
         _status.Name = "_status";
         _status.AutoSize = true;
@@ -110,7 +111,7 @@ partial class PriceListForm
         _namePanel.Size = new Size(430, 56);
         _namePanel.Margin = new Padding(0, 0, 0, 8);
         _nameLabel.Name = "_nameLabel";
-        _nameLabel.Text = "Tên bảng giá *";
+        _nameLabel.Text = "Tên bảng giá *:";
         _nameLabel.AutoSize = true;
         _nameLabel.Font = Theme.FontSmall;
         _nameLabel.ForeColor = Theme.TextSecondary;
@@ -124,7 +125,7 @@ partial class PriceListForm
         _datePanel.Size = new Size(430, 56);
         _datePanel.Margin = new Padding(0, 0, 0, 8);
         _dateLabel.Name = "_dateLabel";
-        _dateLabel.Text = "Ngày hiệu lực *";
+        _dateLabel.Text = "Ngày hiệu lực *:";
         _dateLabel.AutoSize = true;
         _dateLabel.Font = Theme.FontSmall;
         _dateLabel.ForeColor = Theme.TextSecondary;
@@ -138,7 +139,7 @@ partial class PriceListForm
         _priceListStatusPanel.Size = new Size(430, 56);
         _priceListStatusPanel.Margin = new Padding(0, 0, 0, 8);
         _priceListStatusLabel.Name = "_priceListStatusLabel";
-        _priceListStatusLabel.Text = "Trạng thái *";
+        _priceListStatusLabel.Text = "Trạng thái *:";
         _priceListStatusLabel.AutoSize = true;
         _priceListStatusLabel.Font = Theme.FontSmall;
         _priceListStatusLabel.ForeColor = Theme.TextSecondary;
@@ -169,7 +170,7 @@ partial class PriceListForm
 
     #endregion
 
-    private FlowLayoutPanel _fields = null!;
+    private TableLayoutPanel _fields = null!;
     private Label _status = null!;
     private ErrorProvider _errors = null!;
     private Button _save = null!;

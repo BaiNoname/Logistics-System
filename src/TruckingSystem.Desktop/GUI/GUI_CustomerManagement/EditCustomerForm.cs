@@ -15,6 +15,9 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
         public EditCustomerForm()
         {
             InitializeComponent();
+            DialogFit.Enable(this, root);
+            DialogKeys.Enable(this);
+            Anim.FadeIn(this);
             // Hiện tiếng Việt (khớp danh sách khách hàng), gửi đúng mã cho server.
             cboType.Items.AddRange(new object[]
             {
@@ -22,16 +25,19 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
                 new ComboOption("Company", "Doanh nghiệp"),
             });
             ApplyDesign();
+            _ = new AddressSuggestBinder(txtAddress, () => _api); // gợi ý địa chỉ VietMap khi gõ
         }
 
         /// <summary>Quy tắc design.md: nhãn bắt buộc có *, chân [Đóng] [💾 Lưu thay đổi], Esc = đóng, Enter = lưu.</summary>
         private void ApplyDesign()
         {
-            lblPhone.Text = "Số điện thoại *";
-            lblType.Text = "Loại khách hàng *";
+            lblPhone.Text = "Số điện thoại *:";
+            lblType.Text = "Loại khách hàng *:";
             var close = FormStyle.NewCloseButton(this);
             close.Margin = new Padding(8, 0, 0, 0);
-            buttonBar.Controls.Add(close); // xếp phải -> trái: [Đóng] [Lưu]
+            root.Controls.Remove(buttonBar);
+            FormStyle.EditorFooter(this, close, btnSave);
+            buttonBar.Dispose();
             FormStyle.SaveButton(btnSave);
             AcceptButton = btnSave;
         }

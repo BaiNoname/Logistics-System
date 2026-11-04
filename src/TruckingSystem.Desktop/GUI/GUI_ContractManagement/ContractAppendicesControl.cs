@@ -48,6 +48,7 @@ public class ContractAppendicesControl : BaseUserControl
         _grid.CellDoubleClick += async (_, e) => { if (e.RowIndex >= 0) await EditAsync(false); };
         Load += async (_, _) => await LoadAsync();
         UpdateActions();
+        Load += (_, _) => Theme.UniformButtons(toolbar);
     }
 
     private void UpdateActions()

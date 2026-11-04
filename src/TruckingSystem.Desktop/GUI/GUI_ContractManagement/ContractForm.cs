@@ -29,28 +29,39 @@ public class ContractForm : BaseForm
         _readOnly = readOnly;
         Text = readOnly ? "Chi tiết hợp đồng" : contract is null ? "Thêm hợp đồng mới" : "Sửa hợp đồng";
         ClientSize = new Size(760, 640);
-        FormBorderStyle = FormBorderStyle.FixedDialog;
+        BackColor = Theme.CardBg;
+        MinimumSize = new Size(600, 460);
         MaximizeBox = false;
         StartPosition = FormStartPosition.CenterParent;
 
         var layout = new TableLayoutPanel
         {
-            Dock = DockStyle.Fill, Padding = new Padding(24), ColumnCount = 2, RowCount = 10,
+            Dock = DockStyle.Fill, Padding = new Padding(20, 16, 20, 16), ColumnCount = 2, RowCount = 11,
+            AutoScroll = true,
         };
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 36));
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 64));
-        for (var i = 0; i < 10; i++)
-            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, i == 7 ? 100 : i == 8 ? 64 : 48));
+        for (var i = 0; i < 11; i++) layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        void Section(int row, string text)
+        {
+            var title = new Label { Text = text, AutoSize = true, Margin = new Padding(0, 10, 0, 6) };
+            FormStyle.Section(title);
+            layout.Controls.Add(title, 0, row);
+            layout.SetColumnSpan(title, 2);
+        }
+        Section(0, "① Khách hàng và thời hạn");
+        Section(5, "② Giá và điều khoản");
 
-        AddRow(layout, 0, "Mã hợp đồng *", _code);
-        AddRow(layout, 1, "Khách hàng *", _customer);
-        AddRow(layout, 2, "Ngày bắt đầu *", _start);
+        AddRow(layout, 1, "Mã hợp đồng *:", _code);
+        AddRow(layout, 2, "Khách hàng *:", _customer);
+        AddRow(layout, 3, "Ngày bắt đầu *:", _start);
         var endPanel = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false };
+        endPanel.AutoSize = true;
         _end.Width = 160;
         endPanel.Controls.Add(_hasEnd);
         endPanel.Controls.Add(_end);
         _hasEnd.CheckedChanged += (_, _) => _end.Enabled = _hasEnd.Checked;
-        AddRow(layout, 3, "Ngày kết thúc", endPanel);
+        AddRow(layout, 4, "Ngày kết thúc", endPanel);
         _type.Items.AddRange(new object[] { "Hợp đồng vận chuyển một lần", "Hợp đồng vận chuyển dài hạn" });
         _type.SelectedIndexChanged += (_, _) =>
         {
@@ -58,23 +69,22 @@ public class ContractForm : BaseForm
             _discount.Enabled = !_readOnly && _type.SelectedIndex == 1;
             if (_type.SelectedIndex != 1) _discount.Value = 0;
         };
-        AddRow(layout, 4, "Loại hợp đồng *", _type);
-        AddRow(layout, 5, "Ưu đãi (%, 0–100, chỉ HĐ dài hạn)", _discount);
-        AddRow(layout, 6, "Bảng giá công ty *", _priceList);
-        AddRow(layout, 7, "Điều khoản", _terms);
+        AddRow(layout, 6, "Loại hợp đồng *:", _type);
+        AddRow(layout, 7, "Ưu đãi (%, 0–100, chỉ HĐ dài hạn)", _discount);
+        AddRow(layout, 8, "Bảng giá công ty *:", _priceList);
+        AddRow(layout, 9, "Điều khoản", _terms);
 
-        var footer = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.RightToLeft };
         _save.Click += async (_, _) => await SaveAsync();
         var cancel = Theme.MakeSecondaryButton("Đóng", 100);
         cancel.DialogResult = DialogResult.Cancel;
         FormStyle.SaveButton(_save); // chân [Đóng] [💾 Lưu hợp đồng]
-        footer.Controls.Add(_save);
-        footer.Controls.Add(cancel);
+        _status.AutoSize = true;
         layout.SetColumnSpan(_status, 2);
-        layout.Controls.Add(_status, 0, 8);
-        layout.SetColumnSpan(footer, 2);
-        layout.Controls.Add(footer, 0, 9);
+        layout.Controls.Add(_status, 0, 10);
         Controls.Add(layout);
+        FormStyle.EditorFooter(this, cancel, _save);
+        DialogKeys.Enable(this);
+        Anim.FadeIn(this);
         AcceptButton = _save;
         CancelButton = cancel;
         FormClosing += (_, e) => e.Cancel = _saving;
@@ -88,6 +98,7 @@ public class ContractForm : BaseForm
             _priceList.DataSource = new[] { new ContractOption { Id = contract.PriceListId ?? 0, Name = contract.PriceListName ?? "Không chọn bảng giá" } };
             FillContract();
             _code.ReadOnly = _terms.ReadOnly = true;
+            FormStyle.NoTab(_code, _terms);
             _type.Enabled = _discount.Enabled = _customer.Enabled = _start.Enabled = _hasEnd.Enabled = _end.Enabled = _priceList.Enabled = false;
             _hasEnd.Visible = _end.Visible = false;
             endPanel.Controls.Add(new Label { Text = contract.EndDate?.ToString("dd/MM/yyyy") ?? "Không thời hạn", AutoSize = true, ForeColor = Theme.TextPrimary });
@@ -101,9 +112,11 @@ public class ContractForm : BaseForm
 
     private static void AddRow(TableLayoutPanel layout, int row, string label, Control input)
     {
-        var caption = new Label { Text = label, AutoSize = true, ForeColor = Theme.TextPrimary, Anchor = AnchorStyles.Left };
+        var caption = new Label { Text = label.EndsWith(':') ? label : label + ":", AutoSize = true, ForeColor = Theme.TextPrimary, Anchor = AnchorStyles.Left };
         input.Dock = DockStyle.Fill;
-        input.AccessibleName = label.TrimEnd(' ', '*');
+        input.Margin = new Padding(0, 4, 0, 4);
+        input.TabIndex = row;
+        input.AccessibleName = label.TrimEnd(' ', '*', ':');
         if (input is TextBox textBox && textBox.Multiline) input.Height = 90;
         layout.Controls.Add(caption, 0, row);
         layout.Controls.Add(input, 1, row);

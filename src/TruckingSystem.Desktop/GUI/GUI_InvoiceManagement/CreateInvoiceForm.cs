@@ -76,7 +76,7 @@ public partial class CreateInvoiceForm : BaseForm
             return;
         }
         lblStatus.ForeColor = Theme.TextSecondary;
-        lblStatus.Text = "Đang tính tiền theo hợp đồng/phụ lục...";
+        lblStatus.Text = "Đang tính tổng tiền hóa đơn...";
         try
         {
             var quote = await _api.Invoices.GetQuoteAsync(order.Id)
@@ -84,17 +84,15 @@ public partial class CreateInvoiceForm : BaseForm
             if (IsDisposed || version != _quoteVersion) return;
             if (quote.TransportOrderId != order.Id || quote.TotalAmount <= 0 || quote.TotalAmount > numAmount.Maximum)
                 throw new InvalidOperationException("Bảng tính hóa đơn không hợp lệ. Vui lòng tính lại.");
-            _quote = quote;
+            _quote = quote.StorageFeePending ? null : quote;
             lblPricing.Text = $"Hợp đồng: {quote.ContractCode}"
                 + (quote.AppendixCode is null ? "" : $" · Phụ lục: {quote.AppendixCode}")
                 + $"\nNgày bắt đầu vận chuyển: {quote.PricingDate:dd/MM/yyyy} · Loại xe theo giá: {quote.VehicleType}"
                 + $"\nQuãng đường GPS: {quote.DistanceKm?.ToString("N3") ?? "Chưa đủ dữ liệu"} km · Khối lượng: {quote.WeightTons:N5} tấn";
             gridQuote.DataSource = quote.Lines;
-            lblOperatingCosts.Text = $"Đối chiếu vận hành — không cộng vào hóa đơn:\n"
-                + $"Nhiên liệu tiêu hao ước tính: {quote.EstimatedFuelLiters?.ToString("N2") ?? "Chưa đủ dữ liệu"} lít"
-                + $" · Chi phí khác: {quote.OtherCosts:N2} đ";
+            lblOperatingCosts.Text = $"Nhiên liệu ước tính (chỉ để đối chiếu): {quote.EstimatedFuelLiters?.ToString("N2") ?? "Chưa đủ dữ liệu"} lít";
             numAmount.Value = quote.TotalAmount;
-            btnSave.Enabled = true;
+            btnSave.Enabled = _quote is not null;
             lblStatus.Text = quote.Note ?? "Tiền được tính tự động. Hóa đơn lưu ở trạng thái Nháp.";
         }
         catch (Exception ex)

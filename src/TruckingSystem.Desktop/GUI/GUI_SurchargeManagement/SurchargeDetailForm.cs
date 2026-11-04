@@ -9,7 +9,7 @@ public sealed class SurchargeDetailForm : BaseForm
     private readonly DateTimePicker _date = new() { Format = DateTimePickerFormat.Short };
     private readonly NumberBox _fragile = new() { DecimalPlaces = 2, Increment = 0.1m };
     private readonly NumberBox _hazmat = new() { DecimalPlaces = 2, Increment = 0.1m };
-    private readonly Button _save = Theme.MakePrimaryButton("Lưu nháp", 140);
+    private readonly Button _save = Theme.MakePrimaryButton("Lưu và áp dụng", 160);
     private readonly Label _status = new() { AutoSize = true, ForeColor = Theme.Danger, Margin = new Padding(0, 8, 0, 0) };
     public int SavedId { get; private set; }
 
@@ -18,11 +18,15 @@ public sealed class SurchargeDetailForm : BaseForm
         Text = copy ? "Sao chép bảng phụ phí" : item == null ? "Tạo bảng phụ phí" : "Chi tiết bảng phụ phí";
         StartPosition = FormStartPosition.CenterParent;
         ClientSize = new Size(570, 370);
+        BackColor = Theme.CardBg;
         var editable = api.Connection.IsInRole("Admin", "Accountant") && (copy || item?.Published != true);
         var panel = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, Padding = new Padding(20, 16, 20, 16), AutoScroll = true };
         panel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         Controls.Add(panel);
+        DialogKeys.Enable(this);
+        Anim.FadeIn(this);
+        MinimumSize = new Size(460, 340);
         void Field(string label, Control field)
         {
             var row = panel.RowCount++;
@@ -39,25 +43,26 @@ public sealed class SurchargeDetailForm : BaseForm
         _name.ReadOnly = !editable;
         _date.Enabled = editable;
         _fragile.Enabled = _hazmat.Enabled = editable && !copy;
-        Field("Tên bảng *", _name);
-        Field("Ngày hiệu lực *", _date);
+        Field("Tên bảng *:", _name);
+        Field("Ngày hiệu lực *:", _date);
         Field("Hàng dễ vỡ (%)", _fragile);
         Field("Hàng nguy hiểm (%)", _hazmat);
         var hint = new Label
         {
-            Text = "Phụ phí tính theo tỷ lệ % trên cước km + cước tấn.", AutoSize = true,
+            Text = "Phụ phí tính theo tỷ lệ % trên cước km + cước tấn.\nBảng được khóa sau khi lưu và tính phí từ ngày hiệu lực (sớm nhất ngày mai).", AutoSize = true,
+            MaximumSize = new Size(260, 0),
             Font = Theme.FontSmall, ForeColor = Theme.TextSecondary, Margin = new Padding(0, 2, 0, 4),
         };
         panel.Controls.Add(hint, 1, panel.RowCount++);
         panel.Controls.Add(_status, 0, panel.RowCount++);
         panel.SetColumnSpan(_status, 2);
 
-        // Chân cửa sổ chuẩn: [Đóng] [💾 Lưu nháp] — chỉ 1 nút chính.
+        // Chân cửa sổ chuẩn: [Đóng] [💾 Lưu và áp dụng] — chỉ 1 nút chính.
         _save.Visible = editable;
         FormStyle.SaveButton(_save);
         var close = Theme.MakeSecondaryButton("Đóng", 100);
         close.DialogResult = DialogResult.Cancel;
-        ButtonStyles.Footer(this, null, close, _save);
+        FormStyle.EditorFooter(this, close, _save);
         CancelButton = close;
         if (editable) AcceptButton = _save;
         bool saving = false;
