@@ -9,16 +9,16 @@ public class ContractForm : BaseForm
     private readonly ContractListItem? _contract;
     private readonly bool _readOnly;
     private bool _saving;
-    private readonly ErrorProvider _errors = new() { BlinkStyle = ErrorBlinkStyle.NeverBlink };
     private readonly TextBox _code = new();
     private readonly ComboBox _customer = new() { DropDownStyle = ComboBoxStyle.DropDownList };
     private readonly DateTimePicker _start = new() { Format = DateTimePickerFormat.Short };
     private readonly CheckBox _hasEnd = new() { Text = "Có ngày kết thúc", AutoSize = true };
     private readonly DateTimePicker _end = new() { Format = DateTimePickerFormat.Short, Enabled = false };
     private readonly ComboBox _type = new() { DropDownStyle = ComboBoxStyle.DropDownList };
-    private readonly TextBox _discount = new() { Enabled = false };
+    private readonly NumberBox _discount = new() { Enabled = false, DecimalPlaces = 2, Maximum = 100 };
     private readonly ComboBox _priceList = new() { DropDownStyle = ComboBoxStyle.DropDownList };
-    private readonly TextBox _terms = new() { Multiline = true, ScrollBars = ScrollBars.Vertical };
+    // AcceptsReturn: Enter trong ô Điều khoản là xuống dòng, không bấm Lưu.
+    private readonly TextBox _terms = new() { Multiline = true, AcceptsReturn = true, ScrollBars = ScrollBars.Vertical };
     private readonly Label _status = new() { Dock = DockStyle.Fill, ForeColor = Theme.Danger };
     private readonly Button _save = Theme.MakePrimaryButton("Lưu hợp đồng", 150);
 
@@ -27,7 +27,6 @@ public class ContractForm : BaseForm
         _api = api;
         _contract = contract;
         _readOnly = readOnly;
-        _errors.ContainerControl = this;
         Text = readOnly ? "Chi tiết hợp đồng" : contract is null ? "Thêm hợp đồng mới" : "Sửa hợp đồng";
         ClientSize = new Size(760, 640);
         FormBorderStyle = FormBorderStyle.FixedDialog;
@@ -57,22 +56,18 @@ public class ContractForm : BaseForm
         {
             _discount.Visible = true;
             _discount.Enabled = !_readOnly && _type.SelectedIndex == 1;
-            if (_type.SelectedIndex != 1) _discount.Clear();
-        };
-        _discount.KeyPress += (_, e) =>
-        {
-            var separator = System.Globalization.CultureInfo.CurrentCulture.NumberFormat.NumberDecimalSeparator;
-            if (!char.IsControl(e.KeyChar) && !char.IsDigit(e.KeyChar) && !separator.Contains(e.KeyChar)) e.Handled = true;
+            if (_type.SelectedIndex != 1) _discount.Value = 0;
         };
         AddRow(layout, 4, "Loại hợp đồng *", _type);
-        AddRow(layout, 5, "Ưu đãi (%) — 0 đến 100", _discount);
+        AddRow(layout, 5, "Ưu đãi (%, 0–100, chỉ HĐ dài hạn)", _discount);
         AddRow(layout, 6, "Bảng giá công ty *", _priceList);
         AddRow(layout, 7, "Điều khoản", _terms);
 
         var footer = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.RightToLeft };
         _save.Click += async (_, _) => await SaveAsync();
-        var cancel = Theme.MakeSecondaryButton(readOnly ? "Đóng" : "Hủy", 100);
+        var cancel = Theme.MakeSecondaryButton("Đóng", 100);
         cancel.DialogResult = DialogResult.Cancel;
+        FormStyle.SaveButton(_save); // chân [Đóng] [💾 Lưu hợp đồng]
         footer.Controls.Add(_save);
         footer.Controls.Add(cancel);
         layout.SetColumnSpan(_status, 2);
@@ -104,15 +99,9 @@ public class ContractForm : BaseForm
         else Shown += async (_, _) => await LoadLookupsAsync();
     }
 
-    protected override void Dispose(bool disposing)
-    {
-        if (disposing) _errors.Dispose();
-        base.Dispose(disposing);
-    }
-
     private static void AddRow(TableLayoutPanel layout, int row, string label, Control input)
     {
-        var caption = new Label { Text = label, AutoSize = true, ForeColor = Theme.TextSecondary, Anchor = AnchorStyles.Left };
+        var caption = new Label { Text = label, AutoSize = true, ForeColor = Theme.TextPrimary, Anchor = AnchorStyles.Left };
         input.Dock = DockStyle.Fill;
         input.AccessibleName = label.TrimEnd(' ', '*');
         if (input is TextBox textBox && textBox.Multiline) input.Height = 90;
@@ -144,13 +133,13 @@ public class ContractForm : BaseForm
                 _priceList.SelectedIndex = lookups.PriceLists.Count == 1 ? 0 : -1;
             }
             _save.Enabled = lookups.Customers.Count > 0 && (_contract is not null || lookups.PriceLists.Count > 0);
-            if (lookups.Customers.Count == 0) _status.Text = "Vui lòng tạo khách hàng trước khi lập hợp đồng.";
+            if (lookups.Customers.Count == 0) FormStyle.Status(_status, "Vui lòng tạo khách hàng trước khi lập hợp đồng.", StatusKind.Warning);
             else if (_contract is null && lookups.PriceLists.Count == 0)
-                _status.Text = "Chưa có bảng giá đang áp dụng. Vui lòng tạo hoặc kích hoạt bảng giá trước khi lập hợp đồng.";
+                FormStyle.Status(_status, "Chưa có bảng giá đang áp dụng. Vui lòng tạo hoặc kích hoạt bảng giá trước khi lập hợp đồng.", StatusKind.Warning);
         }
         catch (Exception ex)
         {
-            _status.Text = "Lỗi tải dữ liệu: " + ex.Message;
+            FormStyle.Status(_status, "Lỗi tải dữ liệu: " + ex.Message);
         }
     }
 
@@ -159,8 +148,8 @@ public class ContractForm : BaseForm
         if (_contract is null) return;
         _type.SelectedIndex = _contract.Type switch { "OneTime" => 0, "LongTerm" => 1, _ => -1 };
         _type.Text = _contract.Type is null ? "" : _contract.TypeText;
-        _discount.Text = _contract.Type == "LongTerm" ? _contract.DiscountPercent?.ToString("0.##") ?? "" : "";
-        if (_contract.Type is null) _status.Text = "Hợp đồng cũ chưa phân loại. Có thể giữ nguyên hoặc chọn loại hợp đồng.";
+        _discount.Value = _contract.Type == "LongTerm" ? Math.Clamp(_contract.DiscountPercent ?? 0, 0, 100) : 0;
+        if (_contract.Type is null) FormStyle.Status(_status, "Hợp đồng cũ chưa phân loại. Có thể giữ nguyên hoặc chọn loại hợp đồng.", StatusKind.Warning);
         _code.Text = _contract.Code;
         _customer.SelectedValue = _contract.CustomerId;
         _start.Value = _contract.StartDate;
@@ -168,24 +157,18 @@ public class ContractForm : BaseForm
         if (_contract.EndDate.HasValue) _end.Value = _contract.EndDate.Value;
         _priceList.SelectedValue = _contract.PriceListId ?? 0;
         if (!_readOnly && _contract.PriceListId.HasValue && _priceList.SelectedIndex < 0)
-            _status.Text = $"Bảng giá hiện tại: {_contract.PriceListName} (đã ngừng áp dụng). Giữ nguyên nếu không chọn bảng giá khác.";
+            FormStyle.Status(_status, $"Bảng giá hiện tại: {_contract.PriceListName} (đã ngừng áp dụng). Giữ nguyên nếu không chọn bảng giá khác.", StatusKind.Warning);
         _terms.Text = _contract.Terms ?? "";
     }
 
     private int? SelectedPriceListId => _priceList.SelectedIndex < 0 ? _contract?.PriceListId
         : _priceList.SelectedValue is int id && id > 0 ? id : null;
 
-    private void ShowValidation(Control input, string message)
-    {
-        _status.Text = message;
-        _errors.SetError(input, message);
-        input.Focus();
-    }
+    private void ShowValidation(Control input, string message) => FieldHint.Show(input, _status, message);
 
     private async Task SaveAsync()
     {
         if (_saving || _readOnly) return;
-        _errors.Clear();
         _status.Text = "";
         if (string.IsNullOrWhiteSpace(_code.Text)) { ShowValidation(_code, "Vui lòng nhập mã hợp đồng."); return; }
         if (_customer.SelectedValue is not int customerId) { ShowValidation(_customer, "Vui lòng chọn khách hàng."); return; }
@@ -195,20 +178,14 @@ public class ContractForm : BaseForm
         if (type is null && (_contract is null || _contract.Type is not null))
         { ShowValidation(_type, "Vui lòng chọn loại hợp đồng."); return; }
         decimal? discountPercent = null;
-        if (type == "LongTerm")
-        {
-            if (!decimal.TryParse(_discount.Text, System.Globalization.NumberStyles.AllowDecimalPoint,
-                System.Globalization.CultureInfo.CurrentCulture, out var discount) || discount < 0 || discount > 100 || decimal.Round(discount, 2) != discount)
-            { ShowValidation(_discount, "Nhập ưu đãi từ 0 đến 100%, tối đa 2 chữ số thập phân."); return; }
-            discountPercent = discount;
-        }
+        if (type == "LongTerm") discountPercent = _discount.Value; // ô số đã giới hạn 0–100, 2 chữ số lẻ
         var priceListId = SelectedPriceListId;
         if (_contract is null && !priceListId.HasValue)
         { ShowValidation(_priceList, "Vui lòng chọn bảng giá đang áp dụng."); return; }
 
         _saving = true;
         _save.Enabled = false;
-        _status.Text = "Đang lưu hợp đồng...";
+        FormStyle.Status(_status, "Đang lưu hợp đồng...", StatusKind.Info);
         try
         {
             if (_contract is null)
@@ -221,7 +198,7 @@ public class ContractForm : BaseForm
         }
         catch (Exception ex)
         {
-            _status.Text = "Lỗi: " + ex.Message;
+            FormStyle.Status(_status, "Lỗi: " + ex.Message);
         }
         finally { _saving = false; if (!IsDisposed) _save.Enabled = true; }
     }

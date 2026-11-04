@@ -58,14 +58,14 @@ partial class CreateInvoiceForm
         };
         gridQuote.Columns.AddRange(
             new DataGridViewTextBoxColumn { DataPropertyName = "Description", HeaderText = "Khoản tính", FillWeight = 240 },
-            new DataGridViewTextBoxColumn { DataPropertyName = "Quantity", HeaderText = "Số lượng", DefaultCellStyle = new() { Format = "0.######" } },
-            new DataGridViewTextBoxColumn { DataPropertyName = "UnitPrice", HeaderText = "Đơn giá (đ)", DefaultCellStyle = new() { Format = "N2" } },
-            new DataGridViewTextBoxColumn { DataPropertyName = "Amount", HeaderText = "Thành tiền (đ)", DefaultCellStyle = new() { Format = "N2" } });
+            new DataGridViewTextBoxColumn { DataPropertyName = "Quantity", HeaderText = "Số lượng", DefaultCellStyle = new() { Format = "0.######", Alignment = DataGridViewContentAlignment.MiddleRight } },
+            new DataGridViewTextBoxColumn { DataPropertyName = "UnitPrice", HeaderText = "Đơn giá (đ)", DefaultCellStyle = new() { Format = "N2", Alignment = DataGridViewContentAlignment.MiddleRight } },
+            new DataGridViewTextBoxColumn { DataPropertyName = "Amount", HeaderText = "Thành tiền (đ)", DefaultCellStyle = new() { Format = "N2", Alignment = DataGridViewContentAlignment.MiddleRight } });
         numAmount = new NumericUpDown
         {
             Name = "numAmount", Dock = DockStyle.Top, DecimalPlaces = 2, ThousandsSeparator = true,
             Maximum = Domain.Entities.Invoice.MaximumAmount, AccessibleName = "Tổng tiền tự động (VNĐ)", TabIndex = 2,
-            ReadOnly = true, Increment = 0
+            ReadOnly = true, Increment = 0, TabStop = false // chỉ để xem: không nhận phím Tab
         };
         dtDueDate = new DateTimePicker
         {
@@ -87,17 +87,20 @@ partial class CreateInvoiceForm
         scroll.Controls.Add(fields);
         lblStatus = new Label { Name = "lblStatus", AutoSize = true, Dock = DockStyle.Fill, Margin = new Padding(3, 12, 3, 12) };
         var buttons = new FlowLayoutPanel { AutoSize = true, Dock = DockStyle.Fill, FlowDirection = FlowDirection.RightToLeft };
-        btnSave = Theme.MakePrimaryButton("Lưu hóa đơn");
+        btnSave = Theme.MakePrimaryButton("Lưu hóa đơn", 150);
         btnSave.Name = "btnSave";
         btnSave.Enabled = false;
         btnSave.Click += BtnSave_Click;
-        btnCancel = Theme.MakeSecondaryButton("Hủy");
+        FormStyle.SaveButton(btnSave);
+        btnCancel = Theme.MakeSecondaryButton("Đóng", 100);
         btnCancel.DialogResult = DialogResult.Cancel;
         btnRecalculate = Theme.MakeSecondaryButton("Tính lại");
         btnRecalculate.Name = "btnRecalculate";
+        // Xếp phải -> trái: [Tính lại] ...... [Đóng] [💾 Lưu hóa đơn] — nút chính ở góc phải.
+        btnRecalculate.Margin = new Padding(3, 3, 24, 3);
         buttons.Controls.Add(btnSave);
-        buttons.Controls.Add(btnRecalculate);
         buttons.Controls.Add(btnCancel);
+        buttons.Controls.Add(btnRecalculate);
         root.Controls.Add(scroll, 0, 0);
         root.Controls.Add(lblStatus, 0, 1);
         root.Controls.Add(buttons, 0, 2);

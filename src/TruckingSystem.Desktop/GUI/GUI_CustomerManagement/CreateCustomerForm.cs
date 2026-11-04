@@ -29,6 +29,28 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
                 new ComboOption("Company", "Doanh nghiệp"),
             });
             cboType.SelectedIndex = 0;
+            ApplyDesign();
+        }
+
+        /// <summary>Quy tắc design.md: nhãn bắt buộc có *, tiêu đề khối màu Primary, chân
+        /// [Quét danh thiếp] [Người liên hệ] [Đóng] [💾 Lưu khách hàng] — chỉ 1 nút chính.</summary>
+        private void ApplyDesign()
+        {
+            lblPhone.Text = "Số điện thoại *";
+            lblType.Text = "Loại khách hàng *";
+            FormStyle.Section(lblFieldsTitle, lblScanTitle, lblContactsTitle);
+            txtAddress.AcceptsReturn = true; // Enter trong ô địa chỉ là xuống dòng, không bấm Lưu
+            FormStyle.NoTab(txtCardDetails);
+
+            var close = FormStyle.NewCloseButton(this);
+            close.Margin = new Padding(8, 0, 0, 0);
+            buttonBar.SuspendLayout();
+            buttonBar.Controls.Clear(); // xếp phải -> trái
+            buttonBar.Controls.AddRange(new Control[] { btnSave, close, btnContacts, btnReadWithAi });
+            buttonBar.ResumeLayout(true);
+            FormStyle.SaveButton(btnSave);
+            ButtonStyles.Secondary(btnContacts);
+            ButtonStyles.Secondary(btnReadWithAi);
         }
 
         public CreateCustomerForm(ApiServices api) : this()
@@ -91,25 +113,20 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
         {
             if (string.IsNullOrWhiteSpace(txtName.Text))
             {
-                lblStatus.Text = "Vui lòng nhập tên khách hàng.";
-                MessageBox.Show(this, lblStatus.Text, "Thiếu thông tin khách hàng", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                FieldHint.Show(txtName, lblStatus, "Vui lòng nhập tên khách hàng.");
                 return;
             }
             if (!IsValidPhoneNumber(txtPhone.Text))
             {
-                lblStatus.ForeColor = Theme.Danger;
-                lblStatus.Text = "Vui lòng nhập số điện thoại hợp lệ (ví dụ: +84 123456789).";
-               // MessageBox.Show(this, lblStatus.Text, "Số điện thoại không hợp lệ", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                txtPhone.Focus();
+                FieldHint.Show(txtPhone, lblStatus, "Vui lòng nhập số điện thoại hợp lệ (ví dụ: 0901234567 hoặc +84 901234567).");
+                return;
+            }
+            if (cboType.SelectedItem is not ComboOption customerType)
+            {
+                FieldHint.Show(cboType, lblStatus, "Vui lòng chọn loại khách hàng Cá nhân hoặc Doanh nghiệp.");
                 return;
             }
             if (_api is null || !btnSave.Enabled) return;
-            if (cboType.SelectedItem is not ComboOption customerType)
-            {
-                lblStatus.Text = "Vui lòng chọn loại khách hàng Cá nhân hoặc Doanh nghiệp.";
-                cboType.Focus();
-                return;
-            }
             var contacts = ReadContacts();
             if (contacts is null) return;
 
@@ -127,7 +144,7 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
 
                 if (!result.Success)
                 {
-                    lblStatus.Text = "⚠️ " + result.Message;
+                    FormStyle.Status(lblStatus, "⚠️ " + result.Message);
                     MessageBox.Show(this, result.Message, "Không thể lưu khách hàng", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return;
                 }
@@ -139,7 +156,7 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
             catch (Exception ex)
             {
                 if (IsDisposed || Disposing) return;
-                lblStatus.Text = "Lỗi: " + ex.Message;
+                FormStyle.Status(lblStatus, "Lỗi: " + ex.Message);
                 MessageBox.Show(this, ex.Message, "Lỗi lưu khách hàng", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             finally
@@ -181,12 +198,10 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
                 {
                     _contactsOpen = true;
                     UpdateContactSection();
-                    lblStatus.ForeColor = Theme.Danger;
-                    lblStatus.Text = name.Length == 0 ? $"Vui lòng nhập họ tên người liên hệ {i + 1}."
-                        : $"Số điện thoại người liên hệ {i + 1} không hợp lệ (ví dụ: 0901234567 hoặc +84 901234567).";
                     var target = name.Length == 0 ? input.Name : input.Phone;
                     contactsSidebar.ScrollControlIntoView(target);
-                    target.Focus();
+                    FieldHint.Show(target, lblStatus, name.Length == 0 ? $"Vui lòng nhập họ tên người liên hệ {i + 1}."
+                        : $"Số điện thoại người liên hệ {i + 1} không hợp lệ (ví dụ: 0901234567 hoặc +84 901234567).");
                     return null;
                 }
                 contacts.Add(new CustomerContactInput(name, phone,
@@ -213,8 +228,7 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
             using var scanCancellation = new CancellationTokenSource();
             _cardScanCancellation = scanCancellation;
             SetCardScanning(true);
-            lblStatus.ForeColor = Color.FromArgb(100, 116, 139);
-            lblStatus.Text = "Đang đọc danh thiếp...";
+            FormStyle.Status(lblStatus, "Đang đọc danh thiếp...", StatusKind.Info);
             txtCardDetails.Clear();
             try
             {
@@ -227,8 +241,7 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
             catch (Exception ex)
             {
                 if (IsDisposed || Disposing) return;
-                lblStatus.ForeColor = Color.FromArgb(220, 38, 38);
-                lblStatus.Text = "Không đọc được danh thiếp.";
+                FormStyle.Status(lblStatus, "Không đọc được danh thiếp.");
                 var message = ex is OperationCanceledException ? "Yêu cầu quét danh thiếp quá thời gian chờ. Vui lòng thử lại." : ex.Message;
                 MessageBox.Show(this, message, "Lỗi đọc danh thiếp", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
@@ -269,8 +282,8 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
                 if (cboType.SelectedItem is null)
                     warning = string.Join(" ", new[] { warning, "Vui lòng chọn loại khách hàng Cá nhân hoặc Doanh nghiệp." }.Where(value => !string.IsNullOrWhiteSpace(value)));
             }
-            lblStatus.ForeColor = warning is null ? Color.FromArgb(22, 163, 74) : Color.FromArgb(180, 83, 9);
-            lblStatus.Text = warning ?? "Đã đọc xong. Vui lòng kiểm tra thông tin.";
+            FormStyle.Status(lblStatus, warning ?? "Đã đọc xong. Vui lòng kiểm tra thông tin.",
+                warning is null ? StatusKind.Success : StatusKind.Warning);
         }
 
         private void SetCardScanning(bool scanning)

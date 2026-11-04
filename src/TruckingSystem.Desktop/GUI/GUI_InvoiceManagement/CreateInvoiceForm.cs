@@ -72,7 +72,7 @@ public partial class CreateInvoiceForm : BaseForm
         lblPricing.Text = lblOperatingCosts.Text = "";
         if (cboOrder.SelectedItem is not InvoiceOrderOption order)
         {
-            lblStatus.Text = "Không có đơn đã hoàn thành đang chờ lập hóa đơn.";
+            FormStyle.Status(lblStatus, "Không có đơn đã hoàn thành đang chờ lập hóa đơn.", StatusKind.Warning);
             return;
         }
         lblStatus.ForeColor = Theme.TextSecondary;
@@ -109,22 +109,20 @@ public partial class CreateInvoiceForm : BaseForm
     private async void BtnSave_Click(object? sender, EventArgs e)
     {
         if (_api is null || _saving) return;
-        lblStatus.ForeColor = Theme.Danger;
         if (cboOrder.SelectedItem is not InvoiceOrderOption order)
         {
-            lblStatus.Text = "Vui lòng chọn đơn hàng.";
-            cboOrder.Focus();
+            FieldHint.Show(cboOrder, lblStatus, "Vui lòng chọn đơn hàng.");
             return;
         }
         if (_quote is null || _quote.TransportOrderId != order.Id)
         {
-            lblStatus.Text = "Vui lòng tính lại hóa đơn trước khi lưu.";
+            FormStyle.Status(lblStatus, "Vui lòng bấm Tính lại trước khi lưu hóa đơn.");
+            btnRecalculate.Focus();
             return;
         }
         if (dtDueDate.Checked && dtDueDate.Value.Date < DateTime.UtcNow.AddHours(7).Date)
         {
-            lblStatus.Text = "Hạn thanh toán không được trước ngày lập hóa đơn.";
-            dtDueDate.Focus();
+            FieldHint.Show(dtDueDate, lblStatus, "Hạn thanh toán không được trước ngày lập hóa đơn.");
             return;
         }
 

@@ -23,7 +23,7 @@
             lblAddress = new Label();
             txtAddress = new TextBox();
             lblCreditLimit = new Label();
-            numCreditLimit = new NumericUpDown();
+            numCreditLimit = new TruckingSystem.Desktop.Common.NumberBox { IsMoney = true };
             lblGoogleCalendarId = new Label();
             txtGoogleCalendarId = new TextBox();
             lblFieldsTitle = new Label();
@@ -620,7 +620,7 @@
         private System.Windows.Forms.Label lblAddress;
         private System.Windows.Forms.TextBox txtAddress;
         private System.Windows.Forms.Label lblCreditLimit;
-        private System.Windows.Forms.NumericUpDown numCreditLimit;
+        private TruckingSystem.Desktop.Common.NumberBox numCreditLimit;
         private System.Windows.Forms.Label lblGoogleCalendarId;
         private System.Windows.Forms.TextBox txtGoogleCalendarId;
         private System.Windows.Forms.Button btnSave;
