@@ -40,6 +40,7 @@ public sealed class SurchargeListService(IApplicationDbContext db) : ISurchargeL
     {
         var list = new SurchargeList();
         list.SetDraft(input.Name, input.EffectiveDate, input.FragilePercent, input.HazmatPercent);
+        await ApplyAsync(list);
         db.SurchargeLists.Add(list);
         await db.SaveChangesAsync();
         return Dto(list);
@@ -56,6 +57,7 @@ public sealed class SurchargeListService(IApplicationDbContext db) : ISurchargeL
         var list = await LoadAsync(id);
         CheckRevision(list, input.Revision);
         list.SetDraft(input.Name, input.EffectiveDate, input.FragilePercent, input.HazmatPercent);
+        await ApplyAsync(list);
         await db.SaveChangesAsync();
         return Dto(list);
     }
@@ -64,11 +66,16 @@ public sealed class SurchargeListService(IApplicationDbContext db) : ISurchargeL
     {
         var list = await LoadAsync(id);
         CheckRevision(list, input.Revision);
-        if (await db.SurchargeLists.AnyAsync(p => p.Published && p.EffectiveDate == list.EffectiveDate))
-            throw new InvalidOperationException("Ngày hiệu lực này đã có bảng công bố.");
-        list.Publish(DateOnly.FromDateTime(VnClock.Today));
+        await ApplyAsync(list);
         await db.SaveChangesAsync();
         return Dto(list);
+    }
+
+    private async Task ApplyAsync(SurchargeList list)
+    {
+        if (await db.SurchargeLists.AnyAsync(p => p.Published && p.EffectiveDate == list.EffectiveDate))
+            throw new InvalidOperationException("Ngày hiệu lực này đã có bảng phụ phí được áp dụng.");
+        list.Publish(DateOnly.FromDateTime(VnClock.Today));
     }
 
     private static void CheckRevision(SurchargeList list, int revision)

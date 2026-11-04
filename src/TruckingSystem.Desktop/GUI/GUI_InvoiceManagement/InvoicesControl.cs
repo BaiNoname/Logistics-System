@@ -16,6 +16,7 @@ namespace TruckingSystem.Desktop.GUI_InvoiceManagement
         {
             InitializeComponent();
             Theme.StyleGrid(grid);
+            GridDecor.Pills(grid, "Trạng_thái", (text, _) => GridDecor.StatusTone(text));
             filterBar.AddChoice("status", "Trạng thái", new[]
                 { "Nháp", "Đã phát hành", "Thanh toán một phần", "Đã thanh toán", "Quá hạn", "Đã hủy" });
             filterBar.AddDate("from", "Lập từ ngày");

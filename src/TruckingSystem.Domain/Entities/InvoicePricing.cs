@@ -27,7 +27,8 @@ public static class InvoicePricing
         return decimal.Round((decimal)km, 6);
     }
 
-    public static List<InvoiceLine> CalculateLines(TransportOrder order, TariffRule tariff, decimal? distanceKm, string source, SurchargePolicy? policy = null)
+    public static List<InvoiceLine> CalculateLines(TransportOrder order, TariffRule tariff, decimal? distanceKm,
+        string source, SurchargePolicy? policy = null, decimal otherCosts = 0, decimal storageFee = 0)
     {
         if (order.Status != TransportOrderStatus.Done)
             throw new InvalidOperationException("Chỉ được lập hóa đơn cho đơn hàng đã hoàn thành.");
@@ -41,20 +42,22 @@ public static class InvoicePricing
         var lines = new List<InvoiceLine>();
         try
         {
-            Add("Cước theo km", distanceKm ?? 0, tariff.PricePerKm);
+            Add("Cước theo km", distanceKm ?? 0, tariff.PricePerKm, source);
             // CargoLine.WeightKg is the total weight, shared by pickup and delivery legs.
-            Add("Cước theo tấn", order.CargoLines.Sum(c => c.WeightKg) / 1000m, tariff.PricePerTon);
+            Add("Cước theo tấn", order.CargoLines.Sum(c => c.WeightKg) / 1000m, tariff.PricePerTon, source);
             var basis = lines.Sum(l => l.Amount);
             if (order.CargoLines.Any(c => c.IsFragile))
                 AddFee("Phụ phí hàng dễ vỡ", policy?.FragilePercent, tariff.SurchargeFragile);
             if (order.CargoLines.Any(c => c.IsHazmat))
                 AddFee("Phụ phí hàng nguy hiểm", policy?.HazmatPercent, tariff.SurchargeHazmat);
+            Add("Chi phí khác của các chuyến xe", 1, otherCosts);
+            Add("Phí lưu kho", 1, storageFee);
 
             void AddFee(string name, decimal? rate, decimal legacy)
             {
                 if (rate is decimal percent)
-                    Add($"{name} ({percent:0.##}% × {basis:N2} đ)", 1, SurchargePolicy.Charge(basis, percent));
-                else Add(name, 1, legacy);
+                    Add($"{name} ({percent:0.##}% × {basis:N2} đ)", 1, SurchargePolicy.Charge(basis, percent), source);
+                else Add(name, 1, legacy, source);
             }
             _ = Invoice.Create(order, lines.Sum(l => l.Amount));
         }
@@ -64,12 +67,12 @@ public static class InvoicePricing
         }
         return lines;
 
-        void Add(string description, decimal quantity, decimal price)
+        void Add(string description, decimal quantity, decimal price, string? pricingSource = null)
         {
             if (price == 0 || quantity == 0) return;
             lines.Add(new InvoiceLine
             {
-                Description = $"{description} — đơn {order.Code} — {source}",
+                Description = $"{description} — đơn {order.Code}" + (pricingSource is null ? "" : $" — {pricingSource}"),
                 Quantity = quantity, UnitPrice = price,
                 Amount = decimal.Round(quantity * price, 2, MidpointRounding.AwayFromZero)
             });

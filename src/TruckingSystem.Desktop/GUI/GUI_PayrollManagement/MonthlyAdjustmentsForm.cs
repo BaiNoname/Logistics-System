@@ -25,6 +25,16 @@ public sealed class MonthlyAdjustmentsForm : BaseForm
             ? "Tháng đã chốt. Nếu cần điều chỉnh, ghi vào tháng chưa chốt và nêu rõ căn cứ tháng gốc."
             : "Các khoản được giữ khi tính lại. Sau khi sửa, quay về và bấm Tạo / tính lại bảng lương trước khi chốt." };
         Controls.Add(grid); Controls.Add(bar); Controls.Add(hint);
+        SizeChanged += (_, _) => hint.MaximumSize = new Size(Math.Max(1, ClientSize.Width), 0);
+        hint.Font = Theme.FontSmall;
+        hint.ForeColor = Theme.TextSecondary;
+        BackColor = Theme.CardBg;
+        MinimumSize = new Size(620, 420);
+        ButtonStyles.DangerLink(delete);
+        ButtonStyles.Footer(this, null, FormStyle.NewCloseButton(this));
+        DialogKeys.Enable(this);
+        Anim.FadeIn(this);
+        Load += (_, _) => Theme.UniformButtons(bar);
         var busy = false;
         async Task Run(Func<Task> work)
         {

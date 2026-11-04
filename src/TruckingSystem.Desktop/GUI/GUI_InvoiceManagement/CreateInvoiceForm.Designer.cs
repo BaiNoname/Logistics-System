@@ -58,14 +58,14 @@ partial class CreateInvoiceForm
         };
         gridQuote.Columns.AddRange(
             new DataGridViewTextBoxColumn { DataPropertyName = "Description", HeaderText = "Khoản tính", FillWeight = 240 },
-            new DataGridViewTextBoxColumn { DataPropertyName = "Quantity", HeaderText = "Số lượng", DefaultCellStyle = new() { Format = "0.######" } },
-            new DataGridViewTextBoxColumn { DataPropertyName = "UnitPrice", HeaderText = "Đơn giá (đ)", DefaultCellStyle = new() { Format = "N2" } },
-            new DataGridViewTextBoxColumn { DataPropertyName = "Amount", HeaderText = "Thành tiền (đ)", DefaultCellStyle = new() { Format = "N2" } });
+            new DataGridViewTextBoxColumn { DataPropertyName = "Quantity", HeaderText = "Số lượng", DefaultCellStyle = new() { Format = "0.######", Alignment = DataGridViewContentAlignment.MiddleRight } },
+            new DataGridViewTextBoxColumn { DataPropertyName = "UnitPrice", HeaderText = "Đơn giá (đ)", DefaultCellStyle = new() { Format = "N2", Alignment = DataGridViewContentAlignment.MiddleRight } },
+            new DataGridViewTextBoxColumn { DataPropertyName = "Amount", HeaderText = "Thành tiền (đ)", DefaultCellStyle = new() { Format = "N2", Alignment = DataGridViewContentAlignment.MiddleRight } });
         numAmount = new NumericUpDown
         {
             Name = "numAmount", Dock = DockStyle.Top, DecimalPlaces = 2, ThousandsSeparator = true,
             Maximum = Domain.Entities.Invoice.MaximumAmount, AccessibleName = "Tổng tiền tự động (VNĐ)", TabIndex = 2,
-            ReadOnly = true, Increment = 0
+            ReadOnly = true, Increment = 0, TabStop = false // chỉ để xem: không nhận phím Tab
         };
         dtDueDate = new DateTimePicker
         {
@@ -74,34 +74,38 @@ partial class CreateInvoiceForm
             Value = DateTime.UtcNow.AddHours(7).Date, Checked = false,
             AccessibleName = "Hạn thanh toán (tùy chọn)", TabIndex = 3
         };
-        fields.Controls.Add(new Label { Text = "Đơn hàng đã hoàn thành *", AutoSize = true, Margin = new Padding(3, 8, 3, 4) }, 0, 0);
+        fields.Controls.Add(new Label { Text = "Đơn hàng đã hoàn thành *:", AutoSize = true, Margin = new Padding(3, 8, 3, 4) }, 0, 0);
         fields.Controls.Add(cboOrder, 0, 1);
         fields.Controls.Add(lblRoute, 0, 2);
         fields.Controls.Add(lblPricing, 0, 3);
         fields.Controls.Add(gridQuote, 0, 4);
         fields.Controls.Add(lblOperatingCosts, 0, 5);
-        fields.Controls.Add(new Label { Text = "Tổng tiền theo hợp đồng/phụ lục (VNĐ)", AutoSize = true, Margin = new Padding(3, 8, 3, 4) }, 0, 6);
+        fields.Controls.Add(new Label { Text = "Tổng tiền hóa đơn (VNĐ)", AutoSize = true, Margin = new Padding(3, 8, 3, 4) }, 0, 6);
         fields.Controls.Add(numAmount, 0, 7);
         fields.Controls.Add(new Label { Text = "Hạn thanh toán (tích chọn để nhập)", AutoSize = true, Margin = new Padding(3, 16, 3, 4) }, 0, 8);
         fields.Controls.Add(dtDueDate, 0, 9);
         scroll.Controls.Add(fields);
         lblStatus = new Label { Name = "lblStatus", AutoSize = true, Dock = DockStyle.Fill, Margin = new Padding(3, 12, 3, 12) };
-        var buttons = new FlowLayoutPanel { AutoSize = true, Dock = DockStyle.Fill, FlowDirection = FlowDirection.RightToLeft };
-        btnSave = Theme.MakePrimaryButton("Lưu hóa đơn");
+        btnSave = Theme.MakePrimaryButton("Lưu hóa đơn", 150);
         btnSave.Name = "btnSave";
         btnSave.Enabled = false;
         btnSave.Click += BtnSave_Click;
-        btnCancel = Theme.MakeSecondaryButton("Hủy");
+        FormStyle.SaveButton(btnSave);
+        btnCancel = Theme.MakeSecondaryButton("Đóng", 100);
         btnCancel.DialogResult = DialogResult.Cancel;
         btnRecalculate = Theme.MakeSecondaryButton("Tính lại");
         btnRecalculate.Name = "btnRecalculate";
-        buttons.Controls.Add(btnSave);
-        buttons.Controls.Add(btnRecalculate);
-        buttons.Controls.Add(btnCancel);
+        var actions = new FlowLayoutPanel { AutoSize = true, Dock = DockStyle.Fill };
+        actions.Controls.Add(btnRecalculate);
+        actions.Controls.Add(new Label { Text = "* Trường bắt buộc", AutoSize = true, Font = Theme.FontSmall, ForeColor = Theme.TextSecondary, Margin = new Padding(8) });
         root.Controls.Add(scroll, 0, 0);
         root.Controls.Add(lblStatus, 0, 1);
-        root.Controls.Add(buttons, 0, 2);
+        root.Controls.Add(actions, 0, 2);
         Controls.Add(root);
+        ButtonStyles.Footer(this, null, btnCancel, btnSave);
+        DialogFit.Enable(this, root);
+        DialogKeys.Enable(this);
+        Anim.FadeIn(this);
         AcceptButton = btnSave;
         CancelButton = btnCancel;
         ResumeLayout(true);

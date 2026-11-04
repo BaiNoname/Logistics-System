@@ -14,7 +14,24 @@ public partial class TariffRuleForm : BaseForm
     public TariffRuleForm()
     {
         InitializeComponent();
+        _save.Text = "Lưu dòng giá";
+        Controls.Remove(_footer);
+        FormStyle.EditorFooter(this, _cancel, _save);
+        _footer.Dispose();
+        foreach (Control block in _fields.Controls)
+        {
+            block.Dock = DockStyle.Top;
+            block.TabIndex = _fields.Controls.GetChildIndex(block);
+            foreach (Control input in block.Controls)
+                input.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            FormStyle.FieldLabels(block.Controls.OfType<Label>().ToArray());
+        }
+        DialogKeys.Enable(this);
+        Anim.FadeIn(this);
         _perKm.Maximum = _perTon.Maximum = TariffRule.MaximumPrice;
+        // Chân cửa sổ chuẩn: [Đóng] [💾 Lưu].
+        FormStyle.SaveButton(_save);
+        FormStyle.CloseButton(this, _cancel);
     }
 
     public TariffRuleForm(ApiServices api, PriceListItem priceList, IReadOnlyCollection<TariffRuleItem> rules, TariffRuleItem? item = null) : this()
@@ -49,14 +66,16 @@ public partial class TariffRuleForm : BaseForm
         try { TariffRule.Validate(_vehicleType.Text, _perKm.Value, _perTon.Value, 0, 0); }
         catch (ArgumentException ex)
         {
-            _errors.SetError(_vehicleType, ex.Message);
-            _status.Text = ex.Message;
-            _vehicleType.Focus();
+            // Báo đúng ô sai: thiếu loại xe -> ô Loại xe; còn lại là lỗi đơn giá.
+            Control field = string.IsNullOrWhiteSpace(_vehicleType.Text) ? _vehicleType
+                : decimal.Round(_perKm.Value, 2) != _perKm.Value || _perKm.Value > TariffRule.MaximumPrice ? _perKm
+                : _perTon;
+            FieldHint.Show(field, _status, ex.Message);
             return;
         }
         _saving = true;
         _fields.Enabled = _save.Enabled = false;
-        _status.Text = "Đang lưu...";
+        FormStyle.Status(_status, "Đang lưu...", StatusKind.Info);
         try
         {
             if (_item is null)
@@ -67,7 +86,7 @@ public partial class TariffRuleForm : BaseForm
             DialogResult = DialogResult.OK;
             Close();
         }
-        catch (Exception ex) { _status.Text = "Lỗi: " + ex.Message; }
+        catch (Exception ex) { FormStyle.Status(_status, "Lỗi: " + ex.Message); }
         finally { _saving = false; if (!IsDisposed) _fields.Enabled = _save.Enabled = true; }
     }
 }

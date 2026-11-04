@@ -21,22 +21,24 @@ public class AccountsControl : BaseUserControl
         Theme.StyleGrid(_grid);
         _grid.SelectionChanged += (_, _) => UpdateButtons();
 
-        var header = new TableLayoutPanel { Dock = DockStyle.Top, Height = 68, ColumnCount = 2 };
-        header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        header.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        header.Controls.Add(new Label { Text = "Quản lý tài khoản", Font = Theme.FontTitle, ForeColor = Theme.TextPrimary, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft }, 0, 0);
-        var actions = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Dock = DockStyle.Fill, FlowDirection = FlowDirection.LeftToRight };
+        Padding = new Padding(16);
+        var title = new Label { Text = "Quản lý tài khoản", Font = Theme.FontTitle, ForeColor = Theme.TextPrimary, AutoSize = true };
+        var actions = new FlowLayoutPanel { AutoSize = true, WrapContents = true, Dock = DockStyle.Fill };
         var create = Theme.MakePrimaryButton("Thêm tài khoản", 145);
         var refresh = Theme.MakeSecondaryButton("Làm mới", 100);
-        actions.Controls.Add(create);
-        actions.Controls.Add(_edit);
-        actions.Controls.Add(_password);
-        actions.Controls.Add(refresh);
-        header.Controls.Add(actions, 1, 0);
-
-        Controls.Add(_grid);
-        Controls.Add(_status);
-        Controls.Add(header);
+        actions.Controls.AddRange(new Control[] { create, _edit, _password, refresh });
+        var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 4 };
+        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        layout.Controls.Add(title, 0, 0);
+        layout.Controls.Add(actions, 0, 1);
+        layout.Controls.Add(_grid, 0, 2);
+        layout.Controls.Add(_status, 0, 3);
+        Controls.Add(layout);
+        GridDecor.Pills(_grid, "Trạng_thái", (text, _) => text == "Hoạt động" ? GridDecor.Green : GridDecor.Slate);
+        Load += (_, _) => Theme.UniformButtons(actions);
         create.Click += async (_, _) => await OpenEditorAsync(null);
         _edit.Click += async (_, _) => await OpenEditorAsync(SelectedAccount());
         _password.Click += async (_, _) => await ResetPasswordAsync();
@@ -109,38 +111,39 @@ public class AccountsControl : BaseUserControl
         var account = SelectedAccount();
         if (account is null) return;
 
-        using var dialog = new Form
+        using var dialog = new BaseForm
         {
             Text = "Đặt lại mật khẩu: " + account.Username,
-            Size = new Size(430, 210),
-            MinimumSize = new Size(430, 210),
-            MaximumSize = new Size(430, 210),
+            ClientSize = new Size(470, 240), MinimumSize = new Size(430, 240),
             StartPosition = FormStartPosition.CenterParent,
-            FormBorderStyle = FormBorderStyle.FixedDialog,
-            MaximizeBox = false,
-            MinimizeBox = false,
-            BackColor = Color.White,
-            Font = Theme.FontNormal,
+            MaximizeBox = false, MinimizeBox = false, BackColor = Theme.CardBg,
         };
-        var label = new Label { Text = "Mật khẩu mới", Left = 24, Top = 20, AutoSize = true };
-        var input = new TextBox { Left = 24, Top = 49, Width = 365, UseSystemPasswordChar = true };
-        var save = Theme.MakePrimaryButton("Lưu mật khẩu", 140);
-        save.Left = 249;
-        save.Top = 99;
+        var fields = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, Padding = new Padding(20, 16, 20, 16) };
+        fields.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        var label = new Label { Text = "Mật khẩu mới *:", AutoSize = true, ForeColor = Theme.TextPrimary };
+        var input = new TextBox { Dock = DockStyle.Top, UseSystemPasswordChar = true, AccessibleName = "Mật khẩu mới" };
+        var status = new Label { AutoSize = true, Dock = DockStyle.Fill, ForeColor = Theme.Danger };
+        fields.Controls.Add(label); fields.Controls.Add(input); fields.Controls.Add(status);
+        dialog.Controls.Add(fields);
+        var save = Theme.MakePrimaryButton("Lưu mật khẩu", 150);
+        FormStyle.EditorFooter(dialog, FormStyle.NewCloseButton(dialog), save);
+        ModernLook.Apply(dialog);
+        DialogKeys.Enable(dialog, save);
+        Anim.FadeIn(dialog);
         save.Click += (_, _) =>
         {
             if (string.IsNullOrWhiteSpace(input.Text))
-                MessageBox.Show(dialog, "Vui lòng nhập mật khẩu mới.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                FieldHint.Show(input, status, "Vui lòng nhập mật khẩu mới.");
             else dialog.DialogResult = DialogResult.OK;
         };
-        dialog.Controls.AddRange(new Control[] { label, input, save });
+
         dialog.AcceptButton = save;
         if (dialog.ShowDialog(FindForm()) != DialogResult.OK) return;
 
         try
         {
             await _api.Accounts.ResetPasswordAsync(account.Id, input.Text);
-            MessageBox.Show(FindForm(), "Đã đặt lại mật khẩu.", "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            Toast.Show(this, "✅ Đã đặt lại mật khẩu.");
         }
         catch (Exception ex)
         {

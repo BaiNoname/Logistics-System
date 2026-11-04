@@ -20,11 +20,14 @@ publish/
 !.env.example
 appsettings.json
 *.publishsettings
-AGENTS.md
 /tests/*
 /docs/*
-HANDOFF.md
+/tools/*
+/.claude/*
 note.md
+design.md
+AGENTS.md
+HANDOFF.md
 IMPLEMENTATION_STATUS.md
 # ==== Log/cache khác ====
 *.log

@@ -22,7 +22,7 @@ partial class PayrollInputForm
         SalaryDateLabel = new Label();
         SalaryDate = new DateTimePicker();
         SalaryAmountLabel = new Label();
-        SalaryAmount = new NumericUpDown();
+        SalaryAmount = new TruckingSystem.Desktop.Common.NumberBox { IsMoney = true };
         SalaryReasonLabel = new Label();
         SalaryReason = new TextBox();
         SalaryHint = new Label();
@@ -31,7 +31,7 @@ partial class PayrollInputForm
         ItemKindLabel = new Label();
         ItemKind = new ComboBox();
         ItemAmountLabel = new Label();
-        ItemAmount = new NumericUpDown();
+        ItemAmount = new TruckingSystem.Desktop.Common.NumberBox { IsMoney = true };
         ItemProrateLabel = new Label();
         ItemProrate = new CheckBox();
         ItemReasonLabel = new Label();
@@ -41,7 +41,7 @@ partial class PayrollInputForm
         _paymentPageLayout = new TableLayoutPanel();
         PaymentBalance = new Label();
         PaymentAmountLabel = new Label();
-        PaymentAmount = new NumericUpDown();
+        PaymentAmount = new TruckingSystem.Desktop.Common.NumberBox { IsMoney = true };
         PaymentDateLabel = new Label();
         PaymentDate = new DateTimePicker();
         PaymentMethodLabel = new Label();
@@ -811,7 +811,7 @@ partial class PayrollInputForm
 
     private TabControl _sections = null!;
     internal DateTimePicker SalaryDate = null!;
-    internal NumericUpDown SalaryAmount = null!;
+    internal TruckingSystem.Desktop.Common.NumberBox SalaryAmount = null!;
     internal TextBox SalaryReason = null!;
     internal Label SalaryHint = null!;
     internal TableLayoutPanel SalaryEditor = null!;
@@ -823,7 +823,7 @@ partial class PayrollInputForm
     private TableLayoutPanel _salaryPageLayout = null!;
     internal CheckBox ItemProrate = null!;
     internal ComboBox ItemKind = null!;
-    internal NumericUpDown ItemAmount = null!;
+    internal TruckingSystem.Desktop.Common.NumberBox ItemAmount = null!;
     internal TextBox ItemReason = null!;
     internal Label ItemHint = null!;
     private TabPage _itemPage = null!;
@@ -834,7 +834,7 @@ partial class PayrollInputForm
     internal Label ItemReasonLabel = null!;
     internal TextBox PaymentReference = null!;
     internal Label PaymentBalance = null!;
-    internal NumericUpDown PaymentAmount = null!;
+    internal TruckingSystem.Desktop.Common.NumberBox PaymentAmount = null!;
     internal DateTimePicker PaymentDate = null!;
     internal ComboBox PaymentMethod = null!;
     internal Label PaymentHint = null!;

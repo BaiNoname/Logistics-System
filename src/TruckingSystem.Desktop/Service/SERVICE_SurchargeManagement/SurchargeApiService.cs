@@ -19,6 +19,4 @@ public sealed class SurchargeApiService(ApiConnection connection)
             : connection.PutAsync<SurchargeListItem>($"{Path}/{item.Id}", input);
     }
 
-    public Task<SurchargeListItem?> PublishAsync(SurchargeListItem item) =>
-        connection.PostAsync<SurchargeListItem>($"{Path}/{item.Id}/publish", new { item.Revision });
 }

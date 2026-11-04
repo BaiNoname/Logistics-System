@@ -19,6 +19,11 @@ public partial class PayrollControl : BaseUserControl
     {
         InitializeComponent();
         Theme.StyleGrid(_slipGrid); GridLayout.FitColumns(_slipGrid);
+        GridDecor.Pills(_slipGrid, "PaymentStatus", (text, _) => text switch
+        {
+            "Đã trả đủ" => GridDecor.Green, "Trả một phần" => GridDecor.Amber, _ => GridDecor.Slate,
+        });
+        ButtonStyles.DangerLink(_deleteDraftButton);
         BindButton(_salaryButton, SalaryAsync);
         BindButton(_generateButton, async () =>
         {
@@ -61,7 +66,7 @@ public partial class PayrollControl : BaseUserControl
                 e.FormattingApplied = true;
             }
             if (e.ColumnIndex >= 0 && _slipGrid.Columns[e.ColumnIndex].Name == "PaymentStatus" && e.Value is string state)
-                e.Value = state switch { "Paid" => "Đủ", "PartiallyPaid" => "Một phần", _ => "Chưa trả" };
+                e.Value = state switch { "Paid" => "Đã trả đủ", "PartiallyPaid" => "Trả một phần", _ => "Chưa trả" };
         };
         Load += async (_, _) => await RunAsync(LoadAsync);
     }
@@ -83,6 +88,7 @@ public partial class PayrollControl : BaseUserControl
             _employee.DataSource = _employees;
             if (selected.HasValue) SelectEmployee(selected.Value);
             _slipGrid.DataSource = _slips;
+            _status.ForeColor = _period?.ApprovedAt is not null ? Theme.Success : Theme.TextSecondary;
             _status.Text = _period?.ApprovedAt is not null ? "Đã chốt — số liệu được giữ nguyên."
                 : "Bản nháp — bấm Tạo / tính lại bảng lương để lấy công, chuyến và khoản cộng/trừ mới nhất.";
             _totals.Text = $"Tháng {_month.Value:MM/yyyy} · {_slips.Count}/{_employees.Count} phiếu · Thực lĩnh {_slips.Sum(s => s.NetPay):N0} đ · Đã trả {_slips.Sum(s => s.PaidAmount):N0} đ";
@@ -94,14 +100,20 @@ public partial class PayrollControl : BaseUserControl
     private void UpdateButtons()
     {
         var canPay = _api is not null && _api.Connection.IsInRole("Admin", "Accountant");
+        var canApprove = canPay && _api!.Connection.IsInRole("Admin") && _period is { ApprovedAt: null } && _slips.Count > 0;
         _generateButton.Enabled = canPay && _period?.ApprovedAt is null;
-        _approveButton.Enabled = canPay && _api!.Connection.IsInRole("Admin") && _period is { ApprovedAt: null } && _slips.Count > 0;
+        _approveButton.Enabled = canApprove;
         _payButton.Enabled = canPay && _period?.ApprovedAt is not null && Slip is not null;
         _detailsButton.Enabled = _exportButton.Enabled = canPay && Slip is not null;
         _salaryButton.Enabled = canPay && Employee is not null;
         _adjustmentsButton.Enabled = canPay;
         _kpiButton.Visible = _api is not null && _api.Connection.IsInRole("Admin");
         _deleteDraftButton.Visible = canPay && _period is { ApprovedAt: null } && Slip is { CalculationVersion: 0 };
+        ButtonStyles.Secondary(_generateButton);
+        ButtonStyles.Secondary(_approveButton);
+        ButtonStyles.Secondary(_payButton);
+        ButtonStyles.Primary(_period?.ApprovedAt is not null ? _payButton
+            : canApprove ? _approveButton : _generateButton);
     }
 
     private async Task SalaryAsync()

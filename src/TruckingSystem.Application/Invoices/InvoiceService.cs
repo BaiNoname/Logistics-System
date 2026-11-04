@@ -1,5 +1,6 @@
 using System.Data;
 using TruckingSystem.Application.Pricing;
+using TruckingSystem.Application.TransportOrders;
 using Microsoft.EntityFrameworkCore;
 using TruckingSystem.Application.Common;
 using TruckingSystem.Application.Common.Interfaces;
@@ -89,15 +90,19 @@ public class InvoiceService : IInvoiceService
         var source = $"HĐ {contract.Code}" + (appendix is null ? "" : $", PL {appendix.Code}")
             + $", ngày áp dụng {pricingDate:dd/MM/yyyy}";
         var policy = await SurchargeLookup.AtAsync(_db, pricingDate);
-        var lines = InvoicePricing.CalculateLines(order, tariff, distance, source, policy);
         var otherCosts = await _db.TripExpenses.Where(e => e.Trip.TransportOrderId == orderId)
             .SumAsync(e => (decimal?)e.Amount) ?? 0m;
+        var storageFee = await StorageFeeRules.ComputeAsync(_db, orderId)
+            ?? throw new KeyNotFoundException("Không tìm thấy đơn hàng.");
+        var lines = InvoicePricing.CalculateLines(order, tariff, distance, source, policy, otherCosts, storageFee.TotalFee);
         return new InvoiceQuoteDto(orderId, contract.Code, appendix?.Code, pricingDate, tariff.VehicleType,
             distance, order.CargoLines.Sum(c => c.WeightKg) / 1000m, liters, otherCosts,
             lines.Sum(l => l.Amount),
             lines.Select(l => new InvoiceQuoteLineDto(l.Description, l.Quantity, l.UnitPrice, l.Amount)).ToList(),
-            distance is null ? "Chưa đủ GPS để tổng hợp quãng đường và nhiên liệu."
-                : liters is null ? "Chưa đủ định mức xe để ước tính nhiên liệu." : null);
+            !storageFee.IsFinal ? "Phí lưu kho của đơn vẫn đang tạm tính. Vui lòng tính lại hóa đơn sau khi phí lưu kho đã chốt."
+                : distance is null ? "Chưa đủ GPS để tổng hợp quãng đường và nhiên liệu."
+                : liters is null ? "Chưa đủ định mức xe để ước tính nhiên liệu." : null,
+            StorageFeePending: !storageFee.IsFinal);
     }
 
     public async Task<InvoiceListItemDto> CreateAsync(CreateInvoiceRequest request)
@@ -117,8 +122,10 @@ public class InvoiceService : IInvoiceService
 
         var invoice = Invoice.Create(order, request.Amount);
         var quote = await GetQuoteAsync(order.Id);
+        if (quote.StorageFeePending)
+            throw new InvalidOperationException(quote.Note);
         if (request.Amount != quote.TotalAmount)
-            throw new InvalidOperationException("Số tiền đã thay đổi hoặc không khớp hợp đồng/phụ lục. Vui lòng tải lại bảng tính trước khi lưu.");
+            throw new InvalidOperationException("Tổng tiền hóa đơn đã thay đổi. Vui lòng tính lại trước khi lưu.");
         invoice.TotalAmount = quote.TotalAmount;
         invoice.Lines = quote.Lines.Select(l => new InvoiceLine
         {

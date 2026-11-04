@@ -12,6 +12,24 @@ public partial class CustomerContactForm : BaseForm
     public CustomerContactForm()
     {
         InitializeComponent();
+        _save.Text = "Lưu người liên hệ";
+        Controls.Remove(footer);
+        FormStyle.EditorFooter(this, btnCancel, _save);
+        footer.Dispose();
+        foreach (Control block in _fields.Controls)
+        {
+            block.Dock = DockStyle.Top;
+            block.TabIndex = _fields.Controls.GetChildIndex(block);
+            foreach (Control input in block.Controls)
+                input.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            FormStyle.FieldLabels(block.Controls.OfType<Label>().ToArray());
+        }
+        DialogKeys.Enable(this);
+        Anim.FadeIn(this);
+        // Quy tắc design.md: nhãn bắt buộc có *, chân [Đóng] [💾 Lưu].
+        lblPhone.Text = "Số điện thoại *:";
+        FormStyle.SaveButton(_save);
+        FormStyle.CloseButton(this, btnCancel);
     }
 
     public CustomerContactForm(ApiServices api, List<CustomerListItem> customers, CustomerContactListItem? contact = null, int customerId = 0) : this()
@@ -35,36 +53,33 @@ public partial class CustomerContactForm : BaseForm
         if (_api is null || _saving) return;
         if (_customer.SelectedItem is not CustomerListItem customer)
         {
-            _status.Text = "Vui lòng chọn khách hàng.";
-            _customer.Focus();
+            FieldHint.Show(_customer, _status, "Vui lòng chọn khách hàng.");
             return;
         }
         if (string.IsNullOrWhiteSpace(_name.Text))
         {
-            _status.Text = "Vui lòng nhập tên người liên hệ.";
-            _name.Focus();
+            FieldHint.Show(_name, _status, "Vui lòng nhập tên người liên hệ.");
             return;
         }
         if (!IsValidPhoneNumber(_phone.Text))
         {
-            _status.Text = "Vui lòng nhập số điện thoại hợp lệ (ví dụ: +84 123456789).";
-            _phone.Focus();
+            FieldHint.Show(_phone, _status, "Vui lòng nhập số điện thoại hợp lệ (ví dụ: 0901234567 hoặc +84 901234567).");
             return;
         }
         _saving = true;
         _fields.Enabled = _save.Enabled = false;
-        _status.Text = "Đang lưu...";
+        FormStyle.Status(_status, "Đang lưu...", StatusKind.Info);
         try
         {
             var result = _contact is null
                 ? await _api.Customers.CreateContactAsync(customer.Id, _name.Text.Trim(), _phone.Text.Trim(), _position.Text.Trim())
                 : await _api.Customers.UpdateContactAsync(_contact.Id, customer.Id, _name.Text.Trim(), _phone.Text.Trim(), _position.Text.Trim());
-            if (!result.Success) { _status.Text = result.Message; return; }
+            if (!result.Success) { FormStyle.Status(_status, "⚠️ " + result.Message); return; }
             _saving = false;
             DialogResult = DialogResult.OK;
             Close();
         }
-        catch (Exception ex) { _status.Text = "Không lưu được người liên hệ: " + ex.Message; }
+        catch (Exception ex) { FormStyle.Status(_status, "Không lưu được người liên hệ: " + ex.Message); }
         finally
         {
             _saving = false;

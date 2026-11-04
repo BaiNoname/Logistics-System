@@ -17,6 +17,59 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
         public CreateDriverProfileForm()
         {
             InitializeComponent();
+            BackColor = Theme.CardBg;
+            ClientSize = new Size(760, 580);
+            MinimumSize = new Size(620, 440);
+            FormBorderStyle = FormBorderStyle.Sizable;
+            var fields = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, ColumnCount = 2, Padding = new Padding(20, 16, 20, 16) };
+            fields.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+            fields.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+            void Section(string text, int row)
+            {
+                var label = new Label { Text = text, AutoSize = true, Margin = new Padding(3, 10, 3, 6) };
+                FormStyle.Section(label);
+                fields.Controls.Add(label, 0, row);
+                fields.SetColumnSpan(label, 2);
+            }
+            void Field(Control label, Control input, int col, int row, int tab)
+            {
+                label.Text = label.Text.TrimEnd(':') + ":";
+                label.AutoSize = true;
+                label.Font = Theme.FontNormal;
+                label.ForeColor = Theme.TextPrimary;
+                label.Margin = new Padding(3, 6, 12, 4);
+                input.Dock = DockStyle.Top;
+                input.TabIndex = tab;
+                input.Margin = new Padding(3, 0, 12, 6);
+                input.AccessibleName = label.Text.TrimEnd(':');
+                fields.Controls.Add(label, col, row);
+                fields.Controls.Add(input, col, row + 1);
+            }
+            Section("① Giấy tờ tài xế", 0);
+            Field(lblLicenseNumber, txtLicenseNumber, 0, 1, 0);
+            Field(lblLicenseClass, cboLicenseClass, 1, 1, 1);
+            Field(lblLicenseExpiry, dtLicenseExpiry, 0, 3, 2);
+            chkHasHealthCert.Text = "Hạn giấy khám sức khỏe *";
+            Field(chkHasHealthCert, dtHealthCertExpiry, 1, 3, 3);
+            Section("② Thông tin công việc", 5);
+            Field(lblYearsExp, numYearsExp, 0, 6, 4);
+            Field(lblWarehouse, cboWarehouse, 1, 6, 5);
+            lblGoogleCalendarId.Text = "Google Calendar ID (tùy chọn)";
+            Field(lblGoogleCalendarId, txtGoogleCalendarId, 0, 8, 6);
+            fields.SetColumnSpan(lblGoogleCalendarId, 2);
+            fields.SetColumnSpan(txtGoogleCalendarId, 2);
+            lblStatus.AutoSize = true;
+            lblStatus.Dock = DockStyle.Fill;
+            fields.Controls.Add(lblStatus, 0, 10);
+            fields.SetColumnSpan(lblStatus, 2);
+            var scroll = new Panel { Dock = DockStyle.Fill, AutoScroll = true };
+            scroll.Controls.Add(fields);
+            Controls.Add(scroll);
+            btnSave.AutoSize = true;
+            btnSave.Size = new Size(200, 38);
+            FormStyle.EditorFooter(this, FormStyle.NewCloseButton(this), btnSave);
+            DialogKeys.Enable(this);
+            Anim.FadeIn(this);
             // Đủ hạng cũ (luật 2008: B2, E, FC...) và hạng mới (luật 2024: B, C1, CE...) — khớp DriverLicenseRules.
             cboLicenseClass.Items.AddRange(new object[] { "B", "B2", "C1", "C", "CE", "D1", "D2", "D", "DE", "E", "FC" });
             cboLicenseClass.SelectedItem = "C";
@@ -59,7 +112,7 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
 
                 _isEditMode = true;
                 Text = Text.Replace("Tạo hồ sơ tài xế", "Sửa hồ sơ tài xế");
-                btnSave.Text = "Lưu thay đổi";
+                btnSave.Text = "💾 Lưu thay đổi";
 
                 txtLicenseNumber.Text = existing.LicenseNumber;
                 // Hạng cũ không còn trong danh sách vẫn hiện đúng (không âm thầm đổi sang hạng khác).
@@ -89,22 +142,22 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
         {
             if (string.IsNullOrWhiteSpace(txtLicenseNumber.Text))
             {
-                lblStatus.Text = "Vui lòng nhập số bằng lái.";
+                FieldHint.Show(txtLicenseNumber, lblStatus, "Vui lòng nhập số bằng lái.");
                 return;
             }
             if (cboLicenseClass.SelectedItem is not string)
             {
-                lblStatus.Text = "Vui lòng chọn hạng bằng lái.";
+                FieldHint.Show(cboLicenseClass, lblStatus, "Vui lòng chọn hạng bằng lái.");
                 return;
             }
             if (dtLicenseExpiry.Value.Date < DateTime.Today)
             {
-                lblStatus.Text = "Chọn ngày hết hạn ghi trên bằng lái (bằng đã hết hạn thì nhập theo bằng mới).";
+                FieldHint.Show(dtLicenseExpiry, lblStatus, "Chọn ngày hết hạn ghi trên bằng lái (bằng đã hết hạn thì nhập theo bằng mới).");
                 return;
             }
             if (dtHealthCertExpiry.Value.Date < DateTime.Today)
             {
-                lblStatus.Text = "Chọn ngày hết hạn ghi trên giấy khám sức khỏe (giấy cũ hết hạn thì nhập theo giấy khám mới).";
+                FieldHint.Show(dtHealthCertExpiry, lblStatus, "Chọn ngày hết hạn ghi trên giấy khám sức khỏe (giấy cũ hết hạn thì nhập theo giấy khám mới).");
                 return;
             }
             if (_api is null) return;

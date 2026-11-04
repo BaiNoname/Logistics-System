@@ -14,7 +14,7 @@ public class SystemControl : BaseUserControl
     private readonly Label _status = new() { Dock = DockStyle.Fill, ForeColor = Theme.TextSecondary, TextAlign = ContentAlignment.MiddleLeft };
     private readonly Button _edit = Theme.MakeSecondaryButton("Sửa", 85);
     private readonly Button _delete = Theme.MakeSecondaryButton("Xóa", 85);
-    private readonly FlowLayoutPanel _actions = new() { Dock = DockStyle.Fill, AutoSize = true, WrapContents = false };
+    private readonly FlowLayoutPanel _actions = new() { Dock = DockStyle.Fill, AutoSize = true, WrapContents = true };
     private List<SystemItem> _departments = new();
     private List<SystemItem> _positions = new();
 
@@ -49,14 +49,17 @@ public class SystemControl : BaseUserControl
         _delete.Click += async (_, _) => await DeleteAsync();
         refresh.Click += async (_, _) => await LoadCurrentAsync();
 
-        var header = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2 };
+        Padding = new Padding(16);
+        ButtonStyles.DangerLink(_delete);
+        var header = new TableLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, ColumnCount = 1, RowCount = 2 };
         header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        header.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        header.Controls.Add(new Label { Text = "Hệ Thống", Font = Theme.FontTitle, ForeColor = Theme.TextPrimary, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft }, 0, 0);
-        header.Controls.Add(_actions, 1, 0);
+        header.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        header.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        header.Controls.Add(new Label { Text = "Hệ thống", Font = Theme.FontTitle, ForeColor = Theme.TextPrimary, AutoSize = true, TextAlign = ContentAlignment.MiddleLeft }, 0, 0);
+        header.Controls.Add(_actions, 0, 1);
 
         var layout = new TableLayoutPanel { Dock = DockStyle.Fill, RowCount = 3 };
-        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 64));
+        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));
         layout.Controls.Add(header, 0, 0);
@@ -65,6 +68,7 @@ public class SystemControl : BaseUserControl
         Controls.Add(layout);
 
         UpdateButtons();
+        Load += (_, _) => Theme.UniformButtons(_actions);
         Load += async (_, _) => { await LoadCurrentAsync(); _tabs.SelectedIndex = 1; await LoadCurrentAsync(); _tabs.SelectedIndex = 0; };
     }
 
@@ -168,21 +172,29 @@ public class SystemControl : BaseUserControl
     {
         using var dialog = new BaseForm
         {
-            Text = title, ClientSize = new Size(440, 180), FormBorderStyle = FormBorderStyle.FixedDialog,
+            Text = title, ClientSize = new Size(470, 240), MinimumSize = new Size(430, 240),
             MaximizeBox = false, MinimizeBox = false, StartPosition = FormStartPosition.CenterParent,
             BackColor = Color.White,
         };
-        var label = new Label { Text = "Tên", Left = 24, Top = 22, AutoSize = true, ForeColor = Theme.TextSecondary };
-        var input = new TextBox { Text = value, Left = 24, Top = 49, Width = 390, MaxLength = 100 };
-        var save = Theme.MakePrimaryButton("Lưu", 100);
-        save.SetBounds(314, 101, 100, 38);
+        var fields = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, Padding = new Padding(20, 16, 20, 16) };
+        fields.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        var label = new Label { Text = "Tên *:", AutoSize = true, ForeColor = Theme.TextPrimary };
+        var input = new TextBox { Text = value, Dock = DockStyle.Top, MaxLength = 100, AccessibleName = "Tên" };
+        var status = new Label { AutoSize = true, Dock = DockStyle.Fill, ForeColor = Theme.Danger };
+        fields.Controls.Add(label); fields.Controls.Add(input); fields.Controls.Add(status);
+        dialog.Controls.Add(fields);
+        var save = Theme.MakePrimaryButton("Lưu thông tin", 150);
+        FormStyle.EditorFooter(dialog, FormStyle.NewCloseButton(dialog), save);
+        ModernLook.Apply(dialog);
+        DialogKeys.Enable(dialog, save);
+        Anim.FadeIn(dialog);
         save.Click += (_, _) =>
         {
             if (string.IsNullOrWhiteSpace(input.Text))
-                MessageBox.Show(dialog, "Vui lòng nhập tên.", "Thiếu thông tin", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                FieldHint.Show(input, status, "Vui lòng nhập tên.");
             else dialog.DialogResult = DialogResult.OK;
         };
-        dialog.Controls.AddRange(new Control[] { label, input, save });
+
         dialog.AcceptButton = save;
         input.SelectAll();
         return dialog.ShowDialog(FindForm()) == DialogResult.OK ? input.Text.Trim() : null;

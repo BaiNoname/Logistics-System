@@ -17,7 +17,7 @@ partial class TariffRuleForm
     private void InitializeComponent()
     {
         components = new System.ComponentModel.Container();
-        _fields = new FlowLayoutPanel();
+        _fields = new TableLayoutPanel();
         _status = new Label();
         _errors = new ErrorProvider(components);
         _save = new Button();
@@ -27,10 +27,10 @@ partial class TariffRuleForm
         _vehicleType = new ComboBox();
         _vehicleTypePanel = new Panel();
         _vehicleTypeLabel = new Label();
-        _perKm = new NumericUpDown();
+        _perKm = new NumberBox();
         _perKmPanel = new Panel();
         _perKmLabel = new Label();
-        _perTon = new NumericUpDown();
+        _perTon = new NumberBox();
         _perTonPanel = new Panel();
         _perTonLabel = new Label();
         ((System.ComponentModel.ISupportInitialize)_errors).BeginInit();
@@ -45,8 +45,9 @@ partial class TariffRuleForm
         _fields.Name = "_fields";
         _fields.Dock = DockStyle.Fill;
         _fields.AutoScroll = true;
-        _fields.FlowDirection = FlowDirection.TopDown;
-        _fields.WrapContents = false;
+        _fields.ColumnCount = 1;
+        _fields.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+
         _fields.Padding = new Padding(24);
         _status.Name = "_status";
         _status.AutoSize = true;
@@ -193,7 +194,7 @@ partial class TariffRuleForm
 
     #endregion
 
-    private FlowLayoutPanel _fields = null!;
+    private TableLayoutPanel _fields = null!;
     private Label _status = null!;
     private ErrorProvider _errors = null!;
     private Button _save = null!;
@@ -203,10 +204,10 @@ partial class TariffRuleForm
     private ComboBox _vehicleType = null!;
     private Panel _vehicleTypePanel = null!;
     private Label _vehicleTypeLabel = null!;
-    private NumericUpDown _perKm = null!;
+    private NumberBox _perKm = null!;
     private Panel _perKmPanel = null!;
     private Label _perKmLabel = null!;
-    private NumericUpDown _perTon = null!;
+    private NumberBox _perTon = null!;
     private Panel _perTonPanel = null!;
     private Label _perTonLabel = null!;
 }

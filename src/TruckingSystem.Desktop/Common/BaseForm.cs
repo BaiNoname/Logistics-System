@@ -22,7 +22,7 @@ namespace TruckingSystem.Desktop.Common
         protected override void OnLoad(EventArgs e)
         {
             UiStyle.ApplyDefaults(this);
-            if (ModernLook.IsMine(GetType())) ModernLook.Apply(this); // kiểu mới chỉ cho hộp thoại phần của Nhân
+            if (ModernLook.IsMine(GetType())) ModernLook.Apply(this);
             FitToScreen();
             base.OnLoad(e);
         }
