@@ -30,7 +30,7 @@ public partial class PriceListForm : BaseForm
         _date.MinDate = today;
         _date.Value = !copy && item is not null && item.EffectiveDate.Date >= today ? item.EffectiveDate.Date : today;
         if (!copy && item is not null && item.EffectiveDate.Date < today)
-            _status.Text = "Ngày hiệu lực cũ đã qua. Khi lưu, bảng giá sẽ dùng ngày hiệu lực mới từ hôm nay trở đi.";
+            FormStyle.Status(_status, "Ngày hiệu lực cũ đã qua. Khi lưu, bảng giá sẽ dùng ngày hiệu lực mới từ hôm nay trở đi.", StatusKind.Warning);
         _priceListStatus.SelectedIndex = item?.Status is "Inactive" or "Expired" ? 1 : 0;
         if (copy)
         {
@@ -45,8 +45,11 @@ public partial class PriceListForm : BaseForm
         if (!copy && item is not null && item.Status != "Active")
         {
             _fields.Enabled = _save.Enabled = false;
-            _status.Text = "Không thể sửa bảng giá đã ngừng áp dụng. Có thể sao chép để tạo bảng giá mới.";
+            FormStyle.Status(_status, "Không thể sửa bảng giá đã ngừng áp dụng. Có thể sao chép để tạo bảng giá mới.", StatusKind.Warning);
         }
+        // Chân cửa sổ chuẩn: [Đóng] [💾 Lưu / Tạo mới và sao chép].
+        FormStyle.SaveButton(_save);
+        FormStyle.CloseButton(this, _cancel);
         _save.Click += async (_, _) => await SaveAsync();
         Shown += (_, _) => _name.Focus();
         FormClosing += (_, e) => e.Cancel = _saving;
@@ -62,14 +65,12 @@ public partial class PriceListForm : BaseForm
         catch (ArgumentException ex)
         {
             Control input = string.IsNullOrWhiteSpace(_name.Text) ? _name : _date;
-            _errors.SetError(input, ex.Message);
-            _status.Text = ex.Message;
-            input.Focus();
+            FieldHint.Show(input, _status, ex.Message);
             return;
         }
         _saving = true;
         _fields.Enabled = _save.Enabled = false;
-        _status.Text = "Đang lưu...";
+        FormStyle.Status(_status, "Đang lưu...", StatusKind.Info);
         try
         {
             var status = _priceListStatus.SelectedIndex == 1 ? "Inactive" : "Active";
@@ -92,7 +93,7 @@ public partial class PriceListForm : BaseForm
             DialogResult = DialogResult.OK;
             Close();
         }
-        catch (Exception ex) { _status.Text = "Lỗi: " + ex.Message; }
+        catch (Exception ex) { FormStyle.Status(_status, "Lỗi: " + ex.Message); }
         finally { _saving = false; if (!IsDisposed) _fields.Enabled = _save.Enabled = true; }
     }
 }

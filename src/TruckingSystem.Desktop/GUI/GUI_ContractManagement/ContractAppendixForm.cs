@@ -51,8 +51,11 @@ public class ContractAppendixForm : BaseForm
             UpdateSaveEnabled();
         };
         var footer = new FlowLayoutPanel { Dock = DockStyle.Bottom, Height = 68, Padding = new Padding(24, 10, 24, 10), FlowDirection = FlowDirection.RightToLeft };
-        var cancel = Theme.MakeSecondaryButton("Hủy", 100);
+        var cancel = Theme.MakeSecondaryButton("Đóng", 100);
         cancel.DialogResult = DialogResult.Cancel;
+        _save.Text = "Lưu phụ lục";
+        _save.Width = 150;
+        FormStyle.SaveButton(_save); // chân [Đóng] [💾 Lưu phụ lục]
         footer.Controls.AddRange(new Control[] { _save, cancel });
         Controls.Add(_fields);
         Controls.Add(footer);
@@ -66,14 +69,14 @@ public class ContractAppendixForm : BaseForm
 
     private async Task LoadLookupsAsync()
     {
-        _status.Text = "Đang tải hợp đồng và chi tiết bảng giá...";
+        FormStyle.Status(_status, "Đang tải hợp đồng và chi tiết bảng giá...", StatusKind.Info);
         try
         {
             var lookups = await _api.ContractAppendices.GetLookupsAsync();
             if (IsDisposed) return;
             BindLookups(lookups);
         }
-        catch (Exception ex) { if (!IsDisposed) _status.Text = "Lỗi tải dữ liệu: " + ex.Message; }
+        catch (Exception ex) { if (!IsDisposed) FormStyle.Status(_status, "Lỗi tải dữ liệu: " + ex.Message); }
     }
 
     private void BindLookups(ContractAppendixLookups lookups)
@@ -96,9 +99,9 @@ public class ContractAppendixForm : BaseForm
         _fields.Enabled = true;
         UpdateSaveEnabled();
         if (lookups.Contracts.Count == 0)
-            _status.Text = "Cần có hợp đồng để lập phụ lục.";
+            FormStyle.Status(_status, "Cần có hợp đồng để lập phụ lục.", StatusKind.Warning);
         else if (lookups.PriceLists.Count == 0 && _item is null)
-            _status.Text = "Chưa có bảng giá đang áp dụng để lập phụ lục.";
+            FormStyle.Status(_status, "Chưa có bảng giá đang áp dụng để lập phụ lục.", StatusKind.Warning);
     }
 
     private void BindTariffRules()
@@ -111,11 +114,11 @@ public class ContractAppendixForm : BaseForm
         _tariff.SelectedIndex = -1;
         _tariff.Enabled = rules.Count > 0;
         _prices.Text = "";
-        _status.Text = priceListId > 0 && rules.Count == 0 ? "Bảng giá này chưa có chi tiết. Vui lòng chọn bảng giá khác." : "";
+        FormStyle.Status(_status, priceListId > 0 && rules.Count == 0 ? "Bảng giá này chưa có chi tiết. Vui lòng chọn bảng giá khác." : "", StatusKind.Warning);
         if (_priceList.SelectedIndex < 0 && _item is not null)
         {
             _prices.Text = $"Bảng giá hiện tại: {_item.TariffRule.Name}\n{_item.TariffRule.Details}";
-            _status.Text = "Giữ nguyên giá đã lưu nếu không chọn bảng giá đang áp dụng khác.";
+            FormStyle.Status(_status, "Giữ nguyên giá đã lưu nếu không chọn bảng giá đang áp dụng khác.", StatusKind.Info);
         }
         UpdateSaveEnabled();
     }
@@ -135,10 +138,19 @@ public class ContractAppendixForm : BaseForm
         {
             TruckingSystem.Domain.Entities.ContractAppendix.Validate(_code.Text, contractId, _issue.Value.Date, _effective.Value.Date, tariffRuleId);
         }
-        catch (ArgumentException ex) { _status.Text = ex.Message; return; }
+        catch (ArgumentException ex)
+        {
+            // Báo lỗi ngay tại ô sai (thứ tự kiểm tra giống thứ tự ô trên màn hình).
+            Control field = string.IsNullOrWhiteSpace(_code.Text) || _code.Text.Trim().Length > 100 ? _code
+                : contractId <= 0 ? _contract
+                : tariffRuleId <= 0 ? (_priceList.SelectedIndex < 0 ? _priceList : _tariff)
+                : _effective;
+            FieldHint.Show(field, _status, ex.Message);
+            return;
+        }
         _saving = true;
         _fields.Enabled = _save.Enabled = false;
-        _status.Text = "Đang lưu...";
+        FormStyle.Status(_status, "Đang lưu...", StatusKind.Info);
         try
         {
             if (_item is null)
@@ -155,7 +167,7 @@ public class ContractAppendixForm : BaseForm
             DialogResult = DialogResult.OK;
             Close();
         }
-        catch (Exception ex) { _status.Text = "Lỗi: " + ex.Message; }
+        catch (Exception ex) { FormStyle.Status(_status, "Lỗi: " + ex.Message); }
         finally
         {
             _saving = false;

@@ -27,10 +27,10 @@ partial class TariffRuleForm
         _vehicleType = new ComboBox();
         _vehicleTypePanel = new Panel();
         _vehicleTypeLabel = new Label();
-        _perKm = new NumericUpDown();
+        _perKm = new NumberBox();
         _perKmPanel = new Panel();
         _perKmLabel = new Label();
-        _perTon = new NumericUpDown();
+        _perTon = new NumberBox();
         _perTonPanel = new Panel();
         _perTonLabel = new Label();
         ((System.ComponentModel.ISupportInitialize)_errors).BeginInit();
@@ -203,10 +203,10 @@ partial class TariffRuleForm
     private ComboBox _vehicleType = null!;
     private Panel _vehicleTypePanel = null!;
     private Label _vehicleTypeLabel = null!;
-    private NumericUpDown _perKm = null!;
+    private NumberBox _perKm = null!;
     private Panel _perKmPanel = null!;
     private Label _perKmLabel = null!;
-    private NumericUpDown _perTon = null!;
+    private NumberBox _perTon = null!;
     private Panel _perTonPanel = null!;
     private Label _perTonLabel = null!;
 }

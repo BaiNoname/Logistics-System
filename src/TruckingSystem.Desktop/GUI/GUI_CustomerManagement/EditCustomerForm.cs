@@ -21,6 +21,19 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
                 new ComboOption("Individual", "Cá nhân"),
                 new ComboOption("Company", "Doanh nghiệp"),
             });
+            ApplyDesign();
+        }
+
+        /// <summary>Quy tắc design.md: nhãn bắt buộc có *, chân [Đóng] [💾 Lưu thay đổi], Esc = đóng, Enter = lưu.</summary>
+        private void ApplyDesign()
+        {
+            lblPhone.Text = "Số điện thoại *";
+            lblType.Text = "Loại khách hàng *";
+            var close = FormStyle.NewCloseButton(this);
+            close.Margin = new Padding(8, 0, 0, 0);
+            buttonBar.Controls.Add(close); // xếp phải -> trái: [Đóng] [Lưu]
+            FormStyle.SaveButton(btnSave);
+            AcceptButton = btnSave;
         }
 
         public EditCustomerForm(ApiServices api, CustomerListItem customer) : this()
@@ -47,14 +60,12 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
         {
             if (string.IsNullOrWhiteSpace(txtName.Text))
             {
-                lblStatus.Text = "Vui lòng nhập tên khách hàng.";
+                FieldHint.Show(txtName, lblStatus, "Vui lòng nhập tên khách hàng.");
                 return;
             }
             if (!IsValidPhoneNumber(txtPhone.Text))
             {
-                lblStatus.ForeColor = Theme.Danger;
-                lblStatus.Text = "Vui lòng nhập số điện thoại hợp lệ (ví dụ: +84 123456789).";
-                txtPhone.Focus();
+                FieldHint.Show(txtPhone, lblStatus, "Vui lòng nhập số điện thoại hợp lệ (ví dụ: 0901234567 hoặc +84 901234567).");
                 return;
             }
             if (_api is null || !btnSave.Enabled) return;
@@ -70,7 +81,7 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
 
                 if (!result.Success)
                 {
-                    lblStatus.Text = "⚠️ " + result.Message;
+                    FormStyle.Status(lblStatus, "⚠️ " + result.Message);
                     return;
                 }
 
@@ -79,7 +90,7 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
             }
             catch (Exception ex)
             {
-                lblStatus.Text = "Lỗi: " + ex.Message;
+                FormStyle.Status(lblStatus, "Lỗi: " + ex.Message);
             }
             finally
             {

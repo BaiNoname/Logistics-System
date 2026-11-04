@@ -7,28 +7,29 @@ public sealed class SurchargeDetailForm : BaseForm
 {
     private readonly TextBox _name = new() { MaxLength = 150 };
     private readonly DateTimePicker _date = new() { Format = DateTimePickerFormat.Short };
-    private readonly NumericUpDown _fragile = new() { DecimalPlaces = 2, Increment = 0.1m };
-    private readonly NumericUpDown _hazmat = new() { DecimalPlaces = 2, Increment = 0.1m };
-    private readonly Button _save = new() { Text = "Lưu nháp", AutoSize = true };
-    private readonly Label _status = new() { AutoSize = true, ForeColor = Theme.Danger };
+    private readonly NumberBox _fragile = new() { DecimalPlaces = 2, Increment = 0.1m };
+    private readonly NumberBox _hazmat = new() { DecimalPlaces = 2, Increment = 0.1m };
+    private readonly Button _save = Theme.MakePrimaryButton("Lưu nháp", 140);
+    private readonly Label _status = new() { AutoSize = true, ForeColor = Theme.Danger, Margin = new Padding(0, 8, 0, 0) };
     public int SavedId { get; private set; }
 
     public SurchargeDetailForm(ApiServices api, SurchargeListItem? item = null, bool copy = false)
     {
         Text = copy ? "Sao chép bảng phụ phí" : item == null ? "Tạo bảng phụ phí" : "Chi tiết bảng phụ phí";
         StartPosition = FormStartPosition.CenterParent;
-        ClientSize = new Size(570, 315);
+        ClientSize = new Size(570, 370);
         var editable = api.Connection.IsInRole("Admin", "Accountant") && (copy || item?.Published != true);
-        var panel = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, Padding = new Padding(16), AutoScroll = true };
+        var panel = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, Padding = new Padding(20, 16, 20, 16), AutoScroll = true };
         panel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         Controls.Add(panel);
         void Field(string label, Control field)
         {
             var row = panel.RowCount++;
-            panel.Controls.Add(new Label { Text = label, AutoSize = true, Anchor = AnchorStyles.Left }, 0, row);
+            panel.Controls.Add(new Label { Text = label, AutoSize = true, Anchor = AnchorStyles.Left, ForeColor = Theme.TextPrimary, Margin = new Padding(0, 4, 12, 4) }, 0, row);
             field.Dock = DockStyle.Top;
-            field.AccessibleName = label;
+            field.Margin = new Padding(0, 4, 0, 4);
+            field.AccessibleName = label.TrimEnd(' ', '*');
             panel.Controls.Add(field, 1, row);
         }
         _name.Text = copy ? item!.Name + " (bản sao)" : item?.Name ?? "";
@@ -38,26 +39,39 @@ public sealed class SurchargeDetailForm : BaseForm
         _name.ReadOnly = !editable;
         _date.Enabled = editable;
         _fragile.Enabled = _hazmat.Enabled = editable && !copy;
-        Field("Tên bảng", _name);
-        Field("Ngày hiệu lực", _date);
-        Field("Loại phụ phí", new Label { Text = "Tỷ lệ trên cước km + cước tấn (%)", AutoSize = true });
-        Field("Hàng dễ vỡ", _fragile);
-        Field("Hàng nguy hiểm", _hazmat);
-        _save.Visible = editable;
-        var actions = new FlowLayoutPanel { AutoSize = true, Dock = DockStyle.Fill };
-        var close = new Button { Text = "Đóng", DialogResult = DialogResult.Cancel, AutoSize = true };
-        actions.Controls.AddRange([_save, close]);
-        panel.Controls.Add(actions, 1, panel.RowCount++);
+        Field("Tên bảng *", _name);
+        Field("Ngày hiệu lực *", _date);
+        Field("Hàng dễ vỡ (%)", _fragile);
+        Field("Hàng nguy hiểm (%)", _hazmat);
+        var hint = new Label
+        {
+            Text = "Phụ phí tính theo tỷ lệ % trên cước km + cước tấn.", AutoSize = true,
+            Font = Theme.FontSmall, ForeColor = Theme.TextSecondary, Margin = new Padding(0, 2, 0, 4),
+        };
+        panel.Controls.Add(hint, 1, panel.RowCount++);
         panel.Controls.Add(_status, 0, panel.RowCount++);
         panel.SetColumnSpan(_status, 2);
+
+        // Chân cửa sổ chuẩn: [Đóng] [💾 Lưu nháp] — chỉ 1 nút chính.
+        _save.Visible = editable;
+        FormStyle.SaveButton(_save);
+        var close = Theme.MakeSecondaryButton("Đóng", 100);
+        close.DialogResult = DialogResult.Cancel;
+        ButtonStyles.Footer(this, null, close, _save);
         CancelButton = close;
         if (editable) AcceptButton = _save;
         bool saving = false;
         FormClosing += (_, e) => e.Cancel = saving;
         _save.Click += async (_, _) =>
         {
+            if (string.IsNullOrWhiteSpace(_name.Text))
+            {
+                FieldHint.Show(_name, _status, "Vui lòng nhập tên bảng phụ phí.");
+                return;
+            }
             saving = true;
-            panel.Enabled = false;
+            panel.Enabled = _save.Enabled = false;
+            FormStyle.Status(_status, "Đang lưu...", StatusKind.Info);
             try
             {
                 var saved = await api.Surcharges.SaveAsync(new(item?.Id ?? 0, _name.Text, _date.Value,
@@ -66,8 +80,8 @@ public sealed class SurchargeDetailForm : BaseForm
                 saving = false;
                 DialogResult = DialogResult.OK;
             }
-            catch (Exception ex) { _status.Text = ex.Message; }
-            finally { saving = false; panel.Enabled = true; }
+            catch (Exception ex) { FormStyle.Status(_status, "Lỗi: " + ex.Message); }
+            finally { saving = false; panel.Enabled = _save.Enabled = true; }
         };
     }
 }
