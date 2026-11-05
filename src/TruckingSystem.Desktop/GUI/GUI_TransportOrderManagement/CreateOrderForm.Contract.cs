@@ -29,18 +29,43 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
         private void SetupContractRules()
         {
             int S(int v) => LogicalToDeviceUnits(v);
-            // Dòng tóm tắt ngay dưới ô Hợp đồng (cột bên phải).
-            var row = fields.GetRow(cboContract) + 1;
-            KpiStrip.InsertRow(fields, _contractInfo, row);
-            fields.SetColumn(_contractInfo, 1);
-            fields.SetColumnSpan(_contractInfo, 1);
+            // Dòng tóm tắt ngay dưới ô Hợp đồng, CÙNG CỘT với ô: gói ô chọn + dòng tóm tắt vào 1 khung 2 tầng rồi đặt khung vào
+            // đúng ô cũ của ô chọn (không chèn hàng mới vào bảng -> ô chọn không bị đẩy sang cột khác).
+            var pos = fields.GetCellPosition(cboContract);
+            var box = new TableLayoutPanel
+            {
+                ColumnCount = 1, RowCount = 2, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                Dock = DockStyle.Fill, Margin = Padding.Empty, Padding = Padding.Empty, TabIndex = cboContract.TabIndex,
+            };
+            box.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            box.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            box.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            fields.SuspendLayout();
+            fields.Controls.Remove(cboContract);
+            box.Controls.Add(cboContract, 0, 0);
+            box.Controls.Add(_contractInfo, 0, 1);
+            fields.Controls.Add(box, pos.Column, pos.Row);
+            fields.ResumeLayout(true);
             _contractInfo.Margin = new Padding(0, 0, S(8), S(4));
+            // Chữ dài thì xuống dòng trong bề ngang ô, không kéo giãn cả form.
+            box.SizeChanged += (_, _) =>
+                _contractInfo.MaximumSize = new Size(Math.Max(S(200), box.ClientSize.Width - _contractInfo.Margin.Horizontal), 0);
+            // Nhãn "Hợp đồng:" bám mép trên, thẳng hàng với ô chọn (khi hiện dòng tóm tắt không bị trôi xuống giữa).
+            lblContract.Anchor = AnchorStyles.Left | AnchorStyles.Top;
+            lblContract.Margin = new Padding(0, cboContract.Margin.Top + Math.Max(0, (cboContract.Height - lblContract.PreferredHeight) / 2), 12, 4);
 
             // Danh sách xổ xuống 2 dòng / mục; ô đang chọn vẫn 1 dòng.
             cboContract.DrawMode = DrawMode.OwnerDrawVariable;
             cboContract.DropDownWidth = Math.Max(cboContract.DropDownWidth, S(460));
             cboContract.MeasureItem += (_, e) => e.ItemHeight = e.Index >= 0 && cboContract.Items[e.Index] is OrderContractOption { Id: > 0 } ? S(38) : S(24);
             cboContract.DrawItem += DrawContractItem;
+            // Danh sách cao đủ cho mọi mục (mỗi hợp đồng 2 dòng) — để mặc định Windows chỉ mở cao ~1 dòng, mục bị cắt.
+            cboContract.DropDown += (_, _) =>
+            {
+                var total = 2;
+                foreach (var it in cboContract.Items) total += it is OrderContractOption { Id: > 0 } ? S(38) : S(24);
+                cboContract.DropDownHeight = Math.Max(S(40), Math.Min(S(380), total));
+            };
             cboContract.SelectedIndexChanged += (_, _) => OnContractPicked();
             dtCommitted.ValueChanged += (_, _) => UpdateContractCheck();
         }

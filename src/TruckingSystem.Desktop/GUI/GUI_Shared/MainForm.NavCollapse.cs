@@ -54,7 +54,8 @@
             foreach (var h in _navHeaders)
             {
                 var header = h;
-                header.Click += (_, _) => { if (_navCollapsed) ShowFlyout(header); };
+                // Hoãn tới sau khi nút nhả chuột xong mới mở bảng nổi (mở ngay trong Click có lúc bảng vừa hiện đã bị đóng).
+                header.Click += (_, _) => { if (_navCollapsed) BeginInvoke(new Action(() => ShowFlyout(header))); };
             }
             Resize += (_, _) => ApplyNavCollapse();
             Shown += (_, _) => ApplyNavCollapse();
@@ -162,10 +163,20 @@
                     ForeColor = count > 0 ? Color.FromArgb(185, 28, 28) : SystemColors.ControlText,
                 };
                 var target = btn;
-                item.Click += (_, _) => target.PerformClick();
+                // Mục con đang ẩn (menu thu gọn) -> PerformClick() của nút ẩn KHÔNG chạy gì cả. Gọi thẳng mở màn.
+                item.Click += (_, _) => OpenNavButton(target);
                 _flyout.Items.Add(item);
             }
-            _flyout.Show(header, new Point(header.Width + LogicalToDeviceUnits(4), 0));
+            if (_flyout.Items.Count <= 2) return; // nhóm không có mục nào tài khoản được xem
+            _flyout.Show(header.PointToScreen(new Point(header.Width + LogicalToDeviceUnits(4), 0)), ToolStripDropDownDirection.BelowRight);
+        }
+
+        /// <summary>Mở màn của 1 mục menu như bấm vào nó — chạy được cả khi mục đang ẩn (menu thu gọn / nhóm đang đóng),
+        /// lúc đó Button.PerformClick() không làm gì. Dùng cho bảng nổi và các lối tắt ở màn Tổng quan.</summary>
+        internal void OpenNavButton(Button target)
+        {
+            if (_buildOf.TryGetValue(target, out var build)) NavigateTo(target, PendingBuild(target) ?? build);
+            else target.PerformClick();
         }
 
         /// <summary>Logo khi thu gọn: chỉ hình xe tải trên nền trời theo chế độ.</summary>

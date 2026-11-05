@@ -40,7 +40,6 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
         public CreateOrderForm()
         {
             InitializeComponent();
-            TruckingSystem.Desktop.Common.DialogFit.Enable(this, root); // vừa màn hình mọi máy, bảng không bị ép mất chữ
             TruckingSystem.Desktop.Common.DialogKeys.Enable(this); // Esc = đóng
             Anim.FadeIn(this); // cửa sổ hiện dần lên
 
@@ -67,6 +66,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             gridCargoLines.CellValueChanged += (_, e) => { if (e.RowIndex >= 0 && _warehouses.Count > 0) BindWarehouses(); };
             SetupContractRules(); // ô hợp đồng ghi rõ loại / ưu đãi / thời hạn, chặn hạn giao vượt hạn hợp đồng (CreateOrderForm.Contract.cs)
             SetupSections(); // 3 khối ① ② ③ + tóm tắt + chân [Đóng] [💾 Lưu đơn] (CreateOrderForm.Steps.cs)
+            SetupFitLayout(); // vừa mọi màn hình: ô nhập hiện đủ, chân [Lưu đơn] luôn thấy, thiếu chỗ thì cuộn phần giữa (CreateOrderForm.Fit.cs)
             rbSelfDelivery.CheckedChanged += (_, _) => RequestEstimate();
             FormClosed += (_, _) => _estimateTimer.Dispose();
 
