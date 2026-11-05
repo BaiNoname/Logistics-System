@@ -53,7 +53,7 @@ public static class DbSeeder
 
         // ---- 4. Dữ liệu nghiệp vụ mẫu ----
         var department = new Department { Name = "Vận hành" };
-        var position = new Position { Name = "Tài xế" };
+        var position = new Position { Name = "Tài xế", Department = department };
         db.Departments.Add(department);
         db.Positions.Add(position);
         await db.SaveChangesAsync();

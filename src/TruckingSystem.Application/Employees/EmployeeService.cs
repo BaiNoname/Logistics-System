@@ -157,13 +157,17 @@ public class EmployeeService : IEmployeeService
 
     public async Task<EmployeeActionResult> CreateAsync(CreateEmployeeRequest request)
     {
+        if (!Employee.IsValidNewEmployeeDateOfBirth(request.DateOfBirth, TruckingSystem.Application.Common.VnClock.Today))
+            return new(false, "Vui lòng chọn ngày sinh từ năm 1900 và nhân viên phải trên 18 tuổi.");
+        if (request.TerminationDate.HasValue)
+            return new(false, "Nhân viên mới mặc định đang làm. Ngày nghỉ việc chỉ cập nhật khi sửa nhân viên.");
         var personalError = ValidatePersonalDetails(request.DateOfBirth, request.Gender, out var gender);
         if (personalError is not null) return new(false, personalError);
         var validation = await ValidateAsync(request.Code, request.FullName, request.DepartmentId, request.PositionId);
         if (validation is not null) return new EmployeeActionResult(false, validation);
         var hireDate = request.HireDate?.Date ?? DateTime.UtcNow;
-        if (hireDate.Year is < 2000 or > 2100 || request.TerminationDate?.Date < hireDate.Date)
-            return new(false, "Ngày vào làm phải từ năm 2000–2100; ngày nghỉ việc không được trước ngày vào làm.");
+        if (hireDate.Year is < 2000 or > 2100)
+            return new(false, "Ngày vào làm phải từ năm 2000–2100.");
 
         var employee = new Employee
         {
@@ -177,7 +181,6 @@ public class EmployeeService : IEmployeeService
             DepartmentId = request.DepartmentId,
             PositionId = request.PositionId,
             HireDate = hireDate,
-            TerminationDate = request.TerminationDate?.Date,
             Status = EmployeeStatus.Active,
         };
         _db.Employees.Add(employee);
@@ -253,6 +256,8 @@ public class EmployeeService : IEmployeeService
         if (positionId.HasValue && !await _db.Positions.AnyAsync(p => p.Id == positionId.Value))
             return "Chức danh không tồn tại.";
 
+        if (positionId.HasValue && await _db.Positions.AnyAsync(p => p.Id == positionId && p.DepartmentId != null && p.DepartmentId != departmentId))
+            return "Chức danh không thuộc phòng ban đã chọn.";
         return null;
     }
 
@@ -260,10 +265,10 @@ public class EmployeeService : IEmployeeService
         => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     public async Task<List<LookupItemDto>> GetDepartmentsAsync()
-        => await _db.Departments.Select(d => new LookupItemDto(d.Id, d.Name)).ToListAsync();
+        => await _db.Departments.Select(d => new LookupItemDto(d.Id, d.Name, null)).ToListAsync();
 
     public async Task<List<LookupItemDto>> GetPositionsAsync()
-        => await _db.Positions.Select(p => new LookupItemDto(p.Id, p.Name)).ToListAsync();
+        => await _db.Positions.Select(p => new LookupItemDto(p.Id, p.Name, p.DepartmentId)).ToListAsync();
 
     public async Task<List<DriverScheduleDto>> GetSchedulesAsync(int employeeId)
     {

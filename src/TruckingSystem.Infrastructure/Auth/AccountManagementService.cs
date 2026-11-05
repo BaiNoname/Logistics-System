@@ -11,12 +11,14 @@ public class AccountManagementService : IAccountManagementService
     private readonly AppDbContext _db;
     private readonly UserManager<ApplicationUser> _users;
     private readonly RoleManager<ApplicationRole> _roles;
+    private readonly AccountEmployeeService _employees;
 
-    public AccountManagementService(AppDbContext db, UserManager<ApplicationUser> users, RoleManager<ApplicationRole> roles)
+    public AccountManagementService(AppDbContext db, UserManager<ApplicationUser> users, RoleManager<ApplicationRole> roles, AccountEmployeeService employees)
     {
         _db = db;
         _users = users;
         _roles = roles;
+        _employees = employees;
     }
 
     public async Task<List<AccountDto>> GetAllAsync()
@@ -26,8 +28,8 @@ public class AccountManagementService : IAccountManagementService
                                  join role in _db.Roles on link.RoleId equals role.Id
                                  select new { link.UserId, role.Name }).ToListAsync();
         var rolesByUser = assignments.ToLookup(a => a.UserId, a => a.Name!);
-        return users.Select(u => new AccountDto(u.Id, u.UserName!, u.Email, u.IsActive,
-            rolesByUser[u.Id].OrderBy(r => r).ToArray())).ToList();
+        return await _employees.IncludeEmployeesAsync(users.Select(u => new AccountDto(u.Id, u.UserName!, u.Email, u.IsActive,
+            rolesByUser[u.Id].OrderBy(r => r).ToArray())).ToList());
     }
 
     public Task<List<string>> GetRolesAsync() =>
@@ -40,7 +42,7 @@ public class AccountManagementService : IAccountManagementService
         if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
             return new(false, Message: "Cần nhập tên đăng nhập và mật khẩu.");
 
-        await using var transaction = await _db.Database.BeginTransactionAsync();
+        await using var transaction = await _db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
         var user = new ApplicationUser
         {
             UserName = request.Username.Trim(),
@@ -52,12 +54,17 @@ public class AccountManagementService : IAccountManagementService
 
         var assigned = await _users.AddToRolesAsync(user, request.Roles.Distinct(StringComparer.OrdinalIgnoreCase));
         if (!assigned.Succeeded) return new(false, Message: Errors(assigned));
+        error = await _employees.AssignAsync(user.Id, request.EmployeeId);
+        if (error is not null) return new(false, Message: error);
+        await _db.SaveChangesAsync();
+        var accounts = await _employees.IncludeEmployeesAsync(new() { new(user.Id, user.UserName!, user.Email, user.IsActive, request.Roles) });
         await transaction.CommitAsync();
-        return new(true, new AccountDto(user.Id, user.UserName!, user.Email, user.IsActive, request.Roles));
+        return new(true, accounts[0]);
     }
 
     public async Task<AccountActionResult> UpdateAsync(string id, string? actorId, UpdateAccountRequest request)
     {
+        await using var transaction = await _db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
         var user = await _users.FindByIdAsync(id);
         if (user is null) return new(false, NotFound: true);
         var error = await ValidateRoles(request.Roles);
@@ -71,7 +78,11 @@ public class AccountManagementService : IAccountManagementService
             !await HasAnotherActiveAdmin(id))
             return new(false, Message: "Phải còn ít nhất một tài khoản Admin đang hoạt động.");
 
-        await using var transaction = await _db.Database.BeginTransactionAsync();
+        if (request.EmployeeAssignmentSpecified)
+        {
+            error = await _employees.AssignAsync(id, request.EmployeeId);
+            if (error is not null) return new(false, Message: error);
+        }
         user.Email = string.IsNullOrWhiteSpace(request.Email) ? null : request.Email.Trim();
         user.IsActive = request.IsActive;
         var updated = await _users.UpdateAsync(user);

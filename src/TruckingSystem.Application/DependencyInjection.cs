@@ -30,6 +30,7 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
+        services.AddScoped<Auth.AccountEmployeeService>();
         services.AddScoped<ITripService, TripService>();
         services.AddScoped<IFuelService, FuelService>();
         services.AddScoped<ITransportOrderService, TransportOrderService>();
