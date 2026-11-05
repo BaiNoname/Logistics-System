@@ -10,6 +10,7 @@ public partial class TariffRuleForm : BaseForm
     private readonly PriceListItem _priceList = null!;
     private readonly TariffRuleItem? _item;
     private bool _saving;
+    private readonly DataGridView _vehicleTypes = new() { Dock = DockStyle.Fill, AccessibleName = "Danh sách loại xe" };
 
     public TariffRuleForm()
     {
@@ -34,20 +35,45 @@ public partial class TariffRuleForm : BaseForm
         FormStyle.CloseButton(this, _cancel);
     }
 
-    public TariffRuleForm(ApiServices api, PriceListItem priceList, IReadOnlyCollection<TariffRuleItem> rules, TariffRuleItem? item = null) : this()
+    public TariffRuleForm(ApiServices api, PriceListItem priceList, IReadOnlyCollection<TariffRuleItem> rules, TariffRuleItem? item = null, string? vehicleType = null) : this()
     {
         _api = api;
         _priceList = priceList;
         _item = item;
         Text = item is null ? "Thêm chi tiết giá" : "Sửa chi tiết giá";
         _priceListLabel.Text = "Bảng giá: " + priceList.Name;
-        var usedTypes = rules
-            .Where(rule => rule.PriceListId == priceList.Id && rule.Id != item?.Id)
-            .Select(rule => rule.VehicleType.Trim())
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-        for (var i = _vehicleType.Items.Count - 1; i >= 0; i--)
-            if (usedTypes.Contains(_vehicleType.Items[i]!.ToString()!))
-                _vehicleType.Items.RemoveAt(i);
+        var usedTypes = rules.Where(rule => rule.PriceListId == priceList.Id && rule.Id != item?.Id)
+            .Select(rule => rule.VehicleType.Trim()).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var defaults = TariffRule.DefaultVehicleTypes;
+        Theme.StyleGrid(_vehicleTypes);
+        var typesPanel = new Panel { Height = 185, Dock = DockStyle.Top, Margin = new Padding(0, 0, 0, 8) };
+        typesPanel.Controls.Add(_vehicleTypes);
+        _fields.Controls.Add(typesPanel);
+        _fields.Controls.SetChildIndex(typesPanel, _fields.Controls.GetChildIndex(_vehicleTypePanel));
+        void BindTypes(IEnumerable<string> values)
+        {
+            _vehicleTypes.DataSource = defaults.Concat(values).Append(item?.VehicleType ?? "")
+                .Select(t => t.Trim()).Where(t => t.Length > 0 && !usedTypes.Contains(t))
+                .Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(t => t)
+                .Select(t => new { Loại_xe = t }).ToList();
+            _vehicleTypes.ClearSelection();
+        }
+        BindTypes(Array.Empty<string>());
+        _vehicleTypes.CellClick += (_, e) =>
+        {
+            if (e.RowIndex >= 0) _vehicleType.Text = _vehicleTypes.Rows[e.RowIndex].Cells[0].Value?.ToString() ?? "";
+        };
+        _vehicleTypes.KeyUp += (_, e) =>
+        {
+            if (e.KeyCode is Keys.Up or Keys.Down or Keys.Enter && _vehicleTypes.CurrentRow is { } row)
+                _vehicleType.Text = row.Cells[0].Value?.ToString() ?? "";
+        };
+        Shown += async (_, _) =>
+        {
+            try { var types = await api.Pricing.GetVehicleTypesAsync(); if (!IsDisposed) BindTypes(types); }
+            catch (Exception ex) { FormStyle.Status(_status, "Không tải được loại xe: " + ex.Message); }
+        };
+        if (item is null) _vehicleType.Text = vehicleType ?? "";
         if (item is not null)
         {
             _vehicleType.Text = item.VehicleType;

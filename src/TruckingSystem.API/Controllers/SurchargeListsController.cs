@@ -15,9 +15,6 @@ public sealed class SurchargeListsController(ISurchargeListService service) : Co
     [HttpPost, Authorize(Roles = "Admin,Accountant")]
     public Task<IActionResult> Create(SaveDraft input) => Write(() => service.CreateAsync(input));
 
-    [HttpPost("{id:int}/copy"), Authorize(Roles = "Admin,Accountant")]
-    public Task<IActionResult> Copy(int id, CopyDraft input) => Write(() => service.CopyAsync(id, input));
-
     [HttpPut("{id:int}"), Authorize(Roles = "Admin,Accountant")]
     public Task<IActionResult> Update(int id, SaveDraft input) => Write(() => service.UpdateAsync(id, input));
 

@@ -13,13 +13,13 @@ public sealed class SurchargeDetailForm : BaseForm
     private readonly Label _status = new() { AutoSize = true, ForeColor = Theme.Danger, Margin = new Padding(0, 8, 0, 0) };
     public int SavedId { get; private set; }
 
-    public SurchargeDetailForm(ApiServices api, SurchargeListItem? item = null, bool copy = false)
+    public SurchargeDetailForm(ApiServices api, SurchargeListItem? item = null)
     {
-        Text = copy ? "Sao chép bảng phụ phí" : item == null ? "Tạo bảng phụ phí" : "Chi tiết bảng phụ phí";
+        Text = item == null ? "Tạo bảng phụ phí" : "Chi tiết bảng phụ phí";
         StartPosition = FormStartPosition.CenterParent;
         ClientSize = new Size(570, 370);
         BackColor = Theme.CardBg;
-        var editable = api.Connection.IsInRole("Admin", "Accountant") && (copy || item?.Published != true);
+        var editable = api.Connection.IsInRole("Admin", "Accountant") && item?.Published != true;
         var panel = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, Padding = new Padding(20, 16, 20, 16), AutoScroll = true };
         panel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -36,20 +36,21 @@ public sealed class SurchargeDetailForm : BaseForm
             field.AccessibleName = label.TrimEnd(' ', '*');
             panel.Controls.Add(field, 1, row);
         }
-        _name.Text = copy ? item!.Name + " (bản sao)" : item?.Name ?? "";
-        _date.Value = copy || item == null ? DateTime.UtcNow.AddHours(7).Date.AddDays(1) : item.EffectiveDate;
+        _name.Text = item?.Name ?? "Tự sinh khi lưu: PP-[Năm]-[STT]";
+        _date.Value = item?.EffectiveDate ?? DateTime.UtcNow.AddHours(7).Date;
+        if (editable) _date.MinDate = DateTime.UtcNow.AddHours(7).Date;
         _fragile.Value = item?.FragilePercent ?? 0;
         _hazmat.Value = item?.HazmatPercent ?? 0;
-        _name.ReadOnly = !editable;
+        _name.ReadOnly = item is null || !editable;
         _date.Enabled = editable;
-        _fragile.Enabled = _hazmat.Enabled = editable && !copy;
-        Field("Tên bảng *:", _name);
+        _fragile.Enabled = _hazmat.Enabled = editable;
+        Field(item is null ? "Tên bảng (tự động):" : "Tên bảng *:", _name);
         Field("Ngày hiệu lực *:", _date);
         Field("Hàng dễ vỡ (%)", _fragile);
         Field("Hàng nguy hiểm (%)", _hazmat);
         var hint = new Label
         {
-            Text = "Phụ phí tính theo tỷ lệ % trên cước km + cước tấn.\nBảng được khóa sau khi lưu và tính phí từ ngày hiệu lực (sớm nhất ngày mai).", AutoSize = true,
+            Text = "Phụ phí tính theo tỷ lệ % trên cước km + cước tấn.\nBảng được khóa sau khi lưu và tính phí từ ngày hiệu lực (từ hôm nay).", AutoSize = true,
             MaximumSize = new Size(260, 0),
             Font = Theme.FontSmall, ForeColor = Theme.TextSecondary, Margin = new Padding(0, 2, 0, 4),
         };
@@ -69,7 +70,8 @@ public sealed class SurchargeDetailForm : BaseForm
         FormClosing += (_, e) => e.Cancel = saving;
         _save.Click += async (_, _) =>
         {
-            if (string.IsNullOrWhiteSpace(_name.Text))
+            if (saving) return;
+            if (item is not null && string.IsNullOrWhiteSpace(_name.Text))
             {
                 FieldHint.Show(_name, _status, "Vui lòng nhập tên bảng phụ phí.");
                 return;
@@ -80,7 +82,7 @@ public sealed class SurchargeDetailForm : BaseForm
             try
             {
                 var saved = await api.Surcharges.SaveAsync(new(item?.Id ?? 0, _name.Text, _date.Value,
-                    false, item?.Revision ?? 0, _fragile.Value, _hazmat.Value), copy);
+                    false, item?.Revision ?? 0, _fragile.Value, _hazmat.Value));
                 SavedId = saved!.Id;
                 saving = false;
                 DialogResult = DialogResult.OK;

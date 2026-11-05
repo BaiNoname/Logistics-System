@@ -246,6 +246,12 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
                 ApplyBusinessCardInfo(info);
             }
             catch (OperationCanceledException) when (scanCancellation.IsCancellationRequested) { }
+            catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.UnprocessableEntity)
+            {
+                if (IsDisposed || Disposing) return;
+                FormStyle.Status(lblStatus, "Ảnh không phải danh thiếp.");
+                MessageBox.Show(this, ex.Message, "Không phải danh thiếp", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
             catch (Exception ex)
             {
                 if (IsDisposed || Disposing) return;

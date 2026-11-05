@@ -82,6 +82,8 @@ public class CustomersController : ControllerBase
         try
         {
             var result = await _businessCardReader.ReadAsync(stream.ToArray(), image.ContentType, cancellationToken);
+            if (result.IsNotBusinessCard)
+                return UnprocessableEntity(new { message = result.ErrorMessage, result.ErrorMessage, result.IsNotBusinessCard });
             return result.ErrorMessage is not null && !result.HasExtractedFields()
                 ? StatusCode(StatusCodes.Status502BadGateway, new { message = result.ErrorMessage, result.ErrorMessage, result.RawResponse })
                 : Ok(result);

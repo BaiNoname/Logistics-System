@@ -7,6 +7,13 @@ public class Invoice : BaseEntity
 {
     public const decimal MaximumAmount = 9999999999999999.99m;
 
+    public void MarkAsPaid()
+    {
+        if (Status == InvoiceStatus.Cancelled)
+            throw new InvalidOperationException("Không thể đánh dấu đã thanh toán cho hóa đơn đã hủy.");
+        Status = InvoiceStatus.Paid;
+    }
+
     public static Invoice Create(TransportOrder order, decimal amount)
     {
         if (order.Status != TransportOrderStatus.Done)

@@ -1386,6 +1386,33 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.ToTable("Locations");
                 });
 
+            modelBuilder.Entity("TruckingSystem.Domain.Entities.MaxDiscountPercent", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<int>("Value")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("MaxDiscountPercent", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_MaxDiscountPercent_Value", "\"Id\" = 1 AND \"Value\" BETWEEN 0 AND 100");
+                        });
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            UpdatedAt = new DateTime(2026, 11, 5, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Value = 20
+                        });
+                });
+
             modelBuilder.Entity("TruckingSystem.Domain.Entities.MonthlyAttendance", b =>
                 {
                     b.Property<int>("Id")
@@ -2193,7 +2220,6 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("EffectiveDate")
-                        .IsUnique()
                         .HasFilter("\"Published\"");
 
                     b.ToTable("SurchargeLists");

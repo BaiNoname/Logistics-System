@@ -8,8 +8,8 @@ public sealed class SurchargePolicy
 
     public void Validate(DateOnly today)
     {
-        if (EffectiveDate <= today)
-            throw new ArgumentException("Chọn ngày hiệu lực từ ngày mai để giữ nguyên cước các đơn đã bắt đầu.");
+        if (EffectiveDate < today)
+            throw new ArgumentException("Ngày hiệu lực không được nằm trong quá khứ.");
         foreach (var rate in new[] { FragilePercent, HazmatPercent })
             if (rate <= 0 || rate > 100 || decimal.Round(rate, 2) != rate)
                 throw new ArgumentException("Mỗi tỷ lệ phải lớn hơn 0, tối đa 100% và có tối đa 2 chữ số thập phân.");

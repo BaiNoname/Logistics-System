@@ -64,7 +64,6 @@ public class DbConflictMiddleware
         if (c.Contains("PlateNumber")) return "Biển số xe này đã tồn tại.";
         if (c.Contains("TransportOrders") && c.Contains("Code")) return "Mã đơn bị trùng — hãy thử lưu lại.";
         if (c.Contains("StorageBins")) return "Mã vị trí đã có trong khu này.";
-        if (c == "IX_SurchargeLists_EffectiveDate") return "Ngày hiệu lực này đã có bảng phụ phí được áp dụng.";
         if (c.Contains("FuelPrice")) return "Đã có giá cho loại nhiên liệu này trong cùng ngày.";
         if (c.Contains("DriverSchedules")) return "Tài xế đã đăng ký ca này trong ngày đó rồi.";
         if (c.Contains("TripVideoSegments")) return "Đoạn video này đã được nhận trước đó.";

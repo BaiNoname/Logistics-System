@@ -511,6 +511,7 @@ Khóa API cấu hình trong `appsettings.json` của API, không công khai tron
   - Xem ở **Chi tiết đơn → 💰 Phí lưu kho** (tạm tính khi hàng còn trong kho, chốt khi hàng đã xuất).
   - Khi lập hóa đơn, hệ thống cộng tổng **Chi phí khác** của các chuyến thuộc đơn và **Phí lưu kho** khách chịu. Mỗi khoản có tiền hiện thành một dòng trong bảng tính và chi tiết hóa đơn. Nhiên liệu ước tính chỉ dùng để đối chiếu.
   - Nếu phí lưu kho còn tạm tính, chờ phí chốt rồi chọn **Tính lại** để lập hóa đơn. Hóa đơn đã lưu giữ nguyên số tiền tại thời điểm lập.
+  - Admin/Kế toán chọn hóa đơn rồi bấm **Đánh dấu đã thanh toán**, xác nhận để đổi trạng thái sang `Paid`. Không áp dụng cho hóa đơn đã hủy; hóa đơn đã thanh toán không cần đánh dấu lại. Thao tác chỉ đổi trạng thái, không tạo giao dịch thu tiền hoặc gọi VNPAY. API: `POST /api/invoices/{id}/mark-paid`.
 
 ### 8.6. Đội xe & Tài xế
 - **Giấy tờ xe**: Đăng kiểm, Bảo hiểm, Phù hiệu bắt buộc. Gia hạn bằng cách thêm bản mới; không xóa bản đang là giấy tờ hợp lệ duy nhất cho chuyến chưa chạy.
@@ -624,11 +625,14 @@ Cách dùng trên Desktop: **Khách hàng → Thêm → Quét danh thiếp**, ch
 - Màn hình hiển thị ảnh và các trường đọc được, kể cả khi AI trả về JSON bị cắt hoặc danh sách Markdown. Kiểm tra cảnh báo và sửa thông tin trước khi lưu.
 - Họ tên liên hệ, công ty, chức danh, email, website ở cột đối chiếu chỉ để tham khảo. Nút lưu vẫn lưu các trường khách hàng hiện có ở cột bên trái.
 - Kết quả quét không tự tạo khách hàng hoặc người liên hệ.
+- AI kiểm tra ảnh có phải danh thiếp trước khi trích xuất (cùng một lần gọi Gemini). Ảnh hóa đơn, giấy tờ, ảnh chụp màn hình, phong cảnh… bị từ chối kèm lý do, không điền trường nào; Desktop hiện cảnh báo "Không phải danh thiếp".
+- Khi Gemini quá tải tạm thời (500/502/503/504), API tự gửi lại tối đa 2 lần (chờ 2 giây, rồi 4 giây). 429 (hết hạn mức) không gửi lại.
 
 Endpoint `/api/customers/read-business-card`:
-- Giữ nguyên phương thức POST, file `image`, phân quyền và năm trường kết quả cũ. Bổ sung `fullName`, `company`, `title`, `email`, `website`, `rawResponse`, `errorMessage`.
+- Giữ nguyên phương thức POST, file `image`, phân quyền và năm trường kết quả cũ. Bổ sung `fullName`, `company`, `title`, `email`, `website`, `rawResponse`, `errorMessage`, `isNotBusinessCard`.
 - Mã trả về:
   - **200** kèm cảnh báo: AI chỉ đọc được một phần.
+  - **422**: ảnh không phải danh thiếp; body có `message` (kèm lý do) và `isNotBusinessCard: true`.
   - **502**: phản hồi lỗi, không có trường đọc được.
   - **400**: ảnh sai định dạng.
   - **504**: dịch vụ quá thời gian chờ.
@@ -961,13 +965,15 @@ The self-check covers pricing and the conversation with fake AI/maps/vector retr
 
 ### Bảng phụ phí
 
-Mục **Phụ phí** trong nhóm Kinh doanh quản lý các bảng độc lập với bảng giá xe. Admin/Kế toán nhập tên, ngày và hai dòng tỷ lệ (dễ vỡ, nguy hiểm), chọn **Lưu và áp dụng** để xác nhận và khóa bảng ngay trong một lần lưu. Có thể sao chép một bảng sang ngày hiệu lực mới; bản sao cũng được xác nhận khi lưu. Điều phối chỉ xem. Ngày hiệu lực sớm nhất từ ngày mai theo giờ Việt Nam, mỗi ngày chỉ một bảng được xác nhận. Bảng chỉ dùng tính phí từ ngày hiệu lực. Bản nháp cũ được giữ nguyên; mở **Chi tiết**, kiểm tra thông tin và chọn **Lưu và áp dụng** để xác nhận, không tự động kích hoạt dữ liệu cũ.
+Trạng thái danh sách: chỉ bảng mới thêm đã xác nhận (ID lớn nhất) là **Đang áp dụng**, các bảng còn lại là **Ngưng áp dụng**. Bản nháp không được chọn làm bản áp dụng. API bổ sung IsActive và giữ Published để khóa sửa/lưu lịch sử; nhãn danh sách không đổi cách tính phí từng đơn theo ngày hiệu lực. Cần cập nhật API và Desktop cùng đợt.
+
+Mục **Phụ phí** trong nhóm Kinh doanh quản lý các bảng độc lập với bảng giá xe. Admin/Kế toán nhập ngày và hai dòng tỷ lệ (dễ vỡ, nguy hiểm); tên được server tự sinh PP-[năm Việt Nam hiện tại]-[STT tối thiểu 3 số], ví dụ PP-2026-004, chọn **Lưu và áp dụng** để xác nhận và khóa bảng ngay trong một lần lưu. Đã bỏ chức năng sao chép bảng phụ phí trên giao diện và API. Điều phối chỉ xem. Ngày hiệu lực từ hôm nay theo giờ Việt Nam, chỉ chặn ngày quá khứ; được thêm nhiều bảng cùng ngày. Khi tính phí, chọn bảng thêm sau đã đến ngày hiệu lực. Bản nháp cũ được giữ nguyên; mở **Chi tiết**, kiểm tra thông tin và chọn **Lưu và áp dụng** để xác nhận, không tự động kích hoạt dữ liệu cũ.
 
 Hóa đơn chọn bảng đã công bố theo ngày bắt đầu chuyến đầu của đơn; báo giá chọn theo ngày tra cứu. Mỗi loại phí bằng tỷ lệ nhân tổng cước km và tấn trước chiết khấu, làm tròn hai chữ số và thu một lần trên toàn đơn. Trước kỳ đầu, hệ thống dùng phí cố định lịch sử. Chi tiết bảng giá xe chỉ quản lý giá/km và giá/tấn.
 
 Áp migration **SplitSurchargeLists** trước khi khởi động bản API mới và cập nhật Desktop cùng đợt. Migration chuyển mỗi kỳ cũ thành một bảng đã công bố với hai dòng, bảo toàn hóa đơn đã lưu. Nếu chưa có kỳ nào, người quản lý tạo và lưu kỳ đầu. API dùng GET/POST `/api/surcharge-lists`, PUT theo ID và POST theo ID với hậu tố `/copy`; POST, PUT và sao chép đều xác nhận bảng trong cùng lần lưu, trả `Published = true`. Giữ nguyên cấu trúc request/response và endpoint `/publish` cho bản nháp cũ, nhưng Desktop không còn bước công bố riêng. Thay đổi luồng này không cần migration mới. Endpoint đọc kỳ cũ tiếp tục trả bảng đã công bố; endpoint ghi cũ trả HTTP 410.
 
-Kiểm tra luồng lưu phụ phí: `dotnet run --project tools/SurchargeSelfCheck -c Release`. Kiểm tra form tạo/sao chép/nháp cũ, lỗi API và quyền chỉ xem: `dotnet run --project tools/BusinessDesignSelfCheck -c Release` (Windows).
+Kiểm tra luồng lưu phụ phí: `dotnet run --project tools/SurchargeSelfCheck -c Release`. Kiểm tra form tạo/nháp cũ, tên tự sinh, lỗi API và quyền chỉ xem: `dotnet run --project tools/BusinessDesignSelfCheck -c Release -- --surcharge-only` (Windows).
 
 Chạy `dotnet run --project tools/FreightQuoteSelfCheck` và `dotnet run --project tools/ContractSelfCheck` để kiểm tra.
 
@@ -986,3 +992,22 @@ Cần áp migration **AddPositionDepartment** trước khi chạy API mới và 
 Form thêm tài khoản ẩn checkbox hoạt động và mặc định tài khoản mới hoạt động; form sửa vẫn cho đổi trạng thái. Kiểm tra nghiệp vụ và giao diện trên Windows: dotnet run --project tools/SystemManagementSelfCheck -c Release -p:UseSharedCompilation=false -p:BuildInParallel=false -p:NuGetAudit=false. Thư mục tools được giữ cục bộ theo .gitignore hiện có.
 
 Form **Thêm nhân viên** ẩn trạng thái và ngày nghỉ việc; nhân viên mới mặc định **Đang làm**, chưa có ngày nghỉ việc. Ngày sinh bắt buộc, từ năm 1900 và phải qua sinh nhật 18 tuổi theo ngày Việt Nam (vừa đủ 18 tuổi hôm nay chưa hợp lệ); lịch chọn chỉ cho ngày phù hợp. API tạo nhân viên kiểm tra lại ngày sinh và từ chối ngày nghỉ việc; trường `TerminationDate` vẫn giữ trong DTO để không thay đổi cấu trúc hợp đồng. Form sửa giữ các trường và quy tắc hiện có; các ô ngày không có checkbox, ngày sinh/ngày nghỉ việc có thể để trống và dùng Delete hoặc Backspace để xóa. Không cần migration mới. Kiểm tra: `dotnet run --project tools/EmployeeCreateSelfCheck -c Release -p:UseSharedCompilation=false -p:BuildInParallel=false -p:NuGetAudit=false`; thêm `-- --edit-dates` để chỉ kiểm tra ô ngày trên form sửa nhân viên.
+
+
+### Hợp đồng, ưu đãi và bảng giá
+
+Theo docs/HopDong.md và docs/BangGia.md: hợp đồng mới được server sinh mã HD-[CustomerId]-[năm Việt Nam]-[STT tối thiểu 3 số]; bảng giá mới và bảng sao chép có tên BG-[năm]-[STT tối thiểu 3 số], mặc định đang áp dụng. CustomerId là mã khách hàng hiện có; số hợp đồng tăng theo khách hàng/năm, số bảng giá theo năm. Dùng quy tắc BG-[NĂM]-[STT] trong tài liệu, không thêm TC vì chưa có quy ước cho thành phần này. Tên/mã gửi từ client khi tạo được thay bằng giá trị server sinh; sửa dữ liệu cũ giữ cách xử lý hiện có. Giao dịch Serializable bảo vệ việc cấp số khi tạo đồng thời; nếu xảy ra tranh chấp, API trả 409 để người dùng thử lưu lại.
+
+Admin chọn **Quản lý ưu đãi** ở màn Hợp đồng để lưu ngưỡng 0–100 (mặc định 20). Server kiểm tra ngưỡng khi tạo hoặc thay đổi ưu đãi; chỉ Admin được vượt ngưỡng và vẫn không vượt 100%. Đổi cấu hình không đổi ưu đãi đã lưu. Form hợp đồng lấy ngưỡng hiện tại khi mở, tự chọn bảng giá đang áp dụng; hợp đồng cũ vẫn giữ được bảng giá đã ngừng áp dụng. Chuột phải một dòng hợp đồng để mở Sửa/Chi tiết/Xóa. Chuột phải dòng bảng giá để xem chi tiết, tạo mới và sao chép, sửa hoặc xóa. Form tạo/sao chép bảng giá có nút **Chi tiết bảng giá** ngay bên phải nút Đóng để ẩn/hiện bảng nhập đơn giá theo loại xe; form chi tiết giá hiển thị loại xe trong bảng để chọn, vẫn cho nhập loại xe khác.
+
+Áp migration **20261105125758_AddMaxDiscountPercent** trước khi chạy API mới; migration chỉ tạo bảng cấu hình MaxDiscountPercent và dòng Id=1, Value=20, không sửa hợp đồng/bảng giá cũ. GET /api/contracts/max-discount-percent trả số nguyên; PUT cùng đường dẫn nhận { value: 20 }, chỉ Admin. Cập nhật API/Desktop cùng đợt. Self-check Windows cục bộ (tools bị ignore): dotnet run --project tools/ContractPricingSelfCheck -c Release -p:UseSharedCompilation=false -p:BuildInParallel=false -p:NuGetAudit=false.
+
+Cửa sổ **Xem chi tiết bảng giá** từ menu chuột phải hiển thị toàn bộ loại xe từ API cùng các dòng giá đã lưu trong DataGridView. Tên bảng giá là nhãn, không còn ComboBox hiển thị. Loại xe chưa cấu hình ghi **Chưa có giá**. Nhập/sửa giá/km và giá/tấn trực tiếp trên từng dòng, rồi chọn **Lưu thay đổi**; không cần nút Thêm mới hay mở form riêng. Dòng mới phải nhập cả hai giá (nhập 0 nếu không tính), dòng để trống cả hai được bỏ qua. API kiểm tra toàn bộ các dòng và lưu cùng một lần, lỗi giữ dữ liệu nhập; đóng/làm mới khi chưa lưu có xác nhận bỏ thay đổi. Bảng giá ngừng áp dụng vẫn chỉ xem.
+
+Lưu giá trực tiếp dùng PUT /api/price-lists/{priceListId}/tariff-rules với { rows: [{ id: null hoặc id dòng hiện có, vehicleType, pricePerKm, pricePerTon }] }. Giữ quyền Admin/Dispatcher/Accountant, server chặn bảng giá inactive, dòng sai bảng/ID/loại xe trùng và đơn giá không hợp lệ; không sửa phụ phí cũ. Cập nhật API và Desktop cùng đợt, không cần migration mới cho việc nhập giá trực tiếp. Self-check cục bộ: dotnet run --project tools/ContractPricingSelfCheck -c Release --no-restore -p:UseSharedCompilation=false -p:BuildInParallel=false -p:NuGetAudit=false -- --inline-pricing-only.
+
+Khi **thêm bảng giá**, form và server mặc định có đủ 8 loại xe: Xe van 1 tấn; Xe tải 1,5 tấn; Xe tải 2,5 tấn; Xe tải 5 tấn; Xe tải 8 tấn; Xe tải 15 tấn; Đầu kéo container 20 feet; Đầu kéo container 40 feet. Giá/km và giá/tấn mặc định 0; chọn **Chi tiết bảng giá** để hiện/ẩn DataGridView và nhập giá. Ẩn bảng không xóa dữ liệu; Lưu bảng giá gửi kèm toàn bộ chi tiết và server lưu cùng một lần. POST tạo và POST sao chép nhận thêm tariffRules tùy chọn; client không gửi vẫn được bổ sung đủ 8 loại. Sao chép tải lại giá nguồn cho chỉnh trước khi lưu và giữ loại xe riêng của nguồn. Không thay đổi bảng giá cũ hoặc schema. Cập nhật API/Desktop cùng đợt. Kiểm tra cục bộ: dotnet run --project tools/ContractPricingSelfCheck -c Release --no-restore -p:UseSharedCompilation=false -p:BuildInParallel=false -p:NuGetAudit=false -- --price-create-only.
+
+Phụ phí mới sinh tên trên server khi lưu, bỏ qua tên client gửi; ô Tên bảng trên form thêm chỉ đọc. Số tăng theo năm, dùng số lớn nhất đang có cộng một; sau 999 tiếp tục 1000. Giao dịch Serializable bảo vệ cấp số đồng thời, tranh chấp trả 409 để thử lại. Giữ tên bảng cũ và thao tác sửa nháp cũ. Endpoint POST /api/surcharge-lists/{id}/copy đã được gỡ theo yêu cầu bỏ sao chép. Không cần migration; cập nhật API/Desktop cùng đợt.
+
+Để cho phép phụ phí cùng ngày, áp migration **20261105151437_AllowSameDaySurchargeLists** trước API mới. Migration thay unique index theo EffectiveDate bằng index không unique, không xóa hoặc sửa dữ liệu. Form thêm mặc định ngày hôm nay và không cho chọn ngày quá khứ. Giữ các bảng đã xác nhận để tra cứu lịch sử; trong cùng ngày, bản thêm sau thay bản trước. Rollback migration chỉ thực hiện được khi dữ liệu đáp ứng lại điều kiện duy nhất theo ngày.
