@@ -474,7 +474,9 @@ namespace TruckingSystem.Desktop.GUI_Shared
                 return;
             }
             // Chạy SAU khi xử lý xong cú bấm hiện tại: mở màn mới sẽ giải phóng màn Tổng quan này.
-            FindForm()?.BeginInvoke(new Action(btn.PerformClick));
+            // Gọi thẳng MainForm: mục con đang ẩn (nhóm đóng / menu thu gọn) thì PerformClick() không chạy gì.
+            if (FindForm() is MainForm main) main.BeginInvoke(new Action(() => main.OpenNavButton(btn)));
+            else FindForm()?.BeginInvoke(new Action(btn.PerformClick));
         }
 
         private static Button? FindButton(Control? parent, string navText)
