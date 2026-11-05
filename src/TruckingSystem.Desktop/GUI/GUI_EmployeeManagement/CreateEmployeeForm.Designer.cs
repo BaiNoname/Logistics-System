@@ -33,9 +33,9 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             lblHireDate = new Label { Text = "Ngày vào làm thực tế *:" };
             dtpHireDate = new DateTimePicker { Format = DateTimePickerFormat.Short };
             lblTerminationDate = new Label { Text = "Ngày nghỉ việc (bỏ chọn nếu chưa nghỉ):" };
-            dtpTerminationDate = new DateTimePicker { Format = DateTimePickerFormat.Short, ShowCheckBox = true };
+            dtpTerminationDate = new DateTimePicker { Format = DateTimePickerFormat.Short };
             lblDateOfBirth = new Label { Text = "Ngày sinh (bỏ chọn nếu chưa có):" };
-            dtpDateOfBirth = new DateTimePicker { Format = DateTimePickerFormat.Short, MinDate = new DateTime(1900, 1, 1), ShowCheckBox = true };
+            dtpDateOfBirth = new DateTimePicker { Format = DateTimePickerFormat.Short, MinDate = new DateTime(1900, 1, 1) };
             lblGender = new Label { Text = "Giới tính *:" };
             pnlGender = new FlowLayoutPanel { AutoSize = true, WrapContents = false, AccessibleName = "Giới tính", AccessibleRole = AccessibleRole.Grouping };
             rdoMale = new RadioButton { Text = "Nam", AutoSize = true, Checked = true };

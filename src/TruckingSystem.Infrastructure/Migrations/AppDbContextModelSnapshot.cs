@@ -1891,6 +1891,9 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp without time zone");
 
+                    b.Property<int?>("DepartmentId")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("text");
@@ -1899,6 +1902,8 @@ namespace TruckingSystem.Infrastructure.Migrations
                         .HasColumnType("timestamp without time zone");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("DepartmentId");
 
                     b.ToTable("Positions");
                 });
@@ -3518,6 +3523,16 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.Navigation("Employee");
 
                     b.Navigation("PayrollPeriod");
+                });
+
+            modelBuilder.Entity("TruckingSystem.Domain.Entities.Position", b =>
+                {
+                    b.HasOne("TruckingSystem.Domain.Entities.Department", "Department")
+                        .WithMany()
+                        .HasForeignKey("DepartmentId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Department");
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.RolePermission", b =>

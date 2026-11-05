@@ -100,6 +100,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
     {
         base.OnModelCreating(builder); // BẮT BUỘC gọi trước để Identity tự cấu hình bảng của nó
 
+        builder.Entity<Position>().HasOne(p => p.Department).WithMany().HasForeignKey(p => p.DepartmentId).OnDelete(DeleteBehavior.Restrict);
+
         builder.Entity<SurchargeList>(e =>
         {
             e.Property(p => p.Name).HasMaxLength(150);

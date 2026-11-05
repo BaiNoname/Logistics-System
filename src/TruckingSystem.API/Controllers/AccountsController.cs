@@ -11,8 +11,17 @@ namespace TruckingSystem.API.Controllers;
 public class AccountsController : ControllerBase
 {
     private readonly IAccountManagementService _service;
+    private readonly AccountEmployeeService _employees;
 
-    public AccountsController(IAccountManagementService service) => _service = service;
+    public AccountsController(IAccountManagementService service, AccountEmployeeService employees)
+    {
+        _service = service;
+        _employees = employees;
+    }
+
+    [HttpGet("employee-options")]
+    public async Task<ActionResult<List<AccountEmployeeOptionDto>>> GetEmployeeOptions([FromQuery] string? accountId)
+        => Ok(await _employees.GetOptionsAsync(accountId));
 
     [HttpGet]
     public async Task<ActionResult<List<AccountDto>>> GetAll()

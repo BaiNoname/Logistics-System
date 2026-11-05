@@ -10,19 +10,23 @@ public class AccountEditorForm : BaseForm
     private readonly TextBox _username = new();
     private readonly TextBox _email = new();
     private readonly TextBox _password = new() { UseSystemPasswordChar = true };
+    private readonly ComboBox _employee = new() { DropDownStyle = ComboBoxStyle.DropDownList };
     private readonly CheckedListBox _roles = new() { CheckOnClick = true, BorderStyle = BorderStyle.FixedSingle };
     private readonly CheckBox _active = new() { Text = "Tài khoản hoạt động", AutoSize = true, Checked = true };
+    private bool _saving;
 
     public string Username => _username.Text.Trim();
     public string? Email => string.IsNullOrWhiteSpace(_email.Text) ? null : _email.Text.Trim();
     public string Password => _password.Text;
     public bool IsActive => _active.Checked;
     public string[] Roles => _roles.CheckedItems.Cast<string>().ToArray();
+    public int? EmployeeId => _employee.SelectedItem is AccountEmployeeOption { Id: > 0 } employee ? employee.Id : null;
 
-    public AccountEditorForm(List<string> roles, AccountItem? account)
+    public AccountEditorForm(List<string> roles, AccountItem? account, List<AccountEmployeeOption>? employees = null,
+        Func<AccountEditorForm, Task>? saveAccount = null)
     {
         Text = account is null ? "Thêm tài khoản" : "Sửa tài khoản và phân quyền";
-        ClientSize = new Size(520, account is null ? 640 : 570);
+        ClientSize = new Size(520, account is null ? 700 : 630);
         MinimumSize = new Size(440, 400);
         MaximizeBox = false;
         MinimizeBox = false;
@@ -48,6 +52,15 @@ public class AccountEditorForm : BaseForm
         Section("① Thông tin đăng nhập");
         Field("Tên đăng nhập *:", _username);
         Field("Email:", _email);
+        var options = new List<AccountEmployeeOption> { new(0, "", "") };
+        options.AddRange(employees ?? new());
+        if (account?.EmployeeId is int currentId && !options.Any(e => e.Id == currentId))
+            options.Add(new(currentId, "", account.EmployeeName ?? $"Nhân viên #{currentId}"));
+        _employee.DisplayMember = nameof(AccountEmployeeOption.DisplayName);
+        _employee.ValueMember = nameof(AccountEmployeeOption.Id);
+        _employee.DataSource = options;
+        Load += (_, _) => _employee.SelectedValue = account?.EmployeeId ?? 0;
+        Field("Gán nhân viên:", _employee);
         if (account is null) Field("Mật khẩu *:", _password);
         else
         {
@@ -63,7 +76,7 @@ public class AccountEditorForm : BaseForm
         foreach (var role in roles)
             _roles.Items.Add(role, account?.Roles.Contains(role, StringComparer.OrdinalIgnoreCase) == true);
         _active.TabIndex = fields.Controls.Count;
-        fields.Controls.Add(_active);
+        if (account is not null) fields.Controls.Add(_active);
         var status = new Label { AutoSize = true, Dock = DockStyle.Fill, ForeColor = Theme.Danger };
         _roles.ItemCheck += (_, _) => { FieldHint.Clear(_roles); status.Text = ""; };
         fields.Controls.Add(status);
@@ -74,7 +87,8 @@ public class AccountEditorForm : BaseForm
         FormStyle.EditorFooter(this, FormStyle.NewCloseButton(this), save);
         DialogKeys.Enable(this, save);
         Anim.FadeIn(this);
-        save.Click += (_, _) =>
+        FormClosing += (_, e) => e.Cancel = _saving;
+        save.Click += async (_, _) =>
         {
             if (string.IsNullOrWhiteSpace(Username))
             {
@@ -91,7 +105,19 @@ public class AccountEditorForm : BaseForm
                 FieldHint.Show(_roles, status, "Vui lòng chọn ít nhất một vai trò.");
                 return;
             }
-            DialogResult = DialogResult.OK;
+            _saving = true;
+            fields.Enabled = save.Enabled = false;
+            try
+            {
+                if (saveAccount is not null) await saveAccount(this);
+                _saving = false;
+                DialogResult = DialogResult.OK;
+            }
+            catch (Exception ex)
+            {
+                status.Text = ex.Message;
+            }
+            finally { _saving = false; fields.Enabled = save.Enabled = true; }
         };
 
         AcceptButton = save;

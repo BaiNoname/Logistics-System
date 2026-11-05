@@ -68,6 +68,7 @@ public class AccountsControl : BaseUserControl
                 a.Id,
                 Tên_đăng_nhập = a.Username,
                 Email = a.Email ?? "",
+                Nhân_viên = a.EmployeeName ?? "Chưa gán",
                 Vai_trò = string.Join(", ", a.Roles),
                 Trạng_thái = a.IsActive ? "Hoạt động" : "Đã khóa",
             }).ToList();
@@ -89,15 +90,17 @@ public class AccountsControl : BaseUserControl
             MessageBox.Show(FindForm(), "Không có vai trò để phân quyền.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             return;
         }
-        using var dialog = new AccountEditorForm(_roles, account);
-        if (dialog.ShowDialog(FindForm()) != DialogResult.OK) return;
-
         try
         {
-            if (account is null)
-                await _api.Accounts.CreateAsync(dialog.Username, dialog.Email, dialog.Password, dialog.IsActive, dialog.Roles);
-            else
-                await _api.Accounts.UpdateAsync(account.Id, dialog.Email, dialog.IsActive, dialog.Roles);
+            var employees = await _api.Accounts.GetEmployeeOptionsAsync(account?.Id);
+            using var dialog = new AccountEditorForm(_roles, account, employees, async form =>
+            {
+                if (account is null)
+                    await _api.Accounts.CreateAsync(form.Username, form.Email, form.Password, form.IsActive, form.Roles, form.EmployeeId);
+                else
+                    await _api.Accounts.UpdateAsync(account.Id, form.Email, form.IsActive, form.Roles, form.EmployeeId);
+            });
+            if (dialog.ShowDialog(FindForm()) != DialogResult.OK) return;
             await LoadAsync();
         }
         catch (Exception ex)

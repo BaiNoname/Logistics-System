@@ -3,7 +3,7 @@
 public record EmployeeListItemDto(int Id, string Code, string FullName, string? Phone, DateTime? HireDate, int? DepartmentId, string? DepartmentName, int? PositionId, string? PositionName, string Status, bool IsDriver, string? IdentityCardNo = null, string? Address = null, DateTime? TerminationDate = null, DateTime? DateOfBirth = null, string? Gender = null);
 public record CreateEmployeeRequest(string Code, string FullName, string? Phone, int? DepartmentId, int? PositionId, string? IdentityCardNo = null, string? Address = null, DateTime? HireDate = null, DateTime? TerminationDate = null, DateTime? DateOfBirth = null, string? Gender = null);
 public record UpdateEmployeeRequest(string Code, string FullName, string? Phone, int? DepartmentId, int? PositionId, string Status, string? IdentityCardNo = null, string? Address = null, DateTime? HireDate = null, DateTime? TerminationDate = null, DateTime? DateOfBirth = null, string? Gender = null);
-public record LookupItemDto(int Id, string Name);
+public record LookupItemDto(int Id, string Name, int? DepartmentId = null);
 
 /// <summary>Tạo hồ sơ tài xế (DriverProfile) cho 1 nhân viên đã có sẵn — quan
 /// hệ 1-1, mỗi Employee chỉ có tối đa 1 DriverProfile.</summary>
