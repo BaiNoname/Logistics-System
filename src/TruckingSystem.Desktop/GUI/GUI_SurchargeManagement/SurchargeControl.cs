@@ -10,7 +10,6 @@ public sealed class SurchargeControl : BaseUserControl
         MultiSelect = false, ReadOnly = true, AllowUserToAddRows = false, SelectionMode = DataGridViewSelectionMode.FullRowSelect };
     private readonly Button _create = Theme.MakePrimaryButton("Thêm bảng phụ phí");
     private readonly Button _detail = Theme.MakeSecondaryButton("Chi tiết");
-    private readonly Button _copy = Theme.MakeSecondaryButton("Sao chép");
     private readonly Label _status = new() { Dock = DockStyle.Bottom, Height = 42, ForeColor = Theme.TextSecondary, TextAlign = ContentAlignment.MiddleLeft };
     private bool _busy;
     private SurchargeListItem? Selected => _grid.CurrentRow?.DataBoundItem as SurchargeListItem;
@@ -32,15 +31,14 @@ public sealed class SurchargeControl : BaseUserControl
         var bar = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true };
         var refresh = Theme.MakeSecondaryButton("Làm mới");
         bar.Controls.AddRange([new Label { Text = "Bảng phụ phí", Font = Theme.FontTitle, ForeColor = Theme.TextPrimary, AutoSize = true, Margin = new Padding(0, 0, 24, 8) },
-            _create, _detail, _copy, refresh]);
+            _create, _detail, refresh]);
         Controls.Add(_grid);
         Controls.Add(bar);
         Controls.Add(_status);
-        _create.Visible = _copy.Visible = api.Connection.IsInRole("Admin", "Accountant");
+        _create.Visible = api.Connection.IsInRole("Admin", "Accountant");
         _grid.SelectionChanged += (_, _) => UpdateActions();
         _create.Click += async (_, _) => await EditAsync(null);
         _detail.Click += async (_, _) => await EditAsync(Selected);
-        _copy.Click += async (_, _) => await EditAsync(Selected, true);
         _grid.CellDoubleClick += async (_, e) => { if (e.RowIndex >= 0 && !_busy) await EditAsync(Selected); };
         refresh.Click += async (_, _) => await ReloadAsync();
         UpdateActions();
@@ -51,13 +49,13 @@ public sealed class SurchargeControl : BaseUserControl
     private void UpdateActions()
     {
         _create.Enabled = !_busy;
-        _copy.Enabled = _detail.Enabled = !_busy && Selected != null;
+        _detail.Enabled = !_busy && Selected != null;
     }
 
-    private async Task EditAsync(SurchargeListItem? item, bool copy = false)
+    private async Task EditAsync(SurchargeListItem? item)
     {
         if (_busy) return;
-        using var form = new SurchargeDetailForm(_api, item, copy);
+        using var form = new SurchargeDetailForm(_api, item);
         if (form.ShowDialog(FindForm()) == DialogResult.OK) await ReloadAsync(form.SavedId);
     }
 
@@ -73,7 +71,7 @@ public sealed class SurchargeControl : BaseUserControl
             _grid.DataSource = rows;
             foreach (DataGridViewRow row in _grid.Rows)
                 if (row.DataBoundItem is SurchargeListItem item && item.Id == selected) _grid.CurrentCell = row.Cells[0];
-            FormStyle.Status(_status, rows.Count == 0 ? "Chưa có bảng phụ phí." : "Bảng được xác nhận và khóa khi lưu, tính phí từ ngày hiệu lực. Bản nháp cũ: mở Chi tiết để lưu và áp dụng.", StatusKind.Info);
+            FormStyle.Status(_status, rows.Count == 0 ? "Chưa có bảng phụ phí." : "Chỉ bảng mới thêm đã xác nhận đang áp dụng. Phí từng đơn vẫn tính theo ngày hiệu lực tương ứng.", StatusKind.Info);
         }
         catch (Exception ex) { FormStyle.Status(_status, ex.Message); }
         finally { _busy = false; if (!IsDisposed) UpdateActions(); }

@@ -11,6 +11,7 @@ namespace TruckingSystem.Desktop.GUI_InvoiceManagement
         private List<InvoiceListItem> _invoices = new();
         private static readonly CultureInfo Vi = CultureInfo.GetCultureInfo("vi-VN");
         private readonly Button _details = Theme.MakeSecondaryButton("Xem chi tiết");
+        private readonly Button _markPaid = Theme.MakeSecondaryButton("Đánh dấu đã thanh toán", 220);
 
         public InvoicesControl()
         {
@@ -24,9 +25,12 @@ namespace TruckingSystem.Desktop.GUI_InvoiceManagement
             filterBar.FilterChanged += (_, _) => BindGrid();
             ScrollFit.Enable(this, root, grid);
             toolbar.Controls.Add(_details);
+            toolbar.Controls.Add(_markPaid);
+            _markPaid.Click += async (_, _) => await MarkAsPaidAsync();
             _details.Click += async (_, _) => await ShowDetailsAsync();
             grid.CellDoubleClick += async (_, e) => { if (e.RowIndex >= 0) await ShowDetailsAsync(); };
             grid.SelectionChanged += (_, _) => UpdateActions();
+            grid.CurrentCellChanged += (_, _) => UpdateActions();
             UpdateActions();
             Load += async (_, _) => await LoadAsync();
         }
@@ -51,6 +55,43 @@ namespace TruckingSystem.Desktop.GUI_InvoiceManagement
             btnRefresh.Enabled = btnCreate.Enabled = !_busy;
             filterBar.Enabled = !_busy;
             _details.Enabled = !_busy && grid.CurrentRow is not null;
+            var id = grid.CurrentRow?.Cells["Mã_hóa_đơn"].Value;
+            _markPaid.Enabled = !_busy && _invoices.Any(i => Equals(i.Id, id)
+                && i.Status is not ("Paid" or "Cancelled"));
+        }
+
+        private async Task MarkAsPaidAsync()
+        {
+            if (_api is null || _busy || grid.CurrentRow?.Cells["Mã_hóa_đơn"].Value is not int id) return;
+            var invoice = _invoices.SingleOrDefault(i => i.Id == id);
+            if (invoice is null || invoice.Status is "Paid" or "Cancelled") return;
+            if (MessageBox.Show(FindForm(),
+                $"Đánh dấu hóa đơn #{id} của {invoice.CustomerName} là đã thanh toán?\nThao tác này chỉ đổi trạng thái, không tạo giao dịch thu tiền.",
+                "Xác nhận trạng thái hóa đơn", MessageBoxButtons.YesNo, MessageBoxIcon.Question,
+                MessageBoxDefaultButton.Button2) != DialogResult.Yes) return;
+            _busy = true;
+            UpdateActions();
+            try
+            {
+                await _api.Invoices.MarkAsPaidAsync(id);
+                if (IsDisposed) return;
+                invoice.Status = "Paid";
+                UpdateSummary();
+                BindGrid();
+                lblStatus.Text = $"Đã đánh dấu hóa đơn #{id} là đã thanh toán.";
+                lblStatus.ForeColor = Theme.Success;
+            }
+            catch (Exception ex)
+            {
+                if (IsDisposed) return;
+                lblStatus.Text = "Lỗi: " + ex.Message;
+                lblStatus.ForeColor = Theme.Danger;
+            }
+            finally
+            {
+                _busy = false;
+                if (!IsDisposed) UpdateActions();
+            }
         }
 
         private async Task ShowDetailsAsync()

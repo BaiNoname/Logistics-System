@@ -17,6 +17,20 @@ public class ContractsController(IContractService service) : ControllerBase
     public async Task<ActionResult<ContractLookupDto>> GetLookups()
         => Ok(await service.GetLookupsAsync());
 
+    [HttpGet("max-discount-percent")]
+    public async Task<ActionResult<int>> GetMaxDiscountPercent()
+        => Ok(await service.GetMaxDiscountPercentAsync());
+
+    public record DiscountConfiguration(int Value);
+
+    [HttpPut("max-discount-percent")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> SaveMaxDiscountPercent(DiscountConfiguration request)
+    {
+        try { await service.SaveMaxDiscountPercentAsync(request.Value); return NoContent(); }
+        catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
+    }
+
     [HttpGet("{id:int}")]
     public async Task<ActionResult<ContractListItemDto>> GetById(int id)
     {
@@ -27,14 +41,14 @@ public class ContractsController(IContractService service) : ControllerBase
     [HttpPost]
     public async Task<ActionResult<ContractListItemDto>> Create(SaveContractRequest request)
     {
-        try { return Ok(await service.CreateAsync(request)); }
+        try { return Ok(await service.CreateAsync(request, User.IsInRole("Admin"))); }
         catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
     }
 
     [HttpPut("{id:int}")]
     public async Task<IActionResult> Update(int id, SaveContractRequest request)
     {
-        try { return await service.UpdateAsync(id, request) ? NoContent() : NotFound(); }
+        try { return await service.UpdateAsync(id, request, User.IsInRole("Admin")) ? NoContent() : NotFound(); }
         catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
     }
 

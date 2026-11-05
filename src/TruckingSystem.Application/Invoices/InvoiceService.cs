@@ -18,6 +18,14 @@ public class InvoiceService : IInvoiceService
         _db = db;
     }
 
+    public async Task MarkAsPaidAsync(int id)
+    {
+        var invoice = await _db.Invoices.SingleOrDefaultAsync(i => i.Id == id)
+            ?? throw new KeyNotFoundException("Không tìm thấy hóa đơn.");
+        invoice.MarkAsPaid();
+        await _db.SaveChangesAsync();
+    }
+
     public async Task<List<InvoiceListItemDto>> GetAllAsync()
     {
         return await _db.Invoices

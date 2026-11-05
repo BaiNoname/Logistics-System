@@ -48,4 +48,16 @@ public class InvoicesController : ControllerBase
         catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
         catch (InvalidOperationException ex) { return Conflict(new { message = ex.Message }); }
     }
+
+    [HttpPost("{id:int}/mark-paid")]
+    public async Task<IActionResult> MarkAsPaid(int id)
+    {
+        try
+        {
+            await _service.MarkAsPaidAsync(id);
+            return NoContent();
+        }
+        catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+        catch (InvalidOperationException ex) { return Conflict(new { message = ex.Message }); }
+    }
 }

@@ -9,6 +9,8 @@ public class ContractForm : BaseForm
     private readonly ContractListItem? _contract;
     private readonly bool _readOnly;
     private bool _saving;
+    private int _maxDiscount = 20;
+    private readonly Label _discountLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly TextBox _code = new();
     private readonly ComboBox _customer = new() { DropDownStyle = ComboBoxStyle.DropDownList };
     private readonly DateTimePicker _start = new() { Format = DateTimePickerFormat.Short };
@@ -27,6 +29,8 @@ public class ContractForm : BaseForm
         _api = api;
         _contract = contract;
         _readOnly = readOnly;
+        _code.ReadOnly = contract is null;
+        if (contract is null) _code.Text = "Tự sinh khi lưu: HD-[Khách hàng]-[Năm]-[STT]";
         Text = readOnly ? "Chi tiết hợp đồng" : contract is null ? "Thêm hợp đồng mới" : "Sửa hợp đồng";
         ClientSize = new Size(760, 640);
         BackColor = Theme.CardBg;
@@ -52,7 +56,7 @@ public class ContractForm : BaseForm
         Section(0, "① Khách hàng và thời hạn");
         Section(5, "② Giá và điều khoản");
 
-        AddRow(layout, 1, "Mã hợp đồng *:", _code);
+        AddRow(layout, 1, contract is null ? "Mã hợp đồng (tự động):" : "Mã hợp đồng *:", _code);
         AddRow(layout, 2, "Khách hàng *:", _customer);
         AddRow(layout, 3, "Ngày bắt đầu *:", _start);
         var endPanel = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false };
@@ -70,8 +74,11 @@ public class ContractForm : BaseForm
             if (_type.SelectedIndex != 1) _discount.Value = 0;
         };
         AddRow(layout, 6, "Loại hợp đồng *:", _type);
-        AddRow(layout, 7, "Ưu đãi (%, 0–100, chỉ HĐ dài hạn)", _discount);
-        AddRow(layout, 8, "Bảng giá công ty *:", _priceList);
+        AddRow(layout, 7, "Ưu đãi", _discount);
+        layout.GetControlFromPosition(0, 7)!.Dispose();
+        _discountLabel.Text = "Ưu đãi (0–20)%:";
+        layout.Controls.Add(_discountLabel, 0, 7);
+        AddRow(layout, 8, "Bảng giá áp dụng *:", _priceList);
         AddRow(layout, 9, "Điều khoản", _terms);
 
         _save.Click += async (_, _) => await SaveAsync();
@@ -128,6 +135,8 @@ public class ContractForm : BaseForm
         try
         {
             var lookups = await _api.Contracts.GetLookupsAsync();
+            _maxDiscount = lookups.MaxDiscountPercent;
+            _discountLabel.Text = $"Ưu đãi (0–{_maxDiscount})%:";
             if (IsDisposed) return;
             _customer.DisplayMember = nameof(ContractOption.Name);
             _customer.ValueMember = nameof(ContractOption.Id);
@@ -143,7 +152,7 @@ public class ContractForm : BaseForm
             if (_contract is not null) FillContract();
             else
             {
-                _priceList.SelectedIndex = lookups.PriceLists.Count == 1 ? 0 : -1;
+                _priceList.SelectedIndex = lookups.PriceLists.Count > 0 ? 0 : -1;
             }
             _save.Enabled = lookups.Customers.Count > 0 && (_contract is not null || lookups.PriceLists.Count > 0);
             if (lookups.Customers.Count == 0) FormStyle.Status(_status, "Vui lòng tạo khách hàng trước khi lập hợp đồng.", StatusKind.Warning);
@@ -183,7 +192,7 @@ public class ContractForm : BaseForm
     {
         if (_saving || _readOnly) return;
         _status.Text = "";
-        if (string.IsNullOrWhiteSpace(_code.Text)) { ShowValidation(_code, "Vui lòng nhập mã hợp đồng."); return; }
+        if (_contract is not null && string.IsNullOrWhiteSpace(_code.Text)) { ShowValidation(_code, "Vui lòng nhập mã hợp đồng."); return; }
         if (_customer.SelectedValue is not int customerId) { ShowValidation(_customer, "Vui lòng chọn khách hàng."); return; }
         var endDate = _hasEnd.Checked ? _end.Value.Date : (DateTime?)null;
         if (endDate.HasValue && endDate.Value < _start.Value.Date) { ShowValidation(_end, "Ngày kết thúc không được trước ngày bắt đầu."); return; }
@@ -192,6 +201,9 @@ public class ContractForm : BaseForm
         { ShowValidation(_type, "Vui lòng chọn loại hợp đồng."); return; }
         decimal? discountPercent = null;
         if (type == "LongTerm") discountPercent = _discount.Value; // ô số đã giới hạn 0–100, 2 chữ số lẻ
+        if (!_api.Connection.IsInRole("Admin") && discountPercent > _maxDiscount
+            && (_contract is null || discountPercent != _contract.DiscountPercent))
+        { ShowValidation(_discount, $"Chỉ Admin được áp dụng ưu đãi vượt quá {_maxDiscount}%."); return; }
         var priceListId = SelectedPriceListId;
         if (_contract is null && !priceListId.HasValue)
         { ShowValidation(_priceList, "Vui lòng chọn bảng giá đang áp dụng."); return; }

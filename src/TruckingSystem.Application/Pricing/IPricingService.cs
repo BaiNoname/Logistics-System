@@ -11,5 +11,6 @@ public interface IPricingService
     Task<TariffRuleDto> CreateTariffRuleAsync(int priceListId, SaveTariffRuleRequest request);
     Task<bool> UpdateTariffRuleAsync(int priceListId, int id, SaveTariffRuleRequest request);
     Task<bool> DeleteTariffRuleAsync(int priceListId, int id);
+    Task<List<TariffRuleDto>?> SaveTariffRulesAsync(int priceListId, SaveTariffRulesRequest request);
     Task<List<string>> GetVehicleTypesAsync();
 }

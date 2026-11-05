@@ -46,6 +46,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
     public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<Location> Locations => Set<Location>();
     public DbSet<CustomerContact> CustomerContacts => Set<CustomerContact>();
+    public DbSet<MaxDiscountPercent> MaxDiscountPercents => Set<MaxDiscountPercent>();
     public DbSet<Contract> Contracts => Set<Contract>();
     public DbSet<ContractAppendix> ContractAppendices => Set<ContractAppendix>();
     public DbSet<PriceList> PriceLists => Set<PriceList>();
@@ -100,13 +101,20 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
     {
         base.OnModelCreating(builder); // BẮT BUỘC gọi trước để Identity tự cấu hình bảng của nó
 
+        builder.Entity<MaxDiscountPercent>(e =>
+        {
+            e.ToTable("MaxDiscountPercent", t => t.HasCheckConstraint("CK_MaxDiscountPercent_Value", "\"Id\" = 1 AND \"Value\" BETWEEN 0 AND 100"));
+            e.Property(p => p.Id).ValueGeneratedNever();
+            e.HasData(new MaxDiscountPercent { Id = 1, Value = 20, UpdatedAt = new DateTime(2026, 11, 5, 0, 0, 0, DateTimeKind.Utc) });
+        });
+
         builder.Entity<Position>().HasOne(p => p.Department).WithMany().HasForeignKey(p => p.DepartmentId).OnDelete(DeleteBehavior.Restrict);
 
         builder.Entity<SurchargeList>(e =>
         {
             e.Property(p => p.Name).HasMaxLength(150);
             e.Property(p => p.Revision).IsConcurrencyToken();
-            e.HasIndex(p => p.EffectiveDate).IsUnique().HasFilter("\"Published\"");
+            e.HasIndex(p => p.EffectiveDate).HasFilter("\"Published\"");
             e.HasMany(p => p.Lines).WithOne().HasForeignKey(l => l.SurchargeListId);
         });
         builder.Entity<SurchargeLine>().HasKey(l => new { l.SurchargeListId, l.Kind });

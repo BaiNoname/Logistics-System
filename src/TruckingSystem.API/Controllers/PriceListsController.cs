@@ -12,6 +12,7 @@ public class PriceListsController(IPricingService service) : ControllerBase
     [HttpGet("surcharges")]
     public async Task<IActionResult> HistoricalRates([FromServices] TruckingSystem.Application.Surcharges.ISurchargeListService lists)
         => Ok((await lists.ListAsync()).Where(p => p.Published)
+            .GroupBy(p => p.EffectiveDate).Select(g => g.OrderByDescending(p => p.Id).First())
             .Select(p => new SurchargeRates(p.EffectiveDate, p.FragilePercent, p.HazmatPercent)));
 
     [HttpPost("surcharges")]
@@ -68,6 +69,18 @@ public class PriceListsController(IPricingService service) : ControllerBase
     public async Task<ActionResult<TariffRuleDto>> CreateRule(int priceListId, SaveTariffRuleRequest request)
     {
         try { return Ok(await service.CreateTariffRuleAsync(priceListId, request)); }
+        catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
+        catch (InvalidOperationException ex) { return Conflict(new { message = ex.Message }); }
+    }
+
+    [HttpPut("{priceListId:int}/tariff-rules")]
+    public async Task<IActionResult> SaveRules(int priceListId, SaveTariffRulesRequest request)
+    {
+        try
+        {
+            var rows = await service.SaveTariffRulesAsync(priceListId, request);
+            return rows is null ? NotFound() : Ok(rows);
+        }
         catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
         catch (InvalidOperationException ex) { return Conflict(new { message = ex.Message }); }
     }

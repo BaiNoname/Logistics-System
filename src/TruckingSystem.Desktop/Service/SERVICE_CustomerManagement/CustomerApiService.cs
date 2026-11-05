@@ -1,5 +1,6 @@
 ﻿using TruckingSystem.Desktop.Common;
 using TruckingSystem.Desktop.DTO_CustomerManagement;
+using System.Net;
 using System.Net.Http.Headers;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -61,6 +62,7 @@ namespace TruckingSystem.Desktop.SERVICE_CustomerManagement
                     403 => "Tài khoản không có quyền quét danh thiếp.",
                     404 => "Không tìm thấy API quét danh thiếp. Vui lòng khởi động lại API đã cập nhật.",
                     413 => "Ảnh danh thiếp quá lớn. Vui lòng chọn ảnh tối đa 10 MB.",
+                    422 => "Ảnh không phải danh thiếp. Vui lòng chọn ảnh danh thiếp.",
                     502 => $"Máy chủ {_conn.BaseUrl} trả về 502 (Bad Gateway) nhưng không cung cấp thông báo lỗi đọc được. Cần kiểm tra dịch vụ API hoặc cổng kết nối của máy chủ.",
                     504 => "Dịch vụ AI phản hồi quá lâu. Vui lòng thử lại sau.",
                     _ => "Không thể quét danh thiếp. Vui lòng thử lại sau."
@@ -78,6 +80,8 @@ namespace TruckingSystem.Desktop.SERVICE_CustomerManagement
                     if (!string.IsNullOrWhiteSpace(detail)) message = detail;
                 }
                 catch (JsonException) { }
+                if (response.StatusCode == HttpStatusCode.UnprocessableEntity)
+                    throw new HttpRequestException(message, null, response.StatusCode);
                 throw new HttpRequestException($"Lỗi API ({(int)response.StatusCode}): {message}", null, response.StatusCode);
             }
             return JsonConvert.DeserializeObject<CustomerBusinessCardInfoItem>(body)

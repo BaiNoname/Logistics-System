@@ -10,7 +10,7 @@ internal static class SurchargeLookup
     {
         var day = DateOnly.FromDateTime(date);
         var list = await db.SurchargeLists.AsNoTracking().Include(p => p.Lines).Where(p => p.Published && p.EffectiveDate <= day)
-            .OrderByDescending(p => p.EffectiveDate).FirstOrDefaultAsync(ct);
+            .OrderByDescending(p => p.Id).FirstOrDefaultAsync(ct);
         return list?.Rates();
     }
 }

@@ -42,3 +42,7 @@ Thumbs.db
 **/appsettings.json
 
 **/Storage/VehicleDocuments/
+
+# Tài liệu nghiệp vụ cục bộ ở thư mục gốc
+/BangGia.md
+/HopDong.md

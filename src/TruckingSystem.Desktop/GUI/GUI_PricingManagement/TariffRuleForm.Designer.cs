@@ -24,7 +24,7 @@ partial class TariffRuleForm
         _cancel = new Button();
         _footer = new FlowLayoutPanel();
         _priceListLabel = new Label();
-        _vehicleType = new ComboBox();
+        _vehicleType = new TextBox();
         _vehicleTypePanel = new Panel();
         _vehicleTypeLabel = new Label();
         _perKm = new NumberBox();
@@ -84,7 +84,7 @@ partial class TariffRuleForm
         _footer.FlowDirection = FlowDirection.RightToLeft;
         _footer.Controls.Add(_save);
         _footer.Controls.Add(_cancel);
-        ClientSize = new Size(540, 395);
+        ClientSize = new Size(600, 620);
         BackColor = Theme.CardBg;
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
@@ -102,26 +102,12 @@ partial class TariffRuleForm
         _priceListLabel.Margin = new Padding(0, 0, 0, 16);
         _fields.Controls.Add(_priceListLabel);
         _vehicleType.Name = "_vehicleType";
-        _vehicleType.DropDownStyle = ComboBoxStyle.DropDown;
         _vehicleType.AccessibleName = "Loại xe";
-        _vehicleType.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
-        _vehicleType.AutoCompleteSource = AutoCompleteSource.ListItems;
-        _vehicleType.Items.AddRange(new object[]
-        {
-            "Xe van 1 tấn",
-            "Xe tải 1,5 tấn",
-            "Xe tải 2,5 tấn",
-            "Xe tải 5 tấn",
-            "Xe tải 8 tấn",
-            "Xe tải 15 tấn",
-            "Đầu kéo container 20 feet",
-            "Đầu kéo container 40 feet"
-        });
         _vehicleTypePanel.Name = "_vehicleTypePanel";
         _vehicleTypePanel.Size = new Size(470, 56);
         _vehicleTypePanel.Margin = new Padding(0, 0, 0, 8);
         _vehicleTypeLabel.Name = "_vehicleTypeLabel";
-        _vehicleTypeLabel.Text = "Loại xe * (chọn hoặc nhập)";
+        _vehicleTypeLabel.Text = "Loại xe * (chọn dòng trong bảng hoặc nhập)";
         _vehicleTypeLabel.AutoSize = true;
         _vehicleTypeLabel.Font = Theme.FontSmall;
         _vehicleTypeLabel.ForeColor = Theme.TextSecondary;
@@ -201,7 +187,7 @@ partial class TariffRuleForm
     private Button _cancel = null!;
     private FlowLayoutPanel _footer = null!;
     private Label _priceListLabel = null!;
-    private ComboBox _vehicleType = null!;
+    private TextBox _vehicleType = null!;
     private Panel _vehicleTypePanel = null!;
     private Label _vehicleTypeLabel = null!;
     private NumberBox _perKm = null!;

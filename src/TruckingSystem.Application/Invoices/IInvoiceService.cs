@@ -7,4 +7,5 @@ public interface IInvoiceService
     Task<List<InvoiceOrderOptionDto>> GetEligibleOrdersAsync();
     Task<InvoiceQuoteDto> GetQuoteAsync(int orderId);
     Task<InvoiceListItemDto> CreateAsync(CreateInvoiceRequest request);
+    Task MarkAsPaidAsync(int id);
 }
