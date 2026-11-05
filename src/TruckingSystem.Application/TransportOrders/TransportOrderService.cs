@@ -169,7 +169,8 @@ public class TransportOrderService : ITransportOrderService
         if (locationError is not null)
             throw new InvalidOperationException(locationError);
 
-        var contractError = await ValidateContractAsync(request.ContractId, request.CustomerId);
+        var contractError = await ValidateContractAsync(request.ContractId, request.CustomerId,
+            VnClock.ToVnWallClock(request.CommittedDeliveryDate), excludeOrderId: null);
         if (contractError is not null)
             throw new InvalidOperationException(contractError);
 
@@ -260,9 +261,18 @@ public class TransportOrderService : ITransportOrderService
 
         // Chỉ kiểm tra hiệu lực khi ĐỔI hợp đồng — nháp cũ giữ nguyên hợp đồng vẫn sửa được
         // thông tin khác (lúc Xác nhận sẽ kiểm tra lại hiệu lực).
+        // Đổi hạn giao (giữ hợp đồng): hạn mới vẫn phải nằm trong thời hạn hợp đồng.
+        var newDeadline = VnClock.ToVnWallClock(request.CommittedDeliveryDate);
         if (request.ContractId != order.ContractId)
         {
-            var contractError = await ValidateContractAsync(request.ContractId, order.CustomerId);
+            var contractError = await ValidateContractAsync(request.ContractId, order.CustomerId, newDeadline, excludeOrderId: order.Id);
+            if (contractError is not null)
+                return new OrderActionResult(false, contractError);
+        }
+        else if (newDeadline?.Date != order.CommittedDeliveryDate?.Date)
+        {
+            var contractError = await ValidateContractAsync(order.ContractId, order.CustomerId, newDeadline, excludeOrderId: order.Id,
+                checkStatus: false, checkOneTime: false);
             if (contractError is not null)
                 return new OrderActionResult(false, contractError);
         }
@@ -324,7 +334,7 @@ public class TransportOrderService : ITransportOrderService
         if (locationError is not null)
             return new OrderActionResult(false, locationError + " (Bấm Sửa đơn để chọn lại địa điểm.)");
         // Hợp đồng có thể đã hết hạn / bị sửa trong lúc đơn còn nháp -> kiểm tra lại.
-        var contractError = await ValidateContractAsync(order.ContractId, order.CustomerId);
+        var contractError = await ValidateContractAsync(order.ContractId, order.CustomerId, order.CommittedDeliveryDate, excludeOrderId: order.Id);
         if (contractError is not null)
             return new OrderActionResult(false, contractError + " (Bấm Sửa đơn để chọn hợp đồng khác hoặc bỏ trống.)");
 
@@ -362,6 +372,15 @@ public class TransportOrderService : ITransportOrderService
 
         var oldDate = order.CommittedDeliveryDate?.Date;
         if (oldDate == newDate) return new OrderActionResult(false, "Hạn giao mới trùng hạn hiện tại — không có gì thay đổi.");
+
+        // Đơn CHƯA có chuyến nào xuất phát: hạn mới vẫn phải nằm trong thời hạn hợp đồng (ngày tính giá hóa đơn = ngày
+        // chuyến đầu tiên xuất phát). Đã có chuyến chạy thì ngày tính giá đã chốt — không chặn.
+        if (order.ContractId is not null && !await _db.Trips.AnyAsync(t => t.TransportOrderId == order.Id && t.StartTime != null))
+        {
+            var contractError = await ValidateContractAsync(order.ContractId, order.CustomerId, newDate, excludeOrderId: order.Id,
+                checkStatus: false, checkOneTime: false);
+            if (contractError is not null) return new OrderActionResult(false, contractError);
+        }
 
         // PHÍ LƯU KHO: khách xin dời TRỄ hơn -> ước tính ngay (m³ đang trong kho × số ngày dời × đơn giá kho),
         // chốt đơn giá + lưu lịch sử; số chính thức tính theo ngày hàng thực sự còn nằm kho (StorageFeeRules).
@@ -766,23 +785,55 @@ public class TransportOrderService : ITransportOrderService
     }
 
     /// <summary>Hợp đồng của đơn (tuỳ chọn): phải tồn tại, của ĐÚNG khách hàng và đang hiệu lực
-    /// hôm nay (giờ VN) — không nhận đơn theo hợp đồng chưa bắt đầu / đã hết hạn.</summary>
-    private async Task<string?> ValidateContractAsync(int? contractId, int customerId)
+    /// hôm nay (giờ VN) — không nhận đơn theo hợp đồng chưa bắt đầu / đã hết hạn. Thêm (mẫu hop_dong_don đã duyệt):
+    ///  • HẠN GIAO không được sau ngày kết thúc hợp đồng — hóa đơn tính giá theo ngày chuyến đầu tiên xuất phát, ngày đó
+    ///    phải nằm trong thời hạn hợp đồng; muốn hạn giao xa hơn thì gia hạn hợp đồng trước.
+    ///  • Hợp đồng MỘT LẦN chỉ gắn được cho 1 đơn chưa hủy (đơn đó có bao nhiêu chuyến cũng được). Hợp đồng cũ chưa
+    ///    có loại (Type = null) coi như dài hạn.</summary>
+    private async Task<string?> ValidateContractAsync(int? contractId, int customerId, DateTime? deadline, int? excludeOrderId,
+        bool checkStatus = true, bool checkOneTime = true)
     {
         if (contractId is null) return null;
         var contract = await _db.Contracts
             .Where(c => c.Id == contractId.Value)
-            .Select(c => new { c.Code, c.CustomerId, c.StartDate, c.EndDate })
+            .Select(c => new { c.Code, c.CustomerId, c.StartDate, c.EndDate, c.Type })
             .FirstOrDefaultAsync();
         if (contract is null) return "Hợp đồng đã chọn không tồn tại (có thể vừa bị xóa) — chọn lại hợp đồng.";
         if (contract.CustomerId != customerId)
             return $"Hợp đồng {contract.Code} không phải hợp đồng của khách hàng này.";
-        return Contract.GetStatus(contract.StartDate, contract.EndDate, VnClock.Today) switch
+        if (checkStatus)
         {
-            ContractStatus.Upcoming => $"Hợp đồng {contract.Code} chưa có hiệu lực (bắt đầu {contract.StartDate:dd/MM/yyyy}).",
-            ContractStatus.Expired => $"Hợp đồng {contract.Code} đã hết hạn ngày {contract.EndDate:dd/MM/yyyy}.",
-            _ => null,
-        };
+            var statusError = Contract.GetStatus(contract.StartDate, contract.EndDate, VnClock.Today) switch
+            {
+                ContractStatus.Upcoming => $"Hợp đồng {contract.Code} chưa có hiệu lực (bắt đầu {contract.StartDate:dd/MM/yyyy}).",
+                ContractStatus.Expired => $"Hợp đồng {contract.Code} đã hết hạn ngày {contract.EndDate:dd/MM/yyyy}.",
+                _ => null,
+            };
+            if (statusError is not null) return statusError;
+        }
+        if (deadline is DateTime due && contract.EndDate is DateTime end && due.Date > end.Date)
+            return $"Hạn giao {due:dd/MM/yyyy} sau ngày hết hạn hợp đồng {contract.Code} ({end:dd/MM/yyyy}) — chọn hạn giao trước " +
+                   "hoặc bằng ngày đó, hoặc nhờ bộ phận kinh doanh gia hạn hợp đồng rồi tạo lại.";
+        if (checkOneTime && contract.Type == ContractType.OneTime)
+        {
+            var used = await OneTimeUsageAsync(new[] { contractId.Value }, excludeOrderId);
+            if (used.TryGetValue(contractId.Value, out var usedBy))
+                return $"Hợp đồng {contract.Code} là hợp đồng một lần, đã dùng cho đơn {usedBy.Code} — chọn hợp đồng khác hoặc khách lẻ.";
+        }
+        return null;
+    }
+
+    /// <summary>Hợp đồng MỘT LẦN đã gắn với đơn chưa hủy nào (trừ đơn đang sửa): contractId -> (Id, Code) đơn đó.</summary>
+    private async Task<Dictionary<int, (int Id, string Code)>> OneTimeUsageAsync(IEnumerable<int> contractIds, int? excludeOrderId)
+    {
+        var ids = contractIds.ToList();
+        var rows = await _db.TransportOrders
+            .Where(o => o.ContractId != null && ids.Contains(o.ContractId.Value) && o.Status != TransportOrderStatus.Cancelled
+                        && (excludeOrderId == null || o.Id != excludeOrderId))
+            .OrderBy(o => o.Id)
+            .Select(o => new { ContractId = o.ContractId!.Value, o.Id, o.Code })
+            .ToListAsync();
+        return rows.GroupBy(r => r.ContractId).ToDictionary(g => g.Key, g => (g.First().Id, g.First().Code));
     }
 
     public async Task<List<OrderContractOptionDto>> GetContractOptionsAsync(int customerId)
@@ -791,11 +842,16 @@ public class TransportOrderService : ITransportOrderService
         var contracts = await _db.Contracts
             .Where(c => c.CustomerId == customerId)
             .OrderByDescending(c => c.StartDate)
-            .Select(c => new { c.Id, c.Code, c.StartDate, c.EndDate, PriceListName = c.PriceList != null ? c.PriceList.Name : null })
+            .Select(c => new { c.Id, c.Code, c.StartDate, c.EndDate, c.Type, c.DiscountPercent,
+                PriceListName = c.PriceList != null ? c.PriceList.Name : null })
             .ToListAsync();
-        return contracts
-            .Where(c => Contract.GetStatus(c.StartDate, c.EndDate, today) == ContractStatus.Active)
-            .Select(c => new OrderContractOptionDto(c.Id, c.Code, c.StartDate, c.EndDate, c.PriceListName))
+        var active = contracts.Where(c => Contract.GetStatus(c.StartDate, c.EndDate, today) == ContractStatus.Active).ToList();
+        // Hợp đồng một lần đã có đơn: vẫn trả về (kèm đơn đã dùng) để Desktop hiện MỜ + lý do, không chọn được.
+        var used = await OneTimeUsageAsync(active.Where(c => c.Type == ContractType.OneTime).Select(c => c.Id), excludeOrderId: null);
+        return active
+            .Select(c => new OrderContractOptionDto(c.Id, c.Code, c.StartDate, c.EndDate, c.PriceListName,
+                c.Type?.ToString(), c.DiscountPercent,
+                used.TryGetValue(c.Id, out var u) ? u.Id : null, used.TryGetValue(c.Id, out var u2) ? u2.Code : null))
             .ToList();
     }
 

@@ -714,6 +714,26 @@ WHERE ""Id"" = {tripId}");
     /// Vận hành chưa duyệt thì hàng chưa về kho; đã duyệt thì hàng còn phải được NHẬP
     /// KHO đủ (màn Hàng chờ nhập) mới xuất đi giao được. Đơn khách tự mang hàng
     /// tới kho (không có chặng Lấy hàng) thì không bị chặn.</summary>
+    /// <summary>CHUYẾN ĐẦU TIÊN của đơn (chưa chuyến nào của đơn xuất phát) chỉ chạy khi hợp đồng của đơn còn hiệu lực
+    /// hôm nay — hóa đơn tính giá theo ngày này, ngoài thời hạn hợp đồng sẽ không lập được hóa đơn. Các chuyến sau
+    /// (VD chặng giao, trả hàng) không chặn để hàng không kẹt giữa đường. Đơn khách lẻ (không hợp đồng) không xét.</summary>
+    private async Task<string?> GetContractBlockReasonAsync(Trip trip)
+    {
+        if (trip.LegType == TripLegType.Return) return null;
+        var contract = await _db.TransportOrders.Where(o => o.Id == trip.TransportOrderId && o.Contract != null)
+            .Select(o => new { o.Contract!.Code, o.Contract.StartDate, o.Contract.EndDate }).FirstOrDefaultAsync();
+        if (contract is null) return null;
+        if (await _db.Trips.AnyAsync(t => t.TransportOrderId == trip.TransportOrderId && t.Id != trip.Id && t.StartTime != null))
+            return null;
+        return Contract.GetStatus(contract.StartDate, contract.EndDate, VnClock.Today) switch
+        {
+            ContractStatus.Expired => $"Hợp đồng {contract.Code} của đơn đã hết hạn {contract.EndDate:dd/MM/yyyy} — chưa thể bắt đầu chuyến " +
+                                      $"đầu tiên của đơn (sẽ không lập được hóa đơn). Nhờ bộ phận kinh doanh gia hạn hợp đồng rồi thử lại.",
+            ContractStatus.Upcoming => $"Hợp đồng {contract.Code} của đơn chưa có hiệu lực (bắt đầu {contract.StartDate:dd/MM/yyyy}) — chưa thể bắt đầu chuyến.",
+            _ => null,
+        };
+    }
+
     private async Task<string?> GetStartBlockReasonAsync(Trip trip)
     {
         // Kiểm tra LẠI xe + tài xế lúc xuất phát — Chia xe có thể đã từ nhiều
@@ -722,6 +742,9 @@ WHERE ""Id"" = {tripId}");
         // kiểm tra 1 lần lúc Chia xe, chuyến vẫn bắt đầu được).
         var resourceReason = await GetVehicleDriverBlockReasonAsync(trip);
         if (resourceReason is not null) return resourceReason;
+
+        var contractReason = await GetContractBlockReasonAsync(trip);
+        if (contractReason is not null) return contractReason;
 
         // Chặng TRẢ HÀNG: hàng chỉ trừ kho lúc chuyến hoàn tất — nhưng phải CÒN ĐỦ hàng trong kho
         // ngay lúc xe chạy, nếu không tới lúc Duyệt mới báo "không đủ tồn kho" và chuyến kẹt ở
