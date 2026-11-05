@@ -5,7 +5,8 @@ using System.Runtime.CompilerServices;
 
 namespace TruckingSystem.Desktop.Common
 {
-    /// <summary>Kiểu hiển thị theo theme cho các phân hệ đăng ký bên dưới và các hộp thoại của chúng.
+    /// <summary>KIỂU MỚI BÊN TRONG MÀN (mẫu 4_buoi đã duyệt) — CHỈ áp cho các màn của Nhân (Tổng quan, Đơn, Chuyến, Kho, Đội xe,
+    /// Tài xế, Địa điểm, Nhiên liệu, Nguồn lực theo kho, Nhật ký hệ thống, Thông báo) và các hộp thoại của chúng. Màn của Minh giữ nguyên (Theme.cs không đổi).
     ///  • Bảng: tiêu đề sáng (nền xám rất nhạt, chữ xám đậm), chỉ kẻ ngang mảnh, dòng cao hơn, dòng chọn xanh trời nhạt.
     ///  • Nút: bo góc; nút chính (màu Primary) tô dải màu theo buổi đang chọn (Bình minh hồng–cam, Trưa xanh trời, Chiều cam–hồng,
     ///    Tối chàm–tím).
@@ -17,14 +18,10 @@ namespace TruckingSystem.Desktop.Common
         {
             "GUI_TransportOrderManagement", "GUI_TripManagement", "GUI_WarehouseManagement", "GUI_VehicleManagement",
             "GUI_DriverManagement", "GUI_LocationManagement", "GUI_FuelManagement", "GUI_ResourceManagement", "GUI_RouteManagement",
-            "GUI_AuditLogManagement", "GUI_NotificationManagement",
-            "GUI_CustomerManagement", "GUI_ContractManagement", "GUI_SurchargeManagement",
-            "GUI_PricingManagement", "GUI_InvoiceManagement",
-            "GUI_EmployeeManagement", "GUI_PayrollManagement", "GUI_AttendanceManagement",
-            "GUI_AccountManagement", "GUI_SystemManagement",
+            "GUI_AuditLogManagement", "GUI_NotificationManagement", // Nhật ký hệ thống + Thông báo
         };
 
-        /// <summary>Màn hoặc hộp thoại dùng kiểu hiển thị theo theme.</summary>
+        /// <summary>Màn / hộp thoại thuộc phần của Nhân.</summary>
         public static bool IsMine(Type t)
             => t.Name == "DashboardControl"
                || (t.Namespace is { } ns && MineNamespaces.Any(m => ns.EndsWith(m, StringComparison.Ordinal)));
@@ -66,6 +63,9 @@ namespace TruckingSystem.Desktop.Common
                         case DataGridView grid: StyleGrid(grid); return; // không đi vào bên trong bảng (thanh cuộn, ô sửa, lớp "đang tải")
                         case Button b: RoundButton(b); break;
                     }
+                    // Thứ bấm được (nút, ô chọn xổ xuống, chọn ngày, ô tích, nút tròn) -> con trỏ bàn tay.
+                    if (c is ButtonBase or DateTimePicker || c is ComboBox { DropDownStyle: ComboBoxStyle.DropDownList })
+                        if (c.Cursor == Cursors.Default) c.Cursor = Cursors.Hand;
                     // Control thêm sau (sinh bằng code): áp SAU khi việc thêm xong hẳn — không chen vào giữa lúc
                     // màn đang thêm / xóa control (trước đây làm lỗi "Index was out of range" ở lớp "đang tải" của bảng).
                     c.ControlAdded += (_, e) =>

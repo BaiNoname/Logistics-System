@@ -12,7 +12,9 @@
     {
         private const int MinGridRows = 3;
 
-        public static Action Enable(Form form, TableLayoutPanel root)
+        /// <param name="scrollHost">Khung chứa root (Dock Fill) cần cuộn thay cho cả cửa sổ — để chân cửa sổ (Dock Bottom,
+        /// nút Lưu…) đứng yên, luôn thấy. Bỏ trống = cuộn cả cửa sổ như cũ.</param>
+        public static Action Enable(Form form, TableLayoutPanel root, ScrollableControl? scrollHost = null)
         {
             var busy = false;
 
@@ -25,7 +27,18 @@
             }
 
             /// <summary>Chiều cao vùng khách cần để mọi hàng hiện đủ (phần chính ở mức tối thiểu).</summary>
-            int Needed()
+            int Needed() => Inner() + Outside();
+            /// <summary>Phần ngoài root (chân cửa sổ Dock Bottom, thanh trên…).</summary>
+            int Outside()
+            {
+                Control top = root;
+                while (top.Parent is not null && top.Parent != form) top = top.Parent;
+                return form.Controls.Cast<Control>()
+                    .Where(c => c != top && c.Visible && (c.Dock == DockStyle.Top || c.Dock == DockStyle.Bottom))
+                    .Sum(c => c.Height);
+            }
+            /// <summary>Chiều cao riêng root cần.</summary>
+            int Inner()
             {
                 var heights = root.GetRowHeights();
                 var mainRows = new HashSet<int>();
@@ -39,13 +52,7 @@
                 }
                 var others = 0;
                 for (var i = 0; i < heights.Length; i++) if (!mainRows.Contains(i)) others += heights[i];
-                // Phần ngoài root (chân cửa sổ Dock Bottom, thanh trên…) = vùng khách − chiều cao root.
-                Control top = root;
-                while (top.Parent is not null && top.Parent != form) top = top.Parent;
-                var outside = form.Controls.Cast<Control>()
-                    .Where(c => c != top && c.Visible && (c.Dock == DockStyle.Top || c.Dock == DockStyle.Bottom))
-                    .Sum(c => c.Height);
-                return others + mainMin + root.Padding.Vertical + root.Margin.Vertical + outside;
+                return others + mainMin + root.Padding.Vertical + root.Margin.Vertical;
             }
 
             void EnsureScroll()
@@ -54,12 +61,13 @@
                 busy = true;
                 try
                 {
-                    var need = Needed();
-                    var want = need > form.ClientSize.Height + 1 ? new Size(0, need) : Size.Empty;
-                    if (form.AutoScrollMinSize != want)
+                    ScrollableControl sc = scrollHost ?? form;
+                    var need = scrollHost is null ? Needed() : Inner();
+                    var want = need > sc.ClientSize.Height + 1 ? new Size(0, need) : Size.Empty;
+                    if (sc.AutoScrollMinSize != want)
                     {
-                        form.AutoScroll = want != Size.Empty || form.AutoScroll;
-                        form.AutoScrollMinSize = want;
+                        sc.AutoScroll = want != Size.Empty || sc.AutoScroll;
+                        sc.AutoScrollMinSize = want;
                     }
                 }
                 finally { busy = false; }

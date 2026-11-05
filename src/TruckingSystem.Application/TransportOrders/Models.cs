@@ -45,7 +45,9 @@ public record TripSummaryDto(int Id, string VehiclePlate, string DriverName, str
     string? FromName = null, string? ToName = null); // điểm đi -> điểm đến của chặng (xem TripRouteText)
 
 /// <summary>Hợp đồng chọn được cho đơn: của đúng khách hàng, đang hiệu lực hôm nay.</summary>
-public record OrderContractOptionDto(int Id, string Code, DateTime StartDate, DateTime? EndDate, string? PriceListName);
+/// <summary>Type: "OneTime" | "LongTerm" | null (hợp đồng cũ). UsedByOrder*: hợp đồng một lần đã gắn với đơn chưa hủy đó.</summary>
+public record OrderContractOptionDto(int Id, string Code, DateTime StartDate, DateTime? EndDate, string? PriceListName,
+    string? Type = null, decimal? DiscountPercent = null, int? UsedByOrderId = null, string? UsedByOrderCode = null);
 
 /// <summary>Kết quả của các thao tác đổi trạng thái đơn (Xác nhận/Hủy) — không
 /// trả nguyên TransportOrderDetailDto vì Desktop chỉ cần biết có thành công
