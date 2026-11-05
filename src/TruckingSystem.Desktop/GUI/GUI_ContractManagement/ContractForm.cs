@@ -74,9 +74,9 @@ public class ContractForm : BaseForm
             if (_type.SelectedIndex != 1) _discount.Value = 0;
         };
         AddRow(layout, 6, "Loại hợp đồng *:", _type);
-        AddRow(layout, 7, "Ưu đãi", _discount);
+        AddRow(layout, 7, "% ưu đãi của hợp đồng", _discount);
         layout.GetControlFromPosition(0, 7)!.Dispose();
-        _discountLabel.Text = "Ưu đãi (0–20)%:";
+        _discountLabel.Text = "% ưu đãi của hợp đồng:";
         layout.Controls.Add(_discountLabel, 0, 7);
         AddRow(layout, 8, "Bảng giá áp dụng *:", _priceList);
         AddRow(layout, 9, "Điều khoản", _terms);
@@ -113,6 +113,7 @@ public class ContractForm : BaseForm
             AcceptButton = cancel;
             _status.ForeColor = Theme.TextSecondary;
             _status.Text = $"Trạng thái: {contract.StatusText}\nTạo: {contract.CreatedAt:dd/MM/yyyy HH:mm} · Cập nhật: {contract.UpdatedAt?.ToString("dd/MM/yyyy HH:mm") ?? "—"}";
+            Shown += async (_, _) => await LoadDiscountLimitAsync();
         }
         else Shown += async (_, _) => await LoadLookupsAsync();
     }
@@ -129,15 +130,30 @@ public class ContractForm : BaseForm
         layout.Controls.Add(input, 1, row);
     }
 
+    private async Task LoadDiscountLimitAsync()
+    {
+        try
+        {
+            var limit = await _api.Contracts.GetMaxDiscountPercentAsync();
+            if (IsDisposed) return;
+            _maxDiscount = limit;
+            _discountLabel.Text = $"% ưu đãi của hợp đồng:\n(0–{_maxDiscount}%)";
+        }
+        catch (Exception)
+        {
+            if (!IsDisposed) _discountLabel.Text = "% ưu đãi của hợp đồng:\n(Không tải được hạn mức)";
+        }
+    }
+
     private async Task LoadLookupsAsync()
     {
         _save.Enabled = false;
         try
         {
             var lookups = await _api.Contracts.GetLookupsAsync();
-            _maxDiscount = lookups.MaxDiscountPercent;
-            _discountLabel.Text = $"Ưu đãi (0–{_maxDiscount})%:";
             if (IsDisposed) return;
+            _maxDiscount = lookups.MaxDiscountPercent;
+            _discountLabel.Text = $"% ưu đãi của hợp đồng:\n(0–{_maxDiscount}%)";
             _customer.DisplayMember = nameof(ContractOption.Name);
             _customer.ValueMember = nameof(ContractOption.Id);
             _customer.DataSource = lookups.Customers;

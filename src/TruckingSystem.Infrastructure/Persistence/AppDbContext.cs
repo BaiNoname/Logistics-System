@@ -254,10 +254,12 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
         {
             e.Property(a => a.Code).HasMaxLength(100);
             e.HasIndex(a => a.Code).IsUnique();
+            e.HasIndex(a => a.ContractId).IsUnique().HasFilter("\"Status\" = 0");
             e.Property(a => a.IssueDate).HasColumnType("date");
             e.Property(a => a.EffectiveDate).HasColumnType("date");
             e.HasOne(a => a.Contract).WithMany().HasForeignKey(a => a.ContractId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(a => a.TariffRule).WithMany().HasForeignKey(a => a.TariffRuleId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(a => a.PriceList).WithMany().HasForeignKey(a => a.PriceListId).OnDelete(DeleteBehavior.Restrict);
         });
         PayrollConfiguration.Configure(builder);
         AttendanceConfiguration.Configure(builder);

@@ -20,14 +20,14 @@ public class ContractAppendicesController(IContractAppendixService service) : Co
     [HttpPost]
     public async Task<ActionResult<ContractAppendixDto>> Create(SaveContractAppendixRequest request)
     {
-        try { return Ok(await service.CreateAsync(request)); }
+        try { return Ok(await service.CreateAsync(request, User.IsInRole("Admin"))); }
         catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
     }
 
     [HttpPut("{id:int}")]
     public async Task<IActionResult> Update(int id, SaveContractAppendixRequest request)
     {
-        try { return await service.UpdateAsync(id, request) ? NoContent() : NotFound(); }
+        try { return await service.UpdateAsync(id, request, User.IsInRole("Admin")) ? NoContent() : NotFound(); }
         catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
     }
 

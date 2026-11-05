@@ -6,7 +6,7 @@ public class TariffRule : BaseEntity
 {
     public static IReadOnlyList<string> DefaultVehicleTypes { get; } = Array.AsReadOnly(new[]
     {
-        "Xe van 1 tấn", "Xe tải 1,5 tấn", "Xe tải 2,5 tấn", "Xe tải 5 tấn",
+        "Xe van 1 tấn", "Xe tải 1,5 tấn", "Xe tải 2,5 tấn", "Xe tải 3 tấn", "Xe tải 5 tấn",
         "Xe tải 8 tấn", "Xe tải 15 tấn", "Đầu kéo container 20 feet", "Đầu kéo container 40 feet"
     });
 

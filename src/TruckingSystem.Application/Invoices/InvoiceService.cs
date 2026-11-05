@@ -78,11 +78,20 @@ public class InvoiceService : IInvoiceService
         if (Contract.GetStatus(contract.StartDate, contract.EndDate, pricingDate) != ContractStatus.Active)
             throw new InvalidOperationException("Hợp đồng không có hiệu lực tại ngày bắt đầu vận chuyển.");
         var appendix = await _db.ContractAppendices.AsNoTracking().Include(a => a.TariffRule)
-            .Where(a => a.ContractId == contract.Id && a.EffectiveDate <= pricingDate)
-            .OrderByDescending(a => a.EffectiveDate).ThenByDescending(a => a.IssueDate).ThenByDescending(a => a.Id)
+            .Where(a => a.ContractId == contract.Id && a.Status == ContractAppendixStatus.Active)
             .FirstOrDefaultAsync();
-        var tariff = appendix?.TariffRule ?? contract.TariffRule
-            ?? throw new InvalidOperationException("Hợp đồng/phụ lục chưa có chi tiết giá.");
+        var tariff = appendix?.TariffRule ?? contract.TariffRule;
+        var priceListId = appendix?.PriceListId ?? appendix?.TariffRule?.PriceListId ?? contract.PriceListId;
+        if (priceListId.HasValue && (tariff is null || tariff.PriceListId != priceListId))
+        {
+            var vehicleTypes = trips.Select(t => t.Vehicle.VehicleType).Distinct().ToList();
+            if (vehicleTypes.Count != 1)
+                throw new InvalidOperationException("Đơn có nhiều loại xe, chưa thể xác định một đơn giá vận chuyển.");
+            var vehicleType = vehicleTypes[0];
+            tariff = await _db.TariffRules.AsNoTracking().SingleOrDefaultAsync(r => r.PriceListId == priceListId && r.VehicleType == vehicleType);
+        }
+        if (tariff is null)
+            throw new InvalidOperationException("Bảng giá của hợp đồng/phụ lục chưa có đơn giá cho loại xe vận chuyển.");
         var tripIds = trips.Select(t => t.Id).ToList();
         var points = (await _db.Waypoints.AsNoTracking().Where(w => tripIds.Contains(w.TripId)).ToListAsync())
             .ToLookup(w => w.TripId);

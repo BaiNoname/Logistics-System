@@ -529,13 +529,22 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp without time zone");
 
+                    b.Property<decimal?>("DiscountPercent")
+                        .HasColumnType("numeric(18,2)");
+
                     b.Property<DateTime>("EffectiveDate")
                         .HasColumnType("date");
 
                     b.Property<DateTime>("IssueDate")
                         .HasColumnType("date");
 
-                    b.Property<int>("TariffRuleId")
+                    b.Property<int?>("PriceListId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("TariffRuleId")
                         .HasColumnType("integer");
 
                     b.Property<DateTime?>("UpdatedAt")
@@ -546,7 +555,11 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.HasIndex("Code")
                         .IsUnique();
 
-                    b.HasIndex("ContractId");
+                    b.HasIndex("ContractId")
+                        .IsUnique()
+                        .HasFilter("\"Status\" = 0");
+
+                    b.HasIndex("PriceListId");
 
                     b.HasIndex("TariffRuleId");
 
@@ -3221,13 +3234,19 @@ namespace TruckingSystem.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("TruckingSystem.Domain.Entities.PriceList", "PriceList")
+                        .WithMany()
+                        .HasForeignKey("PriceListId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("TruckingSystem.Domain.Entities.TariffRule", "TariffRule")
                         .WithMany()
                         .HasForeignKey("TariffRuleId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Contract");
+
+                    b.Navigation("PriceList");
 
                     b.Navigation("TariffRule");
                 });

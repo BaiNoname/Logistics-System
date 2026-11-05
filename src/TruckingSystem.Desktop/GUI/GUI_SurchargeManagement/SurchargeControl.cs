@@ -9,7 +9,6 @@ public sealed class SurchargeControl : BaseUserControl
     private readonly DataGridView _grid = new() { Dock = DockStyle.Fill, AutoGenerateColumns = false,
         MultiSelect = false, ReadOnly = true, AllowUserToAddRows = false, SelectionMode = DataGridViewSelectionMode.FullRowSelect };
     private readonly Button _create = Theme.MakePrimaryButton("Thêm bảng phụ phí");
-    private readonly Button _detail = Theme.MakeSecondaryButton("Chi tiết");
     private readonly Label _status = new() { Dock = DockStyle.Bottom, Height = 42, ForeColor = Theme.TextSecondary, TextAlign = ContentAlignment.MiddleLeft };
     private bool _busy;
     private SurchargeListItem? Selected => _grid.CurrentRow?.DataBoundItem as SurchargeListItem;
@@ -31,14 +30,12 @@ public sealed class SurchargeControl : BaseUserControl
         var bar = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true };
         var refresh = Theme.MakeSecondaryButton("Làm mới");
         bar.Controls.AddRange([new Label { Text = "Bảng phụ phí", Font = Theme.FontTitle, ForeColor = Theme.TextPrimary, AutoSize = true, Margin = new Padding(0, 0, 24, 8) },
-            _create, _detail, refresh]);
+            _create, refresh]);
         Controls.Add(_grid);
         Controls.Add(bar);
         Controls.Add(_status);
         _create.Visible = api.Connection.IsInRole("Admin", "Accountant");
-        _grid.SelectionChanged += (_, _) => UpdateActions();
         _create.Click += async (_, _) => await EditAsync(null);
-        _detail.Click += async (_, _) => await EditAsync(Selected);
         _grid.CellDoubleClick += async (_, e) => { if (e.RowIndex >= 0 && !_busy) await EditAsync(Selected); };
         refresh.Click += async (_, _) => await ReloadAsync();
         UpdateActions();
@@ -49,7 +46,6 @@ public sealed class SurchargeControl : BaseUserControl
     private void UpdateActions()
     {
         _create.Enabled = !_busy;
-        _detail.Enabled = !_busy && Selected != null;
     }
 
     private async Task EditAsync(SurchargeListItem? item)

@@ -8,8 +8,6 @@ public class ContractAppendicesControl : BaseUserControl
     private readonly ApiServices _api;
     private readonly DataGridView _grid = new() { Dock = DockStyle.Fill, AutoGenerateColumns = false, AccessibleName = "Danh sách phụ lục hợp đồng" };
     private readonly Button _create = Theme.MakePrimaryButton("Thêm mới", 110);
-    private readonly Button _edit = Theme.MakeSecondaryButton("Sửa", 85);
-    private readonly Button _delete = Theme.MakeSecondaryButton("Xóa", 85);
     private readonly Button _refresh = Theme.MakeSecondaryButton("Làm mới", 100);
     private readonly Label _status = new() { Dock = DockStyle.Fill, ForeColor = Theme.TextSecondary, TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true };
     private bool _busy;
@@ -24,13 +22,30 @@ public class ContractAppendicesControl : BaseUserControl
         _grid.Columns.AddRange(
             new DataGridViewTextBoxColumn { DataPropertyName = "Code", HeaderText = "Mã phụ lục" },
             new DataGridViewTextBoxColumn { DataPropertyName = "ContractCode", HeaderText = "Mã hợp đồng" },
+            new DataGridViewTextBoxColumn { Name = "ContractStatusText", DataPropertyName = "ContractStatusText", HeaderText = "Trạng thái hợp đồng" },
+            new DataGridViewTextBoxColumn { Name = "StatusText", DataPropertyName = "StatusText", HeaderText = "Trạng thái phụ lục" },
             new DataGridViewTextBoxColumn { DataPropertyName = "IssueDate", HeaderText = "Ngày lập", DefaultCellStyle = new() { Format = "dd/MM/yyyy" } },
             new DataGridViewTextBoxColumn { DataPropertyName = "EffectiveDate", HeaderText = "Ngày có hiệu lực", DefaultCellStyle = new() { Format = "dd/MM/yyyy" } },
-            new DataGridViewTextBoxColumn { DataPropertyName = "TariffName", HeaderText = "Bảng giá", FillWeight = 300 });
+            new DataGridViewTextBoxColumn { DataPropertyName = "TariffName", HeaderText = "Bảng giá", FillWeight = 200 },
+            new DataGridViewTextBoxColumn { DataPropertyName = "DiscountPercent", HeaderText = "Ưu đãi (%)", DefaultCellStyle = new() { Format = "0.##", NullValue = "—" } });
         var toolbar = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, WrapContents = true };
         toolbar.Controls.Add(new Label { Text = "Phụ lục hợp đồng", Font = Theme.FontTitle, ForeColor = Theme.TextPrimary, AutoSize = true, Margin = new Padding(0, 0, 24, 12) });
-        toolbar.Controls.AddRange(new Control[] { _create, _edit, _delete, _refresh });
-        _delete.ForeColor = Theme.Danger;
+        toolbar.Controls.AddRange(new Control[] { _create, _refresh });
+        GridDecor.Pills(_grid, "ContractStatusText", (text, _) => text == "Đang hiệu lực" ? GridDecor.Green : GridDecor.Slate);
+        GridDecor.Pills(_grid, "StatusText", (text, _) => text == "Đang áp dụng" ? GridDecor.Green : GridDecor.Slate);
+        var menu = new ContextMenuStrip();
+        menu.Items.Add("✏️ Sửa", null, async (_, _) => await EditAsync(false));
+        menu.Items.Add(new ToolStripSeparator());
+        menu.Items.Add("🗑 Xóa", null, async (_, _) => await DeleteAsync());
+        menu.Opening += (_, e) => e.Cancel = _busy || SelectedItem is null;
+        ModernMenu.Apply(menu);
+        _grid.ContextMenuStrip = menu;
+        Disposed += (_, _) => menu.Dispose();
+        _grid.CellMouseDown += (_, e) =>
+        {
+            if (e.Button == MouseButtons.Right && e.RowIndex >= 0)
+                _grid.CurrentCell = _grid.Rows[e.RowIndex].Cells[Math.Max(0, e.ColumnIndex)];
+        };
         var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3 };
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -41,10 +56,7 @@ public class ContractAppendicesControl : BaseUserControl
         layout.Controls.Add(_status, 0, 2);
         Controls.Add(layout);
         _create.Click += async (_, _) => await EditAsync(true);
-        _edit.Click += async (_, _) => await EditAsync(false);
-        _delete.Click += async (_, _) => await DeleteAsync();
         _refresh.Click += async (_, _) => await LoadAsync();
-        _grid.SelectionChanged += (_, _) => UpdateActions();
         _grid.CellDoubleClick += async (_, e) => { if (e.RowIndex >= 0) await EditAsync(false); };
         Load += async (_, _) => await LoadAsync();
         UpdateActions();
@@ -54,7 +66,6 @@ public class ContractAppendicesControl : BaseUserControl
     private void UpdateActions()
     {
         _create.Enabled = _refresh.Enabled = !_busy;
-        _edit.Enabled = _delete.Enabled = !_busy && SelectedItem is not null;
     }
 
     private async Task LoadAsync(int? preferredId = null)

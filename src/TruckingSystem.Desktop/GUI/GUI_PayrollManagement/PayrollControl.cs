@@ -12,8 +12,10 @@ public partial class PayrollControl : BaseUserControl
     private List<PayrollSlipDto> _slips = new();
     private PayrollPeriodDto? _period;
     private bool _loading, _busy;
-    private PayrollEmployeeDto? Employee => _employee.SelectedItem as PayrollEmployeeDto;
-    private PayrollSlipDto? Slip => _slips.FirstOrDefault(s => s.EmployeeId == Employee?.Id);
+    private PayrollEmployeeDto? Employee => _slipGrid.CurrentRow?.Cells["EmployeeId"].Value is int id ? _employees.FirstOrDefault(e => e.Id == id) : null;
+    private PayrollSlipDto? Slip => _slipGrid.CurrentRow?.Cells["EmployeeId"].Value is int id ? _slips.FirstOrDefault(s => s.EmployeeId == id) : null;
+    private readonly ToolStripMenuItem _salaryMenu = new("💰 Mức lương / lịch sử");
+    private readonly ToolStripMenuItem _adjustmentsMenu = new("🧾 Cộng / trừ tháng");
 
     public PayrollControl()
     {
@@ -24,7 +26,18 @@ public partial class PayrollControl : BaseUserControl
             "Đã trả đủ" => GridDecor.Green, "Trả một phần" => GridDecor.Amber, _ => GridDecor.Slate,
         });
         ButtonStyles.DangerLink(_deleteDraftButton);
-        BindButton(_salaryButton, SalaryAsync);
+        var menu = new ContextMenuStrip();
+        menu.Items.AddRange([_salaryMenu, _adjustmentsMenu]);
+        ModernMenu.Apply(menu);
+        menu.Opening += (_, e) => { UpdateButtons(); e.Cancel = _busy || _loading || Employee is null; };
+        _slipGrid.ContextMenuStrip = menu;
+        Disposed += (_, _) => menu.Dispose();
+        _slipGrid.CellMouseDown += (_, e) =>
+        {
+            if (e.Button == MouseButtons.Right && e.RowIndex >= 0)
+                _slipGrid.CurrentCell = _slipGrid.Rows[e.RowIndex].Cells["EmployeeCode"];
+        };
+        _salaryMenu.Click += async (_, _) => await RunAsync(SalaryAsync);
         BindButton(_generateButton, async () =>
         {
             if (!Confirm("Tạo/tính lại toàn bộ bảng lương tháng? Các khoản cộng/trừ theo tháng được giữ nguyên. Thiếu dữ liệu thì không cập nhật ai.")) return;
@@ -42,9 +55,11 @@ public partial class PayrollControl : BaseUserControl
                 (await _api.Payroll.KpiRatesAsync()).Select(r => r.VehicleType).ToList(), _api.Payroll.SavePolicyAsync);
             form.ShowDialog(this);
         });
-        BindButton(_adjustmentsButton, async () =>
+        _adjustmentsMenu.Click += async (_, _) => await RunAsync(async () =>
         {
-            using var form = new MonthlyAdjustmentsForm(_api.Payroll, _employees, _month.Value.Year, _month.Value.Month, _period?.ApprovedAt is not null);
+            if (!_api.Connection.IsInRole("Admin", "Accountant")) return;
+            if (!RequireEmployee()) return;
+            using var form = new MonthlyAdjustmentsForm(_api.Payroll, Employee!, _month.Value.Year, _month.Value.Month, _period?.ApprovedAt is not null);
             form.ShowDialog(this); await LoadAsync();
         });
         BindButton(_deleteDraftButton, async () =>
@@ -54,19 +69,19 @@ public partial class PayrollControl : BaseUserControl
         });
         BindButton(_payButton, PayAsync); BindButton(_detailsButton, DetailsAsync); BindButton(_exportButton, ExportAsync);
         _month.ValueChanged += async (_, _) => { if (!_loading) await RunAsync(LoadAsync); };
-        _employee.SelectedIndexChanged += (_, _) => UpdateButtons();
-        _slipGrid.SelectionChanged += (_, _) => { if (!_loading && _slipGrid.CurrentRow?.DataBoundItem is PayrollSlipDto s) SelectEmployee(s.EmployeeId); };
+        _slipGrid.SelectionChanged += (_, _) => { if (!_loading) UpdateButtons(); };
         _slipGrid.CellDoubleClick += async (_, e) => { if (e.RowIndex >= 0) await RunAsync(DetailsAsync); };
         _slipGrid.CellFormatting += (_, e) =>
         {
             if (e.ColumnIndex >= 0 && e.RowIndex >= 0 && _slipGrid.Columns[e.ColumnIndex].Name == "KpiRatio"
-                && _slipGrid.Rows[e.RowIndex].DataBoundItem is PayrollSlipDto slip)
+                && _slipGrid.Rows[e.RowIndex].Cells["EmployeeId"].Value is int employeeId)
             {
-                e.Value = slip.CalculationVersion == 2 && slip.IsDriver && slip.KpiTarget > 0 ? (slip.KpiPoints / slip.KpiTarget).ToString("P2") : "—";
+                var slip = _slips.FirstOrDefault(s => s.EmployeeId == employeeId);
+                e.Value = slip is { CalculationVersion: 2, IsDriver: true, KpiTarget: > 0 } ? (slip.KpiPoints / slip.KpiTarget).ToString("P2") : "—";
                 e.FormattingApplied = true;
             }
             if (e.ColumnIndex >= 0 && _slipGrid.Columns[e.ColumnIndex].Name == "PaymentStatus" && e.Value is string state)
-                e.Value = state switch { "Paid" => "Đã trả đủ", "PartiallyPaid" => "Trả một phần", _ => "Chưa trả" };
+                e.Value = state switch { "Paid" => "Đã trả đủ", "PartiallyPaid" => "Trả một phần", "Chưa có phiếu" => state, _ => "Chưa trả" };
         };
         Load += async (_, _) => await RunAsync(LoadAsync);
     }
@@ -85,15 +100,25 @@ public partial class PayrollControl : BaseUserControl
             _period = (await _api.Payroll.PeriodsAsync()).SingleOrDefault(p => p.Year == _month.Value.Year && p.Month == _month.Value.Month);
             _employees = await _api.Payroll.EmployeesAsync(_month.Value.Year, _month.Value.Month);
             _slips = _period is null ? new() : await _api.Payroll.SlipsAsync(_period.Id);
-            _employee.DataSource = _employees;
+            _employees.AddRange(_slips.Where(s => !_employees.Any(e => e.Id == s.EmployeeId)).Select(s =>
+                new PayrollEmployeeDto(s.EmployeeId, s.EmployeeCode, s.EmployeeName, s.DepartmentName, s.PositionName,
+                    s.WorkFrom ?? s.SalaryEffectiveFrom, null, s.IsDriver)));
+            _slipGrid.DataSource = _employees.Select(e =>
+            {
+                var slip = _slips.FirstOrDefault(s => s.EmployeeId == e.Id);
+                return new { EmployeeId = e.Id, EmployeeCode = e.Code, EmployeeName = e.FullName,
+                    MonthlySalary = slip?.MonthlySalary, WorkedDays = slip?.WorkedDays, KpiPoints = slip?.KpiPoints,
+                    KpiTarget = slip?.KpiTarget, KpiRatio = (string?)null, EarnedSalary = slip?.EarnedSalary,
+                    GrossIncome = slip?.GrossIncome, Deductions = slip?.Deductions, NetPay = slip?.NetPay,
+                    PaidAmount = slip?.PaidAmount, PaymentStatus = slip?.PaymentStatus ?? "Chưa có phiếu" };
+            }).ToList();
             if (selected.HasValue) SelectEmployee(selected.Value);
-            _slipGrid.DataSource = _slips;
             _status.ForeColor = _period?.ApprovedAt is not null ? Theme.Success : Theme.TextSecondary;
             _status.Text = _period?.ApprovedAt is not null ? "Đã chốt — số liệu được giữ nguyên."
                 : "Bản nháp — bấm Tạo / tính lại bảng lương để lấy công, chuyến và khoản cộng/trừ mới nhất.";
             _totals.Text = $"Tháng {_month.Value:MM/yyyy} · {_slips.Count}/{_employees.Count} phiếu · Thực lĩnh {_slips.Sum(s => s.NetPay):N0} đ · Đã trả {_slips.Sum(s => s.PaidAmount):N0} đ";
         }
-        catch { _period = null; _slips.Clear(); _status.Text = "Không tải được dữ liệu; chọn lại tháng để thử lại."; throw; }
+        catch { _period = null; _slips.Clear(); _employees.Clear(); _slipGrid.DataSource = null; _status.Text = "Không tải được dữ liệu; chọn lại tháng để thử lại."; throw; }
         finally { _loading = false; UpdateButtons(); }
     }
 
@@ -105,8 +130,7 @@ public partial class PayrollControl : BaseUserControl
         _approveButton.Enabled = canApprove;
         _payButton.Enabled = canPay && _period?.ApprovedAt is not null && Slip is not null;
         _detailsButton.Enabled = _exportButton.Enabled = canPay && Slip is not null;
-        _salaryButton.Enabled = canPay && Employee is not null;
-        _adjustmentsButton.Enabled = canPay;
+        _salaryMenu.Enabled = _adjustmentsMenu.Enabled = canPay && Employee is not null;
         _kpiButton.Visible = _api is not null && _api.Connection.IsInRole("Admin");
         _deleteDraftButton.Visible = canPay && _period is { ApprovedAt: null } && Slip is { CalculationVersion: 0 };
         ButtonStyles.Secondary(_generateButton);
@@ -118,6 +142,7 @@ public partial class PayrollControl : BaseUserControl
 
     private async Task SalaryAsync()
     {
+        if (!_api.Connection.IsInRole("Admin", "Accountant")) return;
         if (!RequireEmployee()) return;
         var employee = Employee!;
         var history = await _api.Payroll.SalariesAsync(employee.Id);
@@ -194,8 +219,8 @@ public partial class PayrollControl : BaseUserControl
 
     private void SelectEmployee(int id)
     {
-        var employee = _employees.FirstOrDefault(e => e.Id == id);
-        if (employee is not null) _employee.SelectedItem = employee;
+        foreach (DataGridViewRow row in _slipGrid.Rows)
+            if (Equals(row.Cells["EmployeeId"].Value, id)) { _slipGrid.CurrentCell = row.Cells["EmployeeCode"]; break; }
     }
     private bool RequireEmployee()
     {

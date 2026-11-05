@@ -10,7 +10,6 @@ namespace TruckingSystem.Desktop.GUI_InvoiceManagement
         private bool _busy;
         private List<InvoiceListItem> _invoices = new();
         private static readonly CultureInfo Vi = CultureInfo.GetCultureInfo("vi-VN");
-        private readonly Button _details = Theme.MakeSecondaryButton("Xem chi tiết");
         private readonly Button _markPaid = Theme.MakeSecondaryButton("Đánh dấu đã thanh toán", 220);
 
         public InvoicesControl()
@@ -24,10 +23,21 @@ namespace TruckingSystem.Desktop.GUI_InvoiceManagement
             filterBar.AddDate("to", "Đến ngày");
             filterBar.FilterChanged += (_, _) => BindGrid();
             ScrollFit.Enable(this, root, grid);
-            toolbar.Controls.Add(_details);
             toolbar.Controls.Add(_markPaid);
             _markPaid.Click += async (_, _) => await MarkAsPaidAsync();
-            _details.Click += async (_, _) => await ShowDetailsAsync();
+            var menu = new ContextMenuStrip();
+            var detail = (ToolStripMenuItem)menu.Items.Add("📄 Xem chi tiết", null, async (_, _) => await ShowDetailsAsync());
+            detail.Font = Theme.FontBold;
+            detail.ShortcutKeyDisplayString = "Nhấp đúp";
+            menu.Opening += (_, e) => e.Cancel = _api is null || _busy || grid.CurrentRow is null;
+            ModernMenu.Apply(menu);
+            grid.ContextMenuStrip = menu;
+            Disposed += (_, _) => menu.Dispose();
+            grid.CellMouseDown += (_, e) =>
+            {
+                if (e.Button == MouseButtons.Right && e.RowIndex >= 0)
+                    grid.CurrentCell = grid.Rows[e.RowIndex].Cells["Mã_đơn"];
+            };
             grid.CellDoubleClick += async (_, e) => { if (e.RowIndex >= 0) await ShowDetailsAsync(); };
             grid.SelectionChanged += (_, _) => UpdateActions();
             grid.CurrentCellChanged += (_, _) => UpdateActions();
@@ -54,7 +64,6 @@ namespace TruckingSystem.Desktop.GUI_InvoiceManagement
         {
             btnRefresh.Enabled = btnCreate.Enabled = !_busy;
             filterBar.Enabled = !_busy;
-            _details.Enabled = !_busy && grid.CurrentRow is not null;
             var id = grid.CurrentRow?.Cells["Mã_hóa_đơn"].Value;
             _markPaid.Enabled = !_busy && _invoices.Any(i => Equals(i.Id, id)
                 && i.Status is not ("Paid" or "Cancelled"));
@@ -188,7 +197,7 @@ namespace TruckingSystem.Desktop.GUI_InvoiceManagement
             lblStatus.ForeColor = invalidRange ? Theme.Danger : Theme.TextSecondary;
             lblStatus.Text = invalidRange ? "Ngày bắt đầu phải trước hoặc bằng ngày kết thúc."
                 : rows.Count == 0 ? "Không có hóa đơn phù hợp. Thử đổi điều kiện hoặc chọn Xóa lọc."
-                : $"Hiển thị {rows.Count}/{_invoices.Count} hóa đơn · Chọn Xem chi tiết hoặc nhấp đúp vào hóa đơn.";
+                : $"Hiển thị {rows.Count}/{_invoices.Count} hóa đơn · Chuột phải để xem chi tiết hoặc nhấp đúp vào hóa đơn.";
             UpdateActions();
         }
 
