@@ -61,6 +61,7 @@ public class DbConflictMiddleware
     private static string UniqueMessage(string? constraint)
     {
         var c = constraint ?? "";
+        if (c == "IX_ContractAppendices_ContractId") return "Hợp đồng vừa có phụ lục khác đang áp dụng — hãy tải lại rồi thử lưu lại.";
         if (c.Contains("PlateNumber")) return "Biển số xe này đã tồn tại.";
         if (c.Contains("TransportOrders") && c.Contains("Code")) return "Mã đơn bị trùng — hãy thử lưu lại.";
         if (c.Contains("StorageBins")) return "Mã vị trí đã có trong khu này.";

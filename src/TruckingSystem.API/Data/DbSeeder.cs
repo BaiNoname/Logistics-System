@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using TruckingSystem.Domain.Entities;
 using TruckingSystem.Domain.Enums;
 using TruckingSystem.Domain.Identity;
@@ -22,6 +23,12 @@ public static class DbSeeder
         var roleManager = services.GetRequiredService<RoleManager<ApplicationRole>>();
         var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
         var db = services.GetRequiredService<AppDbContext>();
+
+        if (!await db.MaxDiscountPercents.AnyAsync(p => p.Id == 1))
+        {
+            db.MaxDiscountPercents.Add(new MaxDiscountPercent { Value = 20, UpdatedAt = DateTime.UtcNow });
+            await db.SaveChangesAsync();
+        }
 
         // ---- 1. Roles ----
         foreach (var roleName in RoleNames)

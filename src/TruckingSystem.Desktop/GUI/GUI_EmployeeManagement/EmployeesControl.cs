@@ -6,6 +6,7 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
     public partial class EmployeesControl : BaseUserControl
     {
         private ApiServices? _api;
+        private bool _loading;
         private List<EmployeeListItem> _employees = new();
 
         public EmployeesControl()
@@ -13,16 +14,14 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             InitializeComponent();
             Theme.StyleGrid(grid);
             var bar = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, WrapContents = true };
-            bar.Controls.AddRange(new Control[] { btnCreate, btnEdit, btnRefresh });
+            bar.Controls.AddRange(new Control[] { btnCreate, btnRefresh });
             btnCreate.Text = "➕ Thêm nhân viên";
-            btnEdit.Text = "Sửa nhân viên";
             foreach (var button in bar.Controls.OfType<Button>())
             {
                 button.AutoSize = true;
                 button.AutoSizeMode = AutoSizeMode.GrowAndShrink;
                 button.MinimumSize = new Size(150, 38);
             }
-            ButtonStyles.Secondary(btnEdit);
             ButtonStyles.Secondary(btnRefresh);
             lblTitle.AutoSize = true;
             lblStatus.Dock = DockStyle.Fill;
@@ -44,13 +43,24 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             });
             Load += (_, _) => Theme.UniformButtons(bar);
             grid.DataBindingComplete += (_, _) => { if (grid.Columns["Id"] != null) grid.Columns["Id"]!.Visible = false; };
+            var menu = new ContextMenuStrip();
+            menu.Items.Add("✏️ Sửa", null, BtnEdit_Click);
+            menu.Opening += (_, e) => e.Cancel = _api is null || _loading || !_api.Connection.IsInRole("Admin") || grid.CurrentRow is null;
+            ModernMenu.Apply(menu);
+            grid.ContextMenuStrip = menu;
+            Disposed += (_, _) => menu.Dispose();
+            grid.CellMouseDown += (_, e) =>
+            {
+                if (e.Button == MouseButtons.Right && e.RowIndex >= 0)
+                    grid.CurrentCell = grid.Rows[e.RowIndex].Cells["Mã_nhân_viên"];
+            };
             Load += async (_, _) => await LoadAsync();
         }
 
         public EmployeesControl(ApiServices api) : this()
         {
             _api = api;
-            btnCreate.Visible = btnEdit.Visible = api.Connection.IsInRole("Admin");
+            btnCreate.Visible = api.Connection.IsInRole("Admin");
         }
 
         private void BtnRefresh_Click(object? sender, EventArgs e) => _ = LoadAsync();
@@ -64,7 +74,8 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
 
         private async void BtnEdit_Click(object? sender, EventArgs e)
         {
-            if (_api is null || grid.CurrentRow is null)
+            if (_api is null || _loading || !_api.Connection.IsInRole("Admin")) return;
+            if (grid.CurrentRow is null)
             {
                 MessageBox.Show(FindForm(), "Vui lòng chọn 1 nhân viên trước.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
@@ -108,7 +119,8 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
 
         private async Task LoadAsync()
         {
-            if (_api is null) return;
+            if (_api is null || _loading) return;
+            _loading = true;
             FormStyle.Status(lblStatus, "Đang tải...", StatusKind.Info);
             try
             {
@@ -135,6 +147,7 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
                 lblStatus.Text = "Lỗi: " + ex.Message;
                 lblStatus.ForeColor = Theme.Danger;
             }
+            finally { _loading = false; }
         }
     }
 }

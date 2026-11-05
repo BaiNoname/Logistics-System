@@ -194,7 +194,7 @@ public class ContractService(IApplicationDbContext db) : IContractService
                 TariffRule = c.TariffRule == null ? null : new TariffRuleDto(c.TariffRule.Id, c.TariffRule.PriceListId,
                     c.TariffRule.VehicleType, c.TariffRule.PricePerKm, c.TariffRule.PricePerTon,
                     c.TariffRule.SurchargeFragile, c.TariffRule.SurchargeHazmat),
-                AppendixCodes = db.ContractAppendices.Where(a => a.ContractId == c.Id)
+                AppendixCodes = db.ContractAppendices.Where(a => a.ContractId == c.Id && a.Status == ContractAppendixStatus.Active)
                     .OrderByDescending(a => a.IssueDate).ThenByDescending(a => a.Id)
                     .Select(a => a.Code).Take(1).ToList(),
                 CreatedAt = c.CreatedAt,

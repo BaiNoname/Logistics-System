@@ -17,7 +17,6 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             lblTitle = new Label();
             btnRefresh = new Button();
             btnCreate = new Button();
-            btnEdit = new Button();
             lblStatus = new Label();
             grid = new DataGridView();
             ((System.ComponentModel.ISupportInitialize)grid).BeginInit();
@@ -69,23 +68,6 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             btnCreate.UseVisualStyleBackColor = false;
             btnCreate.Click += BtnCreate_Click;
             // 
-            // btnEdit
-            // 
-            btnEdit.BackColor = Color.White;
-            btnEdit.Cursor = Cursors.Hand;
-            btnEdit.FlatAppearance.MouseOverBackColor = Color.FromArgb(248, 250, 252);
-            btnEdit.FlatStyle = FlatStyle.Flat;
-            btnEdit.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
-            btnEdit.ForeColor = Color.FromArgb(15, 23, 42);
-            btnEdit.Location = new Point(292, 5);
-            btnEdit.Margin = new Padding(1);
-            btnEdit.Name = "btnEdit";
-            btnEdit.Size = new Size(87, 35);
-            btnEdit.TabIndex = 3;
-            btnEdit.Text = "✏️ Sửa";
-            btnEdit.UseVisualStyleBackColor = false;
-            btnEdit.Click += BtnEdit_Click;
-            // 
             // lblStatus
             // 
             lblStatus.AutoSize = true;
@@ -114,7 +96,6 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             Controls.Add(lblTitle);
             Controls.Add(btnRefresh);
             Controls.Add(btnCreate);
-            Controls.Add(btnEdit);
             Controls.Add(lblStatus);
             Controls.Add(grid);
             Margin = new Padding(2);
@@ -130,7 +111,6 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
         private System.Windows.Forms.Label lblTitle;
         private System.Windows.Forms.Button btnRefresh;
         private System.Windows.Forms.Button btnCreate;
-        private System.Windows.Forms.Button btnEdit;
         private System.Windows.Forms.Label lblStatus;
         private System.Windows.Forms.DataGridView grid;
     }

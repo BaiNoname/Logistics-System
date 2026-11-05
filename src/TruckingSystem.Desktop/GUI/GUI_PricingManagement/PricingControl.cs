@@ -64,17 +64,26 @@ public partial class PricingControl : BaseUserControl
             _status.Text = "Đơn giá phải là số hợp lệ, tối đa 2 chữ số thập phân.";
         };
         var menu = new ContextMenuStrip(components);
-        menu.Items.Add("Xem chi tiết bảng giá", null, async (_, _) => await ShowDetailsAsync());
-        var copyMenu = menu.Items.Add("Tạo mới và sao chép", null, async (_, _) => await CopyAsync());
-        var editMenu = menu.Items.Add("Sửa", null, async (_, _) => await EditAsync(create: false));
-        var deleteMenu = menu.Items.Add("Xóa", null, async (_, _) => await DeleteAsync());
-        menu.Opening += (_, _) =>
+        var detailMenu = (ToolStripMenuItem)menu.Items.Add("📄 Xem chi tiết bảng giá", null, async (_, _) => await ShowDetailsAsync());
+        detailMenu.Font = Theme.FontBold;
+        detailMenu.ShortcutKeyDisplayString = "Nhấp đúp";
+        menu.Items.Add(new ToolStripSeparator());
+        var copyMenu = menu.Items.Add("📋 Tạo mới và sao chép", null, async (_, _) => await CopyAsync());
+        var editMenu = menu.Items.Add("✏️ Sửa bảng giá", null, async (_, _) => await EditAsync(create: false));
+        menu.Items.Add(new ToolStripSeparator());
+        var deleteMenu = menu.Items.Add("🗑 Xóa bảng giá", null, async (_, _) => await DeleteAsync());
+        menu.Opening += (_, e) =>
         {
+            UpdateActions();
+            e.Cancel = _busy || SelectedList is null;
             copyMenu.Enabled = _copy.Enabled;
             editMenu.Enabled = _edit.Enabled;
             deleteMenu.Enabled = _delete.Enabled;
+            editMenu.ToolTipText = editMenu.Enabled ? "Sửa thông tin bảng giá đang áp dụng."
+                : "Bảng giá ngừng áp dụng không được sửa. Có thể sao chép để tạo bảng giá mới.";
+            deleteMenu.ToolTipText = deleteMenu.Enabled ? "Xóa bảng giá và toàn bộ chi tiết giá sau khi xác nhận."
+                : "Không thể xóa bảng giá đang được hợp đồng sử dụng.";
         };
-        menu.Opening += (_, e) => e.Cancel = _busy || SelectedList is null;
         ModernMenu.Apply(menu);
         _listsGrid.ContextMenuStrip = menu;
         _listsGrid.CellMouseDown += (_, e) =>
@@ -92,7 +101,7 @@ public partial class PricingControl : BaseUserControl
         {
             if (!IsPriceLists && !_binding && !_busy) await LoadRulesAsync();
         };
-        _listsGrid.CellDoubleClick += async (_, e) => { if (e.RowIndex >= 0) await EditAsync(create: false); };
+        _listsGrid.CellDoubleClick += async (_, e) => { if (e.RowIndex >= 0) await ShowDetailsAsync(); };
         Load += async (_, _) => await LoadAsync();
         UpdateActions();
     }

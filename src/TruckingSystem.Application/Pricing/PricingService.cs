@@ -73,8 +73,8 @@ public class PricingService(IApplicationDbContext db) : IPricingService
         if (priceList is null) return false;
         if (await db.Contracts.AnyAsync(c => c.PriceListId == id))
             throw new InvalidOperationException("Không thể xóa bảng giá đang được hợp đồng sử dụng.");
-        if (await db.ContractAppendices.AnyAsync(a => a.TariffRule.PriceListId == id))
-            throw new InvalidOperationException("Không thể xóa bảng giá có chi tiết đang được phụ lục sử dụng.");
+        if (await db.ContractAppendices.AnyAsync(a => a.PriceListId == id || (a.TariffRule != null && a.TariffRule.PriceListId == id)))
+            throw new InvalidOperationException("Không thể xóa bảng giá đang được phụ lục sử dụng.");
         db.PriceLists.Remove(priceList);
         await db.SaveChangesAsync();
         return true;

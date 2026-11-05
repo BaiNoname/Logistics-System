@@ -4,11 +4,10 @@ namespace TruckingSystem.Desktop.GUI_PayrollManagement;
 partial class PayrollControl
 {
     private DateTimePicker _month = null!;
-    private ComboBox _employee = null!;
     private Label _status = null!, _totals = null!;
     private DataGridView _slipGrid = null!;
-    private Button _salaryButton = null!, _generateButton = null!, _approveButton = null!, _payButton = null!,
-        _detailsButton = null!, _exportButton = null!, _deleteDraftButton = null!, _adjustmentsButton = null!, _kpiButton = null!;
+    private Button _generateButton = null!, _approveButton = null!, _payButton = null!,
+        _detailsButton = null!, _exportButton = null!, _deleteDraftButton = null!, _kpiButton = null!;
 
     private void InitializeComponent()
     {
@@ -23,15 +22,13 @@ partial class PayrollControl
         var title = new Label { Text = "Bảng lương tháng", Font = Theme.FontTitle, AutoSize = true };
         var toolbar = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, WrapContents = true };
         _month = new DateTimePicker { Format = DateTimePickerFormat.Custom, CustomFormat = "MM/yyyy", ShowUpDown = true, Width = 110, AccessibleName = "Tháng lương" };
-        _employee = new ComboBox { Width = 240, DropDownStyle = ComboBoxStyle.DropDownList, DisplayMember = "FullName", AccessibleName = "Nhân viên" };
-        _salaryButton = Theme.MakeSecondaryButton("Mức lương / lịch sử", 185);
         _generateButton = Theme.MakePrimaryButton("Tạo / tính lại bảng lương", 235);
         _approveButton = Theme.MakePrimaryButton("Chốt lương", 130);
-        _adjustmentsButton = Theme.MakeSecondaryButton("Cộng / trừ tháng", 170);
         _kpiButton = Theme.MakeSecondaryButton("Cấu hình KPI", 150);
-        toolbar.Controls.AddRange(new Control[] { _month, _employee, _salaryButton, _generateButton, _adjustmentsButton, _kpiButton, _approveButton });
+        toolbar.Controls.AddRange(new Control[] { _month, _generateButton, _kpiButton, _approveButton });
         _status = new Label { AutoSize = true, Dock = DockStyle.Fill, Padding = new Padding(0, 8, 0, 8) };
         _slipGrid = new DataGridView { Dock = DockStyle.Fill, AutoGenerateColumns = false };
+        _slipGrid.Columns.Add(new DataGridViewTextBoxColumn { Name = "EmployeeId", DataPropertyName = "EmployeeId", Visible = false });
         foreach (var (name, label) in new[] { ("EmployeeCode", "Mã nhân viên"), ("EmployeeName", "Nhân viên"), ("MonthlySalary", "Lương cơ bản"),
             ("WorkedDays", "Ngày công"), ("KpiPoints", "Điểm KPI"), ("KpiTarget", "Điểm chuẩn"), ("KpiRatio", "Tỷ lệ KPI"), ("EarnedSalary", "Lương tính"),
             ("GrossIncome", "Tổng thu nhập"), ("Deductions", "Khấu trừ"), ("NetPay", "Thực lĩnh"), ("PaidAmount", "Đã trả"), ("PaymentStatus", "Chi trả") })

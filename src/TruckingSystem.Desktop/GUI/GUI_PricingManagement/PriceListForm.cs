@@ -77,7 +77,7 @@ public partial class PriceListForm : BaseForm
                 detailPanel.Visible = !detailPanel.Visible;
                 ClientSize = new Size(ClientSize.Width, detailPanel.Visible ? 650 : 400);
             };
-            FormStyle.Status(_status, "8 loại xe có đơn giá mặc định 0. Chọn Chi tiết bảng giá để nhập giá (đồng).", StatusKind.Info);
+            FormStyle.Status(_status, $"{TariffRule.DefaultVehicleTypes.Count} loại xe có đơn giá mặc định 0. Chọn Chi tiết bảng giá để nhập giá (đồng).", StatusKind.Info);
             if (copy)
             {
                 _save.Enabled = _detailGrid.Enabled = false;
