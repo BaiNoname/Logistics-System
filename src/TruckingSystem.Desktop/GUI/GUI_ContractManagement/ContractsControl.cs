@@ -10,6 +10,7 @@ public partial class ContractsControl : BaseUserControl
     private bool _busy;
     private readonly TextBox _search = new() { Width = 280, PlaceholderText = "Mã hợp đồng hoặc tên khách hàng", AccessibleName = "Tìm hợp đồng" };
     private readonly ComboBox _statusFilter = new() { Width = 180, DropDownStyle = ComboBoxStyle.DropDownList, AccessibleName = "Lọc trạng thái hợp đồng" };
+    private readonly Button _discountSettings = Theme.MakeSecondaryButton("Quản lý ưu đãi", 170);
     private readonly Button _details = Theme.MakeSecondaryButton("Chi tiết", 100);
     private readonly Button _delete = Theme.MakeSecondaryButton("Xóa", 90);
 
@@ -17,6 +18,8 @@ public partial class ContractsControl : BaseUserControl
     {
         InitializeComponent();
         Theme.StyleGrid(grid);
+        btnEdit.Visible = false;
+        GridDecor.Pills(grid, "Trạng_thái", (text, _) => GridDecor.StatusTone(text));
         var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 4 };
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -25,12 +28,29 @@ public partial class ContractsControl : BaseUserControl
         layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         var toolbar = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, WrapContents = true };
         lblTitle.Margin = new Padding(0, 0, 24, 8);
-        foreach (var control in new Control[] { lblTitle, btnCreate, btnEdit, _details, _delete, btnRefresh })
+        foreach (var control in new Control[] { lblTitle, btnCreate, _discountSettings, btnRefresh })
         {
             control.Anchor = AnchorStyles.Top | AnchorStyles.Left;
             toolbar.Controls.Add(control);
         }
         _delete.ForeColor = Theme.Danger;
+        var menu = new ContextMenuStrip(components ??= new System.ComponentModel.Container());
+        menu.Items.Add("Sửa", null, BtnEdit_Click);
+        menu.Items.Add("Chi tiết", null, async (_, _) => await ShowDetailsAsync());
+        menu.Items.Add("Xóa", null, async (_, _) => await DeleteAsync());
+        ModernMenu.Apply(menu);
+        grid.CellMouseClick += (_, e) =>
+        {
+            if (e.Button != MouseButtons.Right || e.RowIndex < 0 || _busy) return;
+            grid.CurrentCell = grid.Rows[e.RowIndex].Cells[Math.Max(1, e.ColumnIndex)];
+            menu.Show(Cursor.Position);
+        };
+        _discountSettings.Click += (_, _) =>
+        {
+            if (_api is null || _busy || !_api.Connection.IsInRole("Admin")) return;
+            using var form = new DiscountConfigurationForm(_api);
+            form.ShowDialog(FindForm());
+        };
         var filters = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, Padding = new Padding(0, 4, 0, 4) };
         filters.Controls.Add(new Label { Text = "Tìm kiếm", AutoSize = true, Margin = new Padding(0, 6, 8, 0) });
         filters.Controls.Add(_search);
@@ -52,11 +72,12 @@ public partial class ContractsControl : BaseUserControl
         layout.Controls.Add(lblStatus, 0, 2);
         layout.Controls.Add(grid, 0, 3);
         Controls.Add(layout);
+        Load += (_, _) => Theme.UniformButtons(toolbar);
         UpdateActions();
         Load += async (_, _) => await LoadAsync();
     }
 
-    public ContractsControl(ApiServices api) : this() => _api = api;
+    public ContractsControl(ApiServices api) : this() { _api = api; UpdateActions(); }
 
     private ContractListItem? SelectedContract
         => grid.CurrentRow?.Cells["Id"].Value is int id ? _contracts.FirstOrDefault(c => c.Id == id) : null;
@@ -64,6 +85,8 @@ public partial class ContractsControl : BaseUserControl
     private void UpdateActions()
     {
         btnCreate.Enabled = btnRefresh.Enabled = !_busy;
+        _discountSettings.Visible = _api?.Connection.IsInRole("Admin") == true;
+        _discountSettings.Enabled = !_busy;
         btnEdit.Enabled = _details.Enabled = _delete.Enabled = !_busy && SelectedContract is not null;
     }
 

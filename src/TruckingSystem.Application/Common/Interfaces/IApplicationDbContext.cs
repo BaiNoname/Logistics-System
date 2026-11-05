@@ -46,6 +46,7 @@ public interface IApplicationDbContext
     DbSet<Customer> Customers { get; }
     DbSet<CustomerContact> CustomerContacts { get; }
     DbSet<Location> Locations { get; }
+    DbSet<MaxDiscountPercent> MaxDiscountPercents { get; }
     DbSet<Contract> Contracts { get; }
     DbSet<ContractAppendix> ContractAppendices { get; }
     DbSet<PriceList> PriceLists { get; }

@@ -10,6 +10,32 @@ public partial class PayrollInputForm : BaseForm
     public PayrollInputForm()
     {
         InitializeComponent();
+        BackColor = Theme.CardBg;
+        MinimumSize = new Size(620, 420);
+        _footer.Controls.Remove(_buttons);
+        FormStyle.EditorFooter(this, _cancel, _save);
+        _buttons.Dispose();
+        _save.Text = "💾 Lưu thông tin";
+        _footer.BackColor = Theme.CardBg;
+        _sections.BringToFront();
+        DialogKeys.Enable(this);
+        Anim.FadeIn(this);
+        FormStyle.NoTab(DetailSummary, DetailDriverDates);
+        foreach (var label in new[] { SalaryDateLabel, SalaryAmountLabel, SalaryReasonLabel,
+            ItemKindLabel, ItemAmountLabel, ItemProrateLabel, ItemReasonLabel,
+            PaymentAmountLabel, PaymentDateLabel, PaymentMethodLabel, PaymentReferenceLabel })
+        {
+            label.Text = label.Text.TrimEnd(':') + ":";
+            label.ForeColor = Theme.TextPrimary;
+        }
+        SalaryDateLabel.Text = "Áp dụng từ ngày *:";
+        SalaryAmountLabel.Text = "Lương tháng (đồng) *:";
+        PaymentDateLabel.Text = "Ngày chi thực tế *:";
+        PaymentMethodLabel.Text = "Hình thức *:";
+        ItemKindLabel.Text = "Loại khoản *:";
+        foreach (var page in _sections.TabPages.Cast<TabPage>()) page.BackColor = Theme.CardBg;
+        SalaryHint.Text += " Gõ 500 = 500.000 đ; có thể nhập đủ số đồng.";
+        PaymentHint.Text += " Gõ 500 = 500.000 đ; có thể nhập đủ số đồng.";
         foreach (var (property, title, format) in new[]
         {
             ("Id", "ID", ""), ("EmployeeId", "ID nhân viên", ""),
@@ -75,6 +101,24 @@ public partial class PayrollInputForm : BaseForm
     {
         _save.Click += async (_, _) =>
         {
+            if (_saving) return;
+            _error.Visible = true;
+            _error.Text = "";
+            if (_sections.SelectedTab == _salaryPage)
+            {
+                if (SalaryAmount.Value <= 0) { FieldHint.Show(SalaryAmount, _error, "Vui lòng nhập lương tháng lớn hơn 0."); return; }
+                if (string.IsNullOrWhiteSpace(SalaryReason.Text)) { FieldHint.Show(SalaryReason, _error, "Vui lòng nhập căn cứ thay đổi lương."); return; }
+            }
+            if (_sections.SelectedTab == _itemPage)
+            {
+                if (ItemAmount.Value <= 0) { FieldHint.Show(ItemAmount, _error, "Vui lòng nhập số tiền lớn hơn 0."); return; }
+                if (string.IsNullOrWhiteSpace(ItemReason.Text)) { FieldHint.Show(ItemReason, _error, "Vui lòng nhập căn cứ / lý do."); return; }
+            }
+            if (_sections.SelectedTab == _paymentPage)
+            {
+                if (PaymentAmount.Value <= 0) { FieldHint.Show(PaymentAmount, _error, "Vui lòng nhập số tiền đã chi lớn hơn 0."); return; }
+                if (string.IsNullOrWhiteSpace(PaymentReference.Text)) { FieldHint.Show(PaymentReference, _error, "Vui lòng nhập mã chứng từ / giao dịch."); return; }
+            }
             _saving = true;
             _save.Enabled = false;
             _sections.Enabled = false;
@@ -90,7 +134,6 @@ public partial class PayrollInputForm : BaseForm
             {
                 _error.Text = ex.Message;
                 _error.Visible = true;
-                MessageBox.Show(this, ex.Message, "Kiểm tra dữ liệu", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
             finally { _saving = false; _save.Enabled = true; _sections.Enabled = true; }
         };

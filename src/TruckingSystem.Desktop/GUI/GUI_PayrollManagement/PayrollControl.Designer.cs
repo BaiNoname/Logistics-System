@@ -13,6 +13,7 @@ partial class PayrollControl
     private void InitializeComponent()
     {
         Dock = DockStyle.Fill;
+        BackColor = Theme.ContentBg;
         var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 5, Padding = new Padding(12) };
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -31,13 +32,14 @@ partial class PayrollControl
         toolbar.Controls.AddRange(new Control[] { _month, _employee, _salaryButton, _generateButton, _adjustmentsButton, _kpiButton, _approveButton });
         _status = new Label { AutoSize = true, Dock = DockStyle.Fill, Padding = new Padding(0, 8, 0, 8) };
         _slipGrid = new DataGridView { Dock = DockStyle.Fill, AutoGenerateColumns = false };
-        foreach (var (name, label) in new[] { ("EmployeeCode", "Mã NV"), ("EmployeeName", "Nhân viên"), ("MonthlySalary", "LCB"),
-            ("WorkedDays", "Công NV"), ("KpiPoints", "Điểm KPI"), ("KpiTarget", "Điểm chuẩn"), ("KpiRatio", "% KPI"), ("EarnedSalary", "Lương tính"),
+        foreach (var (name, label) in new[] { ("EmployeeCode", "Mã nhân viên"), ("EmployeeName", "Nhân viên"), ("MonthlySalary", "Lương cơ bản"),
+            ("WorkedDays", "Ngày công"), ("KpiPoints", "Điểm KPI"), ("KpiTarget", "Điểm chuẩn"), ("KpiRatio", "Tỷ lệ KPI"), ("EarnedSalary", "Lương tính"),
             ("GrossIncome", "Tổng thu nhập"), ("Deductions", "Khấu trừ"), ("NetPay", "Thực lĩnh"), ("PaidAmount", "Đã trả"), ("PaymentStatus", "Chi trả") })
             _slipGrid.Columns.Add(new DataGridViewTextBoxColumn { Name = name, DataPropertyName = name, HeaderText = label,
                 DefaultCellStyle = new DataGridViewCellStyle { Format = name is "WorkedDays" or "KpiPoints" or "KpiTarget" ? "0.######" : "N0" } });
         var footer = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true };
-        _totals = new Label { AutoSize = true, Padding = new Padding(8) };
+        _totals = ButtonStyles.NextStep();
+        _totals.Dock = DockStyle.None;
         _detailsButton = Theme.MakeSecondaryButton("Chi tiết", 100);
         _exportButton = Theme.MakeSecondaryButton("Xuất phiếu", 125);
         _payButton = Theme.MakePrimaryButton("Ghi nhận chi trả", 160);

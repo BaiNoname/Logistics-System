@@ -17,7 +17,7 @@ namespace TruckingSystem.Desktop.Common
         protected override void OnLoad(EventArgs e)
         {
             UiStyle.ApplyDefaults(this);
-            if (ModernLook.IsMine(GetType())) ModernLook.Apply(this); // kiểu mới chỉ cho màn phần của Nhân
+            if (ModernLook.IsMine(GetType())) ModernLook.Apply(this);
             base.OnLoad(e);
         }
     }

@@ -25,11 +25,36 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
         {
             _api = api;
             btnCreate.Visible = btnEdit.Visible = api.Connection.IsInRole("Admin", "Dispatcher");
-            _contactsControl.SetApi(api);
-            tabs.SelectedIndexChanged += async (_, _) =>
+            components ??= new System.ComponentModel.Container();
+            var menu = new ContextMenuStrip(components);
+            menu.Items.Add("Xem người liên hệ", null, (_, _) => ShowContacts());
+            menu.Opening += (_, e) => e.Cancel = grid.CurrentRow is null;
+            ModernMenu.Apply(menu);
+            grid.ContextMenuStrip = menu;
+            grid.CellMouseDown += (_, e) =>
             {
-                if (tabs.SelectedTab == contactsTab) await _contactsControl.LoadAsync();
+                if (e.Button == MouseButtons.Right && e.RowIndex >= 0)
+                    grid.CurrentCell = grid.Rows[e.RowIndex].Cells[e.ColumnIndex >= 0 ? e.ColumnIndex : 1];
             };
+        }
+
+        private void ShowContacts()
+        {
+            if (_api is null || grid.CurrentRow is null) return;
+            var id = (int)grid.CurrentRow.Cells["Id"].Value;
+            var customer = _customers.First(c => c.Id == id);
+            using var form = new BaseForm
+            {
+                Text = $"Người liên hệ — {customer.Name}", StartPosition = FormStartPosition.CenterParent,
+                Size = new Size(1000, 600), MinimumSize = new Size(700, 450),
+                ShowInTaskbar = false, MinimizeBox = false
+            };
+            var contacts = new CustomerContactsControl(_api, id) { Dock = DockStyle.Fill };
+            form.Controls.Add(contacts);
+            form.Shown += async (_, _) => await contacts.LoadAsync();
+            ButtonStyles.Footer(form, null, FormStyle.NewCloseButton(form));
+            Anim.FadeIn(form);
+            form.ShowDialog(FindForm());
         }
 
         private void BtnRefresh_Click(object? sender, EventArgs e) => _ = LoadAsync();
@@ -76,12 +101,13 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
         private async Task LoadAsync()
         {
             if (_api is null) return;
+            lblStatus.ForeColor = Theme.TextSecondary;
             lblStatus.Text = "Đang tải...";
             try
             {
                 _customers = await _api.Customers.GetCustomersAsync();
                 BindGrid();
-                lblStatus.Text = $"Tổng {_customers.Count} khách hàng — chọn 1 dòng rồi bấm Sửa để chỉnh sửa";
+                lblStatus.Text = $"Tổng {_customers.Count} khách hàng — chuột phải để xem người liên hệ";
             }
             catch (Exception ex)
             {

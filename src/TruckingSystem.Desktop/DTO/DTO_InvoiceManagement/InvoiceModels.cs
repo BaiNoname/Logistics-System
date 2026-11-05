@@ -6,7 +6,7 @@ namespace TruckingSystem.Desktop.DTO_InvoiceManagement
     public record InvoiceQuote(int TransportOrderId, string ContractCode, string? AppendixCode,
         DateTime PricingDate, string VehicleType, decimal? DistanceKm, decimal WeightTons,
         decimal? EstimatedFuelLiters, decimal OtherCosts, decimal TotalAmount,
-        List<InvoiceQuoteLine> Lines, string? Note);
+        List<InvoiceQuoteLine> Lines, string? Note, bool StorageFeePending = false);
 
     public class InvoiceOrderOption
     {

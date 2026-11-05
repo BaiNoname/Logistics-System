@@ -1,5 +1,6 @@
 using TruckingSystem.Desktop.Common;
 using TruckingSystem.Desktop.DTO_PricingManagement;
+using TruckingSystem.Domain.Entities;
 
 namespace TruckingSystem.Desktop.GUI.GUI_PricingManagement;
 
@@ -12,17 +13,36 @@ public partial class PricingControl : BaseUserControl
     private bool _binding;
     private bool _rulesLoaded;
 
-    private bool IsPriceLists => _tabs.SelectedIndex == 0;
+    private int? _detailListId;
+    private bool IsPriceLists => !_detailListId.HasValue;
     private PriceListItem? SelectedList => _listsGrid.CurrentRow?.DataBoundItem is PriceListItem item ? item : null;
     private PriceListItem? CurrentList => _priceList.SelectedItem as PriceListItem;
-    private TariffRuleItem? SelectedRule => _rulesGrid.CurrentRow?.DataBoundItem as TariffRuleItem;
+    private readonly Button _saveRules = Theme.MakePrimaryButton("Lưu thay đổi", 160);
+    private sealed class VehicleRateRow(string vehicleType, decimal? pricePerKm, decimal? pricePerTon, TariffRuleItem? rule)
+    {
+        public string VehicleType { get; } = vehicleType;
+        public decimal? PricePerKm { get; set; } = pricePerKm;
+        public decimal? PricePerTon { get; set; } = pricePerTon;
+        public TariffRuleItem? Rule { get; set; } = rule;
+        public bool IsChanged => Rule is null ? PricePerKm.HasValue || PricePerTon.HasValue
+            : PricePerKm != Rule.PricePerKm || PricePerTon != Rule.PricePerTon;
+    }
+    private IEnumerable<VehicleRateRow> VehicleRows => _rulesGrid.Rows.Cast<DataGridViewRow>()
+        .Select(r => r.DataBoundItem).OfType<VehicleRateRow>();
+    private bool HasChanges => VehicleRows.Any(r => r.IsChanged);
+    private VehicleRateRow? SelectedVehicle => _rulesGrid.CurrentRow?.DataBoundItem as VehicleRateRow;
+    private TariffRuleItem? SelectedRule => SelectedVehicle?.Rule;
     private bool CanEditRules => _rulesLoaded && CurrentList?.Status == "Active";
 
     public PricingControl()
     {
         InitializeComponent();
         Theme.StyleGrid(_listsGrid);
+        GridDecor.Pills(_listsGrid, _statusTextColumn.Name, (text, _) => GridDecor.StatusTone(text));
         Theme.StyleGrid(_rulesGrid);
+        _pricePerKmColumn.DefaultCellStyle.NullValue = _pricePerTonColumn.DefaultCellStyle.NullValue = "Chưa có giá";
+        Load += (_, _) => Theme.UniformButtons(_toolbar);
+        Disposed += (_, _) => { _rulesTab.Dispose(); _listsTab.Dispose(); };
         UpdateActions();
     }
 
@@ -33,50 +53,113 @@ public partial class PricingControl : BaseUserControl
         _copy.Click += async (_, _) => await CopyAsync();
         _edit.Click += async (_, _) => await EditAsync(create: false);
         _delete.Click += async (_, _) => await DeleteAsync();
-        _refresh.Click += async (_, _) => await LoadAsync();
-        _tabs.SelectedIndexChanged += (_, _) => { UpdateActions(); UpdateStatus(); };
+        _refresh.Click += async (_, _) => { if (ConfirmDiscard()) await LoadAsync(); };
+        _toolbar.Controls.Add(_saveRules);
+        _saveRules.Click += async (_, _) => await SaveRulesAsync();
+        _rulesGrid.DataError += (_, e) =>
+        {
+            e.ThrowException = false;
+            e.Cancel = true;
+            _status.ForeColor = Theme.Danger;
+            _status.Text = "Đơn giá phải là số hợp lệ, tối đa 2 chữ số thập phân.";
+        };
+        var menu = new ContextMenuStrip(components);
+        menu.Items.Add("Xem chi tiết bảng giá", null, async (_, _) => await ShowDetailsAsync());
+        var copyMenu = menu.Items.Add("Tạo mới và sao chép", null, async (_, _) => await CopyAsync());
+        var editMenu = menu.Items.Add("Sửa", null, async (_, _) => await EditAsync(create: false));
+        var deleteMenu = menu.Items.Add("Xóa", null, async (_, _) => await DeleteAsync());
+        menu.Opening += (_, _) =>
+        {
+            copyMenu.Enabled = _copy.Enabled;
+            editMenu.Enabled = _edit.Enabled;
+            deleteMenu.Enabled = _delete.Enabled;
+        };
+        menu.Opening += (_, e) => e.Cancel = _busy || SelectedList is null;
+        ModernMenu.Apply(menu);
+        _listsGrid.ContextMenuStrip = menu;
+        _listsGrid.CellMouseDown += (_, e) =>
+        {
+            if (e.Button == MouseButtons.Right && e.RowIndex >= 0)
+                _listsGrid.CurrentCell = _listsGrid.Rows[e.RowIndex].Cells[Math.Max(0, e.ColumnIndex)];
+        };
         _listsGrid.SelectionChanged += (_, _) =>
         {
             if (!_binding && !_busy && SelectedList is { } list) _priceList.SelectedValue = list.Id;
             UpdateActions();
         };
-        _rulesGrid.SelectionChanged += (_, _) => UpdateActions();
+        _rulesGrid.CurrentCellChanged += (_, _) => UpdateActions();
         _priceList.SelectedIndexChanged += async (_, _) =>
         {
-            if (!_binding && !_busy) await LoadRulesAsync();
+            if (!IsPriceLists && !_binding && !_busy) await LoadRulesAsync();
         };
         _listsGrid.CellDoubleClick += async (_, e) => { if (e.RowIndex >= 0) await EditAsync(create: false); };
-        _rulesGrid.CellDoubleClick += async (_, e) => { if (e.RowIndex >= 0) await EditAsync(create: false); };
         Load += async (_, _) => await LoadAsync();
         UpdateActions();
     }
 
+    private PricingControl(ApiServices api, int listId) : this(api)
+    {
+        _detailListId = listId;
+        _layout.Controls.Remove(_listsTab);
+        _listsTab.Visible = false;
+        _rulesTab.Controls.Remove(_rulesLayout);
+        _layout.Controls.Add(_rulesLayout, 0, 1);
+        _title.Text = "Chi tiết bảng giá";
+        _priceList.Visible = false;
+        UpdateActions();
+    }
+
+    private async Task ShowDetailsAsync()
+    {
+        if (_busy || SelectedList is not { } list) return;
+        using var form = new BaseForm
+        {
+            Text = $"Chi tiết bảng giá — {list.Name}", StartPosition = FormStartPosition.CenterParent,
+            Size = new Size(1100, 650), MinimumSize = new Size(800, 450),
+            ShowInTaskbar = false, MinimizeBox = false
+        };
+        var detail = new PricingControl(_api, list.Id) { Dock = DockStyle.Fill };
+        form.Controls.Add(detail);
+        form.FormClosing += (_, e) => e.Cancel = detail._busy || !detail.ConfirmDiscard();
+        ButtonStyles.Footer(form, null, FormStyle.NewCloseButton(form));
+        Anim.FadeIn(form);
+        form.ShowDialog(FindForm());
+        await LoadAsync(list.Id);
+    }
+
     private void UpdateActions()
     {
-        _create.Enabled = !_busy && (IsPriceLists || CanEditRules);
-        _copy.Visible = IsPriceLists;
+        _create.Visible = IsPriceLists;
+        _create.Enabled = !_busy && IsPriceLists;
+        _saveRules.Visible = !IsPriceLists;
+        _saveRules.Enabled = !_busy && CanEditRules;
+        _rulesGrid.ReadOnly = _busy || !CanEditRules;
+        _vehicleTypeColumn.ReadOnly = true;
+        _copy.Visible = false;
+        _edit.Visible = false;
+        _delete.Visible = !IsPriceLists;
         _copy.Enabled = !_busy && IsPriceLists && SelectedList is not null;
         _edit.Enabled = !_busy && (IsPriceLists ? SelectedList?.Status == "Active" : CanEditRules && SelectedRule is not null);
         _delete.Enabled = !_busy && (IsPriceLists ? SelectedList?.ContractCount == 0 : CanEditRules && SelectedRule is not null);
         _refresh.Enabled = !_busy;
-        _tabs.Enabled = !_busy;
+        _listsGrid.Enabled = _priceList.Enabled = !_busy;
     }
 
     private void UpdateStatus()
     {
         _status.ForeColor = Theme.TextSecondary;
         _status.Text = IsPriceLists
-            ? _lists.Count == 0 ? "Chưa có bảng giá. Chọn Thêm mới để tạo." : $"{_lists.Count} bảng giá · Bảng giá ngừng áp dụng không được sửa; bảng giá đang được hợp đồng sử dụng không thể xóa."
+            ? _lists.Count == 0 ? "Chưa có bảng giá. Chọn Thêm mới để tạo." : $"{_lists.Count} bảng giá · Chuột phải để xem chi tiết. Bảng giá ngừng áp dụng không được sửa; bảng giá đang được hợp đồng sử dụng không thể xóa."
             : CurrentList is null ? "Tạo bảng giá trước khi thêm chi tiết giá."
             : !_rulesLoaded ? "Chưa tải được chi tiết giá. Chọn Làm mới để thử lại."
             : !CanEditRules ? $"{CurrentList.Name}: {_rules.Count} dòng giá · {CurrentList.StatusText} · Chỉ xem chi tiết giá."
-            : $"{CurrentList.Name}: {_rules.Count} dòng giá · Nhấp đúp để sửa.";
+            : $"{CurrentList.Name}: {_rules.Count} dòng giá · Nhập giá/km và giá/tấn trực tiếp rồi chọn Lưu thay đổi (nhập đủ số đồng).";
     }
 
     private async Task LoadAsync(int? preferredId = null)
     {
         if (_busy) return;
-        var selectedId = preferredId ?? CurrentList?.Id ?? SelectedList?.Id;
+        var selectedId = _detailListId ?? preferredId ?? CurrentList?.Id ?? SelectedList?.Id;
         _busy = true;
         _rulesLoaded = false;
         UpdateActions();
@@ -84,6 +167,7 @@ public partial class PricingControl : BaseUserControl
         try
         {
             _lists = await _api.Pricing.GetPriceListsAsync();
+            if (_detailListId.HasValue) _lists = _lists.Where(p => p.Id == _detailListId).ToList();
             if (IsDisposed) return;
             _binding = true;
             _listsGrid.DataSource = _lists;
@@ -97,7 +181,7 @@ public partial class PricingControl : BaseUserControl
                     if (row.DataBoundItem is PriceListItem p && p.Id == selectedId) _listsGrid.CurrentCell = row.Cells[0];
             }
             _binding = false;
-            await FetchRulesAsync();
+            if (!IsPriceLists) await FetchRulesAsync();
             if (!IsDisposed) UpdateStatus();
         }
         catch (Exception ex) { ShowError(ex); }
@@ -107,10 +191,20 @@ public partial class PricingControl : BaseUserControl
     private async Task FetchRulesAsync()
     {
         _rules = new();
-        _rulesGrid.DataSource = _rules;
-        if (CurrentList is { } list) _rules = await _api.Pricing.GetTariffRulesAsync(list.Id);
-        if (IsDisposed) return;
-        _rulesGrid.DataSource = _rules;
+        _rulesGrid.DataSource = new List<VehicleRateRow>();
+        if (CurrentList is { } list)
+        {
+            _filterLabel.Text = "Bảng giá: " + list.Name;
+            _rules = await _api.Pricing.GetTariffRulesAsync(list.Id);
+            var types = await _api.Pricing.GetVehicleTypesAsync();
+            if (IsDisposed) return;
+            var rows = _rules.Select(r => new VehicleRateRow(r.VehicleType, r.PricePerKm, r.PricePerTon, r)).ToList();
+            rows.AddRange(types.Select(t => t.Trim()).Where(t => t.Length > 0)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Where(t => !_rules.Any(r => string.Equals(r.VehicleType.Trim(), t, StringComparison.OrdinalIgnoreCase)))
+                .Select(t => new VehicleRateRow(t, null, null, null)));
+            _rulesGrid.DataSource = rows.OrderBy(r => r.VehicleType).ToList();
+        }
         _rulesLoaded = true;
     }
 
@@ -125,23 +219,71 @@ public partial class PricingControl : BaseUserControl
         finally { _busy = false; if (!IsDisposed) UpdateActions(); }
     }
 
-    private async Task EditAsync(bool create)
+    private bool ConfirmDiscard()
     {
-        if (_busy) return;
+        if (IsPriceLists) return true;
+        if (!_rulesGrid.EndEdit()) return false;
+        return !HasChanges || MessageBox.Show(FindForm(), "Có đơn giá chưa lưu. Bỏ các thay đổi này?",
+            "Đơn giá chưa lưu", MessageBoxButtons.YesNo, MessageBoxIcon.Warning,
+            MessageBoxDefaultButton.Button2) == DialogResult.Yes;
+    }
+
+    private async Task SaveRulesAsync()
+    {
+        if (_busy || !CanEditRules || CurrentList is not { } list || !_rulesGrid.EndEdit()) return;
+        var changed = VehicleRows.Where(r => r.IsChanged).ToList();
+        if (changed.Count == 0) { UpdateStatus(); return; }
+        foreach (var row in changed)
+        {
+            try
+            {
+                if (!row.PricePerKm.HasValue || !row.PricePerTon.HasValue)
+                    throw new ArgumentException("Nhập đủ giá/km và giá/tấn; nhập 0 nếu không tính loại giá đó.");
+                TariffRule.Validate(row.VehicleType, row.PricePerKm.Value, row.PricePerTon.Value, 0, 0);
+            }
+            catch (ArgumentException ex)
+            {
+                var gridRow = _rulesGrid.Rows.Cast<DataGridViewRow>().Single(r => r.DataBoundItem == row);
+                gridRow.ErrorText = ex.Message;
+                _rulesGrid.CurrentCell = gridRow.Cells[_pricePerKmColumn.Index];
+                _status.ForeColor = Theme.Danger;
+                _status.Text = row.VehicleType + ": " + ex.Message;
+                return;
+            }
+        }
+        _busy = true;
+        UpdateActions();
+        _status.Text = "Đang lưu đơn giá...";
         try
         {
-            if (IsPriceLists)
+            _rules = await _api.Pricing.SaveTariffRulesAsync(list.Id, changed.Select(r =>
+                new SaveTariffRuleRow(r.Rule?.Id, r.VehicleType, r.PricePerKm!.Value, r.PricePerTon!.Value)).ToList());
+            if (IsDisposed) return;
+            foreach (var row in changed)
             {
-                if (!create && SelectedList?.Status != "Active") return;
-                using var form = new PriceListForm(_api, create ? null : SelectedList);
-                if (form.ShowDialog(FindForm()) == DialogResult.OK) await LoadAsync(form.SavedId);
+                row.Rule = row.Rule is { } original ? _rules.Single(r => r.Id == original.Id)
+                    : _rules.Single(r => r.VehicleType == row.VehicleType);
+                _rulesGrid.Rows.Cast<DataGridViewRow>().Single(r => r.DataBoundItem == row).ErrorText = "";
             }
-            else
-            {
-                if (!CanEditRules || CurrentList is not { } list || !create && SelectedRule is null) return;
-                using var form = new TariffRuleForm(_api, list, _rules, create ? null : SelectedRule);
-                if (form.ShowDialog(FindForm()) == DialogResult.OK) await LoadAsync(list.Id);
-            }
+            UpdateStatus();
+            _status.Text = $"Đã lưu {changed.Count} dòng giá.";
+        }
+        catch (Exception ex)
+        {
+            _status.ForeColor = Theme.Danger;
+            _status.Text = "Lỗi lưu: " + ex.Message + " Dữ liệu nhập được giữ lại để thử lại.";
+        }
+        finally { _busy = false; if (!IsDisposed) UpdateActions(); }
+    }
+
+    private async Task EditAsync(bool create)
+    {
+        if (_busy || !IsPriceLists) return;
+        try
+        {
+            if (!create && SelectedList?.Status != "Active") return;
+            using var form = new PriceListForm(_api, create ? null : SelectedList);
+            if (form.ShowDialog(FindForm()) == DialogResult.OK) await LoadAsync(form.SavedId);
         }
         catch (Exception ex) { ShowError(ex); }
     }
@@ -160,6 +302,7 @@ public partial class PricingControl : BaseUserControl
     private async Task DeleteAsync()
     {
         if (_busy) return;
+        if (!ConfirmDiscard()) return;
         var isList = IsPriceLists;
         var list = isList ? SelectedList : CurrentList;
         var rule = SelectedRule;

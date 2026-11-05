@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using System.Data;
 using TruckingSystem.Application.Common;
 using TruckingSystem.Application.Common.Interfaces;
 using TruckingSystem.Domain.Entities;
@@ -14,37 +15,40 @@ public class PricingService(IApplicationDbContext db) : IPricingService
 
     public async Task<PriceListDto> CreatePriceListAsync(SavePriceListRequest request)
     {
-        PriceList.Validate(request.Name, request.EffectiveDate, VnClock.Today);
-        var status = ParseStatus(request.Status) ?? PriceListStatus.Active;
-        var priceList = new PriceList { Name = request.Name.Trim(), EffectiveDate = request.EffectiveDate.Date, Status = status };
+        await using var transaction = db.Database.IsRelational()
+            ? await db.Database.BeginTransactionAsync(IsolationLevel.Serializable) : null;
+        var name = await NextNameAsync();
+        PriceList.Validate(name, request.EffectiveDate, VnClock.Today);
+        var priceList = new PriceList { Name = name, EffectiveDate = request.EffectiveDate.Date, Status = PriceListStatus.Active,
+            TariffRules = BuildTariffRules(request.TariffRules) };
         db.PriceLists.Add(priceList);
         await db.SaveChangesAsync();
-        return new PriceListDto(priceList.Id, priceList.Name, priceList.EffectiveDate, 0, 0, priceList.Status.ToString());
+        if (transaction is not null) await transaction.CommitAsync();
+        return new PriceListDto(priceList.Id, priceList.Name, priceList.EffectiveDate, priceList.TariffRules.Count, 0, priceList.Status.ToString());
     }
 
     public async Task<PriceListDto?> CopyPriceListAsync(int id, CopyPriceListRequest request)
     {
+        await using var transaction = db.Database.IsRelational()
+            ? await db.Database.BeginTransactionAsync(IsolationLevel.Serializable) : null;
         var source = await db.PriceLists.Include(p => p.TariffRules)
             .FirstOrDefaultAsync(p => p.Id == id);
         if (source is null) return null;
         var today = VnClock.Today;
-        PriceList.Validate(request.Name, today, today);
+        var name = await NextNameAsync();
+        PriceList.Validate(name, today, today);
         var copy = new PriceList
         {
-            Name = request.Name.Trim(),
+            Name = name,
             EffectiveDate = today,
             Status = PriceListStatus.Active,
-            TariffRules = source.TariffRules.Select(r => new TariffRule
-            {
-                VehicleType = r.VehicleType,
-                PricePerKm = r.PricePerKm,
-                PricePerTon = r.PricePerTon,
-            }).ToList(),
+            TariffRules = BuildTariffRules(request.TariffRules, source.TariffRules),
         };
         source.Status = PriceListStatus.Inactive;
         source.UpdatedAt = DateTime.UtcNow;
         db.PriceLists.Add(copy);
         await db.SaveChangesAsync();
+        if (transaction is not null) await transaction.CommitAsync();
         return new PriceListDto(copy.Id, copy.Name, copy.EffectiveDate, copy.TariffRules.Count, 0, copy.Status.ToString());
     }
 
@@ -124,12 +128,85 @@ public class PricingService(IApplicationDbContext db) : IPricingService
         return true;
     }
 
+    public async Task<List<TariffRuleDto>?> SaveTariffRulesAsync(int priceListId, SaveTariffRulesRequest request)
+    {
+        if (request.Rows is null || request.Rows.Any(r => r is null))
+            throw new ArgumentException("Danh sách giá không hợp lệ.");
+        foreach (var row in request.Rows)
+        {
+            TariffRule.Validate(row.VehicleType, row.PricePerKm, row.PricePerTon, 0, 0);
+            if (row.Id <= 0) throw new ArgumentException("Mã chi tiết giá không hợp lệ.");
+        }
+        if (request.Rows.Select(r => r.VehicleType.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).Count() != request.Rows.Count
+            || request.Rows.Where(r => r.Id.HasValue).Select(r => r.Id).Distinct().Count() != request.Rows.Count(r => r.Id.HasValue))
+            throw new ArgumentException("Danh sách có dòng giá trùng nhau.");
+
+        await using var transaction = db.Database.IsRelational()
+            ? await db.Database.BeginTransactionAsync(IsolationLevel.Serializable) : null;
+        var list = await db.PriceLists.Include(p => p.TariffRules).FirstOrDefaultAsync(p => p.Id == priceListId);
+        if (list is null) return null;
+        list.EnsureEditable();
+        foreach (var row in request.Rows)
+        {
+            if (row.Id.HasValue)
+            {
+                var rule = list.TariffRules.FirstOrDefault(r => r.Id == row.Id);
+                if (rule is null || !string.Equals(rule.VehicleType.Trim(), row.VehicleType.Trim(), StringComparison.OrdinalIgnoreCase))
+                    throw new ArgumentException("Chi tiết giá đã thay đổi hoặc không thuộc bảng giá này. Vui lòng tải lại.");
+            }
+            else if (list.TariffRules.Any(r => string.Equals(r.VehicleType.Trim(), row.VehicleType.Trim(), StringComparison.OrdinalIgnoreCase)))
+                throw new ArgumentException($"Loại xe {row.VehicleType} đã có giá. Vui lòng tải lại.");
+        }
+        foreach (var row in request.Rows)
+        {
+            var rule = row.Id.HasValue ? list.TariffRules.Single(r => r.Id == row.Id) : new TariffRule { PriceListId = priceListId };
+            Apply(rule, new SaveTariffRuleRequest(row.VehicleType, row.PricePerKm, row.PricePerTon));
+            if (!row.Id.HasValue) list.TariffRules.Add(rule);
+            else rule.UpdatedAt = DateTime.UtcNow;
+        }
+        await db.SaveChangesAsync();
+        if (transaction is not null) await transaction.CommitAsync();
+        return list.TariffRules.Select(r => new TariffRuleDto(r.Id, r.PriceListId, r.VehicleType, r.PricePerKm,
+            r.PricePerTon, r.SurchargeFragile, r.SurchargeHazmat)).ToList();
+    }
+
     public async Task<List<string>> GetVehicleTypesAsync()
     {
         var vehicleTypes = await db.Vehicles.Select(v => v.VehicleType).Distinct().ToListAsync();
         var ruleTypes = await db.TariffRules.Select(r => r.VehicleType).Distinct().ToListAsync();
         return vehicleTypes.Concat(ruleTypes).Select(t => t.Trim()).Where(t => t.Length > 0)
             .Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(t => t).ToList();
+    }
+
+    private static List<TariffRule> BuildTariffRules(List<SaveTariffRuleRequest>? input, ICollection<TariffRule>? source = null)
+    {
+        input ??= new();
+        if (input.Any(r => r is null)) throw new ArgumentException("Chi tiết giá không hợp lệ.");
+        foreach (var row in input) Validate(row);
+        if (input.Select(r => r.VehicleType.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).Count() != input.Count)
+            throw new ArgumentException("Chi tiết giá có loại xe trùng nhau.");
+        var values = source?.Select(r => new SaveTariffRuleRequest(r.VehicleType, r.PricePerKm, r.PricePerTon)).ToList() ?? new();
+        foreach (var type in TariffRule.DefaultVehicleTypes)
+            if (!values.Any(r => string.Equals(r.VehicleType.Trim(), type, StringComparison.OrdinalIgnoreCase)))
+                values.Add(new(type, 0, 0));
+        foreach (var row in input)
+        {
+            values.RemoveAll(r => string.Equals(r.VehicleType.Trim(), row.VehicleType.Trim(), StringComparison.OrdinalIgnoreCase));
+            values.Add(row);
+        }
+        return values.Select(row =>
+        {
+            var rule = new TariffRule();
+            Apply(rule, row);
+            return rule;
+        }).ToList();
+    }
+
+    private async Task<string> NextNameAsync()
+    {
+        var prefix = $"BG-{VnClock.Today.Year}-";
+        return DocumentNumber.Next(prefix, await db.PriceLists.AsNoTracking()
+            .Where(p => p.Name.StartsWith(prefix)).Select(p => p.Name).ToListAsync());
     }
 
     private static PriceListStatus? ParseStatus(string? status) => status switch

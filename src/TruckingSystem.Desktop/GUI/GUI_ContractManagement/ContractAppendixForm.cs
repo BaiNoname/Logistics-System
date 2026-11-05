@@ -16,7 +16,7 @@ public class ContractAppendixForm : BaseForm
     private readonly Label _prices = new() { AutoSize = true, MaximumSize = new Size(650, 0), ForeColor = Theme.TextSecondary, AccessibleName = "Đơn giá vận chuyển" };
     private readonly Label _status = new() { AutoSize = true, MaximumSize = new Size(650, 0), ForeColor = Theme.Danger };
     private readonly Button _save = Theme.MakePrimaryButton("Lưu", 100);
-    private readonly FlowLayoutPanel _fields = new() { Dock = DockStyle.Fill, AutoScroll = true, FlowDirection = FlowDirection.TopDown, WrapContents = false, Padding = new Padding(24) };
+    private readonly TableLayoutPanel _fields = new() { Dock = DockStyle.Fill, AutoScroll = true, ColumnCount = 1, RowCount = 8, Padding = new Padding(20, 16, 20, 16) };
     private bool _saving;
     private List<AppendixTariffOption> _tariffRules = new();
 
@@ -29,18 +29,30 @@ public class ContractAppendixForm : BaseForm
         Text = item is null ? "Thêm phụ lục hợp đồng" : "Sửa phụ lục hợp đồng";
         ClientSize = new Size(720, 670);
         BackColor = Theme.CardBg;
-        FormBorderStyle = FormBorderStyle.FixedDialog;
+        MinimumSize = new Size(520, 460);
         MaximizeBox = MinimizeBox = false;
         StartPosition = FormStartPosition.CenterParent;
+        _fields.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        for (var row = 0; row < 8; row++) _fields.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        void Field(string label, Control input)
+        {
+            var block = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, ColumnCount = 1, Margin = new Padding(0, 0, 0, 8) };
+            block.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            block.Controls.Add(new Label { Text = label, AutoSize = true, ForeColor = Theme.TextPrimary }, 0, 0);
+            input.Dock = DockStyle.Top;
+            block.Controls.Add(input, 0, 1);
+            block.TabIndex = _fields.Controls.Count;
+            _fields.Controls.Add(block);
+        }
         _code.Text = item?.Code ?? "";
         _issue.Value = item?.IssueDate ?? DateTime.UtcNow.AddHours(7).Date;
         _effective.Value = item?.EffectiveDate ?? DateTime.UtcNow.AddHours(7).Date;
-        _fields.Controls.Add(Theme.MakeLabeledInput("Mã phụ lục *", _code, 650));
-        _fields.Controls.Add(Theme.MakeLabeledInput("Mã hợp đồng *", _contract, 650));
-        _fields.Controls.Add(Theme.MakeLabeledInput("Ngày lập *", _issue, 650));
-        _fields.Controls.Add(Theme.MakeLabeledInput("Ngày có hiệu lực *", _effective, 650));
-        _fields.Controls.Add(Theme.MakeLabeledInput("Bảng giá *", _priceList, 650));
-        _fields.Controls.Add(Theme.MakeLabeledInput("Chi tiết bảng giá *", _tariff, 650));
+        Field("Mã phụ lục *:", _code);
+        Field("Mã hợp đồng *:", _contract);
+        Field("Ngày lập *:", _issue);
+        Field("Ngày có hiệu lực *:", _effective);
+        Field("Bảng giá *:", _priceList);
+        Field("Chi tiết bảng giá *:", _tariff);
         _fields.Controls.Add(_prices);
         _fields.Controls.Add(_status);
         _priceList.SelectedIndexChanged += (_, _) => BindTariffRules();
@@ -50,12 +62,15 @@ public class ContractAppendixForm : BaseForm
             _prices.Text = (_tariff.SelectedItem as AppendixTariffOption)?.Details ?? "";
             UpdateSaveEnabled();
         };
-        var footer = new FlowLayoutPanel { Dock = DockStyle.Bottom, Height = 68, Padding = new Padding(24, 10, 24, 10), FlowDirection = FlowDirection.RightToLeft };
-        var cancel = Theme.MakeSecondaryButton("Hủy", 100);
+        var cancel = Theme.MakeSecondaryButton("Đóng", 100);
         cancel.DialogResult = DialogResult.Cancel;
-        footer.Controls.AddRange(new Control[] { _save, cancel });
+        _save.Text = "Lưu phụ lục";
+        _save.Width = 150;
+        FormStyle.SaveButton(_save); // chân [Đóng] [💾 Lưu phụ lục]
         Controls.Add(_fields);
-        Controls.Add(footer);
+        FormStyle.EditorFooter(this, cancel, _save);
+        DialogKeys.Enable(this);
+        Anim.FadeIn(this);
         AcceptButton = _save;
         CancelButton = cancel;
         _save.Enabled = _fields.Enabled = false;
@@ -66,14 +81,14 @@ public class ContractAppendixForm : BaseForm
 
     private async Task LoadLookupsAsync()
     {
-        _status.Text = "Đang tải hợp đồng và chi tiết bảng giá...";
+        FormStyle.Status(_status, "Đang tải hợp đồng và chi tiết bảng giá...", StatusKind.Info);
         try
         {
             var lookups = await _api.ContractAppendices.GetLookupsAsync();
             if (IsDisposed) return;
             BindLookups(lookups);
         }
-        catch (Exception ex) { if (!IsDisposed) _status.Text = "Lỗi tải dữ liệu: " + ex.Message; }
+        catch (Exception ex) { if (!IsDisposed) FormStyle.Status(_status, "Lỗi tải dữ liệu: " + ex.Message); }
     }
 
     private void BindLookups(ContractAppendixLookups lookups)
@@ -96,9 +111,9 @@ public class ContractAppendixForm : BaseForm
         _fields.Enabled = true;
         UpdateSaveEnabled();
         if (lookups.Contracts.Count == 0)
-            _status.Text = "Cần có hợp đồng để lập phụ lục.";
+            FormStyle.Status(_status, "Cần có hợp đồng để lập phụ lục.", StatusKind.Warning);
         else if (lookups.PriceLists.Count == 0 && _item is null)
-            _status.Text = "Chưa có bảng giá đang áp dụng để lập phụ lục.";
+            FormStyle.Status(_status, "Chưa có bảng giá đang áp dụng để lập phụ lục.", StatusKind.Warning);
     }
 
     private void BindTariffRules()
@@ -111,11 +126,11 @@ public class ContractAppendixForm : BaseForm
         _tariff.SelectedIndex = -1;
         _tariff.Enabled = rules.Count > 0;
         _prices.Text = "";
-        _status.Text = priceListId > 0 && rules.Count == 0 ? "Bảng giá này chưa có chi tiết. Vui lòng chọn bảng giá khác." : "";
+        FormStyle.Status(_status, priceListId > 0 && rules.Count == 0 ? "Bảng giá này chưa có chi tiết. Vui lòng chọn bảng giá khác." : "", StatusKind.Warning);
         if (_priceList.SelectedIndex < 0 && _item is not null)
         {
             _prices.Text = $"Bảng giá hiện tại: {_item.TariffRule.Name}\n{_item.TariffRule.Details}";
-            _status.Text = "Giữ nguyên giá đã lưu nếu không chọn bảng giá đang áp dụng khác.";
+            FormStyle.Status(_status, "Giữ nguyên giá đã lưu nếu không chọn bảng giá đang áp dụng khác.", StatusKind.Info);
         }
         UpdateSaveEnabled();
     }
@@ -135,10 +150,19 @@ public class ContractAppendixForm : BaseForm
         {
             TruckingSystem.Domain.Entities.ContractAppendix.Validate(_code.Text, contractId, _issue.Value.Date, _effective.Value.Date, tariffRuleId);
         }
-        catch (ArgumentException ex) { _status.Text = ex.Message; return; }
+        catch (ArgumentException ex)
+        {
+            // Báo lỗi ngay tại ô sai (thứ tự kiểm tra giống thứ tự ô trên màn hình).
+            Control field = string.IsNullOrWhiteSpace(_code.Text) || _code.Text.Trim().Length > 100 ? _code
+                : contractId <= 0 ? _contract
+                : tariffRuleId <= 0 ? (_priceList.SelectedIndex < 0 ? _priceList : _tariff)
+                : _effective;
+            FieldHint.Show(field, _status, ex.Message);
+            return;
+        }
         _saving = true;
         _fields.Enabled = _save.Enabled = false;
-        _status.Text = "Đang lưu...";
+        FormStyle.Status(_status, "Đang lưu...", StatusKind.Info);
         try
         {
             if (_item is null)
@@ -155,7 +179,7 @@ public class ContractAppendixForm : BaseForm
             DialogResult = DialogResult.OK;
             Close();
         }
-        catch (Exception ex) { _status.Text = "Lỗi: " + ex.Message; }
+        catch (Exception ex) { FormStyle.Status(_status, "Lỗi: " + ex.Message); }
         finally
         {
             _saving = false;

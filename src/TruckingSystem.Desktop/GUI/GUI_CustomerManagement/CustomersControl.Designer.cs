@@ -23,10 +23,6 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
             btnEdit = new Button();
             lblStatus = new Label();
             grid = new DataGridView();
-            tabs = new TabControl();
-            customersTab = new TabPage("Khách hàng");
-            contactsTab = new TabPage("Người liên hệ khách hàng");
-            _contactsControl = new CustomerContactsControl();
             var customerLayout = new TableLayoutPanel();
             toolbar = new FlowLayoutPanel();
             filterBar = new TruckingSystem.Desktop.Common.FilterBar { Dock = DockStyle.Fill, AutoSize = true };
@@ -174,19 +170,7 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
             customerLayout.Controls.Add(filterBar, 0, 1);
             customerLayout.Controls.Add(grid, 0, 2);
             customerLayout.Controls.Add(lblStatus, 0, 3);
-            customersTab.BackColor = Color.White;
-            customersTab.Padding = new Padding(8);
-            customersTab.Controls.Add(customerLayout);
-            contactsTab.BackColor = Color.White;
-            contactsTab.Padding = new Padding(8);
-            _contactsControl.Dock = DockStyle.Fill;
-            _contactsControl.Name = "_contactsControl";
-            _contactsControl.TabIndex = 0;
-            contactsTab.Controls.Add(_contactsControl);
-            tabs.Dock = DockStyle.Fill;
-            tabs.AccessibleName = "Quản lý khách hàng và người liên hệ";
-            tabs.TabPages.AddRange(new[] { customersTab, contactsTab });
-            Controls.Add(tabs);
+            Controls.Add(customerLayout);
             Controls.Add(lblTitle);
             Margin = new Padding(2, 2, 2, 2);
             Name = "CustomersControl";
@@ -207,9 +191,6 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
         private System.Windows.Forms.Label lblStatus;
         private TruckingSystem.Desktop.Common.FilterBar filterBar;
         private System.Windows.Forms.DataGridView grid;
-        private System.Windows.Forms.TabControl tabs;
-        private System.Windows.Forms.TabPage customersTab;
-        private System.Windows.Forms.TabPage contactsTab;
-        private CustomerContactsControl _contactsControl = null!;
+
     }
 }

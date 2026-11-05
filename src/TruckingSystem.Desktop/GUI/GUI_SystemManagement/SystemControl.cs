@@ -1,5 +1,3 @@
-using System.Drawing;
-using System.Windows.Forms;
 using TruckingSystem.Desktop.Common;
 using TruckingSystem.Desktop.SERVICE_SystemManagement;
 
@@ -8,183 +6,122 @@ namespace TruckingSystem.Desktop.GUI_SystemManagement;
 public class SystemControl : BaseUserControl
 {
     private readonly ApiServices _api;
-    private readonly TabControl _tabs = new() { Dock = DockStyle.Fill };
-    private readonly DataGridView _departmentsGrid = new() { Dock = DockStyle.Fill };
-    private readonly DataGridView _positionsGrid = new() { Dock = DockStyle.Fill };
-    private readonly Label _status = new() { Dock = DockStyle.Fill, ForeColor = Theme.TextSecondary, TextAlign = ContentAlignment.MiddleLeft };
+    private readonly bool _positionsMode;
+    private readonly int? _departmentId;
+    private readonly DataGridView _grid = new() { Dock = DockStyle.Fill };
+    private readonly Label _status = new() { Dock = DockStyle.Fill, ForeColor = Theme.TextSecondary, AutoSize = true };
     private readonly Button _edit = Theme.MakeSecondaryButton("Sửa", 85);
     private readonly Button _delete = Theme.MakeSecondaryButton("Xóa", 85);
-    private readonly FlowLayoutPanel _actions = new() { Dock = DockStyle.Fill, AutoSize = true, WrapContents = false };
-    private List<SystemItem> _departments = new();
-    private List<SystemItem> _positions = new();
+    private readonly FlowLayoutPanel _actions = new() { Dock = DockStyle.Fill, AutoSize = true, WrapContents = true };
+    private List<SystemItem> _items = new();
+    private string Kind => _positionsMode ? "positions" : "departments";
+    private string ItemLabel => _positionsMode ? "chức danh" : "phòng ban";
 
-    private bool IsDepartments => _tabs.SelectedIndex == 0;
-    private string Kind => IsDepartments ? "departments" : "positions";
-    private string Label => IsDepartments ? "phòng ban" : "chức danh";
-    private DataGridView Grid => IsDepartments ? _departmentsGrid : _positionsGrid;
+    public SystemControl(ApiServices api) : this(api, false, null) { }
 
-    public SystemControl(ApiServices api)
+    private SystemControl(ApiServices api, bool positionsMode, int? departmentId)
     {
         _api = api;
-        Theme.StyleGrid(_departmentsGrid);
-        Theme.StyleGrid(_positionsGrid);
-        _departmentsGrid.SelectionChanged += (_, _) => UpdateButtons();
-        _positionsGrid.SelectionChanged += (_, _) => UpdateButtons();
-        _departmentsGrid.CellDoubleClick += async (_, _) => await EditAsync();
-        _positionsGrid.CellDoubleClick += async (_, _) => await EditAsync();
-
-        var departmentsTab = new TabPage("Phòng ban") { BackColor = Color.White };
-        var positionsTab = new TabPage("Chức danh") { BackColor = Color.White };
-        departmentsTab.Controls.Add(_departmentsGrid);
-        positionsTab.Controls.Add(_positionsGrid);
-        _tabs.TabPages.Add(departmentsTab);
-        _tabs.TabPages.Add(positionsTab);
-        _tabs.SelectedIndexChanged += (_, _) => { UpdateButtons(); UpdateStatus(); };
-
-        var create = Theme.MakePrimaryButton("Thêm mới", 110);
+        _positionsMode = positionsMode;
+        _departmentId = departmentId;
+        Theme.StyleGrid(_grid);
+        _grid.SelectionChanged += (_, _) => UpdateButtons();
+        _grid.CellDoubleClick += async (_, e) => { if (e.RowIndex >= 0) await EditAsync(); };
+        if (!positionsMode)
+        {
+            var menu = new ContextMenuStrip();
+            var open = menu.Items.Add("Xem chức danh");
+            open.Click += (_, _) => { if (SelectedItem() is { } item) OpenPositions(item.Id, item.Name); };
+            menu.Opening += (_, e) => e.Cancel = SelectedItem() is null || !_grid.Enabled;
+            ModernMenu.Apply(menu);
+            _grid.ContextMenuStrip = menu;
+            _grid.CellMouseDown += (_, e) =>
+            {
+                if (e.Button != MouseButtons.Right) return;
+                _grid.ClearSelection();
+                if (e.RowIndex < 0) { _grid.CurrentCell = null; return; }
+                _grid.CurrentCell = _grid.Rows[e.RowIndex].Cells.Cast<DataGridViewCell>().First(c => c.Visible);
+                _grid.Rows[e.RowIndex].Selected = true;
+            };
+            Disposed += (_, _) => menu.Dispose();
+        }
+        var create = Theme.MakePrimaryButton("Thêm " + ItemLabel, 165);
         var refresh = Theme.MakeSecondaryButton("Làm mới", 100);
         _actions.Controls.AddRange(new Control[] { create, _edit, _delete, refresh });
-        create.Click += async (_, _) => await CreateAsync();
+        if (!positionsMode)
+        {
+            var unassigned = Theme.MakeSecondaryButton("Chức danh chưa phân phòng", 240);
+            unassigned.Click += (_, _) => OpenPositions(null, "Chưa phân phòng ban");
+            _actions.Controls.Add(unassigned);
+        }
+        create.Click += async (_, _) => await OpenEditorAsync(null);
         _edit.Click += async (_, _) => await EditAsync();
         _delete.Click += async (_, _) => await DeleteAsync();
         refresh.Click += async (_, _) => await LoadCurrentAsync();
-
-        var header = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2 };
-        header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        header.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        header.Controls.Add(new Label { Text = "Hệ Thống", Font = Theme.FontTitle, ForeColor = Theme.TextPrimary, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft }, 0, 0);
-        header.Controls.Add(_actions, 1, 0);
-
-        var layout = new TableLayoutPanel { Dock = DockStyle.Fill, RowCount = 3 };
-        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 64));
+        ButtonStyles.DangerLink(_delete);
+        Padding = new Padding(16);
+        var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 5 };
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));
-        layout.Controls.Add(header, 0, 0);
-        layout.Controls.Add(_tabs, 0, 1);
-        layout.Controls.Add(_status, 0, 2);
+        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        layout.Controls.Add(new Label { Text = positionsMode ? "Chức danh" : "Hệ thống", Font = Theme.FontTitle, AutoSize = true }, 0, 0);
+        layout.Controls.Add(_actions, 0, 1);
+        layout.Controls.Add(new Label { Text = positionsMode ? "Chức danh thuộc phòng ban đang mở. Chọn Sửa để chuyển phòng ban." : "Chuột phải vào phòng ban để xem và quản lý chức danh.", AutoSize = true, ForeColor = Theme.TextSecondary }, 0, 2);
+        layout.Controls.Add(_grid, 0, 3);
+        layout.Controls.Add(_status, 0, 4);
         Controls.Add(layout);
-
         UpdateButtons();
-        Load += async (_, _) => { await LoadCurrentAsync(); _tabs.SelectedIndex = 1; await LoadCurrentAsync(); _tabs.SelectedIndex = 0; };
+        Load += async (_, _) => { Theme.UniformButtons(_actions); await LoadCurrentAsync(); };
     }
 
-    private SystemItem? SelectedItem()
-    {
-        if (Grid.CurrentRow?.Cells["Id"].Value is not int id) return null;
-        return (IsDepartments ? _departments : _positions).FirstOrDefault(item => item.Id == id);
-    }
-
+    private SystemItem? SelectedItem() => _grid.CurrentRow?.Cells["Id"].Value is int id ? _items.FirstOrDefault(i => i.Id == id) : null;
     private void UpdateButtons()
     {
-        var selected = SelectedItem();
-        _edit.Enabled = selected is not null;
-        _delete.Enabled = selected is { EmployeeCount: 0 };
+        _edit.Enabled = SelectedItem() is not null;
+        _delete.Enabled = SelectedItem() is { EmployeeCount: 0 };
     }
-
-    private void UpdateStatus() => _status.Text = $"{(IsDepartments ? _departments : _positions).Count} {Label}";
-
     private async Task LoadCurrentAsync()
     {
         _status.ForeColor = Theme.TextSecondary;
         _status.Text = "Đang tải...";
         try
         {
-            var kind = Kind;
-            var items = await _api.System.GetAsync(kind);
-            if (kind == "departments") _departments = items;
-            else _positions = items;
-            var grid = kind == "departments" ? _departmentsGrid : _positionsGrid;
-            grid.DataSource = items.Select(item => new
-            {
-                item.Id,
-                Tên = item.Name,
-                Số_nhân_viên = item.EmployeeCount,
-            }).ToList();
-            if (grid.Columns["Id"] is not null) grid.Columns["Id"]!.Visible = false;
+            var items = await _api.System.GetAsync(Kind);
+            _items = _positionsMode ? items.Where(i => i.DepartmentId == _departmentId).ToList() : items;
+            _grid.DataSource = _items.Select(i => new { i.Id, Tên = i.Name, Số_nhân_viên = i.EmployeeCount }).ToList();
+            if (_grid.Columns["Id"] is { } column) column.Visible = false;
             UpdateButtons();
-            UpdateStatus();
+            _status.Text = $"{_items.Count} {ItemLabel}";
         }
-        catch (Exception ex)
-        {
-            _status.ForeColor = Theme.Danger;
-            _status.Text = "Không tải được dữ liệu: " + ex.Message;
-        }
+        catch (Exception ex) { _status.ForeColor = Theme.Danger; _status.Text = "Không tải được dữ liệu: " + ex.Message; }
     }
-
-    private async Task CreateAsync()
+    private async Task EditAsync() { if (SelectedItem() is { } item) await OpenEditorAsync(item); }
+    private async Task OpenEditorAsync(SystemItem? item)
     {
-        var name = PromptName($"Thêm {Label}");
-        if (name is null) return;
-        await SaveAsync(() => _api.System.CreateAsync(Kind, name));
+        using var editor = new SystemItemEditorForm(_api, !_positionsMode, item, _departmentId);
+        if (editor.ShowDialog(FindForm()) != DialogResult.OK) return;
+        Toast.Show(this, "✅ Đã lưu " + ItemLabel + ".");
+        await LoadCurrentAsync();
     }
-
-    private async Task EditAsync()
+    private void OpenPositions(int? departmentId, string name)
     {
-        var item = SelectedItem();
-        if (item is null) return;
-        var name = PromptName($"Sửa {Label}", item.Name);
-        if (name is null || name == item.Name) return;
-        await SaveAsync(() => _api.System.UpdateAsync(Kind, item.Id, name));
+        using var dialog = new BaseForm { Text = "Chức danh — " + name, ClientSize = new Size(900, 560), MinimumSize = new Size(620, 380), StartPosition = FormStartPosition.CenterParent };
+        dialog.Controls.Add(new SystemControl(_api, true, departmentId) { Dock = DockStyle.Fill });
+        ButtonStyles.Footer(dialog, null, FormStyle.NewCloseButton(dialog));
+        ModernLook.Apply(dialog);
+        DialogKeys.Enable(dialog);
+        dialog.ShowDialog(FindForm());
     }
-
-    private async Task SaveAsync(Func<Task<SystemItem?>> action)
-    {
-        _actions.Enabled = false;
-        _tabs.Enabled = false;
-        try
-        {
-            await action();
-            await LoadCurrentAsync();
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show(FindForm(), ex.Message, "Không lưu được dữ liệu", MessageBoxButtons.OK, MessageBoxIcon.Error);
-        }
-        finally { _actions.Enabled = _tabs.Enabled = true; }
-    }
-
     private async Task DeleteAsync()
     {
-        var item = SelectedItem();
-        if (item is null || item.EmployeeCount != 0) return;
-        if (MessageBox.Show(FindForm(), $"Xóa {Label} \"{item.Name}\"?", "Xác nhận xóa",
-                MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
-
-        _actions.Enabled = false;
-        _tabs.Enabled = false;
-        try
-        {
-            await _api.System.DeleteAsync(Kind, item.Id);
-            await LoadCurrentAsync();
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show(FindForm(), ex.Message, "Không xóa được dữ liệu", MessageBoxButtons.OK, MessageBoxIcon.Error);
-        }
-        finally { _actions.Enabled = _tabs.Enabled = true; }
-    }
-
-    private string? PromptName(string title, string value = "")
-    {
-        using var dialog = new BaseForm
-        {
-            Text = title, ClientSize = new Size(440, 180), FormBorderStyle = FormBorderStyle.FixedDialog,
-            MaximizeBox = false, MinimizeBox = false, StartPosition = FormStartPosition.CenterParent,
-            BackColor = Color.White,
-        };
-        var label = new Label { Text = "Tên", Left = 24, Top = 22, AutoSize = true, ForeColor = Theme.TextSecondary };
-        var input = new TextBox { Text = value, Left = 24, Top = 49, Width = 390, MaxLength = 100 };
-        var save = Theme.MakePrimaryButton("Lưu", 100);
-        save.SetBounds(314, 101, 100, 38);
-        save.Click += (_, _) =>
-        {
-            if (string.IsNullOrWhiteSpace(input.Text))
-                MessageBox.Show(dialog, "Vui lòng nhập tên.", "Thiếu thông tin", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            else dialog.DialogResult = DialogResult.OK;
-        };
-        dialog.Controls.AddRange(new Control[] { label, input, save });
-        dialog.AcceptButton = save;
-        input.SelectAll();
-        return dialog.ShowDialog(FindForm()) == DialogResult.OK ? input.Text.Trim() : null;
+        if (SelectedItem() is not { EmployeeCount: 0 } item) return;
+        if (MessageBox.Show(FindForm(), $"Xóa {ItemLabel} \"{item.Name}\"?", "Xác nhận xóa", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
+        _actions.Enabled = _grid.Enabled = false;
+        try { await _api.System.DeleteAsync(Kind, item.Id); await LoadCurrentAsync(); }
+        catch (Exception ex) { MessageBox.Show(FindForm(), ex.Message, "Không xóa được dữ liệu", MessageBoxButtons.OK, MessageBoxIcon.Error); }
+        finally { _actions.Enabled = _grid.Enabled = true; }
     }
 }

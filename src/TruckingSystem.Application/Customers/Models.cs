@@ -32,6 +32,8 @@ public record CustomerBusinessCardInfo(
     public string? Website { get; init; }
     public string? RawResponse { get; init; }
     public string? ErrorMessage { get; init; }
+    /// <summary>AI xác định ảnh không phải danh thiếp; các trường dữ liệu được để trống.</summary>
+    public bool IsNotBusinessCard { get; init; }
 
     public bool HasExtractedFields() => new[]
         { Name, Phone, TaxCode, CustomerType, Address, FullName, Company, Title, Email, Website }

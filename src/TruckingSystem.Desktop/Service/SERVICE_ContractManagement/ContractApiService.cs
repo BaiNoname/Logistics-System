@@ -5,6 +5,12 @@ namespace TruckingSystem.Desktop.SERVICE_ContractManagement;
 
 public class ContractApiService(ApiConnection connection)
 {
+    public async Task<int> GetMaxDiscountPercentAsync()
+        => await connection.GetAsync<int>("/api/contracts/max-discount-percent");
+
+    public Task SaveMaxDiscountPercentAsync(int value)
+        => connection.PutAsync<object>("/api/contracts/max-discount-percent", new { value });
+
     public Task<List<ContractListItem>> GetContractsAsync()
         => connection.GetAsync<List<ContractListItem>>("/api/contracts")!;
 

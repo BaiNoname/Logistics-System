@@ -15,3 +15,5 @@ public record TariffRuleItem(int Id, int PriceListId, string VehicleType, decima
     public string DisplayName => $"{VehicleType} · {PricePerKm:N2} đ/km · {PricePerTon:N2} đ/tấn";
     public string Details => $"Giá/km: {PricePerKm:N2} đ · Giá/tấn: {PricePerTon:N2} đ";
 }
+
+public record SaveTariffRuleRow(int? Id, string VehicleType, decimal PricePerKm, decimal PricePerTon);

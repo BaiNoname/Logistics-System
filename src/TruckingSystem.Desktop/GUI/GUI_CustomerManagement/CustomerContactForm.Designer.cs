@@ -14,7 +14,7 @@ partial class CustomerContactForm
 
     private void InitializeComponent()
     {
-        _fields = new FlowLayoutPanel();
+        _fields = new TableLayoutPanel();
         customerPanel = new Panel();
         lblCustomer = new Label();
         _customer = new ComboBox();
@@ -48,13 +48,14 @@ partial class CustomerContactForm
         _fields.Controls.Add(positionPanel);
         _fields.Controls.Add(_status);
         _fields.Dock = DockStyle.Fill;
-        _fields.FlowDirection = FlowDirection.TopDown;
+        _fields.ColumnCount = 1;
+        _fields.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         _fields.Location = new Point(0, 0);
         _fields.Name = "_fields";
         _fields.Padding = new Padding(24);
         _fields.Size = new Size(500, 342);
         _fields.TabIndex = 0;
-        _fields.WrapContents = false;
+
         //
         // customerPanel
         //
@@ -74,7 +75,7 @@ partial class CustomerContactForm
         lblCustomer.Location = new Point(0, 0);
         lblCustomer.Name = "lblCustomer";
         lblCustomer.TabIndex = 0;
-        lblCustomer.Text = "Khách hàng *";
+        lblCustomer.Text = "Khách hàng *:";
         //
         // _customer
         //
@@ -106,7 +107,7 @@ partial class CustomerContactForm
         lblName.Location = new Point(0, 0);
         lblName.Name = "lblName";
         lblName.TabIndex = 0;
-        lblName.Text = "Tên người liên hệ *";
+        lblName.Text = "Tên người liên hệ *:";
         //
         // _name
         //
@@ -260,7 +261,7 @@ partial class CustomerContactForm
 
     #endregion
 
-    private FlowLayoutPanel _fields = null!;
+    private TableLayoutPanel _fields = null!;
     private Panel customerPanel = null!;
     private Label lblCustomer = null!;
     private ComboBox _customer = null!;

@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using System.Data;
+using TruckingSystem.Application.Common;
 using TruckingSystem.Domain.Enums;
 using TruckingSystem.Application.Common.Interfaces;
 using TruckingSystem.Application.Pricing;
@@ -10,6 +12,7 @@ public class ContractService(IApplicationDbContext db) : IContractService
 {
     public async Task<ContractLookupDto> GetLookupsAsync() => new()
     {
+        MaxDiscountPercent = await GetMaxDiscountPercentAsync(),
         Customers = await db.Customers.AsNoTracking().OrderBy(c => c.Name)
             .Select(c => new ContractOptionDto { Id = c.Id, Name = c.Name }).ToListAsync(),
         PriceLists = await db.PriceLists.AsNoTracking().Where(p => p.Status == PriceListStatus.Active).OrderBy(p => p.Name)
@@ -20,16 +23,21 @@ public class ContractService(IApplicationDbContext db) : IContractService
                 r.PricePerTon, r.SurchargeFragile, r.SurchargeHazmat)).ToListAsync(),
     };
 
-    public async Task<ContractListItemDto> CreateAsync(SaveContractRequest request)
+    public async Task<ContractListItemDto> CreateAsync(SaveContractRequest request, bool isAdmin = false)
     {
+        await using var transaction = db.Database.IsRelational()
+            ? await db.Database.BeginTransactionAsync(IsolationLevel.Serializable) : null;
+        var prefix = $"HD-{request.CustomerId}-{VnClock.Today.Year}-";
+        request.Code = DocumentNumber.Next(prefix, await db.Contracts.AsNoTracking()
+            .Where(c => c.Code.StartsWith(prefix)).Select(c => c.Code).ToListAsync());
         Validate(request);
+        await ValidateDiscountLimitAsync(request.DiscountPercent, isAdmin);
         if (!await db.Customers.AnyAsync(c => c.Id == request.CustomerId))
             throw new ArgumentException("Khách hàng không tồn tại.");
         if (!request.PriceListId.HasValue) throw new ArgumentException("Vui lòng chọn bảng giá đang áp dụng.");
         ValidateType(request.Type, request.DiscountPercent);
         await ValidatePriceListAsync(request.PriceListId);
         await ValidateTariffRuleAsync(request.PriceListId, request.TariffRuleId);
-        // ponytail: Kiểm tra mã tại ứng dụng; thêm unique index khi cần chống tạo trùng đồng thời.
         if (await db.Contracts.AnyAsync(c => c.Code == request.Code.Trim()))
             throw new ArgumentException("Mã hợp đồng đã tồn tại.");
 
@@ -37,14 +45,17 @@ public class ContractService(IApplicationDbContext db) : IContractService
         Apply(contract, request, request.TariffRuleId);
         db.Contracts.Add(contract);
         await db.SaveChangesAsync();
+        if (transaction is not null) await transaction.CommitAsync();
         return (await GetByIdAsync(contract.Id))!;
     }
 
-    public async Task<bool> UpdateAsync(int id, SaveContractRequest request)
+    public async Task<bool> UpdateAsync(int id, SaveContractRequest request, bool isAdmin = false)
     {
         Validate(request);
         var contract = await db.Contracts.FirstOrDefaultAsync(c => c.Id == id);
         if (contract is null) return false;
+        if (request.DiscountPercent != contract.DiscountPercent)
+            await ValidateDiscountLimitAsync(request.DiscountPercent, isAdmin);
         if (!await db.Customers.AnyAsync(c => c.Id == request.CustomerId))
             throw new ArgumentException("Khách hàng không tồn tại.");
         await ValidatePriceListAsync(request.PriceListId, contract.PriceListId);
@@ -59,6 +70,25 @@ public class ContractService(IApplicationDbContext db) : IContractService
         contract.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync();
         return true;
+    }
+
+    public async Task<int> GetMaxDiscountPercentAsync()
+        => (await db.MaxDiscountPercents.AsNoTracking().SingleAsync(p => p.Id == 1)).Value;
+
+    public async Task SaveMaxDiscountPercentAsync(int value)
+    {
+        MaxDiscountPercent.Validate(value);
+        var setting = await db.MaxDiscountPercents.SingleAsync(p => p.Id == 1);
+        setting.Value = value;
+        setting.UpdatedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync();
+    }
+
+    private async Task ValidateDiscountLimitAsync(decimal? discount, bool isAdmin)
+    {
+        var limit = await GetMaxDiscountPercentAsync();
+        if (!isAdmin && discount > limit)
+            throw new ArgumentException($"Chỉ Admin được áp dụng ưu đãi vượt quá {limit}%.");
     }
 
     private async Task ValidatePriceListAsync(int? priceListId, int? currentPriceListId = null)

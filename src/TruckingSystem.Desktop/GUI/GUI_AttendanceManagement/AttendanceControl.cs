@@ -16,8 +16,8 @@ public sealed class AttendanceControl : BaseUserControl
     // Tab QR
     private readonly ComboBox _site = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 260 };
     private readonly DateTimePicker _qrDate = new() { Format = DateTimePickerFormat.Short, Width = 130 };
-    private readonly NumericUpDown _radius = new() { Minimum = 20, Maximum = 5000, Increment = 10, Width = 90 };
-    private readonly NumericUpDown _accuracy = new() { Minimum = 5, Maximum = 1000, Increment = 5, Width = 90 };
+    private readonly NumberBox _radius = new() { Minimum = 20, Maximum = 5000, Increment = 10, Width = 90 };
+    private readonly NumberBox _accuracy = new() { Minimum = 5, Maximum = 1000, Increment = 5, Width = 90 };
     private readonly PictureBox _qrImage = new() { Dock = DockStyle.Fill, SizeMode = PictureBoxSizeMode.Zoom, BackColor = Color.White };
     private readonly Label _qrInfo = new() { Dock = DockStyle.Bottom, Height = 56, TextAlign = ContentAlignment.MiddleCenter, Font = Theme.FontBold };
     private AttendanceQrDto? _currentQr;
@@ -38,6 +38,11 @@ public sealed class AttendanceControl : BaseUserControl
     {
         _api = api;
         _isAdmin = api.Connection.IsInRole("Admin");
+        GridDecor.Pills(_adjustGrid, "Trạng_thái", (text, _) => text switch
+        {
+            "Đã duyệt" => GridDecor.Green, "Từ chối" => GridDecor.Red, _ => GridDecor.Amber,
+        });
+        GridDecor.Pills(_scanGrid, "Kết_quả", (text, _) => text == "Hợp lệ" ? GridDecor.Green : GridDecor.Red);
         Dock = DockStyle.Fill;
         BackColor = Theme.ContentBg;
         Padding = new Padding(16);
@@ -188,7 +193,7 @@ public sealed class AttendanceControl : BaseUserControl
             var index = _site.SelectedIndex;
             _site.Items[index] = site with { RadiusMeters = (int)_radius.Value, MaxAccuracyMeters = (int)_accuracy.Value };
             _site.SelectedIndex = index;
-            MessageBox.Show(this, result.Message, "Chấm công QR", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            Toast.Show(this, "✅ " + (result.Message ?? "Đã lưu cấu hình chấm công."));
         }
         catch (Exception ex) { Warn(ex.Message); }
     }
@@ -202,8 +207,8 @@ public sealed class AttendanceControl : BaseUserControl
             new ComboOption("Rejected", "Từ chối"), new ComboOption("", "Tất cả") });
         _status.SelectedIndex = 0;
         var refresh = Theme.MakeSecondaryButton("Tải lại");
-        var approve = Theme.MakePrimaryButton("Duyệt");
-        var reject = Theme.MakeSecondaryButton("Từ chối");
+        var approve = Theme.MakePrimaryButton("Duyệt điều chỉnh", 170);
+        var reject = Theme.MakeSecondaryButton("Từ chối điều chỉnh", 170);
         page.Controls.Add(_adjustGrid);
         page.Controls.Add(Bar(Caption("Trạng thái"), _status, refresh, approve, reject,
             new Label { AutoSize = true, ForeColor = Theme.TextSecondary, Margin = new Padding(8, 10, 0, 0),
@@ -223,7 +228,7 @@ public sealed class AttendanceControl : BaseUserControl
             _adjustments = await _api.Attendance.AdjustmentsAsync((_status.SelectedItem as ComboOption)?.Value);
             _adjustGrid.DataSource = _adjustments.Select(a => new
             {
-                Mã_NV = a.EmployeeCode, Họ_tên = a.EmployeeName, Ngày = a.WorkDate.ToString("dd/MM/yyyy"),
+                Mã_nhân_viên = a.EmployeeCode, Họ_tên = a.EmployeeName, Ngày = a.WorkDate.ToString("dd/MM/yyyy"),
                 Hiện_tại = $"{Time(a.CurrentCheckInAt)} → {Time(a.CurrentCheckOutAt)}",
                 Đề_xuất = $"{Time(a.RequestedCheckInAt, "giữ")} → {Time(a.RequestedCheckOutAt, "giữ")}",
                 Lý_do = a.ReasonText, Giải_thích = a.Note, Trạng_thái = a.StatusText,
@@ -258,23 +263,30 @@ public sealed class AttendanceControl : BaseUserControl
     /// <summary>Hộp nhập ghi chú; null = hủy.</summary>
     private string? AskNote(string caption, string question, bool required)
     {
-        using var form = new BaseForm { Text = caption, Size = new Size(520, 300), StartPosition = FormStartPosition.CenterParent,
-            FormBorderStyle = FormBorderStyle.FixedDialog, MaximizeBox = false, MinimizeBox = false };
-        var label = new Label { Text = question + (required ? "\n\nLý do từ chối (bắt buộc):" : "\n\nGhi chú (không bắt buộc):"),
-            Dock = DockStyle.Top, Height = 90, Padding = new Padding(12, 12, 12, 0) };
-        var box = new TextBox { Multiline = true, Dock = DockStyle.Fill, MaxLength = 500, ScrollBars = ScrollBars.Vertical };
-        var holder = new Panel { Dock = DockStyle.Fill, Padding = new Padding(12, 4, 12, 4) };
-        holder.Controls.Add(box);
-        var ok = Theme.MakePrimaryButton("Xác nhận");
-        var cancel = Theme.MakeSecondaryButton("Hủy");
-        cancel.DialogResult = DialogResult.Cancel;
-        var buttons = new FlowLayoutPanel { Dock = DockStyle.Bottom, Height = 56, FlowDirection = FlowDirection.RightToLeft, Padding = new Padding(8) };
-        buttons.Controls.AddRange(new Control[] { cancel, ok });
-        form.Controls.Add(holder); form.Controls.Add(label); form.Controls.Add(buttons);
-        form.AcceptButton = null; form.CancelButton = cancel;
+        using var form = new BaseForm { Text = caption, ClientSize = new Size(580, 360), MinimumSize = new Size(500, 320),
+            StartPosition = FormStartPosition.CenterParent, BackColor = Theme.CardBg, MaximizeBox = false, MinimizeBox = false };
+        var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 4, Padding = new Padding(20, 16, 20, 16) };
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        var questionLabel = new Label { Text = question, AutoSize = true, Dock = DockStyle.Fill, ForeColor = Theme.TextPrimary };
+        var label = new Label { Text = required ? "Lý do từ chối *:" : "Ghi chú (không bắt buộc):", AutoSize = true, Margin = new Padding(3, 12, 3, 6) };
+        var box = new TextBox { Multiline = true, Dock = DockStyle.Fill, MaxLength = 500, ScrollBars = ScrollBars.Vertical, AccessibleName = label.Text };
+        var status = new Label { AutoSize = true, Dock = DockStyle.Fill, ForeColor = Theme.Danger };
+        layout.Controls.Add(questionLabel, 0, 0); layout.Controls.Add(label, 0, 1); layout.Controls.Add(box, 0, 2); layout.Controls.Add(status, 0, 3);
+        form.Controls.Add(layout);
+        var ok = Theme.MakePrimaryButton("Xác nhận điều chỉnh", 190);
+        var cancel = FormStyle.NewCloseButton(form);
+        FormStyle.SaveButton(ok);
+        ButtonStyles.Footer(form, required ? new Label { Text = "* Trường bắt buộc", AutoSize = true, Font = Theme.FontSmall, ForeColor = Theme.TextSecondary } : null, cancel, ok);
+        ModernLook.Apply(form);
+        DialogKeys.Enable(form);
+        Anim.FadeIn(form);
         ok.Click += (_, _) =>
         {
-            if (required && string.IsNullOrWhiteSpace(box.Text)) { MessageBox.Show(form, "Nhập lý do.", caption); return; }
+            if (required && string.IsNullOrWhiteSpace(box.Text)) { FieldHint.Show(box, status, "Vui lòng nhập lý do từ chối."); return; }
             form.DialogResult = DialogResult.OK;
         };
         return form.ShowDialog(this) == DialogResult.OK ? box.Text.Trim() : null;
@@ -285,7 +297,7 @@ public sealed class AttendanceControl : BaseUserControl
     private TabPage BuildRecordTab()
     {
         var page = new TabPage("Bảng chấm công") { BackColor = Color.White, Padding = new Padding(12) };
-        var view = Theme.MakePrimaryButton("Xem");
+        var view = Theme.MakePrimaryButton("Xem dữ liệu", 150);
         page.Controls.Add(_recordGrid);
         page.Controls.Add(Bar(Caption("Từ"), _from, Caption("Đến"), _to, view,
             new Label { AutoSize = true, ForeColor = Theme.TextSecondary, Margin = new Padding(8, 10, 0, 0),
@@ -307,7 +319,7 @@ public sealed class AttendanceControl : BaseUserControl
             _recordGrid.DataSource = records.Select(r => new
             {
                 Ngày = r.WorkDate.ToString("dd/MM/yyyy"), Mã_NV = r.EmployeeCode, Họ_tên = r.EmployeeName,
-                Check_in = Time(r.CheckInAt), Nơi_vào = r.CheckInSite ?? "", Check_out = Time(r.CheckOutAt), Nơi_ra = r.CheckOutSite ?? "",
+                Giờ_vào = Time(r.CheckInAt), Nơi_vào = r.CheckInSite ?? "", Giờ_ra = Time(r.CheckOutAt), Nơi_ra = r.CheckOutSite ?? "",
                 Điều_chỉnh = r.AdjustedCheckInAt is null && r.AdjustedCheckOutAt is null ? ""
                     : $"vào {Time(r.AdjustedCheckInAt, "-")} · ra {Time(r.AdjustedCheckOutAt, "-")}",
                 Tình_trạng = r.StatusText,
@@ -321,7 +333,7 @@ public sealed class AttendanceControl : BaseUserControl
     private TabPage BuildScanTab()
     {
         var page = new TabPage("Nhật ký quét") { BackColor = Color.White, Padding = new Padding(12) };
-        var view = Theme.MakePrimaryButton("Xem");
+        var view = Theme.MakePrimaryButton("Xem nhật ký", 150);
         page.Controls.Add(_scanGrid);
         page.Controls.Add(Bar(Caption("Ngày"), _scanDate, view,
             new Label { AutoSize = true, ForeColor = Theme.TextSecondary, Margin = new Padding(8, 10, 0, 0),
@@ -355,11 +367,12 @@ public sealed class AttendanceControl : BaseUserControl
         return grid;
     }
 
-    private static FlowLayoutPanel Bar(params Control[] controls)
+    private FlowLayoutPanel Bar(params Control[] controls)
     {
         var bar = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, WrapContents = true, Padding = new Padding(0, 0, 0, 8) };
         foreach (var c in controls) c.Margin = c is Label ? new Padding(8, 10, 4, 0) : new Padding(4);
         bar.Controls.AddRange(controls);
+        Load += (_, _) => Theme.UniformButtons(bar);
         return bar;
     }
 

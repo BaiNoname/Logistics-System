@@ -12,7 +12,37 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
         {
             InitializeComponent();
             Theme.StyleGrid(grid);
-            Resize += (_, _) => { grid.Width = Width; grid.Height = Height - grid.Top; };
+            var bar = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, WrapContents = true };
+            bar.Controls.AddRange(new Control[] { btnCreate, btnEdit, btnRefresh });
+            btnCreate.Text = "➕ Thêm nhân viên";
+            btnEdit.Text = "Sửa nhân viên";
+            foreach (var button in bar.Controls.OfType<Button>())
+            {
+                button.AutoSize = true;
+                button.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+                button.MinimumSize = new Size(150, 38);
+            }
+            ButtonStyles.Secondary(btnEdit);
+            ButtonStyles.Secondary(btnRefresh);
+            lblTitle.AutoSize = true;
+            lblStatus.Dock = DockStyle.Fill;
+            lblStatus.Padding = new Padding(0, 6, 0, 6);
+            grid.Dock = DockStyle.Fill;
+            var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 4, Padding = new Padding(16) };
+            layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+            layout.Controls.Add(lblTitle, 0, 0);
+            layout.Controls.Add(bar, 0, 1);
+            layout.Controls.Add(lblStatus, 0, 2);
+            layout.Controls.Add(grid, 0, 3);
+            Controls.Add(layout);
+            GridDecor.Pills(grid, "Trạng_thái", (text, _) => text switch
+            {
+                "Đang làm" => GridDecor.Green, "Nghỉ phép" => GridDecor.Amber, _ => GridDecor.Slate,
+            });
+            Load += (_, _) => Theme.UniformButtons(bar);
             grid.DataBindingComplete += (_, _) => { if (grid.Columns["Id"] != null) grid.Columns["Id"]!.Visible = false; };
             Load += async (_, _) => await LoadAsync();
         }
@@ -79,14 +109,14 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
         private async Task LoadAsync()
         {
             if (_api is null) return;
-            lblStatus.Text = "Đang tải...";
+            FormStyle.Status(lblStatus, "Đang tải...", StatusKind.Info);
             try
             {
                 _employees = await _api.Employees.GetEmployeesAsync();
                 grid.DataSource = _employees.Select(e => new
                 {
                     e.Id,
-                    Mã_NV = e.Code,
+                    Mã_nhân_viên = e.Code,
                     Họ_tên = e.FullName,
                     Ngày_sinh = e.DateOfBirth?.ToString("dd/MM/yyyy") ?? "—",
                     Giới_tính = e.Gender switch { "Male" => "Nam", "Female" => "Nữ", "Other" => "Khác", _ => "Chưa cập nhật" },
@@ -96,10 +126,9 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
                     Ngày_tuyển_dụng = e.HireDate.ToString("dd/MM/yyyy"),
                     Phòng_ban = e.DepartmentName ?? "—",
                     Chức_danh = e.PositionName ?? "—",
-                    Trạng_thái = e.Status == "Active" ? "Đang làm" : e.Status,
-                    //Là_tài_xế = e.IsDriver ? "✅ Có" : "—",
+                    Trạng_thái = e.Status switch { "Active" => "Đang làm", "OnLeave" => "Nghỉ phép", "Terminated" => "Đã nghỉ việc", _ => e.Status },
                 }).ToList();
-                //lblStatus.Text = $"Tổng {_employees.Count} nhân viên — chọn 1 dòng rồi bấm \"Tạo hồ sơ tài xế\" nếu cần";
+                FormStyle.Status(lblStatus, $"{_employees.Count} nhân viên", StatusKind.Info);
             }
             catch (Exception ex)
             {

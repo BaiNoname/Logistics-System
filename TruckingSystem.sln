@@ -15,15 +15,7 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{8CCFDC49-A0BC-4DFF-9358-AE7F78F4BCA2}"
 	ProjectSection(SolutionItems) = preProject
 		.gitignore = .gitignore
-		AGENTS.md = AGENTS.md
-		HANDOFF.md = HANDOFF.md
-		IMPLEMENTATION_STATUS.md = IMPLEMENTATION_STATUS.md
-		note.md = note.md
-	EndProjectSection
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{B7A57C7C-88F7-47C3-9CD2-254C4D353EF2}"
-	ProjectSection(SolutionItems) = preProject
-		docs\HopDong.md = docs\HopDong.md
+		README.md = README.md
 	EndProjectSection
 EndProject
 Global

@@ -37,6 +37,7 @@ public class ContractListItem
 
 public class ContractLookups
 {
+    public int MaxDiscountPercent { get; set; } = 20;
     public List<ContractOption> Customers { get; set; } = new();
     public List<ContractOption> PriceLists { get; set; } = new();
     public List<TruckingSystem.Desktop.DTO_PricingManagement.TariffRuleItem> TariffRules { get; set; } = new();

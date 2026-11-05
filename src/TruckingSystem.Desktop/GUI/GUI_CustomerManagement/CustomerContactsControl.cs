@@ -8,11 +8,12 @@ public partial class CustomerContactsControl : BaseUserControl
     private ApiServices? _api;
     private List<CustomerListItem> _customers = new();
     private List<CustomerContactListItem> _contacts = new();
+    private readonly int? _customerId;
     private bool _busy;
     private bool _binding;
     private bool _loaded;
 
-    private int CustomerId => (_customer.SelectedItem as CustomerListItem)?.Id ?? 0;
+    private int CustomerId => _customerId ?? (_customer.SelectedItem as CustomerListItem)?.Id ?? 0;
     private CustomerContactListItem? SelectedContact => _grid.CurrentRow?.DataBoundItem as CustomerContactListItem;
 
     public CustomerContactsControl()
@@ -22,6 +23,8 @@ public partial class CustomerContactsControl : BaseUserControl
     }
 
     public CustomerContactsControl(ApiServices api) : this() => SetApi(api);
+
+    public CustomerContactsControl(ApiServices api, int customerId) : this(api) => _customerId = customerId;
 
     internal void SetApi(ApiServices api)
     {
@@ -51,7 +54,7 @@ public partial class CustomerContactsControl : BaseUserControl
     public async Task LoadAsync()
     {
         if (_api is null || _busy) return;
-        var customerId = CustomerId;
+        var customerId = _customerId ?? CustomerId;
         _busy = true;
         _loaded = false;
         UpdateActions();
@@ -62,10 +65,10 @@ public partial class CustomerContactsControl : BaseUserControl
             var customers = await _api.Customers.GetCustomersAsync();
             var contacts = await _api.Customers.GetContactsAsync();
             if (IsDisposed) return;
-            _customers = customers;
+            _customers = customers.Where(c => !_customerId.HasValue || c.Id == _customerId).ToList();
             _contacts = contacts;
             _binding = true;
-            _customer.DataSource = new[] { new CustomerListItem { Name = "Tất cả khách hàng" } }.Concat(_customers).ToList();
+            _customer.DataSource = _customerId.HasValue ? _customers : new[] { new CustomerListItem { Name = "Tất cả khách hàng" } }.Concat(_customers).ToList();
             _customer.SelectedValue = _customers.Any(c => c.Id == customerId) ? customerId : 0;
             _loaded = true;
             ApplyFilter();
@@ -90,7 +93,7 @@ public partial class CustomerContactsControl : BaseUserControl
         var contacts = _contacts.Where(c => CustomerId == 0 || c.CustomerId == CustomerId).ToList();
         _grid.DataSource = contacts;
         _status.ForeColor = Theme.TextSecondary;
-        _status.Text = _customers.Count == 0 ? "Thêm khách hàng ở tab Khách hàng trước khi tạo người liên hệ."
+        _status.Text = _customers.Count == 0 ? "Thêm khách hàng ở màn Khách hàng trước khi tạo người liên hệ."
             : $"Tổng {contacts.Count} người liên hệ";
         UpdateActions();
     }
