@@ -80,13 +80,25 @@ public class OrderContractOption
     public string? PriceListName { get; set; }
     /// <summary>Đơn cũ đang gắn hợp đồng nay không còn hiệu lực — vẫn hiện để giữ nguyên khi sửa.</summary>
     public bool Inactive { get; set; }
+    /// <summary>"OneTime" | "LongTerm" | null (hợp đồng cũ chưa có loại — coi như dài hạn).</summary>
+    public string? Type { get; set; }
+    public decimal? DiscountPercent { get; set; }
+    /// <summary>Hợp đồng MỘT LẦN đã gắn với đơn chưa hủy này.</summary>
+    public int? UsedByOrderId { get; set; }
+    public string? UsedByOrderCode { get; set; }
+
+    public bool IsOneTime => Type == "OneTime";
+    public string TypeText => Type switch { "OneTime" => "Một lần", "LongTerm" => "Dài hạn", _ => "" };
 
     public override string ToString()
     {
         if (Id == 0) return Code; // dòng "(Không theo hợp đồng)"
         var period = $"{StartDate:dd/MM/yyyy} – {(EndDate is { } e ? e.ToString("dd/MM/yyyy") : "không thời hạn")}";
         var price = string.IsNullOrWhiteSpace(PriceListName) ? "" : $" · bảng giá {PriceListName}";
-        return Inactive ? $"{Code} (không còn hiệu lực)" : $"{Code} ({period}){price}";
+        if (Inactive) return $"{Code} (không còn hiệu lực)";
+        var type = TypeText.Length > 0 ? $" · {TypeText}" : "";
+        var discount = DiscountPercent is > 0 ? $" · ưu đãi {DiscountPercent:0.##}%" : "";
+        return $"{Code}{type}{discount} ({period}){price}";
     }
 }
 

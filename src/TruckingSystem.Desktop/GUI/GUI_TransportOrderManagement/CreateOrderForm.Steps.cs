@@ -74,6 +74,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             _summary.Text = $"Tóm tắt: {lines.Count} dòng hàng · {kg:#,##0.##} kg · {m3:#,##0.##} m³"
                             + (flags.Count > 0 ? " · " + string.Join(" · ", flags) : "")
                             + $" · hạn giao {dtCommitted.Value:dd/MM/yyyy}"
+                            + (_contractBlocked ? " · ⛔ vượt hạn hợp đồng" : "")
                             + (_estimatedDays is int d ? $" · tuyến chạy ~{d} ngày" : "");
         }
     }

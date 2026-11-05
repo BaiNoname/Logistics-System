@@ -65,6 +65,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                     gridCargoLines.CommitEdit(DataGridViewDataErrorContexts.Commit);
             };
             gridCargoLines.CellValueChanged += (_, e) => { if (e.RowIndex >= 0 && _warehouses.Count > 0) BindWarehouses(); };
+            SetupContractRules(); // ô hợp đồng ghi rõ loại / ưu đãi / thời hạn, chặn hạn giao vượt hạn hợp đồng (CreateOrderForm.Contract.cs)
             SetupSections(); // 3 khối ① ② ③ + tóm tắt + chân [Đóng] [💾 Lưu đơn] (CreateOrderForm.Steps.cs)
             rbSelfDelivery.CheckedChanged += (_, _) => RequestEstimate();
             FormClosed += (_, _) => _estimateTimer.Dispose();
@@ -541,8 +542,9 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             cboContract.Items.Clear();
             foreach (var item in items) cboContract.Items.Add(item);
             cboContract.EndUpdate();
+            var selectable = items.Where(i => i.Id > 0 && !UsedElsewhere(i)).ToList();
             var selected = selectId is int id ? items.FirstOrDefault(i => i.Id == id)
-                : items.Count == 2 ? items[1]  // khách có đúng 1 hợp đồng đang hiệu lực -> chọn sẵn
+                : selectable.Count == 1 ? selectable[0]  // khách có đúng 1 hợp đồng dùng được -> chọn sẵn
                 : null;
             cboContract.SelectedItem = selected ?? items[0];
         }
@@ -568,6 +570,11 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
 
         private async void BtnSave_Click(object? sender, EventArgs e)
         {
+            if (_contractBlocked) // hạn giao sau ngày hết hạn hợp đồng (CreateOrderForm.Contract.cs) — máy chủ cũng chặn
+            {
+                FieldHint.Show(dtCommitted, lblStatus, _contractInfo.Text);
+                return;
+            }
             if (cboCustomer.SelectedValue is null)
             {
                 FieldHint.Show(cboCustomer, lblStatus, "Vui lòng chọn khách hàng."); // tô đỏ + nhảy vào đúng ô
@@ -652,7 +659,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             }
             finally
             {
-                btnSave.Enabled = true;
+                btnSave.Enabled = !_contractBlocked;
             }
         }
     }
