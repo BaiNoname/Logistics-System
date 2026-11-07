@@ -32,6 +32,17 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             txtIdentityCardNo = new TextBox();
             lblHireDate = new Label { Text = "Ngày vào làm thực tế *:" };
             dtpHireDate = new DateTimePicker { Format = DateTimePickerFormat.Short };
+            lblSalary = new Label { Text = "Lương tháng (đồng) *:" };
+            numSalary = new Common.NumberBox { Name = "numSalary", IsMoney = true, Maximum = 1_000_000_000_000m };
+            lblSalaryDate = new Label { Text = "Ngày áp dụng lương *:" };
+            dtpSalaryDate = new DateTimePicker { Name = "dtpSalaryDate", Format = DateTimePickerFormat.Custom,
+                CustomFormat = "dd/MM/yyyy", ShowCheckBox = true, Checked = false };
+            lblSalaryReason = new Label { Text = "Căn cứ thay đổi lương *:" };
+            txtSalaryReason = new TextBox { Name = "txtSalaryReason", Multiline = true, Height = 55, MaxLength = 500 };
+            lblSalarySummary = new Label { AutoSize = true, MaximumSize = new Size(630, 0) };
+            btnRetrySalary = new Button { Text = "Tải lại mức lương", AutoSize = true, Visible = false };
+            var salarySummary = new FlowLayoutPanel { AutoSize = true, Dock = DockStyle.Top, WrapContents = true };
+            salarySummary.Controls.AddRange(new Control[] { lblSalarySummary, btnRetrySalary });
             lblTerminationDate = new Label { Text = "Ngày nghỉ việc (bỏ chọn nếu chưa nghỉ):" };
             dtpTerminationDate = new DateTimePicker { Format = DateTimePickerFormat.Short };
             lblDateOfBirth = new Label { Text = "Ngày sinh (bỏ chọn nếu chưa có):" };
@@ -83,7 +94,15 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             Field(lblHireDate, dtpHireDate, 1, 12, 10);
             Field(lblTerminationDate, dtpTerminationDate, 0, 14, 11);
             tableLayoutPanel1.SetColumnSpan(lblTerminationDate, 2);
-            tableLayoutPanel1.Controls.Add(lblStatus, 0, 16);
+            Section("③ Mức lương", 16);
+            Field(lblSalary, numSalary, 0, 17, 12);
+            Field(lblSalaryDate, dtpSalaryDate, 1, 17, 13);
+            tableLayoutPanel1.Controls.Add(salarySummary, 0, 19);
+            tableLayoutPanel1.SetColumnSpan(salarySummary, 2);
+            Field(lblSalaryReason, txtSalaryReason, 0, 20, 14);
+            tableLayoutPanel1.SetColumnSpan(lblSalaryReason, 2);
+            tableLayoutPanel1.SetColumnSpan(txtSalaryReason, 2);
+            tableLayoutPanel1.Controls.Add(lblStatus, 0, 22);
             tableLayoutPanel1.SetColumnSpan(lblStatus, 2);
             var scroll = new Panel { Dock = DockStyle.Fill, AutoScroll = true };
             scroll.Controls.Add(tableLayoutPanel1);
@@ -130,5 +149,13 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
         private FlowLayoutPanel pnlGender;
         private RadioButton rdoMale;
         private RadioButton rdoFemale;
+        private Label lblSalary;
+        private Common.NumberBox numSalary;
+        private Label lblSalaryDate;
+        private DateTimePicker dtpSalaryDate;
+        private Label lblSalaryReason;
+        private TextBox txtSalaryReason;
+        private Label lblSalarySummary;
+        private Button btnRetrySalary;
     }
 }

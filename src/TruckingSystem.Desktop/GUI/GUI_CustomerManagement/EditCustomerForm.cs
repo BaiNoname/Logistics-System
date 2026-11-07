@@ -11,6 +11,7 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
     {
         private ApiServices? _api;
         private int _customerId;
+        private CustomerListItem? _customer;
 
         public EditCustomerForm()
         {
@@ -18,12 +19,6 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
             DialogFit.Enable(this, root);
             DialogKeys.Enable(this);
             Anim.FadeIn(this);
-            // Hiện tiếng Việt (khớp danh sách khách hàng), gửi đúng mã cho server.
-            cboType.Items.AddRange(new object[]
-            {
-                new ComboOption("Individual", "Cá nhân"),
-                new ComboOption("Company", "Doanh nghiệp"),
-            });
             ApplyDesign();
             _ = new AddressSuggestBinder(txtAddress, () => _api); // gợi ý địa chỉ VietMap khi gõ
         }
@@ -32,7 +27,6 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
         private void ApplyDesign()
         {
             lblPhone.Text = "Số điện thoại *:";
-            lblType.Text = "Loại khách hàng *:";
             var close = FormStyle.NewCloseButton(this);
             close.Margin = new Padding(8, 0, 0, 0);
             root.Controls.Remove(buttonBar);
@@ -46,19 +40,11 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
         {
             _api = api;
             _customerId = customer.Id;
+            _customer = customer;
 
             txtName.Text = customer.Name;
             txtPhone.Text = customer.Phone ?? "";
-            txtTaxCode.Text = customer.TaxCode ?? "";
-            cboType.SelectedItem = cboType.Items.Cast<ComboOption>().FirstOrDefault(o => o.Value == customer.CustomerType)
-                                   ?? cboType.Items[0];
             txtAddress.Text = customer.Address ?? "";
-            // Hạn mức đã lưu có thể lớn hơn giới hạn ô nhập (dữ liệu cũ / nhập qua API) -> nới giới
-            // hạn thay vì để form crash (ArgumentOutOfRangeException) ngay khi mở.
-            var credit = customer.CreditLimit ?? 0;
-            if (credit > numCreditLimit.Maximum) numCreditLimit.Maximum = credit;
-            if (credit < numCreditLimit.Minimum) numCreditLimit.Minimum = credit;
-            numCreditLimit.Value = credit;
             txtGoogleCalendarId.Text = customer.GoogleCalendarId ?? "";
         }
 
@@ -79,10 +65,11 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
             btnSave.Enabled = false;
             try
             {
+                // Giữ nguyên dữ liệu lịch sử của các trường đã bỏ khỏi giao diện.
                 var result = await _api.Customers.UpdateCustomerAsync(
-                    _customerId, txtName.Text.Trim(), txtPhone.Text.Trim(), txtTaxCode.Text.Trim(), ((ComboOption)cboType.SelectedItem!).Value,
+                    _customerId, txtName.Text.Trim(), txtPhone.Text.Trim(), _customer?.TaxCode, _customer?.CustomerType ?? "Individual",
                     string.IsNullOrWhiteSpace(txtAddress.Text) ? null : txtAddress.Text.Trim(),
-                    numCreditLimit.Value == 0 ? null : numCreditLimit.Value,
+                    _customer?.CreditLimit,
                     string.IsNullOrWhiteSpace(txtGoogleCalendarId.Text) ? null : txtGoogleCalendarId.Text.Trim());
 
                 if (!result.Success)

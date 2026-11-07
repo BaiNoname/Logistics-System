@@ -1,5 +1,7 @@
 using TruckingSystem.Desktop.Common;
 using TruckingSystem.Desktop.DTO_ContractManagement;
+using TruckingSystem.Domain.Entities;
+using TruckingSystem.Domain.Enums;
 
 namespace TruckingSystem.Desktop.GUI.GUI_ContractManagement;
 
@@ -19,8 +21,6 @@ public class ContractForm : BaseForm
     private readonly ComboBox _type = new() { DropDownStyle = ComboBoxStyle.DropDownList };
     private readonly NumberBox _discount = new() { Enabled = false, DecimalPlaces = 2, Maximum = 100 };
     private readonly ComboBox _priceList = new() { DropDownStyle = ComboBoxStyle.DropDownList };
-    // AcceptsReturn: Enter trong ô Điều khoản là xuống dòng, không bấm Lưu.
-    private readonly TextBox _terms = new() { Multiline = true, AcceptsReturn = true, ScrollBars = ScrollBars.Vertical };
     private readonly Label _status = new() { Dock = DockStyle.Fill, ForeColor = Theme.Danger };
     private readonly Button _save = Theme.MakePrimaryButton("Lưu hợp đồng", 150);
 
@@ -29,6 +29,11 @@ public class ContractForm : BaseForm
         _api = api;
         _contract = contract;
         _readOnly = readOnly;
+        if (contract is null)
+        {
+            _start.MinDate = _end.MinDate = DateTime.UtcNow.AddHours(7).Date;
+            _start.Value = _end.Value = _start.MinDate;
+        }
         _code.ReadOnly = contract is null;
         if (contract is null) _code.Text = "Tự sinh khi lưu: HD-[Khách hàng]-[Năm]-[STT]";
         Text = readOnly ? "Chi tiết hợp đồng" : contract is null ? "Thêm hợp đồng mới" : "Sửa hợp đồng";
@@ -40,12 +45,12 @@ public class ContractForm : BaseForm
 
         var layout = new TableLayoutPanel
         {
-            Dock = DockStyle.Fill, Padding = new Padding(20, 16, 20, 16), ColumnCount = 2, RowCount = 11,
+            Dock = DockStyle.Fill, Padding = new Padding(20, 16, 20, 16), ColumnCount = 2, RowCount = 10,
             AutoScroll = true,
         };
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 36));
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 64));
-        for (var i = 0; i < 11; i++) layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        for (var i = 0; i < 10; i++) layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         void Section(int row, string text)
         {
             var title = new Label { Text = text, AutoSize = true, Margin = new Padding(0, 10, 0, 6) };
@@ -54,7 +59,7 @@ public class ContractForm : BaseForm
             layout.SetColumnSpan(title, 2);
         }
         Section(0, "① Khách hàng và thời hạn");
-        Section(5, "② Giá và điều khoản");
+        Section(5, "② Giá và ưu đãi");
 
         AddRow(layout, 1, contract is null ? "Mã hợp đồng (tự động):" : "Mã hợp đồng *:", _code);
         AddRow(layout, 2, "Khách hàng *:", _customer);
@@ -72,6 +77,9 @@ public class ContractForm : BaseForm
             _discount.Visible = true;
             _discount.Enabled = !_readOnly && _type.SelectedIndex == 1;
             if (_type.SelectedIndex != 1) _discount.Value = 0;
+            if (_type.SelectedIndex == 0 && !_readOnly) _hasEnd.Checked = true;
+            _hasEnd.Enabled = !_readOnly && _type.SelectedIndex != 0;
+            layout.GetControlFromPosition(0, 4)!.Text = _type.SelectedIndex == 0 ? "Ngày kết thúc *:" : "Ngày kết thúc:";
         };
         AddRow(layout, 6, "Loại hợp đồng *:", _type);
         AddRow(layout, 7, "% ưu đãi của hợp đồng", _discount);
@@ -79,7 +87,6 @@ public class ContractForm : BaseForm
         _discountLabel.Text = "% ưu đãi của hợp đồng:";
         layout.Controls.Add(_discountLabel, 0, 7);
         AddRow(layout, 8, "Bảng giá áp dụng *:", _priceList);
-        AddRow(layout, 9, "Điều khoản", _terms);
 
         _save.Click += async (_, _) => await SaveAsync();
         var cancel = Theme.MakeSecondaryButton("Đóng", 100);
@@ -87,7 +94,7 @@ public class ContractForm : BaseForm
         FormStyle.SaveButton(_save); // chân [Đóng] [💾 Lưu hợp đồng]
         _status.AutoSize = true;
         layout.SetColumnSpan(_status, 2);
-        layout.Controls.Add(_status, 0, 10);
+        layout.Controls.Add(_status, 0, 9);
         Controls.Add(layout);
         FormStyle.EditorFooter(this, cancel, _save);
         DialogKeys.Enable(this);
@@ -104,8 +111,8 @@ public class ContractForm : BaseForm
             _priceList.ValueMember = nameof(ContractOption.Id);
             _priceList.DataSource = new[] { new ContractOption { Id = contract.PriceListId ?? 0, Name = contract.PriceListName ?? "Không chọn bảng giá" } };
             FillContract();
-            _code.ReadOnly = _terms.ReadOnly = true;
-            FormStyle.NoTab(_code, _terms);
+            _code.ReadOnly = true;
+            FormStyle.NoTab(_code);
             _type.Enabled = _discount.Enabled = _customer.Enabled = _start.Enabled = _hasEnd.Enabled = _end.Enabled = _priceList.Enabled = false;
             _hasEnd.Visible = _end.Visible = false;
             endPanel.Controls.Add(new Label { Text = contract.EndDate?.ToString("dd/MM/yyyy") ?? "Không thời hạn", AutoSize = true, ForeColor = Theme.TextPrimary });
@@ -191,12 +198,11 @@ public class ContractForm : BaseForm
         _code.Text = _contract.Code;
         _customer.SelectedValue = _contract.CustomerId;
         _start.Value = _contract.StartDate;
-        _hasEnd.Checked = _contract.EndDate.HasValue;
+        _hasEnd.Checked = _contract.EndDate.HasValue || !_readOnly && _contract.Type == "OneTime";
         if (_contract.EndDate.HasValue) _end.Value = _contract.EndDate.Value;
         _priceList.SelectedValue = _contract.PriceListId ?? 0;
         if (!_readOnly && _contract.PriceListId.HasValue && _priceList.SelectedIndex < 0)
             FormStyle.Status(_status, $"Bảng giá hiện tại: {_contract.PriceListName} (đã ngừng áp dụng). Giữ nguyên nếu không chọn bảng giá khác.", StatusKind.Warning);
-        _terms.Text = _contract.Terms ?? "";
     }
 
     private int? SelectedPriceListId => _priceList.SelectedIndex < 0 ? _contract?.PriceListId
@@ -211,10 +217,17 @@ public class ContractForm : BaseForm
         if (_contract is not null && string.IsNullOrWhiteSpace(_code.Text)) { ShowValidation(_code, "Vui lòng nhập mã hợp đồng."); return; }
         if (_customer.SelectedValue is not int customerId) { ShowValidation(_customer, "Vui lòng chọn khách hàng."); return; }
         var endDate = _hasEnd.Checked ? _end.Value.Date : (DateTime?)null;
-        if (endDate.HasValue && endDate.Value < _start.Value.Date) { ShowValidation(_end, "Ngày kết thúc không được trước ngày bắt đầu."); return; }
         var type = _type.SelectedIndex switch { 0 => "OneTime", 1 => "LongTerm", _ => null };
         if (type is null && (_contract is null || _contract.Type is not null))
         { ShowValidation(_type, "Vui lòng chọn loại hợp đồng."); return; }
+        try
+        {
+            Contract.ValidatePeriod(_start.Value.Date, endDate,
+                type == "OneTime" ? ContractType.OneTime : type == "LongTerm" ? ContractType.LongTerm : null,
+                _contract is null ? DateTime.UtcNow.AddHours(7).Date : null);
+        }
+        catch (ArgumentException ex)
+        { ShowValidation(_contract is null && _start.Value.Date < DateTime.UtcNow.AddHours(7).Date ? _start : _end, ex.Message); return; }
         decimal? discountPercent = null;
         if (type == "LongTerm") discountPercent = _discount.Value; // ô số đã giới hạn 0–100, 2 chữ số lẻ
         if (!_api.Connection.IsInRole("Admin") && discountPercent > _maxDiscount
@@ -230,9 +243,9 @@ public class ContractForm : BaseForm
         try
         {
             if (_contract is null)
-                await _api.Contracts.CreateContractAsync(customerId, _code.Text.Trim(), _start.Value.Date, endDate, _terms.Text, priceListId, null, type, discountPercent);
+                await _api.Contracts.CreateContractAsync(customerId, _code.Text.Trim(), _start.Value.Date, endDate, null, priceListId, null, type, discountPercent);
             else
-                await _api.Contracts.UpdateContractAsync(_contract.Id, customerId, _code.Text.Trim(), _start.Value.Date, endDate, _terms.Text, priceListId, null, type, discountPercent);
+                await _api.Contracts.UpdateContractAsync(_contract.Id, customerId, _code.Text.Trim(), _start.Value.Date, endDate, _contract.Terms, priceListId, null, type, discountPercent);
             _saving = false;
             DialogResult = DialogResult.OK;
             Close();

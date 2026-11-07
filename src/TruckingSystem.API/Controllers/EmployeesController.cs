@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TruckingSystem.Application.Employees;
 
@@ -24,7 +25,7 @@ public class EmployeesController : ControllerBase
     [Authorize(Roles = "Admin")]
     public async Task<ActionResult<EmployeeActionResult>> Create(CreateEmployeeRequest request)
     {
-        var result = await _service.CreateAsync(request);
+        var result = await _service.CreateAsync(request, User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         return result.Success ? Ok(result) : BadRequest(result);
     }
 
@@ -32,7 +33,7 @@ public class EmployeesController : ControllerBase
     [Authorize(Roles = "Admin")]
     public async Task<ActionResult<EmployeeActionResult>> Update(int id, UpdateEmployeeRequest request)
     {
-        var result = await _service.UpdateAsync(id, request);
+        var result = await _service.UpdateAsync(id, request, User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         return result.Success ? Ok(result) : BadRequest(result);
     }
 

@@ -1,5 +1,8 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
+using System.Data;
 using TruckingSystem.Application.Common.Interfaces;
+using TruckingSystem.Application.Common;
+using TruckingSystem.Application.Payroll;
 using TruckingSystem.Domain.Entities;
 using TruckingSystem.Domain.Enums;
 
@@ -155,23 +158,29 @@ public class EmployeeService : IEmployeeService
         return new EmployeeActionResult(true, null);
     }
 
-    public async Task<EmployeeActionResult> CreateAsync(CreateEmployeeRequest request)
+    public async Task<EmployeeActionResult> CreateAsync(CreateEmployeeRequest request, string actor = "")
     {
+        await using var transaction = _db.Database.IsRelational()
+            ? await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable) : null;
+        if (!request.MonthlySalary.HasValue)
+            return new(false, "Vui lòng nhập lương tháng.");
         if (!Employee.IsValidNewEmployeeDateOfBirth(request.DateOfBirth, TruckingSystem.Application.Common.VnClock.Today))
-            return new(false, "Vui lòng chọn ngày sinh từ năm 1900 và nhân viên phải trên 18 tuổi.");
+            return new(false, "Vui lòng chọn ngày sinh từ năm 1900 và nhân viên phải đủ 18 tuổi.");
         if (request.TerminationDate.HasValue)
             return new(false, "Nhân viên mới mặc định đang làm. Ngày nghỉ việc chỉ cập nhật khi sửa nhân viên.");
         var personalError = ValidatePersonalDetails(request.DateOfBirth, request.Gender, out var gender);
         if (personalError is not null) return new(false, personalError);
-        var validation = await ValidateAsync(request.Code, request.FullName, request.DepartmentId, request.PositionId);
+        var code = DocumentNumber.Next("NV-", await _db.Employees.AsNoTracking()
+            .Where(e => e.Code.StartsWith("NV-")).Select(e => e.Code).ToListAsync());
+        var validation = await ValidateAsync(code, request.FullName, request.DepartmentId, request.PositionId);
         if (validation is not null) return new EmployeeActionResult(false, validation);
-        var hireDate = request.HireDate?.Date ?? DateTime.UtcNow;
+        var hireDate = VnClock.Today;
         if (hireDate.Year is < 2000 or > 2100)
             return new(false, "Ngày vào làm phải từ năm 2000–2100.");
 
         var employee = new Employee
         {
-            Code = request.Code.Trim(),
+            Code = code,
             FullName = request.FullName.Trim(),
             DateOfBirth = request.DateOfBirth?.Date,
             Gender = gender,
@@ -183,17 +192,28 @@ public class EmployeeService : IEmployeeService
             HireDate = hireDate,
             Status = EmployeeStatus.Active,
         };
+        var salaryError = await SalaryWriter.StageAsync(_db, employee,
+            new(hireDate, request.MonthlySalary.Value, "Thiết lập lương khi tạo nhân sự"), actor);
+        if (salaryError is not null) return new(false, salaryError);
         _db.Employees.Add(employee);
         await _db.SaveChangesAsync();
+        if (transaction is not null) await transaction.CommitAsync();
 
         return new EmployeeActionResult(true, null);
     }
 
-    public async Task<EmployeeActionResult> UpdateAsync(int id, UpdateEmployeeRequest request)
+    public async Task<EmployeeActionResult> UpdateAsync(int id, UpdateEmployeeRequest request, string actor = "")
     {
+        await using var transaction = _db.Database.IsRelational()
+            ? await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable) : null;
         var employee = await _db.Employees.FindAsync(id);
         if (employee is null) return new EmployeeActionResult(false, "Không tìm thấy nhân viên.");
 
+        if (request.Code?.Trim() != employee.Code)
+            return new(false, "Không được thay đổi mã nhân viên.");
+        var birthDate = request.DateOfBirth.HasValue || request.Gender is not null ? request.DateOfBirth : employee.DateOfBirth;
+        if (!Employee.IsValidNewEmployeeDateOfBirth(birthDate, VnClock.Today))
+            return new(false, "Vui lòng chọn ngày sinh từ năm 1900 và nhân viên phải đủ 18 tuổi.");
         var personalError = ValidatePersonalDetails(request.DateOfBirth, request.Gender, out var gender);
         if (personalError is not null) return new(false, personalError);
         var validation = await ValidateAsync(request.Code, request.FullName, request.DepartmentId, request.PositionId, id);
@@ -211,7 +231,6 @@ public class EmployeeService : IEmployeeService
             employee.TerminationDate = request.TerminationDate?.Date;
         }
 
-        employee.Code = request.Code.Trim();
         employee.FullName = request.FullName.Trim();
         // Older clients omit both fields; an empty gender allows clearing both values.
         if (request.DateOfBirth.HasValue || request.Gender is not null)
@@ -229,7 +248,21 @@ public class EmployeeService : IEmployeeService
         employee.PositionId = request.PositionId;
         employee.Status = status;
 
+        if (request.MonthlySalary.HasValue)
+        {
+            var latest = await _db.EmployeeSalaries.AsNoTracking().Where(s => s.EmployeeId == id)
+                .OrderByDescending(s => s.EffectiveFrom).FirstOrDefaultAsync();
+            if (latest?.MonthlySalary != request.MonthlySalary)
+            {
+                if (!request.SalaryEffectiveFrom.HasValue)
+                    return new(false, "Vui lòng chọn ngày áp dụng lương.");
+                var salaryError = await SalaryWriter.StageAsync(_db, employee,
+                    new(request.SalaryEffectiveFrom.Value, request.MonthlySalary.Value, request.SalaryReason ?? ""), actor);
+                if (salaryError is not null) return new(false, salaryError);
+            }
+        }
         await _db.SaveChangesAsync();
+        if (transaction is not null) await transaction.CommitAsync();
         return new EmployeeActionResult(true, null);
     }
 

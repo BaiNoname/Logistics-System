@@ -7,6 +7,7 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
     public partial class CustomersControl : BaseUserControl
     {
         private ApiServices? _api;
+        private bool _loading;
         private List<CustomerListItem> _customers = new();
 
         public CustomersControl()
@@ -16,7 +17,6 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
             GridLayout.FitColumns(grid); // cột vừa nội dung, nhiều cột thì cuộn ngang thay vì cắt chữ
             Load += (_, _) => Theme.UniformButtons(toolbar); // nút đều nhau, xuống dòng vẫn thẳng cột
             grid.DataBindingComplete += (_, _) => { if (grid.Columns["Id"] != null) grid.Columns["Id"]!.Visible = false; };
-            filterBar.AddChoice("type", "Loại", new[] { "Doanh nghiệp", "Cá nhân" });
             filterBar.FilterChanged += (_, _) => BindGrid();
             Load += async (_, _) => await LoadAsync();
         }
@@ -24,23 +24,31 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
         public CustomersControl(ApiServices api) : this()
         {
             _api = api;
-            btnCreate.Visible = btnEdit.Visible = api.Connection.IsInRole("Admin", "Dispatcher");
+            btnCreate.Visible = api.Connection.IsInRole("Admin", "Dispatcher");
             components ??= new System.ComponentModel.Container();
             var menu = new ContextMenuStrip(components);
-            menu.Items.Add("Xem người liên hệ", null, (_, _) => ShowContacts());
-            menu.Opening += (_, e) => e.Cancel = grid.CurrentRow is null;
+            var contacts = (ToolStripMenuItem)menu.Items.Add("👥 Xem người liên hệ", null, (_, _) => ShowContacts());
+            contacts.Font = Theme.FontBold;
+            menu.Items.Add(new ToolStripSeparator());
+            var edit = menu.Items.Add("✏️ Sửa khách hàng", null, BtnEdit_Click);
+            menu.Opening += (_, e) =>
+            {
+                e.Cancel = _loading || grid.CurrentRow is null;
+                edit.Enabled = api.Connection.IsInRole("Admin", "Dispatcher");
+                edit.ToolTipText = edit.Enabled ? "Sửa thông tin khách hàng được chọn." : "Chỉ Admin hoặc Điều phối được sửa khách hàng.";
+            };
             ModernMenu.Apply(menu);
             grid.ContextMenuStrip = menu;
             grid.CellMouseDown += (_, e) =>
             {
                 if (e.Button == MouseButtons.Right && e.RowIndex >= 0)
-                    grid.CurrentCell = grid.Rows[e.RowIndex].Cells[e.ColumnIndex >= 0 ? e.ColumnIndex : 1];
+                    grid.CurrentCell = grid.Rows[e.RowIndex].Cells["Tên_khách_hàng"];
             };
         }
 
         private void ShowContacts()
         {
-            if (_api is null || grid.CurrentRow is null) return;
+            if (_api is null || _loading || grid.CurrentRow is null) return;
             var id = (int)grid.CurrentRow.Cells["Id"].Value;
             var customer = _customers.First(c => c.Id == id);
             using var form = new BaseForm
@@ -53,6 +61,7 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
             form.Controls.Add(contacts);
             form.Shown += async (_, _) => await contacts.LoadAsync();
             ButtonStyles.Footer(form, null, FormStyle.NewCloseButton(form));
+            ModernLook.Apply(form);
             Anim.FadeIn(form);
             form.ShowDialog(FindForm());
         }
@@ -68,7 +77,8 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
 
         private async void BtnEdit_Click(object? sender, EventArgs e)
         {
-            if (_api is null || grid.CurrentRow is null)
+            if (_api is null || _loading || !_api.Connection.IsInRole("Admin", "Dispatcher")) return;
+            if (grid.CurrentRow is null)
             {
                 MessageBox.Show(FindForm(), "Vui lòng chọn 1 khách hàng trước.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
@@ -80,19 +90,15 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
             if (f.ShowDialog(FindForm()) == DialogResult.OK) await LoadAsync();
         }
 
-        private static string TypeText(CustomerListItem c) => c.CustomerType == "Company" ? "Doanh nghiệp" : "Cá nhân";
-
-        /// <summary>Đổ lưới theo bộ lọc (tìm theo tên, SĐT, mã số thuế, địa chỉ; lọc loại khách).</summary>
+        /// <summary>Đổ lưới theo tên, số điện thoại và địa chỉ.</summary>
         private void BindGrid()
         {
-            var rows = _customers.Where(c => filterBar.Is("type", TypeText(c))
-                                             && filterBar.MatchesSearch(c.Name, c.Phone, c.TaxCode, c.Address)).ToList();
+            var rows = _customers.Where(c => filterBar.MatchesSearch(c.Name, c.Phone, c.Address)).ToList();
             grid.DataSource = rows.Select(c => new
             {
                 c.Id,
                 Tên_khách_hàng = c.Name,
                 Số_điện_thoại = c.Phone ?? "—",
-                Loại = TypeText(c),
                 Địa_chỉ = c.Address ?? "—",
             }).ToList();
             filterBar.SetCount(rows.Count, _customers.Count);
@@ -100,20 +106,22 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
 
         private async Task LoadAsync()
         {
-            if (_api is null) return;
+            if (_api is null || _loading) return;
+            _loading = true;
             lblStatus.ForeColor = Theme.TextSecondary;
             lblStatus.Text = "Đang tải...";
             try
             {
                 _customers = await _api.Customers.GetCustomersAsync();
                 BindGrid();
-                lblStatus.Text = $"Tổng {_customers.Count} khách hàng — chuột phải để xem người liên hệ";
+                lblStatus.Text = $"Tổng {_customers.Count} khách hàng — chuột phải để sửa hoặc xem người liên hệ";
             }
             catch (Exception ex)
             {
                 lblStatus.Text = "Lỗi: " + ex.Message;
                 lblStatus.ForeColor = Theme.Danger;
             }
+            finally { _loading = false; }
         }
     }
 }

@@ -10,10 +10,14 @@ public class Contract : BaseEntity
             : endDate.HasValue && onDate.Date > endDate.Value.Date ? ContractStatus.Expired
             : ContractStatus.Active;
 
-    public static void ValidatePeriod(DateTime startDate, DateTime? endDate)
+    public static void ValidatePeriod(DateTime startDate, DateTime? endDate, ContractType? type = null, DateTime? minimumStartDate = null)
     {
         if (startDate == default)
             throw new ArgumentException("Vui lòng nhập ngày bắt đầu hợp đồng.");
+        if (minimumStartDate.HasValue && startDate.Date < minimumStartDate.Value.Date)
+            throw new ArgumentException("Ngày bắt đầu hợp đồng mới không được trong quá khứ.");
+        if (type == ContractType.OneTime && !endDate.HasValue)
+            throw new ArgumentException("Hợp đồng vận chuyển một lần phải có ngày kết thúc.");
         if (endDate.HasValue && endDate.Value.Date < startDate.Date)
             throw new ArgumentException("Ngày kết thúc không được trước ngày bắt đầu.");
     }

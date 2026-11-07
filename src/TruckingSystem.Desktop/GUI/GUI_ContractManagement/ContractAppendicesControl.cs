@@ -11,6 +11,8 @@ public class ContractAppendicesControl : BaseUserControl
     private readonly Button _refresh = Theme.MakeSecondaryButton("Làm mới", 100);
     private readonly Label _status = new() { Dock = DockStyle.Fill, ForeColor = Theme.TextSecondary, TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true };
     private bool _busy;
+    private List<ContractAppendixItem> _items = new();
+    private readonly FilterBar _filters = new() { Dock = DockStyle.Fill, SearchPlaceholder = "Mã hợp đồng, phụ lục, mã bảng giá" };
     private ContractAppendixItem? SelectedItem => _grid.CurrentRow?.DataBoundItem as ContractAppendixItem;
 
     public ContractAppendicesControl(ApiServices api)
@@ -34,9 +36,9 @@ public class ContractAppendicesControl : BaseUserControl
         GridDecor.Pills(_grid, "ContractStatusText", (text, _) => text == "Đang hiệu lực" ? GridDecor.Green : GridDecor.Slate);
         GridDecor.Pills(_grid, "StatusText", (text, _) => text == "Đang áp dụng" ? GridDecor.Green : GridDecor.Slate);
         var menu = new ContextMenuStrip();
-        menu.Items.Add("✏️ Sửa", null, async (_, _) => await EditAsync(false));
+        menu.Items.Add("✏️ Sửa phụ lục", null, async (_, _) => await EditAsync(false));
         menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add("🗑 Xóa", null, async (_, _) => await DeleteAsync());
+        menu.Items.Add("🗑 Xóa phụ lục", null, async (_, _) => await DeleteAsync());
         menu.Opening += (_, e) => e.Cancel = _busy || SelectedItem is null;
         ModernMenu.Apply(menu);
         _grid.ContextMenuStrip = menu;
@@ -46,14 +48,21 @@ public class ContractAppendicesControl : BaseUserControl
             if (e.Button == MouseButtons.Right && e.RowIndex >= 0)
                 _grid.CurrentCell = _grid.Rows[e.RowIndex].Cells[Math.Max(0, e.ColumnIndex)];
         };
-        var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3 };
+        _filters.AddDate("issueFrom", "Ngày lập từ");
+        _filters.AddDate("issueTo", "Ngày lập đến");
+        _filters.AddDate("effectiveFrom", "Hiệu lực từ");
+        _filters.AddDate("effectiveTo", "Hiệu lực đến");
+        _filters.FilterChanged += (_, _) => BindGrid();
+        var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 4 };
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 36));
         layout.Controls.Add(toolbar, 0, 0);
-        layout.Controls.Add(_grid, 0, 1);
-        layout.Controls.Add(_status, 0, 2);
+        layout.Controls.Add(_filters, 0, 1);
+        layout.Controls.Add(_grid, 0, 2);
+        layout.Controls.Add(_status, 0, 3);
         Controls.Add(layout);
         _create.Click += async (_, _) => await EditAsync(true);
         _refresh.Click += async (_, _) => await LoadAsync();
@@ -79,14 +88,30 @@ public class ContractAppendicesControl : BaseUserControl
         {
             var items = await _api.ContractAppendices.GetAppendicesAsync();
             if (IsDisposed) return;
-            _grid.DataSource = items;
-            foreach (DataGridViewRow row in _grid.Rows)
-                if (row.DataBoundItem is ContractAppendixItem item && item.Id == selectedId) _grid.CurrentCell = row.Cells[0];
-            _status.ForeColor = Theme.TextSecondary;
-            _status.Text = items.Count == 0 ? "Chưa có phụ lục. Chọn Thêm mới để tạo." : $"{items.Count} phụ lục · Nhấp đúp để xem và sửa.";
+            _items = items;
+            BindGrid(selectedId);
         }
         catch (Exception ex) { if (!IsDisposed) ShowError(ex); }
         finally { _busy = false; if (!IsDisposed) UpdateActions(); }
+    }
+
+    private void BindGrid(int? preferredId = null)
+    {
+        var selectedId = preferredId ?? SelectedItem?.Id;
+        var issueFrom = _filters.Date("issueFrom"); var issueTo = _filters.Date("issueTo");
+        var effectiveFrom = _filters.Date("effectiveFrom"); var effectiveTo = _filters.Date("effectiveTo");
+        var items = _items.Where(a => _filters.MatchesSearch(a.Code, a.ContractCode, a.TariffName)
+            && (!issueFrom.HasValue || a.IssueDate.Date >= issueFrom.Value)
+            && (!issueTo.HasValue || a.IssueDate.Date <= issueTo.Value)
+            && (!effectiveFrom.HasValue || a.EffectiveDate.Date >= effectiveFrom.Value)
+            && (!effectiveTo.HasValue || a.EffectiveDate.Date <= effectiveTo.Value)).ToList();
+        _grid.DataSource = items;
+        foreach (DataGridViewRow row in _grid.Rows)
+            if (row.DataBoundItem is ContractAppendixItem item && item.Id == selectedId) _grid.CurrentCell = row.Cells[0];
+        _filters.SetCount(items.Count, _items.Count);
+        _status.ForeColor = Theme.TextSecondary;
+        _status.Text = _items.Count == 0 ? "Chưa có phụ lục. Chọn Thêm mới để tạo."
+            : $"Hiển thị {items.Count}/{_items.Count} phụ lục · Nhấp đúp để xem và sửa.";
     }
 
     private async Task EditAsync(bool create)

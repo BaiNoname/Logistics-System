@@ -90,7 +90,8 @@ public class ContractAppendixService(IApplicationDbContext db) : IContractAppend
 
     private async Task<SaveContractAppendixRequest> ValidateAsync(SaveContractAppendixRequest request, bool isAdmin, ContractAppendix? current = null)
     {
-        ContractAppendix.Validate(request.Code, request.ContractId, request.IssueDate, request.EffectiveDate, request.TariffRuleId, request.PriceListId);
+        ContractAppendix.Validate(request.Code, request.ContractId, request.IssueDate, request.EffectiveDate, request.TariffRuleId, request.PriceListId,
+            VnClock.Today, current?.IssueDate, current?.EffectiveDate);
         var contract = await db.Contracts.AsNoTracking().FirstOrDefaultAsync(c => c.Id == request.ContractId)
             ?? throw new ArgumentException("Hợp đồng không tồn tại. Vui lòng làm mới dữ liệu.");
         if ((current is null || current.ContractId != request.ContractId)

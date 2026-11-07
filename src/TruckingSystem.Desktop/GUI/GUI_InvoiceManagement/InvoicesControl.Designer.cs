@@ -29,29 +29,6 @@ namespace TruckingSystem.Desktop.GUI_InvoiceManagement
                 Name = "filterBar", Dock = DockStyle.Fill, TabIndex = 4,
                 SearchPlaceholder = "Mã hóa đơn, mã đơn, tên khách hàng"
             };
-            lblSummaryPeriod = new Label
-            {
-                AutoSize = true, Dock = DockStyle.Fill, ForeColor = Theme.TextSecondary,
-                Text = "Thống kê tháng hiện tại", Margin = new Padding(2, 6, 2, 8)
-            };
-            var summary = new FlowLayoutPanel
-            {
-                Name = "summary", Dock = DockStyle.Fill, AutoSize = true,
-                AutoSizeMode = AutoSizeMode.GrowAndShrink, WrapContents = true, Margin = Padding.Empty
-            };
-            lblMonthCount = new Label { Name = "lblMonthCount", Text = "—" };
-            lblRevenue = new Label { Name = "lblRevenue", Text = "—" };
-            lblUnpaid = new Label { Name = "lblUnpaid", Text = "—" };
-            lblPaid = new Label { Name = "lblPaid", Text = "—" };
-            lblOverdue = new Label { Name = "lblOverdue", Text = "Trong đó quá hạn: —" };
-            summary.Controls.Add(MakeSummaryCard("Hóa đơn tháng này", lblMonthCount,
-                new Label { Text = "Tất cả trạng thái" }, Theme.Primary));
-            summary.Controls.Add(MakeSummaryCard("Tổng doanh thu", lblRevenue,
-                new Label { Text = "Gồm nháp, không gồm hóa đơn hủy" }, Theme.Primary));
-            summary.Controls.Add(MakeSummaryCard("Chưa thanh toán / Quá hạn", lblUnpaid,
-                lblOverdue, Theme.Danger));
-            summary.Controls.Add(MakeSummaryCard("Đã thanh toán", lblPaid,
-                new Label { Text = "Đã thanh toán đầy đủ" }, Theme.Success));
             ((System.ComponentModel.ISupportInitialize)grid).BeginInit();
             root.SuspendLayout();
             SuspendLayout();
@@ -138,21 +115,17 @@ namespace TruckingSystem.Desktop.GUI_InvoiceManagement
             root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             root.Dock = DockStyle.Fill;
             root.ColumnCount = 1;
-            root.RowCount = 8;
+            root.RowCount = 6;
             root.Padding = new Padding(8);
             root.Controls.Add(lblTitle, 0, 0);
-            root.Controls.Add(lblSummaryPeriod, 0, 1);
-            root.Controls.Add(summary, 0, 2);
-            root.Controls.Add(lblNote, 0, 3);
-            root.Controls.Add(toolbar, 0, 4);
-            root.Controls.Add(filterBar, 0, 5);
-            root.Controls.Add(lblStatus, 0, 6);
-            root.Controls.Add(grid, 0, 7);
+            root.Controls.Add(lblNote, 0, 1);
+            root.Controls.Add(toolbar, 0, 2);
+            root.Controls.Add(filterBar, 0, 3);
+            root.Controls.Add(lblStatus, 0, 4);
+            root.Controls.Add(grid, 0, 5);
             root.Location = new Point(0, 0);
             root.Margin = new Padding(2);
             root.Name = "root";
-            root.RowStyles.Add(new RowStyle());
-            root.RowStyles.Add(new RowStyle());
             root.RowStyles.Add(new RowStyle());
             root.RowStyles.Add(new RowStyle());
             root.RowStyles.Add(new RowStyle());
@@ -191,30 +164,6 @@ namespace TruckingSystem.Desktop.GUI_InvoiceManagement
 
         #endregion
 
-        private static TableLayoutPanel MakeSummaryCard(string title, Label value, Label caption, Color accent)
-        {
-            var card = new TableLayoutPanel
-            {
-                AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                MinimumSize = new Size(215, 100), BackColor = Theme.CardBg,
-                ColumnCount = 1, RowCount = 3, Padding = new Padding(12), Margin = new Padding(0, 0, 10, 10)
-            };
-            card.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-            for (var i = 0; i < 3; i++) card.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            var heading = new Label { Text = title, AutoSize = true, ForeColor = Theme.TextSecondary, Font = Theme.FontSmall };
-            value.AutoSize = true;
-            value.Font = Theme.FontSectionTitle;
-            value.ForeColor = accent;
-            value.Margin = new Padding(3, 6, 3, 6);
-            caption.AutoSize = true;
-            caption.Font = Theme.FontSmall;
-            caption.ForeColor = Theme.TextSecondary;
-            card.Controls.Add(heading, 0, 0);
-            card.Controls.Add(value, 0, 1);
-            card.Controls.Add(caption, 0, 2);
-            return card;
-        }
-
         private System.Windows.Forms.Label lblTitle;
         private System.Windows.Forms.Button btnRefresh;
         private System.Windows.Forms.Button btnCreate;
@@ -224,11 +173,5 @@ namespace TruckingSystem.Desktop.GUI_InvoiceManagement
         private TableLayoutPanel root;
         private FlowLayoutPanel toolbar;
         private FilterBar filterBar;
-        private Label lblSummaryPeriod;
-        private Label lblMonthCount;
-        private Label lblRevenue;
-        private Label lblUnpaid;
-        private Label lblOverdue;
-        private Label lblPaid;
     }
 }

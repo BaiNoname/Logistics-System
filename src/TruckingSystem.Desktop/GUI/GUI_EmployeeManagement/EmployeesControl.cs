@@ -44,7 +44,7 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             Load += (_, _) => Theme.UniformButtons(bar);
             grid.DataBindingComplete += (_, _) => { if (grid.Columns["Id"] != null) grid.Columns["Id"]!.Visible = false; };
             var menu = new ContextMenuStrip();
-            menu.Items.Add("✏️ Sửa", null, BtnEdit_Click);
+            menu.Items.Add("✏️ Sửa nhân viên", null, BtnEdit_Click);
             menu.Opening += (_, e) => e.Cancel = _api is null || _loading || !_api.Connection.IsInRole("Admin") || grid.CurrentRow is null;
             ModernMenu.Apply(menu);
             grid.ContextMenuStrip = menu;
