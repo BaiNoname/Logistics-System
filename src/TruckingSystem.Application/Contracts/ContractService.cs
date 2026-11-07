@@ -31,11 +31,11 @@ public class ContractService(IApplicationDbContext db) : IContractService
         request.Code = DocumentNumber.Next(prefix, await db.Contracts.AsNoTracking()
             .Where(c => c.Code.StartsWith(prefix)).Select(c => c.Code).ToListAsync());
         Validate(request);
+        Contract.ValidatePeriod(request.StartDate, request.EndDate, ValidateType(request.Type, request.DiscountPercent), VnClock.Today);
         await ValidateDiscountLimitAsync(request.DiscountPercent, isAdmin);
         if (!await db.Customers.AnyAsync(c => c.Id == request.CustomerId))
             throw new ArgumentException("Khách hàng không tồn tại.");
         if (!request.PriceListId.HasValue) throw new ArgumentException("Vui lòng chọn bảng giá đang áp dụng.");
-        ValidateType(request.Type, request.DiscountPercent);
         await ValidatePriceListAsync(request.PriceListId);
         await ValidateTariffRuleAsync(request.PriceListId, request.TariffRuleId);
         if (await db.Contracts.AnyAsync(c => c.Code == request.Code.Trim()))
@@ -54,6 +54,9 @@ public class ContractService(IApplicationDbContext db) : IContractService
         Validate(request);
         var contract = await db.Contracts.FirstOrDefaultAsync(c => c.Id == id);
         if (contract is null) return false;
+        var type = request.Type is not null || request.DiscountPercent.HasValue
+            ? ValidateType(request.Type ?? contract.Type?.ToString(), request.DiscountPercent) : contract.Type;
+        Contract.ValidatePeriod(request.StartDate, request.EndDate, type);
         if (request.DiscountPercent != contract.DiscountPercent)
             await ValidateDiscountLimitAsync(request.DiscountPercent, isAdmin);
         if (!await db.Customers.AnyAsync(c => c.Id == request.CustomerId))
@@ -189,7 +192,7 @@ public class ContractService(IApplicationDbContext db) : IContractService
                 StartDate = c.StartDate,
                 EndDate = c.EndDate,
                 Terms = c.Terms,
-                PriceListName = c.PriceList == null ? null : c.PriceList.Name,
+                PriceListName = c.PriceList == null ? (c.TariffRule == null ? null : c.TariffRule.PriceList.Name) : c.PriceList.Name,
                 PriceListId = c.PriceListId,
                 TariffRule = c.TariffRule == null ? null : new TariffRuleDto(c.TariffRule.Id, c.TariffRule.PriceListId,
                     c.TariffRule.VehicleType, c.TariffRule.PricePerKm, c.TariffRule.PricePerTon,

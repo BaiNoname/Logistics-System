@@ -1,5 +1,6 @@
 using TruckingSystem.Desktop.Common;
 using TruckingSystem.Desktop.DTO_ContractManagement;
+using TruckingSystem.Domain.Entities;
 
 namespace TruckingSystem.Desktop.GUI.GUI_ContractManagement;
 
@@ -8,17 +9,17 @@ public partial class ContractsControl : BaseUserControl
     private ApiServices? _api;
     private List<ContractListItem> _contracts = new();
     private bool _busy;
-    private readonly TextBox _search = new() { Width = 280, PlaceholderText = "Mã hợp đồng hoặc tên khách hàng", AccessibleName = "Tìm hợp đồng" };
-    private readonly ComboBox _statusFilter = new() { Width = 180, DropDownStyle = ComboBoxStyle.DropDownList, AccessibleName = "Lọc trạng thái hợp đồng" };
+    private readonly FilterBar _filters = new() { Dock = DockStyle.Fill, SearchPlaceholder = "Mã hợp đồng, khách hàng, mã bảng giá" };
     private readonly Button _discountSettings = Theme.MakeSecondaryButton("Quản lý ưu đãi", 170);
-    private readonly Button _details = Theme.MakeSecondaryButton("Chi tiết", 100);
-    private readonly Button _delete = Theme.MakeSecondaryButton("Xóa", 90);
+    private readonly ToolStripMenuItem _details = new("📄 Xem chi tiết");
+    private readonly ToolStripMenuItem _edit = new("✏️ Sửa hợp đồng");
+    private readonly ToolStripMenuItem _appendix = new("➕ Thêm phụ lục");
+    private readonly ToolStripMenuItem _delete = new("🗑 Xóa hợp đồng");
 
     public ContractsControl()
     {
         InitializeComponent();
         Theme.StyleGrid(grid);
-        btnEdit.Visible = false;
         GridDecor.Pills(grid, "Trạng_thái", (text, _) => GridDecor.StatusTone(text));
         var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 4 };
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -33,17 +34,23 @@ public partial class ContractsControl : BaseUserControl
             control.Anchor = AnchorStyles.Top | AnchorStyles.Left;
             toolbar.Controls.Add(control);
         }
-        _delete.ForeColor = Theme.Danger;
         var menu = new ContextMenuStrip(components ??= new System.ComponentModel.Container());
-        menu.Items.Add("Sửa", null, BtnEdit_Click);
-        menu.Items.Add("Chi tiết", null, async (_, _) => await ShowDetailsAsync());
-        menu.Items.Add("Xóa", null, async (_, _) => await DeleteAsync());
+        _details.Font = Theme.FontBold;
+        _details.ShortcutKeyDisplayString = "Nhấp đúp";
+        menu.Items.AddRange([_details, new ToolStripSeparator(), _edit, _appendix, new ToolStripSeparator(), _delete]);
+        _edit.Click += BtnEdit_Click;
+        _appendix.Click += async (_, _) => await AddAppendixAsync();
+        menu.Opening += (_, e) =>
+        {
+            UpdateActions();
+            e.Cancel = _api is null || _busy || SelectedContract is null;
+        };
         ModernMenu.Apply(menu);
-        grid.CellMouseClick += (_, e) =>
+        grid.ContextMenuStrip = menu;
+        grid.CellMouseDown += (_, e) =>
         {
             if (e.Button != MouseButtons.Right || e.RowIndex < 0 || _busy) return;
-            grid.CurrentCell = grid.Rows[e.RowIndex].Cells[Math.Max(1, e.ColumnIndex)];
-            menu.Show(Cursor.Position);
+            grid.CurrentCell = grid.Rows[e.RowIndex].Cells["Mã_hợp_đồng"];
         };
         _discountSettings.Click += (_, _) =>
         {
@@ -51,14 +58,15 @@ public partial class ContractsControl : BaseUserControl
             using var form = new DiscountConfigurationForm(_api);
             form.ShowDialog(FindForm());
         };
-        var filters = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, Padding = new Padding(0, 4, 0, 4) };
-        filters.Controls.Add(new Label { Text = "Tìm kiếm", AutoSize = true, Margin = new Padding(0, 6, 8, 0) });
-        filters.Controls.Add(_search);
-        filters.Controls.Add(_statusFilter);
-        _statusFilter.Items.AddRange(new object[] { "Tất cả trạng thái", "Chưa hiệu lực", "Đang hiệu lực", "Hết hạn" });
-        _statusFilter.SelectedIndex = 0;
-        _search.TextChanged += (_, _) => BindContracts();
-        _statusFilter.SelectedIndexChanged += (_, _) => BindContracts();
+        _filters.AddChoice("status", "Trạng thái", new[] { "Chưa hiệu lực", "Đang hiệu lực", "Hết hạn" });
+        _filters.AddChoice("type", "Loại hợp đồng", new[] {
+            new ContractListItem { Type = "OneTime" }.TypeText,
+            new ContractListItem { Type = "LongTerm" }.TypeText, "Chưa phân loại" });
+        _filters.AddDate("startFrom", "Bắt đầu từ");
+        _filters.AddDate("startTo", "Bắt đầu đến");
+        _filters.AddDate("endFrom", "Kết thúc từ");
+        _filters.AddDate("endTo", "Kết thúc đến");
+        _filters.FilterChanged += (_, _) => BindContracts();
         _details.Click += async (_, _) => await ShowDetailsAsync();
         _delete.Click += async (_, _) => await DeleteAsync();
         grid.CellDoubleClick += async (_, e) => { if (e.RowIndex >= 0) await ShowDetailsAsync(); };
@@ -68,7 +76,7 @@ public partial class ContractsControl : BaseUserControl
         lblStatus.AutoSize = false;
         lblStatus.AutoEllipsis = true;
         layout.Controls.Add(toolbar, 0, 0);
-        layout.Controls.Add(filters, 0, 1);
+        layout.Controls.Add(_filters, 0, 1);
         layout.Controls.Add(lblStatus, 0, 2);
         layout.Controls.Add(grid, 0, 3);
         Controls.Add(layout);
@@ -87,7 +95,10 @@ public partial class ContractsControl : BaseUserControl
         btnCreate.Enabled = btnRefresh.Enabled = !_busy;
         _discountSettings.Visible = _api?.Connection.IsInRole("Admin") == true;
         _discountSettings.Enabled = !_busy;
-        btnEdit.Enabled = _details.Enabled = _delete.Enabled = !_busy && SelectedContract is not null;
+        _edit.Enabled = _details.Enabled = _delete.Enabled = !_busy && SelectedContract is not null;
+        _appendix.Enabled = !_busy && SelectedContract is { } contract && IsActive(contract);
+        _appendix.ToolTipText = _appendix.Enabled ? "Thêm phụ lục cho hợp đồng được chọn."
+            : "Chỉ được thêm phụ lục cho hợp đồng đang hiệu lực.";
     }
 
     private async void BtnRefresh_Click(object? sender, EventArgs e) => await LoadAsync();
@@ -122,6 +133,25 @@ public partial class ContractsControl : BaseUserControl
         finally { _busy = false; UpdateActions(); }
     }
 
+    private static bool IsActive(ContractListItem contract)
+        => Contract.GetStatus(contract.StartDate, contract.EndDate, DateTime.UtcNow.AddHours(7)) == ContractStatus.Active;
+
+    private async Task AddAppendixAsync()
+    {
+        if (_api is null || _busy || SelectedContract is not { } contract || !IsActive(contract)) return;
+        var saved = false;
+        _busy = true;
+        UpdateActions();
+        try
+        {
+            using var form = new ContractAppendixForm(_api, contractId: contract.Id);
+            saved = form.ShowDialog(FindForm()) == DialogResult.OK;
+        }
+        catch (Exception ex) { ShowError(ex); }
+        finally { _busy = false; UpdateActions(); }
+        if (saved) await LoadAsync();
+    }
+
     private async Task DeleteAsync()
     {
         if (_api is null || _busy || SelectedContract is not { } contract) return;
@@ -154,10 +184,16 @@ public partial class ContractsControl : BaseUserControl
     private void BindContracts()
     {
         var selectedId = SelectedContract?.Id;
-        var search = _search.Text.Trim();
+        var startFrom = _filters.Date("startFrom"); var startTo = _filters.Date("startTo");
+        var endFrom = _filters.Date("endFrom"); var endTo = _filters.Date("endTo");
         var contracts = _contracts.Where(c =>
-            (c.Code.Contains(search, StringComparison.CurrentCultureIgnoreCase) || c.CustomerName.Contains(search, StringComparison.CurrentCultureIgnoreCase))
-            && (_statusFilter.SelectedIndex == 0 || c.StatusText == _statusFilter.Text)).ToList();
+            _filters.MatchesSearch(c.Code, c.CustomerName, c.PriceListName)
+            && _filters.Is("status", c.StatusText) && _filters.Is("type", c.TypeText)
+            && (!startFrom.HasValue || c.StartDate.Date >= startFrom.Value)
+            && (!startTo.HasValue || c.StartDate.Date <= startTo.Value)
+            && (!endFrom.HasValue || c.EndDate?.Date >= endFrom.Value)
+            && (!endTo.HasValue || c.EndDate?.Date <= endTo.Value)).ToList();
+        _filters.SetCount(contracts.Count, _contracts.Count);
         grid.DataSource = contracts.Select(c => new
         {
             c.Id,
@@ -169,7 +205,6 @@ public partial class ContractsControl : BaseUserControl
             Loại_hợp_đồng = c.TypeText,
             Ưu_đãi = c.DiscountPercent.HasValue ? $"{c.DiscountPercent:0.##}%" : "—",
             Bảng_giá = c.PriceListName ?? "—",
-            Chi_tiết_giá = c.TariffRule?.DisplayName ?? "—",
             Phụ_lục = c.AppendixText,
         }).ToList();
         if (grid.Columns["Id"] is not null) grid.Columns["Id"]!.Visible = false;

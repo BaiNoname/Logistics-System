@@ -85,7 +85,6 @@ namespace TruckingSystem.Desktop.GUI_InvoiceManagement
                 await _api.Invoices.MarkAsPaidAsync(id);
                 if (IsDisposed) return;
                 invoice.Status = "Paid";
-                UpdateSummary();
                 BindGrid();
                 lblStatus.Text = $"Đã đánh dấu hóa đơn #{id} là đã thanh toán.";
                 lblStatus.ForeColor = Theme.Success;
@@ -141,7 +140,6 @@ namespace TruckingSystem.Desktop.GUI_InvoiceManagement
                 var invoices = await _api.Invoices.GetInvoicesAsync();
                 if (IsDisposed) return;
                 _invoices = invoices;
-                UpdateSummary();
                 BindGrid();
             }
             catch (Exception ex)
@@ -155,19 +153,6 @@ namespace TruckingSystem.Desktop.GUI_InvoiceManagement
                 _busy = false;
                 if (!IsDisposed) UpdateActions();
             }
-        }
-
-        private void UpdateSummary()
-        {
-            var today = DateTime.UtcNow.AddHours(7);
-            var month = _invoices.Where(i => i.IssueDate.AddHours(7).Year == today.Year
-                && i.IssueDate.AddHours(7).Month == today.Month).ToList();
-            lblSummaryPeriod.Text = $"Thống kê tháng {today:MM/yyyy} · Không thay đổi theo bộ lọc danh sách";
-            lblMonthCount.Text = $"{month.Count:N0} hóa đơn";
-            lblRevenue.Text = month.Where(i => i.Status != "Cancelled").Sum(i => i.TotalAmount).ToString("N2", Vi) + " đ";
-            lblUnpaid.Text = $"{month.Count(i => i.Status is not ("Paid" or "Cancelled")):N0} hóa đơn";
-            lblOverdue.Text = $"Trong đó quá hạn: {month.Count(i => i.Status == "Overdue"):N0}";
-            lblPaid.Text = $"{month.Count(i => i.Status == "Paid"):N0} hóa đơn";
         }
 
         private void BindGrid()

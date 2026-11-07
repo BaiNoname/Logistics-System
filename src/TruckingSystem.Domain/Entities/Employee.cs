@@ -39,5 +39,5 @@ public class Employee : BaseEntity
 
     public static bool IsValidNewEmployeeDateOfBirth(DateTime? dateOfBirth, DateTime today)
         => dateOfBirth.HasValue && IsValidDateOfBirth(dateOfBirth, today)
-            && dateOfBirth.Value.Date.AddYears(18) < today.Date;
+            && dateOfBirth.Value.Date.AddYears(18) <= today.Date;
 }

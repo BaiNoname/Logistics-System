@@ -8,6 +8,7 @@ public partial class PricingControl : BaseUserControl
 {
     private readonly ApiServices _api = null!;
     private List<PriceListItem> _lists = new();
+    private readonly FilterBar _filters = new() { Dock = DockStyle.Fill, SearchPlaceholder = "Tìm mã bảng giá..." };
     private List<TariffRuleItem> _rules = new();
     private bool _busy;
     private bool _binding;
@@ -37,6 +38,10 @@ public partial class PricingControl : BaseUserControl
     public PricingControl()
     {
         InitializeComponent();
+        _filters.AddDate("effectiveFrom", "Hiệu lực từ");
+        _filters.AddDate("effectiveTo", "Hiệu lực đến");
+        _filters.FilterChanged += (_, _) => BindLists();
+        _layout.Controls.Add(_filters, 0, 1);
         Theme.StyleGrid(_listsGrid);
         GridDecor.Pills(_listsGrid, _statusTextColumn.Name, (text, _) => GridDecor.StatusTone(text));
         Theme.StyleGrid(_rulesGrid);
@@ -111,8 +116,9 @@ public partial class PricingControl : BaseUserControl
         _detailListId = listId;
         _layout.Controls.Remove(_listsTab);
         _listsTab.Visible = false;
+        _filters.Visible = false;
         _rulesTab.Controls.Remove(_rulesLayout);
-        _layout.Controls.Add(_rulesLayout, 0, 1);
+        _layout.Controls.Add(_rulesLayout, 0, 2);
         _title.Text = "Chi tiết bảng giá";
         _priceList.Visible = false;
         UpdateActions();
@@ -131,6 +137,7 @@ public partial class PricingControl : BaseUserControl
         form.Controls.Add(detail);
         form.FormClosing += (_, e) => e.Cancel = detail._busy || !detail.ConfirmDiscard();
         ButtonStyles.Footer(form, null, FormStyle.NewCloseButton(form));
+        ModernLook.Apply(form);
         Anim.FadeIn(form);
         form.ShowDialog(FindForm());
         await LoadAsync(list.Id);
@@ -152,6 +159,23 @@ public partial class PricingControl : BaseUserControl
         _delete.Enabled = !_busy && (IsPriceLists ? SelectedList?.ContractCount == 0 : CanEditRules && SelectedRule is not null);
         _refresh.Enabled = !_busy;
         _listsGrid.Enabled = _priceList.Enabled = !_busy;
+        _filters.Enabled = !_busy;
+    }
+
+    private void BindLists(int? selectedId = null)
+    {
+        selectedId ??= SelectedList?.Id;
+        var from = _filters.Date("effectiveFrom");
+        var to = _filters.Date("effectiveTo");
+        var rows = _lists.Where(item => _filters.MatchesSearch(item.Name)
+            && (!from.HasValue || item.EffectiveDate.Date >= from.Value)
+            && (!to.HasValue || item.EffectiveDate.Date <= to.Value)).ToList();
+        _listsGrid.DataSource = rows;
+        foreach (DataGridViewRow row in _listsGrid.Rows)
+            if (row.DataBoundItem is PriceListItem item && item.Id == selectedId) _listsGrid.CurrentCell = row.Cells[0];
+        _filters.SetCount(rows.Count, _lists.Count);
+        if (!_binding && SelectedList is { } selected) _priceList.SelectedValue = selected.Id;
+        UpdateActions();
     }
 
     private void UpdateStatus()
@@ -179,16 +203,15 @@ public partial class PricingControl : BaseUserControl
             if (_detailListId.HasValue) _lists = _lists.Where(p => p.Id == _detailListId).ToList();
             if (IsDisposed) return;
             _binding = true;
-            _listsGrid.DataSource = _lists;
             _priceList.DisplayMember = nameof(PriceListItem.Name);
             _priceList.ValueMember = nameof(PriceListItem.Id);
             _priceList.DataSource = _lists.ToList();
             if (selectedId.HasValue && _lists.Any(p => p.Id == selectedId))
             {
                 _priceList.SelectedValue = selectedId.Value;
-                foreach (DataGridViewRow row in _listsGrid.Rows)
-                    if (row.DataBoundItem is PriceListItem p && p.Id == selectedId) _listsGrid.CurrentCell = row.Cells[0];
             }
+            BindLists(selectedId);
+            if (IsPriceLists && SelectedList is { } selected) _priceList.SelectedValue = selected.Id;
             _binding = false;
             if (!IsPriceLists) await FetchRulesAsync();
             if (!IsDisposed) UpdateStatus();

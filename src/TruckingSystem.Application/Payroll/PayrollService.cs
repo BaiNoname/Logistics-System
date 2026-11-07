@@ -51,28 +51,8 @@ public partial class PayrollService(IApplicationDbContext db) : IPayrollService
     {
         var employee = await EmployeeAsync(employeeId);
         if (employee is null) return Fail("Không tìm thấy nhân viên/tài xế.");
-        if (!PayrollRules.ValidMoney(request.MonthlySalary)) return Fail("Lương tháng phải là số nguyên dương, tối đa 1.000 tỷ đồng.");
-        if (!ValidReason(request.Reason)) return Fail("Nhập căn cứ thay đổi lương (1–500 ký tự).");
-        var from = request.EffectiveFrom.Date;
-        if (from.Year < 2000 || from.Year > 2100 || from < employee.HireDate.Date
-            || (employee.TerminationDate.HasValue && from > employee.TerminationDate.Value.Date))
-            return Fail("Ngày hiệu lực phải thuộc thời gian làm việc, từ năm 2000 đến 2100.");
-        if (from.Day != 1 && from != employee.HireDate.Date)
-            return Fail("Mức lương áp dụng từ ngày 1 đầu kỳ; nhân viên/tài xế mới có thể áp dụng từ ngày vào làm.");
-        var latest = await db.EmployeeSalaries.Where(s => s.EmployeeId == employeeId)
-            .OrderByDescending(s => s.EffectiveFrom).FirstOrDefaultAsync();
-        if (latest is not null && from <= latest.EffectiveFrom)
-            return Fail("Ngày hiệu lực phải sau mức lương gần nhất; lịch sử lương không được ghi đè.");
-        var salary = new EmployeeSalary
-        {
-            EmployeeId = employeeId,
-            EffectiveFrom = from,
-            MonthlySalary = request.MonthlySalary,
-            Reason = request.Reason.Trim(),
-            CreatedBy = actor
-        };
-        db.EmployeeSalaries.Add(salary);
-        Audit(actor, "SetSalary", "EmployeeSalary", employeeId, request);
+        var error = await SalaryWriter.StageAsync(db, employee, request, actor);
+        if (error is not null) return Fail(error);
         return new(true);
     });
     //lấy danh sách kỳ lương

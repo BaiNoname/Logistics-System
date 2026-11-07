@@ -14,6 +14,7 @@ public partial class CreateInvoiceForm : BaseForm
     public CreateInvoiceForm()
     {
         InitializeComponent();
+        dtDueDate.MinDate = DateTime.UtcNow.AddHours(7).Date;
         Theme.StyleGrid(gridQuote);
         cboOrder.SelectedIndexChanged += async (_, _) =>
         {

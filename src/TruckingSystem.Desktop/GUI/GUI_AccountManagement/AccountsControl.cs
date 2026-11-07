@@ -10,23 +10,45 @@ public class AccountsControl : BaseUserControl
     private readonly ApiServices _api;
     private readonly DataGridView _grid = new() { Dock = DockStyle.Fill };
     private readonly Label _status = new() { AutoSize = true, ForeColor = Theme.TextSecondary, Dock = DockStyle.Bottom, Height = 28 };
-    private readonly Button _edit = Theme.MakeSecondaryButton("Sửa / phân quyền", 150);
-    private readonly Button _password = Theme.MakeSecondaryButton("Đặt lại mật khẩu", 155);
+    private readonly ToolStripMenuItem _edit = new("✏️ Sửa / phân quyền");
+    private readonly ToolStripMenuItem _password = new("🔑 Đặt lại mật khẩu");
     private List<AccountItem> _accounts = new();
     private List<string> _roles = new();
+    private bool _loading, _busy;
+    private bool CanManage => !_loading && !_busy && Enabled && _api.Connection.IsInRole("Admin");
 
     public AccountsControl(ApiServices api)
     {
         _api = api;
         Theme.StyleGrid(_grid);
-        _grid.SelectionChanged += (_, _) => UpdateButtons();
+        _grid.SelectionChanged += (_, _) => UpdateMenu();
+        var menu = new ContextMenuStrip();
+        menu.Items.AddRange(new ToolStripItem[] { _edit, _password });
+        menu.Opening += (_, e) => { UpdateMenu(); e.Cancel = !CanManage || SelectedAccount() is null; };
+        ModernMenu.Apply(menu);
+        _grid.ContextMenuStrip = menu;
+        _grid.CellMouseDown += (_, e) =>
+        {
+            if (e.Button != MouseButtons.Right) return;
+            _grid.ClearSelection();
+            if (e.RowIndex < 0) { _grid.CurrentCell = null; return; }
+            _grid.CurrentCell = _grid.Rows[e.RowIndex].Cells.Cast<DataGridViewCell>().First(c => c.Visible);
+            _grid.Rows[e.RowIndex].Selected = true;
+        };
+        _grid.MouseDown += (_, e) =>
+        {
+            if (e.Button != MouseButtons.Right || _grid.HitTest(e.X, e.Y).RowIndex >= 0) return;
+            _grid.ClearSelection();
+            _grid.CurrentCell = null;
+        };
+        Disposed += (_, _) => menu.Dispose();
 
         Padding = new Padding(16);
         var title = new Label { Text = "Quản lý tài khoản", Font = Theme.FontTitle, ForeColor = Theme.TextPrimary, AutoSize = true };
         var actions = new FlowLayoutPanel { AutoSize = true, WrapContents = true, Dock = DockStyle.Fill };
         var create = Theme.MakePrimaryButton("Thêm tài khoản", 145);
         var refresh = Theme.MakeSecondaryButton("Làm mới", 100);
-        actions.Controls.AddRange(new Control[] { create, _edit, _password, refresh });
+        actions.Controls.AddRange(new Control[] { create, refresh });
         var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 4 };
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -40,10 +62,10 @@ public class AccountsControl : BaseUserControl
         GridDecor.Pills(_grid, "Trạng_thái", (text, _) => text == "Hoạt động" ? GridDecor.Green : GridDecor.Slate);
         Load += (_, _) => Theme.UniformButtons(actions);
         create.Click += async (_, _) => await OpenEditorAsync(null);
-        _edit.Click += async (_, _) => await OpenEditorAsync(SelectedAccount());
+        _edit.Click += async (_, _) => { if (SelectedAccount() is { } account) await OpenEditorAsync(account); };
         _password.Click += async (_, _) => await ResetPasswordAsync();
-        refresh.Click += async (_, _) => await LoadAsync();
-        UpdateButtons();
+        refresh.Click += async (_, _) => { if (!_busy) await LoadAsync(); };
+        UpdateMenu();
         Load += async (_, _) => await LoadAsync();
     }
 
@@ -53,10 +75,13 @@ public class AccountsControl : BaseUserControl
         return _accounts.FirstOrDefault(a => a.Id == id);
     }
 
-    private void UpdateButtons() => _edit.Enabled = _password.Enabled = SelectedAccount() is not null;
+    private void UpdateMenu() => _edit.Enabled = _password.Enabled = CanManage && SelectedAccount() is not null;
 
     private async Task LoadAsync()
     {
+        if (_loading) return;
+        _loading = true;
+        UpdateMenu();
         _status.ForeColor = Theme.TextSecondary;
         _status.Text = "Đang tải tài khoản...";
         try
@@ -73,23 +98,26 @@ public class AccountsControl : BaseUserControl
                 Trạng_thái = a.IsActive ? "Hoạt động" : "Đã khóa",
             }).ToList();
             if (_grid.Columns["Id"] is not null) _grid.Columns["Id"]!.Visible = false;
-            _status.Text = $"{_accounts.Count} tài khoản";
-            UpdateButtons();
+            _status.Text = $"{_accounts.Count} tài khoản — chuột phải để sửa / phân quyền hoặc đặt lại mật khẩu";
         }
         catch (Exception ex)
         {
             _status.ForeColor = Theme.Danger;
             _status.Text = "Không tải được tài khoản: " + ex.Message;
         }
+        finally { _loading = false; UpdateMenu(); }
     }
 
     private async Task OpenEditorAsync(AccountItem? account)
     {
+        if (!CanManage) return;
         if (_roles.Count == 0)
         {
             MessageBox.Show(FindForm(), "Không có vai trò để phân quyền.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             return;
         }
+        _busy = true;
+        UpdateMenu();
         try
         {
             var employees = await _api.Accounts.GetEmployeeOptionsAsync(account?.Id);
@@ -107,10 +135,12 @@ public class AccountsControl : BaseUserControl
         {
             MessageBox.Show(FindForm(), ex.Message, "Không lưu được tài khoản", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
+        finally { _busy = false; UpdateMenu(); }
     }
 
     private async Task ResetPasswordAsync()
     {
+        if (!CanManage) return;
         var account = SelectedAccount();
         if (account is null) return;
 
@@ -143,6 +173,8 @@ public class AccountsControl : BaseUserControl
         dialog.AcceptButton = save;
         if (dialog.ShowDialog(FindForm()) != DialogResult.OK) return;
 
+        _busy = true;
+        UpdateMenu();
         try
         {
             await _api.Accounts.ResetPasswordAsync(account.Id, input.Text);
@@ -152,5 +184,6 @@ public class AccountsControl : BaseUserControl
         {
             MessageBox.Show(FindForm(), ex.Message, "Không đặt lại được mật khẩu", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
+        finally { _busy = false; UpdateMenu(); }
     }
 }

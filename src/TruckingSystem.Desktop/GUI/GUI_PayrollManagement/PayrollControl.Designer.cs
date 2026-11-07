@@ -7,7 +7,7 @@ partial class PayrollControl
     private Label _status = null!, _totals = null!;
     private DataGridView _slipGrid = null!;
     private Button _generateButton = null!, _approveButton = null!, _payButton = null!,
-        _detailsButton = null!, _exportButton = null!, _deleteDraftButton = null!, _kpiButton = null!;
+        _exportButton = null!, _deleteDraftButton = null!, _kpiButton = null!;
 
     private void InitializeComponent()
     {
@@ -37,11 +37,10 @@ partial class PayrollControl
         var footer = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true };
         _totals = ButtonStyles.NextStep();
         _totals.Dock = DockStyle.None;
-        _detailsButton = Theme.MakeSecondaryButton("Chi tiết", 100);
         _exportButton = Theme.MakeSecondaryButton("Xuất phiếu", 125);
         _payButton = Theme.MakePrimaryButton("Ghi nhận chi trả", 160);
         _deleteDraftButton = Theme.MakeSecondaryButton("Xóa nháp cũ", 140);
-        footer.Controls.AddRange(new Control[] { _totals, _detailsButton, _exportButton, _payButton, _deleteDraftButton });
+        footer.Controls.AddRange(new Control[] { _totals, _exportButton, _payButton, _deleteDraftButton });
         layout.Controls.Add(title, 0, 0); layout.Controls.Add(toolbar, 0, 1); layout.Controls.Add(_status, 0, 2);
         layout.Controls.Add(_slipGrid, 0, 3); layout.Controls.Add(footer, 0, 4); Controls.Add(layout);
     }

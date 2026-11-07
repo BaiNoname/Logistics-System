@@ -10,6 +10,10 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
         private int? _employeeId;
         private int? _departmentId;
         private int? _positionId;
+        private decimal? _loadedSalary;
+        private DateTime? _latestSalaryFrom;
+        private bool _salaryLoaded = true;
+        private bool _salaryLoading;
 
         private sealed record StatusOption(string Value, string Text)
         {
@@ -19,6 +23,11 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
         public CreateEmployeeForm()
         {
             InitializeComponent();
+            txtCode.ReadOnly = true;
+            txtCode.TabStop = false;
+            txtCode.Text = "Tự sinh khi lưu: NV-[STT]";
+            lblCode.Text = "Mã nhân viên (tự động):";
+            dtpHireDate.Enabled = false;
             FormStyle.EditorFooter(this, FormStyle.NewCloseButton(this), btnSave);
             DialogKeys.Enable(this);
             Anim.FadeIn(this);
@@ -28,7 +37,7 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
                 latestBirthDate = latestBirthDate.AddDays(-1);
             dtpDateOfBirth.MaxDate = latestBirthDate;
             dtpDateOfBirth.ShowCheckBox = false;
-            lblDateOfBirth.Text = "Ngày sinh * (trên 18 tuổi):";
+            lblDateOfBirth.Text = "Ngày sinh * (từ đủ 18 tuổi):";
             dtpDateOfBirth.AccessibleName = lblDateOfBirth.Text.TrimEnd(':');
             lblEmployeeStatus.Visible = cboEmployeeStatus.Visible = false;
             lblTerminationDate.Visible = dtpTerminationDate.Visible = false;
@@ -43,7 +52,15 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             };
             cboEmployeeStatus.DisplayMember = nameof(StatusOption.Text);
             cboEmployeeStatus.ValueMember = nameof(StatusOption.Value);
-            Load += async (_, _) => await LoadLookupsAsync();
+            numSalary.ValueChanged += (_, _) => UpdateSalaryFields();
+            dtpHireDate.ValueChanged += (_, _) => UpdateSalaryFields();
+            btnRetrySalary.Click += async (_, _) => await LoadSalaryAsync();
+            UpdateSalaryFields();
+            Load += async (_, _) =>
+            {
+                await LoadLookupsAsync();
+                if (_employeeId.HasValue) await LoadSalaryAsync();
+            };
             _ = new AddressSuggestBinder(txtAddress, () => _api); // gợi ý địa chỉ VietMap khi gõ
         }
 
@@ -55,8 +72,11 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
         public CreateEmployeeForm(ApiServices api, EmployeeListItem employee) : this(api)
         {
             _employeeId = employee.Id;
+            _salaryLoaded = false;
+            btnSave.Enabled = numSalary.Enabled = false;
+            lblSalarySummary.Text = "Đang tải mức lương...";
             dtpDateOfBirth.MaxDate = DateTime.UtcNow.AddHours(7).Date;
-            lblDateOfBirth.Text = "Ngày sinh (Delete để xóa):";
+            lblDateOfBirth.Text = "Ngày sinh * (từ đủ 18 tuổi):";
             dtpDateOfBirth.AccessibleName = lblDateOfBirth.Text.TrimEnd(':');
             lblEmployeeStatus.Visible = cboEmployeeStatus.Visible = true;
             lblTerminationDate.Visible = dtpTerminationDate.Visible = true;
@@ -65,6 +85,8 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             _departmentId = employee.DepartmentId;
             _positionId = employee.PositionId;
             txtCode.Text = employee.Code;
+            lblCode.Text = "Mã nhân viên:";
+            dtpHireDate.Enabled = true;
             txtFullName.Text = employee.FullName;
             dtpDateOfBirth.Value = employee.DateOfBirth ?? dtpDateOfBirth.MaxDate;
             ConfigureOptionalDate(dtpDateOfBirth, employee.DateOfBirth.HasValue);
@@ -81,6 +103,64 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             ConfigureOptionalDate(dtpTerminationDate, employee.TerminationDate.HasValue);
             Text = "Sửa thông tin nhân viên";
             btnSave.Text = "💾 Lưu thay đổi";
+            UpdateSalaryFields();
+        }
+
+        private bool SalaryChanged => _employeeId.HasValue && numSalary.Value != (_loadedSalary ?? 0);
+
+        private void UpdateSalaryFields()
+        {
+            var changed = SalaryChanged;
+            lblSalaryDate.Visible = dtpSalaryDate.Visible = changed;
+            lblSalaryReason.Visible = txtSalaryReason.Visible = changed;
+            lblSalary.Text = _employeeId.HasValue ? "Lương tháng (đồng):" : "Lương tháng (đồng) *:";
+            if (!_employeeId.HasValue)
+                lblSalarySummary.Text = $"Áp dụng từ ngày vào làm {dtpHireDate.Value:dd/MM/yyyy}. Gõ 500 = 500.000 đ.";
+        }
+
+        private async Task LoadSalaryAsync()
+        {
+            if (_api is null || !_employeeId.HasValue || _salaryLoading) return;
+            _salaryLoading = true;
+            _salaryLoaded = false;
+            btnSave.Enabled = numSalary.Enabled = btnRetrySalary.Enabled = false;
+            lblSalarySummary.Text = "Đang tải mức lương...";
+            try
+            {
+                var history = await _api.Payroll.SalariesAsync(_employeeId.Value);
+                if (IsDisposed) return;
+                var latest = history.OrderByDescending(s => s.EffectiveFrom).FirstOrDefault();
+                _loadedSalary = latest?.MonthlySalary;
+                _latestSalaryFrom = latest?.EffectiveFrom;
+                numSalary.Value = _loadedSalary ?? 0;
+                var today = DateTime.UtcNow.AddHours(7).Date;
+                var after = _latestSalaryFrom > today ? _latestSalaryFrom.Value : today;
+                dtpSalaryDate.Value = latest is null ? dtpHireDate.Value.Date : new DateTime(after.Year, after.Month, 1).AddMonths(1);
+                dtpSalaryDate.Checked = false;
+                lblSalarySummary.Text = latest is null
+                    ? "Chưa thiết lập lương. Giữ 0 để chỉ lưu hồ sơ; nhập số tiền để bổ sung lương."
+                    : $"Mức gần nhất: {latest.MonthlySalary:N0} đ, áp dụng từ {latest.EffectiveFrom:dd/MM/yyyy}"
+                        + (latest.EffectiveFrom.Date > today ? " (đã lên lịch)." : ".")
+                        + " Đổi số tiền sẽ tạo lịch sử mới.";
+                _salaryLoaded = true;
+                btnRetrySalary.Visible = false;
+                UpdateSalaryFields();
+            }
+            catch (Exception ex)
+            {
+                if (IsDisposed) return;
+                lblSalarySummary.Text = "Không tải được mức lương: " + ex.Message;
+                btnRetrySalary.Visible = true;
+            }
+            finally
+            {
+                _salaryLoading = false;
+                if (!IsDisposed)
+                {
+                    btnSave.Enabled = numSalary.Enabled = _salaryLoaded;
+                    btnRetrySalary.Enabled = true;
+                }
+            }
         }
 
         private async Task LoadLookupsAsync()
@@ -119,11 +199,8 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
 
         private async void BtnSave_Click(object? sender, EventArgs e)
         {
-            if (string.IsNullOrWhiteSpace(txtCode.Text))
-            {
-                FieldHint.Show(txtCode, lblStatus, "Vui lòng nhập mã nhân viên.");
-                return;
-            }
+            if (!_salaryLoaded) return;
+            if (!_employeeId.HasValue) dtpHireDate.Value = DateTime.UtcNow.AddHours(7).Date;
             if (string.IsNullOrWhiteSpace(txtFullName.Text))
             {
                 FieldHint.Show(txtFullName, lblStatus, "Vui lòng nhập họ tên nhân viên.");
@@ -146,10 +223,10 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             }
             if (_api is null) return;
 
-            if (!_employeeId.HasValue && !TruckingSystem.Domain.Entities.Employee.IsValidNewEmployeeDateOfBirth(
+            if (!TruckingSystem.Domain.Entities.Employee.IsValidNewEmployeeDateOfBirth(
                 SelectedDate(dtpDateOfBirth), DateTime.UtcNow.AddHours(7).Date))
             {
-                FieldHint.Show(dtpDateOfBirth, lblStatus, "Vui lòng chọn ngày sinh từ năm 1900 và nhân viên phải trên 18 tuổi.");
+                FieldHint.Show(dtpDateOfBirth, lblStatus, "Vui lòng chọn ngày sinh từ năm 1900 và nhân viên phải đủ 18 tuổi.");
                 return;
             }
             if (!TruckingSystem.Domain.Entities.Employee.IsValidDateOfBirth(
@@ -168,6 +245,28 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
                 FieldHint.Show(dtpTerminationDate, lblStatus, "Vui lòng nhập ngày nghỉ việc thực tế.");
                 return;
             }
+            if ((!_employeeId.HasValue || SalaryChanged) && !TruckingSystem.Domain.Payroll.PayrollRules.ValidMoney(numSalary.Value))
+            {
+                FieldHint.Show(numSalary, lblStatus, "Vui lòng nhập lương tháng là số nguyên lớn hơn 0, tối đa 1.000 tỷ đồng.");
+                return;
+            }
+            if (SalaryChanged)
+            {
+                var from = dtpSalaryDate.Value.Date;
+                if (!dtpSalaryDate.Checked || from < dtpHireDate.Value.Date
+                    || (from.Day != 1 && from != dtpHireDate.Value.Date)
+                    || (_latestSalaryFrom.HasValue && from <= _latestSalaryFrom.Value.Date)
+                    || (SelectedDate(dtpTerminationDate) is DateTime end && from > end))
+                {
+                    FieldHint.Show(dtpSalaryDate, lblStatus, "Chọn ngày áp dụng thuộc thời gian làm việc, sau mức gần nhất và từ ngày 1 (mức đầu có thể từ ngày vào làm).");
+                    return;
+                }
+                if (string.IsNullOrWhiteSpace(txtSalaryReason.Text))
+                {
+                    FieldHint.Show(txtSalaryReason, lblStatus, "Vui lòng nhập căn cứ thay đổi lương.");
+                    return;
+                }
+            }
             btnSave.Enabled = false;
             try
             {
@@ -177,8 +276,9 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
                 DateTime? dateOfBirth = SelectedDate(dtpDateOfBirth);
                 var gender = rdoMale.Checked ? "Male" : "Female";
                 var result = _employeeId.HasValue
-                    ? await _api.Employees.UpdateEmployeeAsync(_employeeId.Value, txtCode.Text.Trim(), txtFullName.Text.Trim(), txtPhone.Text.Trim(), deptId, posId, status, txtIdentityCardNo.Text.Trim(), txtAddress.Text.Trim(), dtpHireDate.Value.Date, SelectedDate(dtpTerminationDate), dateOfBirth, gender)
-                    : await _api.Employees.CreateEmployeeAsync(txtCode.Text.Trim(), txtFullName.Text.Trim(), txtPhone.Text.Trim(), deptId, posId, txtIdentityCardNo.Text.Trim(), txtAddress.Text.Trim(), dtpHireDate.Value.Date, null, dateOfBirth, gender);
+                    ? await _api.Employees.UpdateEmployeeAsync(_employeeId.Value, txtCode.Text.Trim(), txtFullName.Text.Trim(), txtPhone.Text.Trim(), deptId, posId, status, txtIdentityCardNo.Text.Trim(), txtAddress.Text.Trim(), dtpHireDate.Value.Date, SelectedDate(dtpTerminationDate), dateOfBirth, gender,
+                        SalaryChanged ? numSalary.Value : null, SalaryChanged ? dtpSalaryDate.Value.Date : null, SalaryChanged ? txtSalaryReason.Text.Trim() : null)
+                    : await _api.Employees.CreateEmployeeAsync("", txtFullName.Text.Trim(), txtPhone.Text.Trim(), deptId, posId, txtIdentityCardNo.Text.Trim(), txtAddress.Text.Trim(), dtpHireDate.Value.Date, null, dateOfBirth, gender, numSalary.Value);
 
                 if (!result.Success)
                 {

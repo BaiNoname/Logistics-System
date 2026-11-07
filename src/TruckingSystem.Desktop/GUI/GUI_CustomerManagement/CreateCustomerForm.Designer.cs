@@ -16,14 +16,8 @@
             txtName = new TextBox();
             lblPhone = new Label();
             txtPhone = new TextBox();
-            lblTaxCode = new Label();
-            txtTaxCode = new TextBox();
-            lblType = new Label();
-            cboType = new ComboBox();
             lblAddress = new Label();
             txtAddress = new TextBox();
-            lblCreditLimit = new Label();
-            numCreditLimit = new TruckingSystem.Desktop.Common.NumberBox { IsMoney = true };
             lblGoogleCalendarId = new Label();
             txtGoogleCalendarId = new TextBox();
             lblFieldsTitle = new Label();
@@ -48,7 +42,6 @@
             root.SuspendLayout();
             scrollFields.SuspendLayout();
             fields.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)numCreditLimit).BeginInit();
             rightPanel.SuspendLayout();
             scanPanel.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)pictureCard).BeginInit();
@@ -99,28 +92,16 @@
             fields.Controls.Add(txtName, 0, 2);
             fields.Controls.Add(lblPhone, 0, 3);
             fields.Controls.Add(txtPhone, 0, 4);
-            fields.Controls.Add(lblTaxCode, 0, 5);
-            fields.Controls.Add(txtTaxCode, 0, 6);
-            fields.Controls.Add(lblType, 0, 7);
-            fields.Controls.Add(cboType, 0, 8);
-            fields.Controls.Add(lblAddress, 0, 9);
-            fields.Controls.Add(txtAddress, 0, 10);
-            fields.Controls.Add(lblCreditLimit, 0, 11);
-            fields.Controls.Add(numCreditLimit, 0, 12);
-            fields.Controls.Add(lblGoogleCalendarId, 0, 13);
-            fields.Controls.Add(txtGoogleCalendarId, 0, 14);
+            fields.Controls.Add(lblAddress, 0, 5);
+            fields.Controls.Add(txtAddress, 0, 6);
+            fields.Controls.Add(lblGoogleCalendarId, 0, 7);
+            fields.Controls.Add(txtGoogleCalendarId, 0, 8);
             fields.Controls.Add(lblFieldsTitle, 0, 0);
             fields.Dock = DockStyle.Top;
             fields.Location = new Point(0, 0);
             fields.Margin = new Padding(0);
             fields.Name = "fields";
-            fields.RowCount = 15;
-            fields.RowStyles.Add(new RowStyle());
-            fields.RowStyles.Add(new RowStyle());
-            fields.RowStyles.Add(new RowStyle());
-            fields.RowStyles.Add(new RowStyle());
-            fields.RowStyles.Add(new RowStyle());
-            fields.RowStyles.Add(new RowStyle());
+            fields.RowCount = 9;
             fields.RowStyles.Add(new RowStyle());
             fields.RowStyles.Add(new RowStyle());
             fields.RowStyles.Add(new RowStyle());
@@ -177,51 +158,6 @@
             txtPhone.Size = new Size(480, 25);
             txtPhone.TabIndex = 3;
             // 
-            // lblTaxCode
-            // 
-            lblTaxCode.Anchor = AnchorStyles.Left | AnchorStyles.Right;
-            lblTaxCode.AutoSize = true;
-            lblTaxCode.Font = new Font("Segoe UI", 9F);
-            lblTaxCode.ForeColor = Color.FromArgb(100, 116, 139);
-            lblTaxCode.Location = new Point(0, 157);
-            lblTaxCode.Margin = new Padding(0, 8, 0, 2);
-            lblTaxCode.Name = "lblTaxCode";
-            lblTaxCode.Size = new Size(480, 15);
-            lblTaxCode.TabIndex = 4;
-            lblTaxCode.Text = "Mã số thuế (nếu có)";
-            // 
-            // txtTaxCode
-            // 
-            txtTaxCode.Dock = DockStyle.Fill;
-            txtTaxCode.Location = new Point(0, 177);
-            txtTaxCode.Margin = new Padding(0, 3, 0, 3);
-            txtTaxCode.Name = "txtTaxCode";
-            txtTaxCode.Size = new Size(480, 25);
-            txtTaxCode.TabIndex = 5;
-            // 
-            // lblType
-            // 
-            lblType.Anchor = AnchorStyles.Left | AnchorStyles.Right;
-            lblType.AutoSize = true;
-            lblType.Font = new Font("Segoe UI", 9F);
-            lblType.ForeColor = Color.FromArgb(100, 116, 139);
-            lblType.Location = new Point(0, 213);
-            lblType.Margin = new Padding(0, 8, 0, 2);
-            lblType.Name = "lblType";
-            lblType.Size = new Size(480, 15);
-            lblType.TabIndex = 6;
-            lblType.Text = "Loại khách hàng";
-            // 
-            // cboType
-            // 
-            cboType.Dock = DockStyle.Fill;
-            cboType.DropDownStyle = ComboBoxStyle.DropDownList;
-            cboType.Location = new Point(0, 233);
-            cboType.Margin = new Padding(0, 3, 0, 3);
-            cboType.Name = "cboType";
-            cboType.Size = new Size(480, 25);
-            cboType.TabIndex = 7;
-            // 
             // lblAddress
             // 
             lblAddress.Anchor = AnchorStyles.Left | AnchorStyles.Right;
@@ -245,30 +181,6 @@
             txtAddress.ScrollBars = ScrollBars.Vertical;
             txtAddress.Size = new Size(480, 80);
             txtAddress.TabIndex = 9;
-            // 
-            // lblCreditLimit
-            // 
-            lblCreditLimit.Anchor = AnchorStyles.Left | AnchorStyles.Right;
-            lblCreditLimit.AutoSize = true;
-            lblCreditLimit.Font = new Font("Segoe UI", 9F);
-            lblCreditLimit.ForeColor = Color.FromArgb(100, 116, 139);
-            lblCreditLimit.Location = new Point(0, 380);
-            lblCreditLimit.Margin = new Padding(0, 8, 0, 2);
-            lblCreditLimit.Name = "lblCreditLimit";
-            lblCreditLimit.Size = new Size(480, 15);
-            lblCreditLimit.TabIndex = 10;
-            lblCreditLimit.Text = "Hạn mức công nợ (đ, tuỳ chọn)";
-            // 
-            // numCreditLimit
-            // 
-            numCreditLimit.Dock = DockStyle.Fill;
-            numCreditLimit.Location = new Point(0, 400);
-            numCreditLimit.Margin = new Padding(0, 3, 0, 3);
-            numCreditLimit.Maximum = new decimal(new int[] { 999999999, 0, 0, 0 });
-            numCreditLimit.Name = "numCreditLimit";
-            numCreditLimit.Size = new Size(480, 25);
-            numCreditLimit.TabIndex = 11;
-            numCreditLimit.ThousandsSeparator = true;
             // 
             // lblGoogleCalendarId
             // 
@@ -592,7 +504,6 @@
             scrollFields.PerformLayout();
             fields.ResumeLayout(false);
             fields.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)numCreditLimit).EndInit();
             rightPanel.ResumeLayout(false);
             scanPanel.ResumeLayout(false);
             scanPanel.PerformLayout();
@@ -613,14 +524,8 @@
         private System.Windows.Forms.TextBox txtName;
         private System.Windows.Forms.Label lblPhone;
         private System.Windows.Forms.TextBox txtPhone;
-        private System.Windows.Forms.Label lblTaxCode;
-        private System.Windows.Forms.TextBox txtTaxCode;
-        private System.Windows.Forms.Label lblType;
-        private System.Windows.Forms.ComboBox cboType;
         private System.Windows.Forms.Label lblAddress;
         private System.Windows.Forms.TextBox txtAddress;
-        private System.Windows.Forms.Label lblCreditLimit;
-        private TruckingSystem.Desktop.Common.NumberBox numCreditLimit;
         private System.Windows.Forms.Label lblGoogleCalendarId;
         private System.Windows.Forms.TextBox txtGoogleCalendarId;
         private System.Windows.Forms.Button btnSave;

@@ -25,13 +25,6 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
             };
             numContacts.ValueChanged += (_, _) => UpdateContactSection();
             FormClosing += (_, e) => e.Cancel = _saving;
-            // Hiện tiếng Việt (khớp danh sách khách hàng), gửi đúng mã cho server.
-            cboType.Items.AddRange(new object[]
-            {
-                new ComboOption("Individual", "Cá nhân"),
-                new ComboOption("Company", "Doanh nghiệp"),
-            });
-            cboType.SelectedIndex = 0;
             ApplyDesign();
             _ = new AddressSuggestBinder(txtAddress, () => _api); // gợi ý địa chỉ VietMap khi gõ
         }
@@ -41,7 +34,6 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
         private void ApplyDesign()
         {
             lblPhone.Text = "Số điện thoại *:";
-            lblType.Text = "Loại khách hàng *:";
             FormStyle.Section(lblFieldsTitle, lblScanTitle, lblContactsTitle);
             lblFieldsTitle.Text = "① Thông tin khách hàng";
             lblScanTitle.Text = "② Đối chiếu danh thiếp";
@@ -129,11 +121,6 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
                 FieldHint.Show(txtPhone, lblStatus, "Vui lòng nhập số điện thoại hợp lệ (ví dụ: 0901234567 hoặc +84 901234567).");
                 return;
             }
-            if (cboType.SelectedItem is not ComboOption customerType)
-            {
-                FieldHint.Show(cboType, lblStatus, "Vui lòng chọn loại khách hàng Cá nhân hoặc Doanh nghiệp.");
-                return;
-            }
             if (_api is null || !btnSave.Enabled) return;
             var contacts = ReadContacts();
             if (contacts is null) return;
@@ -143,10 +130,11 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
             btnSave.Enabled = btnReadWithAi.Enabled = scrollFields.Enabled = btnContacts.Enabled = contactsSidebar.Enabled = false;
             try
             {
+                // Giữ giá trị mặc định Individual để tương thích API hiện có.
                 var result = await _api.Customers.CreateCustomerAsync(
-                    txtName.Text.Trim(), txtPhone.Text.Trim(), txtTaxCode.Text.Trim(), customerType.Value,
+                    txtName.Text.Trim(), txtPhone.Text.Trim(), null, "Individual",
                     string.IsNullOrWhiteSpace(txtAddress.Text) ? null : txtAddress.Text.Trim(),
-                    numCreditLimit.Value == 0 ? null : numCreditLimit.Value,
+                    null,
                     string.IsNullOrWhiteSpace(txtGoogleCalendarId.Text) ? null : txtGoogleCalendarId.Text.Trim(), contacts);
                 if (IsDisposed || Disposing) return;
 
@@ -282,27 +270,19 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
             txtCardDetails.Text = string.Join(Environment.NewLine, new[]
             {
                 $"Họ và tên: {info.FullName}", $"Công ty: {info.Company}", $"Chức danh: {info.Title}",
-                $"Email: {info.Email}", $"Website: {info.Website}", $"Loại khách AI đọc được: {info.CustomerType}"
+                $"Email: {info.Email}", $"Website: {info.Website}"
             });
             if (!string.IsNullOrWhiteSpace(info.Name)) txtName.Text = info.Name;
             if (!string.IsNullOrWhiteSpace(info.Phone)) txtPhone.Text = info.Phone;
-            if (!string.IsNullOrWhiteSpace(info.TaxCode)) txtTaxCode.Text = info.TaxCode;
             if (!string.IsNullOrWhiteSpace(info.Address)) txtAddress.Text = info.Address.ReplaceLineEndings(Environment.NewLine);
             var warning = info.ErrorMessage;
-            if (!string.IsNullOrWhiteSpace(info.CustomerType))
-            {
-                cboType.SelectedItem = cboType.Items.Cast<ComboOption>()
-                    .FirstOrDefault(option => option.Value.Equals(info.CustomerType, StringComparison.OrdinalIgnoreCase));
-                if (cboType.SelectedItem is null)
-                    warning = string.Join(" ", new[] { warning, "Vui lòng chọn loại khách hàng Cá nhân hoặc Doanh nghiệp." }.Where(value => !string.IsNullOrWhiteSpace(value)));
-            }
             FormStyle.Status(lblStatus, warning ?? "Đã đọc xong. Vui lòng kiểm tra thông tin.",
                 warning is null ? StatusKind.Success : StatusKind.Warning);
         }
 
         private void SetCardScanning(bool scanning)
         {
-            foreach (var control in new Control[] { txtName, txtPhone, txtTaxCode, txtAddress, cboType, btnSave, btnReadWithAi })
+            foreach (var control in new Control[] { txtName, txtPhone, txtAddress, btnSave, btnReadWithAi })
                 control.Enabled = !scanning;
             UseWaitCursor = scanning;
         }

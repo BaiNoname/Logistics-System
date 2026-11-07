@@ -1,10 +1,10 @@
-﻿namespace TruckingSystem.Application.Employees;
+namespace TruckingSystem.Application.Employees;
 
 public interface IEmployeeService
 {
     Task<List<EmployeeListItemDto>> GetAllAsync();
-    Task<EmployeeActionResult> CreateAsync(CreateEmployeeRequest request);
-    Task<EmployeeActionResult> UpdateAsync(int id, UpdateEmployeeRequest request);
+    Task<EmployeeActionResult> CreateAsync(CreateEmployeeRequest request, string actor = "");
+    Task<EmployeeActionResult> UpdateAsync(int id, UpdateEmployeeRequest request, string actor = "");
     Task<List<LookupItemDto>> GetDepartmentsAsync();
     Task<List<LookupItemDto>> GetPositionsAsync();
 

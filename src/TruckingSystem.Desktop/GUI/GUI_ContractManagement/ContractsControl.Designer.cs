@@ -31,7 +31,6 @@
             lblTitle = new Label();
             btnRefresh = new Button();
             btnCreate = new Button();
-            btnEdit = new Button();
             lblStatus = new Label();
             grid = new DataGridView();
             ((System.ComponentModel.ISupportInitialize)grid).BeginInit();
@@ -82,23 +81,6 @@
             btnCreate.UseVisualStyleBackColor = false;
             btnCreate.Click += BtnCreate_Click;
             // 
-            // btnEdit
-            // 
-            btnEdit.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            btnEdit.BackColor = Color.White;
-            btnEdit.Cursor = Cursors.Hand;
-            btnEdit.FlatAppearance.MouseOverBackColor = Color.FromArgb(248, 250, 252);
-            btnEdit.FlatStyle = FlatStyle.Flat;
-            btnEdit.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
-            btnEdit.ForeColor = Color.FromArgb(15, 23, 42);
-            btnEdit.Location = new Point(150, 3);
-            btnEdit.Name = "btnEdit";
-            btnEdit.Size = new Size(90, 35);
-            btnEdit.TabIndex = 3;
-            btnEdit.Text = "Sửa";
-            btnEdit.UseVisualStyleBackColor = false;
-            btnEdit.Click += BtnEdit_Click;
-            // 
             // lblStatus
             // 
             lblStatus.AutoSize = true;
@@ -127,7 +109,6 @@
             Controls.Add(lblTitle);
             Controls.Add(btnRefresh);
             Controls.Add(btnCreate);
-            Controls.Add(btnEdit);
             Controls.Add(lblStatus);
             Controls.Add(grid);
             Name = "ContractsControl";
@@ -142,7 +123,6 @@
         private Label lblTitle;
         private Button btnRefresh;
         private Button btnCreate;
-        private Button btnEdit;
         private Label lblStatus;
         private DataGridView grid;
     }

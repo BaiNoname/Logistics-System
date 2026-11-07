@@ -1,4 +1,4 @@
-namespace TruckingSystem.Desktop.GUI_CustomerManagement
+﻿namespace TruckingSystem.Desktop.GUI_CustomerManagement
 {
     partial class CustomersControl
     {
@@ -20,7 +20,6 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
             lblTitle = new Label();
             btnRefresh = new Button();
             btnCreate = new Button();
-            btnEdit = new Button();
             lblStatus = new Label();
             grid = new DataGridView();
             var customerLayout = new TableLayoutPanel();
@@ -44,7 +43,6 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
             toolbar.AutoSize = true;
             toolbar.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
             toolbar.Controls.Add(btnCreate);
-            toolbar.Controls.Add(btnEdit);
             toolbar.Controls.Add(btnRefresh);
             toolbar.Dock = System.Windows.Forms.DockStyle.Fill;
             toolbar.Margin = new System.Windows.Forms.Padding(0);
@@ -93,32 +91,11 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
             btnCreate.UseVisualStyleBackColor = false;
             btnCreate.Click += new System.EventHandler(this.BtnCreate_Click);
             // 
-            // btnEdit
-            // 
-            btnEdit.AutoSize = true;
-            btnEdit.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
-            btnEdit.BackColor = System.Drawing.Color.White;
-            btnEdit.Cursor = System.Windows.Forms.Cursors.Hand;
-            btnEdit.FlatAppearance.BorderSize = 1;
-            btnEdit.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(203, 213, 225);
-            btnEdit.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(248, 250, 252);
-            btnEdit.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            btnEdit.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
-            btnEdit.ForeColor = System.Drawing.Color.FromArgb(15, 23, 42);
-            btnEdit.Margin = new System.Windows.Forms.Padding(0, 0, 8, 8);
-            btnEdit.MinimumSize = new System.Drawing.Size(0, 38);
-            btnEdit.Name = "btnEdit";
-            btnEdit.Padding = new System.Windows.Forms.Padding(10, 4, 10, 4);
-            btnEdit.TabIndex = 2;
-            btnEdit.Text = "✏️ Sửa";
-            btnEdit.UseVisualStyleBackColor = false;
-            btnEdit.Click += new System.EventHandler(this.BtnEdit_Click);
-            // 
             // filterBar — tìm nhanh + lọc (Common/FilterBar); các ô chọn thêm ở .cs
             // 
             filterBar.Dock = System.Windows.Forms.DockStyle.Fill;
             filterBar.Name = "filterBar";
-            filterBar.SearchPlaceholder = "Tên khách, số điện thoại, mã số thuế, địa chỉ...";
+            filterBar.SearchPlaceholder = "Tên khách, số điện thoại, địa chỉ...";
             filterBar.TabIndex = 2;
             // 
             // lblStatus
@@ -151,7 +128,6 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
             toolbar.Padding = new Padding(0, 4, 0, 8);
             btnRefresh.Size = new Size(120, 38);
             btnCreate.Size = new Size(190, 38);
-            btnEdit.Size = new Size(100, 38);
             lblStatus.AutoSize = false;
             lblStatus.Dock = DockStyle.Fill;
             lblStatus.AutoEllipsis = true;
@@ -187,7 +163,6 @@ namespace TruckingSystem.Desktop.GUI_CustomerManagement
         private System.Windows.Forms.FlowLayoutPanel toolbar;
         private System.Windows.Forms.Button btnRefresh;
         private System.Windows.Forms.Button btnCreate;
-        private System.Windows.Forms.Button btnEdit;
         private System.Windows.Forms.Label lblStatus;
         private TruckingSystem.Desktop.Common.FilterBar filterBar;
         private System.Windows.Forms.DataGridView grid;

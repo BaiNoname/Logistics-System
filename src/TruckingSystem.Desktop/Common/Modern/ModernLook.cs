@@ -5,8 +5,7 @@ using System.Runtime.CompilerServices;
 
 namespace TruckingSystem.Desktop.Common
 {
-    /// <summary>KIỂU MỚI BÊN TRONG MÀN (mẫu 4_buoi đã duyệt) — CHỈ áp cho các màn của Nhân (Tổng quan, Đơn, Chuyến, Kho, Đội xe,
-    /// Tài xế, Địa điểm, Nhiên liệu, Nguồn lực theo kho, Nhật ký hệ thống, Thông báo) và các hộp thoại của chúng. Màn của Minh giữ nguyên (Theme.cs không đổi).
+    /// <summary>Kiểu hiển thị theo theme cho các phân hệ đăng ký bên dưới và các hộp thoại của chúng.
     ///  • Bảng: tiêu đề sáng (nền xám rất nhạt, chữ xám đậm), chỉ kẻ ngang mảnh, dòng cao hơn, dòng chọn xanh trời nhạt.
     ///  • Nút: bo góc; nút chính (màu Primary) tô dải màu theo buổi đang chọn (Bình minh hồng–cam, Trưa xanh trời, Chiều cam–hồng,
     ///    Tối chàm–tím).
@@ -18,10 +17,14 @@ namespace TruckingSystem.Desktop.Common
         {
             "GUI_TransportOrderManagement", "GUI_TripManagement", "GUI_WarehouseManagement", "GUI_VehicleManagement",
             "GUI_DriverManagement", "GUI_LocationManagement", "GUI_FuelManagement", "GUI_ResourceManagement", "GUI_RouteManagement",
-            "GUI_AuditLogManagement", "GUI_NotificationManagement", // Nhật ký hệ thống + Thông báo
+            "GUI_AuditLogManagement", "GUI_NotificationManagement",
+            "GUI_CustomerManagement", "GUI_ContractManagement", "GUI_SurchargeManagement",
+            "GUI_PricingManagement", "GUI_InvoiceManagement",
+            "GUI_EmployeeManagement", "GUI_PayrollManagement", "GUI_AttendanceManagement",
+            "GUI_AccountManagement", "GUI_SystemManagement",
         };
 
-        /// <summary>Màn / hộp thoại thuộc phần của Nhân.</summary>
+        /// <summary>Màn hoặc hộp thoại dùng kiểu hiển thị theo theme.</summary>
         public static bool IsMine(Type t)
             => t.Name == "DashboardControl"
                || (t.Namespace is { } ns && MineNamespaces.Any(m => ns.EndsWith(m, StringComparison.Ordinal)));

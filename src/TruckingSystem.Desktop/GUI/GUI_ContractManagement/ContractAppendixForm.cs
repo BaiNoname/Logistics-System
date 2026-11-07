@@ -7,6 +7,7 @@ public class ContractAppendixForm : BaseForm
 {
     private readonly ApiServices _api;
     private readonly ContractAppendixItem? _item;
+    private readonly int? _initialContractId;
     private readonly TextBox _code = new() { MaxLength = 100, AccessibleName = "Mã phụ lục" };
     private readonly ComboBox _contract = new() { DropDownStyle = ComboBoxStyle.DropDownList, AccessibleName = "Mã hợp đồng" };
     private readonly DateTimePicker _issue = new() { Format = DateTimePickerFormat.Custom, CustomFormat = "dd/MM/yyyy", AccessibleName = "Ngày lập" };
@@ -22,10 +23,11 @@ public class ContractAppendixForm : BaseForm
 
     public int? SavedId { get; private set; }
 
-    public ContractAppendixForm(ApiServices api, ContractAppendixItem? item = null)
+    public ContractAppendixForm(ApiServices api, ContractAppendixItem? item = null, int? contractId = null)
     {
         _api = api;
         _item = item;
+        _initialContractId = contractId;
         Text = item is null ? "Thêm phụ lục hợp đồng" : "Sửa phụ lục hợp đồng";
         ClientSize = new Size(720, 670);
         BackColor = Theme.CardBg;
@@ -48,6 +50,9 @@ public class ContractAppendixForm : BaseForm
         _code.Text = item?.Code ?? "Tự sinh khi lưu: PL-[STT]-[Mã hợp đồng]";
         _issue.Value = item?.IssueDate ?? DateTime.UtcNow.AddHours(7).Date;
         _effective.Value = item?.EffectiveDate ?? DateTime.UtcNow.AddHours(7).Date;
+        var today = DateTime.UtcNow.AddHours(7).Date;
+        _issue.MinDate = item?.IssueDate.Date < today ? item.IssueDate.Date : today;
+        _effective.MinDate = item?.EffectiveDate.Date < today ? item.EffectiveDate.Date : today;
         Field(item is null ? "Mã phụ lục (tự động):" : "Mã phụ lục *:", _code);
         Field("Mã hợp đồng *:", _contract);
         Field("Ngày lập *:", _issue);
@@ -105,6 +110,12 @@ public class ContractAppendixForm : BaseForm
         if (_item is not null && !contracts.Any(c => c.Id == _item.ContractId))
             contracts.Insert(0, new ContractOption { Id = _item.ContractId, Name = $"{_item.ContractCode} ({_item.ContractStatusText})" });
         _contract.DataSource = contracts;
+        if (_initialContractId.HasValue && _item is null)
+        {
+            _contract.SelectedValue = _initialContractId.Value;
+            if (!contracts.Any(c => c.Id == _initialContractId)) _contract.SelectedIndex = -1;
+            _contract.Enabled = false;
+        }
         _priceList.DisplayMember = nameof(ContractOption.Name);
         _priceList.ValueMember = nameof(ContractOption.Id);
         var priceLists = lookups.PriceLists.ToList();
@@ -122,7 +133,9 @@ public class ContractAppendixForm : BaseForm
         _status.Text = "";
         _fields.Enabled = true;
         UpdateSaveEnabled();
-        if (contracts.Count == 0)
+        if (_initialContractId.HasValue && _contract.SelectedIndex < 0)
+            FormStyle.Status(_status, "Hợp đồng đã chọn không còn đang hiệu lực. Vui lòng làm mới danh sách hợp đồng.", StatusKind.Warning);
+        else if (contracts.Count == 0)
             FormStyle.Status(_status, "Cần có hợp đồng đang hiệu lực để lập phụ lục.", StatusKind.Warning);
         else if (lookups.PriceLists.Count == 0 && _item is null)
             FormStyle.Status(_status, "Chưa có bảng giá đang áp dụng để lập phụ lục.", StatusKind.Warning);
@@ -141,7 +154,8 @@ public class ContractAppendixForm : BaseForm
         var tariffRuleId = priceListId == _item?.TariffRule?.PriceListId ? _item.TariffRule.Id : (int?)null;
         try
         {
-            TruckingSystem.Domain.Entities.ContractAppendix.Validate(_item is null ? "Tự động" : _code.Text, contractId, _issue.Value.Date, _effective.Value.Date, tariffRuleId, priceListId);
+            TruckingSystem.Domain.Entities.ContractAppendix.Validate(_item is null ? "Tự động" : _code.Text, contractId, _issue.Value.Date, _effective.Value.Date, tariffRuleId, priceListId,
+                DateTime.UtcNow.AddHours(7).Date, _item?.IssueDate, _item?.EffectiveDate);
             var type = SelectedContract?.Type == "OneTime" ? TruckingSystem.Domain.Enums.ContractType.OneTime : TruckingSystem.Domain.Enums.ContractType.LongTerm;
             TruckingSystem.Domain.Entities.Contract.ValidateDiscount(type, _discount.Value);
             if (!_api.Connection.IsInRole("Admin") && _discount.Value > _maxDiscount)
@@ -150,7 +164,8 @@ public class ContractAppendixForm : BaseForm
         catch (ArgumentException ex)
         {
             // Báo lỗi ngay tại ô sai (thứ tự kiểm tra giống thứ tự ô trên màn hình).
-            Control field = string.IsNullOrWhiteSpace(_code.Text) || _code.Text.Trim().Length > 100 ? _code
+            Control field = ex.ParamName == "issueDate" ? _issue : ex.ParamName == "effectiveDate" ? _effective
+                : string.IsNullOrWhiteSpace(_code.Text) || _code.Text.Trim().Length > 100 ? _code
                 : contractId <= 0 ? _contract
                 : priceListId <= 0 ? _priceList : _discount;
             FieldHint.Show(field, _status, ex.Message);
