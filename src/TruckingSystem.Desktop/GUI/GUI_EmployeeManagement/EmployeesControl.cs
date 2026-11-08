@@ -1,5 +1,6 @@
 using TruckingSystem.Desktop.Common;
 using TruckingSystem.Desktop.DTO_EmployeeManagement;
+using TruckingSystem.Desktop.GUI_LeaveManagement;
 
 namespace TruckingSystem.Desktop.GUI_EmployeeManagement
 {
@@ -43,16 +44,29 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             });
             Load += (_, _) => Theme.UniformButtons(bar);
             grid.DataBindingComplete += (_, _) => { if (grid.Columns["Id"] != null) grid.Columns["Id"]!.Visible = false; };
+            grid.MultiSelect = true;
+            grid.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
             var menu = new ContextMenuStrip();
-            menu.Items.Add("✏️ Sửa nhân viên", null, BtnEdit_Click);
-            menu.Opening += (_, e) => e.Cancel = _api is null || _loading || !_api.Connection.IsInRole("Admin") || grid.CurrentRow is null;
+            var editItem = menu.Items.Add("✏️ Sửa nhân viên", null, BtnEdit_Click);
+            var leaveItem = menu.Items.Add("📅 Ngày nghỉ…", null, BtnLeave_Click);
+            menu.Opening += (_, e) =>
+            {
+                var single = SelectedEmployees().Count == 1;
+                var admin = _api is not null && _api.Connection.IsInRole("Admin");
+                editItem.Visible = single && admin;
+                leaveItem.Visible = single;
+                e.Cancel = _api is null || _loading || !(editItem.Visible || leaveItem.Visible);
+            };
             ModernMenu.Apply(menu);
             grid.ContextMenuStrip = menu;
             Disposed += (_, _) => menu.Dispose();
             grid.CellMouseDown += (_, e) =>
             {
-                if (e.Button == MouseButtons.Right && e.RowIndex >= 0)
-                    grid.CurrentCell = grid.Rows[e.RowIndex].Cells["Mã_nhân_viên"];
+                if (e.Button != MouseButtons.Right || e.RowIndex < 0) return;
+                if (grid.Rows[e.RowIndex].Selected) return; // giữ nguyên vùng chọn
+                grid.ClearSelection();
+                grid.Rows[e.RowIndex].Selected = true;
+                grid.CurrentCell = grid.Rows[e.RowIndex].Cells["Mã_nhân_viên"];
             };
             Load += async (_, _) => await LoadAsync();
         }
@@ -70,6 +84,31 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             if (_api is null) return;
             using var f = new CreateEmployeeForm(_api);
             if (f.ShowDialog(FindForm()) == DialogResult.OK) await LoadAsync();
+        }
+
+        /// <summary>Các nhân viên đang được chọn trên lưới (theo thứ tự hiển thị).</summary>
+        private List<EmployeeListItem> SelectedEmployees()
+        {
+            var ids = grid.SelectedRows.Cast<DataGridViewRow>()
+                .OrderBy(r => r.Index)
+                .Select(r => r.Cells["Id"].Value)
+                .OfType<int>()
+                .ToList();
+            return ids.Select(id => _employees.FirstOrDefault(x => x.Id == id)).OfType<EmployeeListItem>().ToList();
+        }
+
+        private void BtnLeave_Click(object? sender, EventArgs e)
+        {
+            if (_api is null || _loading) return;
+            var selected = SelectedEmployees();
+            if (selected.Count != 1)
+            {
+                MessageBox.Show(FindForm(), "Vui lòng chọn đúng 1 nhân viên.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+            var employee = selected[0];
+            using var f = new LeaveForm(_api.Leaves, employee.Id, employee.Code, employee.FullName);
+            f.ShowDialog(FindForm());
         }
 
         private async void BtnEdit_Click(object? sender, EventArgs e)
