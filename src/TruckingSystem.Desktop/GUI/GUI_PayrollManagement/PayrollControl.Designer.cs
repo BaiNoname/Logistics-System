@@ -4,6 +4,7 @@ namespace TruckingSystem.Desktop.GUI_PayrollManagement;
 partial class PayrollControl
 {
     private DateTimePicker _month = null!;
+    private FilterBar _filters = null!;
     private Label _status = null!, _totals = null!;
     private DataGridView _slipGrid = null!;
     private Button _generateButton = null!, _approveButton = null!, _payButton = null!,
@@ -13,7 +14,9 @@ partial class PayrollControl
     {
         Dock = DockStyle.Fill;
         BackColor = Theme.ContentBg;
-        var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 5, Padding = new Padding(12) };
+        var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 6, Padding = new Padding(12) };
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -24,9 +27,10 @@ partial class PayrollControl
         _month = new DateTimePicker { Format = DateTimePickerFormat.Custom, CustomFormat = "MM/yyyy", ShowUpDown = true, Width = 110, AccessibleName = "Tháng lương" };
         _generateButton = Theme.MakePrimaryButton("Tạo / tính lại bảng lương", 235);
         _approveButton = Theme.MakePrimaryButton("Chốt lương", 130);
-        _kpiButton = Theme.MakeSecondaryButton("Cấu hình KPI", 150);
+        _kpiButton = Theme.MakeSecondaryButton("Cấu hình KPI cho tài xế", 225);
         toolbar.Controls.AddRange(new Control[] { _month, _generateButton, _kpiButton, _approveButton });
         _status = new Label { AutoSize = true, Dock = DockStyle.Fill, Padding = new Padding(0, 8, 0, 8) };
+        _filters = new FilterBar { Dock = DockStyle.Fill, SearchPlaceholder = "Mã, tên nhân viên..." };
         _slipGrid = new DataGridView { Dock = DockStyle.Fill, AutoGenerateColumns = false };
         _slipGrid.Columns.Add(new DataGridViewTextBoxColumn { Name = "EmployeeId", DataPropertyName = "EmployeeId", Visible = false });
         foreach (var (name, label) in new[] { ("EmployeeCode", "Mã nhân viên"), ("EmployeeName", "Nhân viên"), ("MonthlySalary", "Lương cơ bản"),
@@ -41,7 +45,7 @@ partial class PayrollControl
         _payButton = Theme.MakePrimaryButton("Ghi nhận chi trả", 160);
         _deleteDraftButton = Theme.MakeSecondaryButton("Xóa nháp cũ", 140);
         footer.Controls.AddRange(new Control[] { _totals, _exportButton, _payButton, _deleteDraftButton });
-        layout.Controls.Add(title, 0, 0); layout.Controls.Add(toolbar, 0, 1); layout.Controls.Add(_status, 0, 2);
-        layout.Controls.Add(_slipGrid, 0, 3); layout.Controls.Add(footer, 0, 4); Controls.Add(layout);
+        layout.Controls.Add(title, 0, 0); layout.Controls.Add(toolbar, 0, 1); layout.Controls.Add(_filters, 0, 2);
+        layout.Controls.Add(_status, 0, 3); layout.Controls.Add(_slipGrid, 0, 4); layout.Controls.Add(footer, 0, 5); Controls.Add(layout);
     }
 }
