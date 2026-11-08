@@ -42,6 +42,8 @@ public interface IApplicationDbContext
     DbSet<AttendanceScan> AttendanceScans { get; }
     DbSet<AttendanceRecord> AttendanceRecords { get; }
     DbSet<AttendanceAdjustmentRequest> AttendanceAdjustmentRequests { get; }
+    DbSet<PublicHoliday> PublicHolidays { get; }
+    DbSet<LeaveRecord> LeaveRecords { get; }
 
     DbSet<Customer> Customers { get; }
     DbSet<CustomerContact> CustomerContacts { get; }
