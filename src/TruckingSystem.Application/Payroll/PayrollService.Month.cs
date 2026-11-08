@@ -3,6 +3,7 @@ using System.Text.Json;
 using TruckingSystem.Application.Common;
 using TruckingSystem.Domain.Entities;
 using TruckingSystem.Domain.Enums;
+using TruckingSystem.Domain.Leave;
 using TruckingSystem.Domain.Payroll;
 
 namespace TruckingSystem.Application.Payroll;
@@ -90,9 +91,13 @@ public partial class PayrollService
             {
                 var attendance = await EmployeePayrollAttendanceAsync(employee, from, to);
                 if (attendance.Errors.Count > 0) { errors.AddRange(attendance.Errors.Select(e => $"{row.Code}: {e}")); continue; }
-                slip.WorkedDays = attendance.Days;
-                slip.EarnedSalary = PayrollRules.Prorate(salary.MonthlySalary, slip.StandardDays, attendance.Days);
-                slip.AttendanceNote = "Lương theo công hưởng lương từ module chấm công; sử dụng điều chỉnh đã duyệt.";
+                var d = attendance.Days;
+                slip.WorkedDays = d.WorkedDays; slip.HolidayDays = d.HolidayDays;
+                slip.PaidLeaveDays = d.PaidLeaveDays; slip.UnpaidLeaveDays = d.UnpaidLeaveDays;
+                slip.EarnedSalary = PayrollRules.Prorate(salary.MonthlySalary, slip.StandardDays, d.WorkedDays + d.PaidLeaveDays + d.HolidayDays);
+                slip.AttendanceNote = "Lương theo công hưởng lương từ module chấm công; sử dụng điều chỉnh đã duyệt."
+                    + Environment.NewLine + "Lễ " + d.HolidayDays + "; "
+                    + string.Join("; ", d.LeaveCounts.Select(k => $"{LeaveRules.DisplayName(k.Key)} {k.Value}"));
                 source = attendance.Snapshot;
             }
             var entries = adjustments.Where(a => a.EmployeeId == row.Id).ToList();
@@ -107,25 +112,41 @@ public partial class PayrollService
         }
         return (slips, errors);
     }
-    private async Task<(decimal Days, object Snapshot, List<string> Errors)> EmployeePayrollAttendanceAsync(Employee employee, DateTime from, DateTime to)
+    private async Task<(PayrollDayBreakdown Days, object Snapshot, List<string> Errors)> EmployeePayrollAttendanceAsync(Employee employee, DateTime from, DateTime to)
     {
         if (employee.HireDate.Date > from) from = employee.HireDate.Date;
         if (employee.TerminationDate?.Date < to) to = employee.TerminationDate.Value.Date;
         var rows = await db.AttendanceRecords.AsNoTracking().Where(a => a.EmployeeId == employee.Id && a.WorkDate >= from && a.WorkDate <= to)
             .OrderBy(a => a.WorkDate).ToListAsync();
         var errors = new List<string>();
-        if (rows.Count == 0) errors.Add("Chưa có dữ liệu chấm công của tháng.");
         if (await db.AttendanceAdjustmentRequests.AnyAsync(a => a.EmployeeId == employee.Id && a.WorkDate >= from && a.WorkDate <= to
             && a.Status == AttendanceAdjustmentStatus.Pending)) errors.Add("Còn yêu cầu điều chỉnh công chưa xử lý.");
-        decimal days = 0;
+        var attendanceDays = new Dictionary<DateTime, decimal>();
         foreach (var row in rows)
         {
             var checkIn = row.EffectiveCheckInAt; var checkOut = row.EffectiveCheckOutAt;
             if (!checkIn.HasValue || !checkOut.HasValue || checkOut <= checkIn)
             { errors.Add($"Ngày {row.WorkDate:dd/MM}: thiếu hoặc sai giờ vào/ra."); continue; }
-            days += TruckingSystem.Domain.Attendance.AttendanceRules.PaidDays(checkIn.Value, checkOut.Value);
+            var paid = TruckingSystem.Domain.Attendance.AttendanceRules.PaidDays(checkIn.Value, checkOut.Value);
+            var key = row.WorkDate.Date;
+            attendanceDays[key] = attendanceDays.TryGetValue(key, out var existing) ? existing + paid : paid;
         }
-        return (days, rows.Select(r => new { r.WorkDate, r.EffectiveCheckInAt, r.EffectiveCheckOutAt, r.AdjustmentRequestId }).ToList(), errors);
+        var holidayList = await db.PublicHolidays.AsNoTracking().Where(h => h.Date >= from && h.Date <= to).Select(h => h.Date).ToListAsync();
+        var holidays = holidayList.Select(h => h.Date).ToHashSet();
+        var leaveRows = await db.LeaveRecords.AsNoTracking().Where(l => l.EmployeeId == employee.Id && l.LeaveDate >= from && l.LeaveDate <= to)
+            .Select(l => new { l.LeaveDate, l.Type }).ToListAsync();
+        var leaves = new Dictionary<DateTime, LeaveType>();
+        foreach (var l in leaveRows) leaves[l.LeaveDate.Date] = l.Type;
+        var days = LeaveRules.ClassifyPayrollDays(from, to, attendanceDays, holidays, leaves);
+        if (rows.Count == 0 && days.HolidayDays + days.PaidLeaveDays + days.UnpaidLeaveDays == 0)
+            errors.Add("Chưa có dữ liệu chấm công của tháng.");
+        var snapshot = new
+        {
+            Attendance = rows.Select(r => new { r.WorkDate, r.EffectiveCheckInAt, r.EffectiveCheckOutAt, r.AdjustmentRequestId }).ToList(),
+            Holidays = days.HolidayDates,
+            Leaves = days.LeaveDates.Select(x => new { x.Date, Type = x.Type.ToString() }).ToList()
+        };
+        return (days, snapshot, errors);
     }
 
 }
