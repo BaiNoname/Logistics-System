@@ -41,6 +41,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
     public DbSet<AttendanceScan> AttendanceScans => Set<AttendanceScan>();
     public DbSet<AttendanceRecord> AttendanceRecords => Set<AttendanceRecord>();
     public DbSet<AttendanceAdjustmentRequest> AttendanceAdjustmentRequests => Set<AttendanceAdjustmentRequest>();
+    public DbSet<PublicHoliday> PublicHolidays => Set<PublicHoliday>();
+    public DbSet<LeaveRecord> LeaveRecords => Set<LeaveRecord>();
 
     // Nhóm B — Khách hàng & Kinh doanh
     public DbSet<Customer> Customers => Set<Customer>();
@@ -263,6 +265,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
         });
         PayrollConfiguration.Configure(builder);
         AttendanceConfiguration.Configure(builder);
+        LeaveConfiguration.Configure(builder);
 
         // ---- Kiểu decimal cho tiền tệ/số lượng — chỉ định precision rõ ràng cho PostgreSQL ----
         foreach (var property in builder.Model.GetEntityTypes()

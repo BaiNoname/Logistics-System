@@ -38,6 +38,11 @@ public class PayrollController(IPayrollService service) : ControllerBase
     public async Task<ActionResult<PayrollResult>> AddAdjustment(MonthlyAdjustmentRequest request)
         => Result(await service.AddMonthlyAdjustmentAsync(request, Actor));
 
+    [HttpPost("monthly-adjustments/bulk")]
+    [Authorize(Roles = "Admin,Accountant")]
+    public async Task<ActionResult<PayrollResult>> AddAdjustmentsBulk(BulkMonthlyAdjustmentRequest request)
+        => Result(await service.AddMonthlyAdjustmentsBulkAsync(request, Actor));
+
     [HttpDelete("monthly-adjustments/{id:int}")]
     [Authorize(Roles = "Admin,Accountant")]
     public async Task<ActionResult<PayrollResult>> DeleteAdjustment(int id)

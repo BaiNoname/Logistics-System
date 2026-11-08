@@ -42,3 +42,4 @@ public record KpiPolicyDto(int Id, DateTime EffectiveFrom, decimal KmPerPoint, d
 public record SaveKpiPolicyRequest(DateTime EffectiveFrom, decimal KmPerPoint, decimal TargetPoints, List<KpiFactorDto> Factors);
 public record MonthlyAdjustmentDto(int Id, int EmployeeId, string EmployeeName, int Year, int Month, string Kind, decimal Amount, string Reason);
 public record MonthlyAdjustmentRequest(int EmployeeId, int Year, int Month, string Kind, decimal Amount, string Reason);
+public record BulkMonthlyAdjustmentRequest(List<int> EmployeeIds, int Year, int Month, string Kind, decimal Amount, string Reason);

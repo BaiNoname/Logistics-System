@@ -190,7 +190,7 @@ namespace TruckingSystem.Infrastructure.Migrations
                         .IsUnique()
                         .HasFilter("\"Status\" = 'Pending'");
 
-                    b.ToTable("AttendanceAdjustmentRequests", (string)null);
+                    b.ToTable("AttendanceAdjustmentRequests");
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.AttendanceQrCode", b =>
@@ -231,7 +231,7 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.HasIndex("WarehouseId", "WorkDate")
                         .IsUnique();
 
-                    b.ToTable("AttendanceQrCodes", (string)null);
+                    b.ToTable("AttendanceQrCodes");
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.AttendanceRecord", b =>
@@ -288,7 +288,7 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.HasIndex("EmployeeId", "WorkDate")
                         .IsUnique();
 
-                    b.ToTable("AttendanceRecords", (string)null);
+                    b.ToTable("AttendanceRecords");
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.AttendanceScan", b =>
@@ -359,7 +359,7 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     b.HasIndex("EmployeeId", "WorkDate");
 
-                    b.ToTable("AttendanceScans", (string)null);
+                    b.ToTable("AttendanceScans");
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.AuditLog", b =>
@@ -408,7 +408,7 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     b.HasIndex("EntityName", "EntityId");
 
-                    b.ToTable("AuditLogs", (string)null);
+                    b.ToTable("AuditLogs");
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.CargoLine", b =>
@@ -454,7 +454,7 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     b.HasIndex("TransportOrderId");
 
-                    b.ToTable("CargoLines", (string)null);
+                    b.ToTable("CargoLines");
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.Contract", b =>
@@ -507,7 +507,7 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     b.HasIndex("TariffRuleId");
 
-                    b.ToTable("Contracts", (string)null);
+                    b.ToTable("Contracts");
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.ContractAppendix", b =>
@@ -563,7 +563,7 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     b.HasIndex("TariffRuleId");
 
-                    b.ToTable("ContractAppendices", (string)null);
+                    b.ToTable("ContractAppendices");
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.Customer", b =>
@@ -607,7 +607,7 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Customers", (string)null);
+                    b.ToTable("Customers");
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.CustomerContact", b =>
@@ -641,7 +641,7 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     b.HasIndex("CustomerId");
 
-                    b.ToTable("CustomerContacts", (string)null);
+                    b.ToTable("CustomerContacts");
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.CustomerFeedback", b =>
@@ -672,7 +672,7 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.HasIndex("TransportOrderId")
                         .IsUnique();
 
-                    b.ToTable("CustomerFeedbacks", (string)null);
+                    b.ToTable("CustomerFeedbacks");
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.DeliveryDeadlineChange", b =>
@@ -727,7 +727,7 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     b.HasIndex("TransportOrderId");
 
-                    b.ToTable("DeliveryDeadlineChanges", (string)null);
+                    b.ToTable("DeliveryDeadlineChanges");
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.Department", b =>
@@ -750,7 +750,7 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Departments", (string)null);
+                    b.ToTable("Departments");
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.DriverKpiRate", b =>
@@ -786,7 +786,7 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.HasIndex("VehicleType")
                         .IsUnique();
 
-                    b.ToTable("DriverKpiRates", null, t =>
+                    b.ToTable("DriverKpiRates", t =>
                         {
                             t.HasCheckConstraint("CK_DriverKpiRate_Positive", "\"VehicleFactor\" > 0 AND \"AmountPerPoint\" > 0 AND \"KmPerPoint\" > 0");
                         });
@@ -839,7 +839,7 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     b.HasIndex("WarehouseId");
 
-                    b.ToTable("DriverProfiles", (string)null);
+                    b.ToTable("DriverProfiles");
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.DriverSchedule", b =>
@@ -870,7 +870,7 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.HasIndex("DriverEmployeeId", "ShiftDate")
                         .IsUnique();
 
-                    b.ToTable("DriverSchedules", (string)null);
+                    b.ToTable("DriverSchedules");
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.Employee", b =>
@@ -934,7 +934,7 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     b.HasIndex("PositionId");
 
-                    b.ToTable("Employees", null, t =>
+                    b.ToTable("Employees", t =>
                         {
                             t.HasCheckConstraint("CK_Employee_EmploymentDates", "\"TerminationDate\" IS NULL OR \"TerminationDate\" >= \"HireDate\"::date");
                         });
@@ -971,7 +971,7 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     b.HasIndex("EmployeeId");
 
-                    b.ToTable("EmployeeDocuments", (string)null);
+                    b.ToTable("EmployeeDocuments");
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.EmployeeSalary", b =>
@@ -1011,7 +1011,7 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.HasIndex("EmployeeId", "EffectiveFrom")
                         .IsUnique();
 
-                    b.ToTable("EmployeeSalaries", null, t =>
+                    b.ToTable("EmployeeSalaries", t =>
                         {
                             t.HasCheckConstraint("CK_EmployeeSalary_Positive", "\"MonthlySalary\" > 0");
                         });
@@ -1050,7 +1050,7 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     b.HasIndex("TripId");
 
-                    b.ToTable("FuelLogs", null, t =>
+                    b.ToTable("FuelLogs", t =>
                         {
                             t.HasCheckConstraint("CK_FuelLog_Positive", "\"Liters\" > 0 AND \"Cost\" >= 0");
                         });
@@ -1094,7 +1094,7 @@ namespace TruckingSystem.Infrastructure.Migrations
                         .IsUnique()
                         .HasDatabaseName("UX_FuelPrice_Provider_Type_Date");
 
-                    b.ToTable("FuelPriceHistories", null, t =>
+                    b.ToTable("FuelPriceHistories", t =>
                         {
                             t.HasCheckConstraint("CK_FuelPrice_Positive", "\"Price\" > 0");
                         });
@@ -1126,7 +1126,7 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("FuelProviders", (string)null);
+                    b.ToTable("FuelProviders");
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.GoodsIssue", b =>
@@ -1191,7 +1191,7 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     b.HasIndex("WarehouseId");
 
-                    b.ToTable("GoodsIssues", (string)null);
+                    b.ToTable("GoodsIssues");
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.GoodsReceipt", b =>
@@ -1244,7 +1244,7 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     b.HasIndex("WarehouseId");
 
-                    b.ToTable("GoodsReceipts", (string)null);
+                    b.ToTable("GoodsReceipts");
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.IncidentReport", b =>
@@ -1280,7 +1280,7 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     b.HasIndex("TripId");
 
-                    b.ToTable("IncidentReports", (string)null);
+                    b.ToTable("IncidentReports");
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.Invoice", b =>
@@ -1321,7 +1321,7 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     b.HasIndex("TransportOrderId");
 
-                    b.ToTable("Invoices", (string)null);
+                    b.ToTable("Invoices");
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.InvoiceLine", b =>
@@ -1358,7 +1358,57 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     b.HasIndex("InvoiceId");
 
-                    b.ToTable("InvoiceLines", (string)null);
+                    b.ToTable("InvoiceLines");
+                });
+
+            modelBuilder.Entity("TruckingSystem.Domain.Entities.LeaveRecord", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<Guid>("BatchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<int>("EmployeeId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("LeaveDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Note")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BatchId");
+
+                    b.HasIndex("LeaveDate");
+
+                    b.HasIndex("EmployeeId", "LeaveDate")
+                        .IsUnique();
+
+                    b.ToTable("LeaveRecords");
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.Location", b =>
@@ -1396,7 +1446,7 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     b.HasIndex("CustomerId");
 
-                    b.ToTable("Locations", (string)null);
+                    b.ToTable("Locations");
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.MaxDiscountPercent", b =>
@@ -1498,7 +1548,7 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.HasIndex("PayrollPeriodId", "EmployeeId")
                         .IsUnique();
 
-                    b.ToTable("MonthlyAttendances", null, t =>
+                    b.ToTable("MonthlyAttendances", t =>
                         {
                             t.HasCheckConstraint("CK_MonthlyAttendance_Days", "\"StandardDays\" > 0 AND \"StandardDays\" <= 31 AND \"WorkedDays\" >= 0 AND \"PaidLeaveDays\" >= 0 AND \"HolidayDays\" >= 0 AND \"UnpaidLeaveDays\" >= 0 AND \"WorkedDays\" + \"PaidLeaveDays\" + \"HolidayDays\" + \"UnpaidLeaveDays\" <= CASE WHEN \"DriverWorkDates\" IS NOT NULL THEN 31 ELSE \"StandardDays\" END AND \"WeekdayOvertimeHours\" >= 0 AND \"RestDayOvertimeHours\" >= 0 AND \"HolidayOvertimeHours\" >= 0");
                         });
@@ -1536,7 +1586,7 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     b.HasIndex("UserId", "IsRead");
 
-                    b.ToTable("Notifications", (string)null);
+                    b.ToTable("Notifications");
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.Payment", b =>
@@ -1569,7 +1619,7 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     b.HasIndex("InvoiceId");
 
-                    b.ToTable("Payments", (string)null);
+                    b.ToTable("Payments");
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.PayrollItem", b =>
@@ -1620,7 +1670,7 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     b.HasIndex("PayrollSlipId");
 
-                    b.ToTable("PayrollItems", null, t =>
+                    b.ToTable("PayrollItems", t =>
                         {
                             t.HasCheckConstraint("CK_PayrollItem_Amount", "\"Amount\" > 0 AND \"CalculatedAmount\" >= 0");
                         });
@@ -1658,7 +1708,7 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.HasIndex("EffectiveFrom")
                         .IsUnique();
 
-                    b.ToTable("PayrollKpiPolicies", null, t =>
+                    b.ToTable("PayrollKpiPolicies", t =>
                         {
                             t.HasCheckConstraint("CK_PayrollKpiPolicy_Positive", "\"KmPerPoint\" > 0 AND \"TargetPoints\" > 0");
                         });
@@ -1708,7 +1758,7 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     b.HasIndex("Year", "Month", "EmployeeId");
 
-                    b.ToTable("PayrollMonthlyAdjustments", null, t =>
+                    b.ToTable("PayrollMonthlyAdjustments", t =>
                         {
                             t.HasCheckConstraint("CK_PayrollMonthlyAdjustment_Valid", "\"Amount\" > 0 AND \"Month\" BETWEEN 1 AND 12 AND \"Year\" BETWEEN 2000 AND 2100");
                         });
@@ -1753,7 +1803,7 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.HasIndex("Year", "Month")
                         .IsUnique();
 
-                    b.ToTable("PayrollPeriods", null, t =>
+                    b.ToTable("PayrollPeriods", t =>
                         {
                             t.HasCheckConstraint("CK_PayrollPeriod_Month", "\"Month\" BETWEEN 1 AND 12 AND \"Year\" BETWEEN 2000 AND 2100");
                         });
@@ -1884,7 +1934,7 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.HasIndex("PayrollPeriodId", "EmployeeId")
                         .IsUnique();
 
-                    b.ToTable("PayrollSlips", null, t =>
+                    b.ToTable("PayrollSlips", t =>
                         {
                             t.HasCheckConstraint("CK_PayrollSlip_Balance", "\"NetPay\" >= 0 AND \"PaidAmount\" >= 0 AND \"PaidAmount\" <= \"NetPay\"");
                         });
@@ -1917,7 +1967,7 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Permissions", (string)null);
+                    b.ToTable("Permissions");
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.Position", b =>
@@ -1974,7 +2024,42 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("PriceLists", (string)null);
+                    b.ToTable("PriceLists");
+                });
+
+            modelBuilder.Entity("TruckingSystem.Domain.Entities.PublicHoliday", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<DateTime>("Date")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Date")
+                        .IsUnique();
+
+                    b.ToTable("PublicHolidays");
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.RolePermission", b =>
@@ -1989,7 +2074,7 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     b.HasIndex("PermissionId");
 
-                    b.ToTable("RolePermissions", (string)null);
+                    b.ToTable("RolePermissions");
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.SalaryPayment", b =>
@@ -2035,7 +2120,7 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.HasIndex("Reference")
                         .IsUnique();
 
-                    b.ToTable("SalaryPayments", null, t =>
+                    b.ToTable("SalaryPayments", t =>
                         {
                             t.HasCheckConstraint("CK_SalaryPayment_Positive", "\"Amount\" > 0");
                         });
@@ -2082,7 +2167,7 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     b.HasIndex("CustomerId");
 
-                    b.ToTable("SalesOrders", (string)null);
+                    b.ToTable("SalesOrders");
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.StorageAssignment", b =>
@@ -2123,7 +2208,7 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     b.HasIndex("StorageBinId");
 
-                    b.ToTable("StorageAssignments", null, t =>
+                    b.ToTable("StorageAssignments", t =>
                         {
                             t.HasCheckConstraint("CK_StorageAssignment_QtyStored_NonNegative", "\"QtyStored\" >= 0");
                         });
@@ -2185,7 +2270,7 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.HasIndex("WarehouseZoneId", "Code")
                         .IsUnique();
 
-                    b.ToTable("StorageBins", null, t =>
+                    b.ToTable("StorageBins", t =>
                         {
                             t.HasCheckConstraint("CK_StorageBin_CurrentUsedM3_NonNegative", "\"CurrentUsedM3\" >= 0");
                         });
@@ -2204,7 +2289,7 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     b.HasKey("SurchargeListId", "Kind");
 
-                    b.ToTable("SurchargeLine", (string)null);
+                    b.ToTable("SurchargeLine");
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.SurchargeList", b =>
@@ -2235,7 +2320,7 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.HasIndex("EffectiveDate")
                         .HasFilter("\"Published\"");
 
-                    b.ToTable("SurchargeLists", (string)null);
+                    b.ToTable("SurchargeLists");
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.TariffRule", b =>
@@ -2275,7 +2360,7 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     b.HasIndex("PriceListId");
 
-                    b.ToTable("TariffRules", (string)null);
+                    b.ToTable("TariffRules");
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.TransportOrder", b =>
@@ -2365,7 +2450,7 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     b.HasIndex("WarehouseId");
 
-                    b.ToTable("TransportOrders", (string)null);
+                    b.ToTable("TransportOrders");
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.Trip", b =>
@@ -2461,7 +2546,7 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     b.HasIndex("WarehouseId");
 
-                    b.ToTable("Trips", (string)null);
+                    b.ToTable("Trips");
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.TripCalendarEvent", b =>
@@ -2496,7 +2581,7 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     b.HasIndex("TripId");
 
-                    b.ToTable("TripCalendarEvents", (string)null);
+                    b.ToTable("TripCalendarEvents");
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.TripCargoPhoto", b =>
@@ -2541,7 +2626,7 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     b.HasIndex("TripId");
 
-                    b.ToTable("TripCargoPhotos", (string)null);
+                    b.ToTable("TripCargoPhotos");
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.TripExpense", b =>
@@ -2574,7 +2659,7 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     b.HasIndex("TripId");
 
-                    b.ToTable("TripExpenses", (string)null);
+                    b.ToTable("TripExpenses");
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.TripLine", b =>
@@ -2615,7 +2700,7 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     b.HasIndex("TripId");
 
-                    b.ToTable("TripLines", (string)null);
+                    b.ToTable("TripLines");
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.TripVideoSegment", b =>
@@ -2664,7 +2749,7 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.HasIndex("TripId", "StartedAt")
                         .IsUnique();
 
-                    b.ToTable("TripVideoSegments", (string)null);
+                    b.ToTable("TripVideoSegments");
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.Vehicle", b =>
@@ -2732,7 +2817,7 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     b.HasIndex("WarehouseId");
 
-                    b.ToTable("Vehicles", (string)null);
+                    b.ToTable("Vehicles");
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.VehicleDocument", b =>
@@ -2768,7 +2853,7 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     b.HasIndex("VehicleId");
 
-                    b.ToTable("VehicleDocuments", (string)null);
+                    b.ToTable("VehicleDocuments");
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.Warehouse", b =>
@@ -2828,7 +2913,7 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Warehouses", (string)null);
+                    b.ToTable("Warehouses");
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.WarehouseStock", b =>
@@ -2870,7 +2955,7 @@ namespace TruckingSystem.Infrastructure.Migrations
                     b.HasIndex("WarehouseId", "CargoLineId")
                         .IsUnique();
 
-                    b.ToTable("WarehouseStocks", null, t =>
+                    b.ToTable("WarehouseStocks", t =>
                         {
                             t.HasCheckConstraint("CK_WarehouseStock_QtyOnHand_NonNegative", "\"QtyOnHand\" >= 0");
                         });
@@ -2916,7 +3001,7 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     b.HasIndex("WarehouseId");
 
-                    b.ToTable("WarehouseZones", (string)null);
+                    b.ToTable("WarehouseZones");
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.Waypoint", b =>
@@ -2964,7 +3049,7 @@ namespace TruckingSystem.Infrastructure.Migrations
 
                     b.HasIndex("TripId", "Timestamp");
 
-                    b.ToTable("Waypoints", (string)null);
+                    b.ToTable("Waypoints");
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Identity.ApplicationRole", b =>
@@ -3488,6 +3573,17 @@ namespace TruckingSystem.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Invoice");
+                });
+
+            modelBuilder.Entity("TruckingSystem.Domain.Entities.LeaveRecord", b =>
+                {
+                    b.HasOne("TruckingSystem.Domain.Entities.Employee", "Employee")
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Employee");
                 });
 
             modelBuilder.Entity("TruckingSystem.Domain.Entities.Location", b =>

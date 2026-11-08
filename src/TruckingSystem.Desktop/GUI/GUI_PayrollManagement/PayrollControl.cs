@@ -21,6 +21,8 @@ public partial class PayrollControl : BaseUserControl
     public PayrollControl()
     {
         InitializeComponent();
+        _filters.AddChoice("payment", "Trạng thái chi trả", new[] { "Chưa trả", "Trả một phần", "Đã trả đủ", "Chưa có phiếu" });
+        _filters.FilterChanged += (_, _) => { if (!_loading) BindSlips(); };
         Theme.StyleGrid(_slipGrid); GridLayout.FitColumns(_slipGrid);
         GridDecor.Pills(_slipGrid, "PaymentStatus", (text, _) => text switch
         {
@@ -92,7 +94,7 @@ public partial class PayrollControl : BaseUserControl
                 e.FormattingApplied = true;
             }
             if (e.ColumnIndex >= 0 && _slipGrid.Columns[e.ColumnIndex].Name == "PaymentStatus" && e.Value is string state)
-                e.Value = state switch { "Paid" => "Đã trả đủ", "PartiallyPaid" => "Trả một phần", "Chưa có phiếu" => state, _ => "Chưa trả" };
+                e.Value = PaymentStatusText(state);
         };
         Load += async (_, _) => await RunAsync(LoadAsync);
     }
@@ -105,6 +107,7 @@ public partial class PayrollControl : BaseUserControl
     private async Task LoadAsync()
     {
         _loading = true;
+        _filters.Enabled = false;
         var selected = Employee?.Id;
         try
         {
@@ -114,27 +117,43 @@ public partial class PayrollControl : BaseUserControl
             _employees.AddRange(_slips.Where(s => !_employees.Any(e => e.Id == s.EmployeeId)).Select(s =>
                 new PayrollEmployeeDto(s.EmployeeId, s.EmployeeCode, s.EmployeeName, s.DepartmentName, s.PositionName,
                     s.WorkFrom ?? s.SalaryEffectiveFrom, null, s.IsDriver)));
-            _slipGrid.DataSource = _employees.Select(e =>
-            {
-                var slip = _slips.FirstOrDefault(s => s.EmployeeId == e.Id);
-                return new { EmployeeId = e.Id, EmployeeCode = e.Code, EmployeeName = e.FullName,
-                    MonthlySalary = slip?.MonthlySalary, WorkedDays = slip?.WorkedDays, KpiPoints = slip?.KpiPoints,
-                    KpiTarget = slip?.KpiTarget, KpiRatio = (string?)null, EarnedSalary = slip?.EarnedSalary,
-                    GrossIncome = slip?.GrossIncome, Deductions = slip?.Deductions, NetPay = slip?.NetPay,
-                    PaidAmount = slip?.PaidAmount, PaymentStatus = slip?.PaymentStatus ?? "Chưa có phiếu" };
-            }).ToList();
-            if (selected.HasValue) SelectEmployee(selected.Value);
+            BindSlips(selected);
             _status.ForeColor = _period?.ApprovedAt is not null ? Theme.Success : Theme.TextSecondary;
             _status.Text = _period?.ApprovedAt is not null ? "Đã chốt — số liệu được giữ nguyên."
                 : "Bản nháp — bấm Tạo / tính lại bảng lương để lấy công, chuyến và khoản cộng/trừ mới nhất.";
             _totals.Text = $"Tháng {_month.Value:MM/yyyy} · {_slips.Count}/{_employees.Count} phiếu · Thực lĩnh {_slips.Sum(s => s.NetPay):N0} đ · Đã trả {_slips.Sum(s => s.PaidAmount):N0} đ";
         }
-        catch { _period = null; _slips.Clear(); _employees.Clear(); _slipGrid.DataSource = null; _status.Text = "Không tải được dữ liệu; chọn lại tháng để thử lại."; throw; }
+        catch { _period = null; _slips.Clear(); _employees.Clear(); _slipGrid.DataSource = null; _filters.SetCount(0, 0); _status.Text = "Không tải được dữ liệu; chọn lại tháng để thử lại."; throw; }
         finally { _loading = false; UpdateButtons(); }
+    }
+
+    private static string PaymentStatusText(string status) => status switch
+    {
+        "Paid" => "Đã trả đủ", "PartiallyPaid" => "Trả một phần", "Chưa có phiếu" => status, _ => "Chưa trả",
+    };
+
+    private void BindSlips(int? selected = null)
+    {
+        selected ??= Employee?.Id;
+        var rows = _employees.Select(e =>
+        {
+            var slip = _slips.FirstOrDefault(s => s.EmployeeId == e.Id);
+            return new { EmployeeId = e.Id, EmployeeCode = e.Code, EmployeeName = e.FullName,
+                MonthlySalary = slip?.MonthlySalary, WorkedDays = slip?.WorkedDays, KpiPoints = slip?.KpiPoints,
+                KpiTarget = slip?.KpiTarget, KpiRatio = (string?)null, EarnedSalary = slip?.EarnedSalary,
+                GrossIncome = slip?.GrossIncome, Deductions = slip?.Deductions, NetPay = slip?.NetPay,
+                PaidAmount = slip?.PaidAmount, PaymentStatus = slip?.PaymentStatus ?? "Chưa có phiếu" };
+        }).Where(row => _filters.MatchesSearch(row.EmployeeCode, row.EmployeeName)
+            && _filters.Is("payment", PaymentStatusText(row.PaymentStatus))).OrderBy(row => row.EmployeeCode).ToList();
+        _slipGrid.DataSource = rows;
+        if (selected.HasValue) SelectEmployee(selected.Value);
+        _filters.SetCount(rows.Count, _employees.Count);
+        UpdateButtons();
     }
 
     private void UpdateButtons()
     {
+        _filters.Enabled = !_loading;
         var canPay = _api is not null && _api.Connection.IsInRole("Admin", "Accountant");
         var canApprove = canPay && _api!.Connection.IsInRole("Admin") && _period is { ApprovedAt: null } && _slips.Count > 0;
         _generateButton.Enabled = canPay && _period?.ApprovedAt is null;
