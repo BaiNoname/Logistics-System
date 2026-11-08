@@ -95,9 +95,13 @@ public partial class PayrollService
                 slip.WorkedDays = d.WorkedDays; slip.HolidayDays = d.HolidayDays;
                 slip.PaidLeaveDays = d.PaidLeaveDays; slip.UnpaidLeaveDays = d.UnpaidLeaveDays;
                 slip.EarnedSalary = PayrollRules.Prorate(salary.MonthlySalary, slip.StandardDays, d.WorkedDays + d.PaidLeaveDays + d.HolidayDays);
-                slip.AttendanceNote = "Lương theo công hưởng lương từ module chấm công; sử dụng điều chỉnh đã duyệt."
-                    + Environment.NewLine + "Lễ " + d.HolidayDays + "; "
-                    + string.Join("; ", d.LeaveCounts.Select(k => $"{LeaveRules.DisplayName(k.Key)} {k.Value}"));
+                slip.AttendanceNote = "Lương theo công hưởng lương từ module chấm công; sử dụng điều chỉnh đã duyệt.";
+                if (d.HolidayDays + d.PaidLeaveDays + d.UnpaidLeaveDays > 0)
+                {
+                    var parts = new List<string> { $"Lễ {d.HolidayDays}" };
+                    parts.AddRange(d.LeaveCounts.Select(k => $"{LeaveRules.DisplayName(k.Key)} {k.Value}"));
+                    slip.AttendanceNote += Environment.NewLine + string.Join("; ", parts);
+                }
                 source = attendance.Snapshot;
             }
             var entries = adjustments.Where(a => a.EmployeeId == row.Id).ToList();
@@ -134,17 +138,18 @@ public partial class PayrollService
         var holidayList = await db.PublicHolidays.AsNoTracking().Where(h => h.Date >= from && h.Date <= to).Select(h => h.Date).ToListAsync();
         var holidays = holidayList.Select(h => h.Date).ToHashSet();
         var leaveRows = await db.LeaveRecords.AsNoTracking().Where(l => l.EmployeeId == employee.Id && l.LeaveDate >= from && l.LeaveDate <= to)
-            .Select(l => new { l.LeaveDate, l.Type }).ToListAsync();
+            .Select(l => new { l.LeaveDate, l.Type, l.BatchId }).ToListAsync();
         var leaves = new Dictionary<DateTime, LeaveType>();
-        foreach (var l in leaveRows) leaves[l.LeaveDate.Date] = l.Type;
+        var batchByDate = new Dictionary<DateTime, Guid?>();
+        foreach (var l in leaveRows) { leaves[l.LeaveDate.Date] = l.Type; batchByDate[l.LeaveDate.Date] = l.BatchId; }
         var days = LeaveRules.ClassifyPayrollDays(from, to, attendanceDays, holidays, leaves);
-        if (rows.Count == 0 && days.HolidayDays + days.PaidLeaveDays + days.UnpaidLeaveDays == 0)
+        if (rows.Count == 0 && days.PaidLeaveDays + days.UnpaidLeaveDays == 0)
             errors.Add("Chưa có dữ liệu chấm công của tháng.");
         var snapshot = new
         {
             Attendance = rows.Select(r => new { r.WorkDate, r.EffectiveCheckInAt, r.EffectiveCheckOutAt, r.AdjustmentRequestId }).ToList(),
             Holidays = days.HolidayDates,
-            Leaves = days.LeaveDates.Select(x => new { x.Date, Type = x.Type.ToString() }).ToList()
+            Leaves = days.LeaveDates.Select(x => new { x.Date, Type = x.Type.ToString(), BatchId = batchByDate.GetValueOrDefault(x.Date.Date) }).ToList()
         };
         return (days, snapshot, errors);
     }

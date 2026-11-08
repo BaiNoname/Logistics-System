@@ -71,13 +71,13 @@ public partial class LeaveService
         var (expanded, skipped) = LeaveRules.ExpandWorkingDays(from, to, holidays);
         var days = expanded.Select(DateOnly).ToList();
 
-        var error = LeaveRules.ValidateRequest(type, from, to, days.Count, employee.Gender);
-        if (error is not null) return Fail(error);
-
         var hire = employee.HireDate.Date;
         if (days.Any(d => d < hire)) return Fail($"Nhân viên vào làm ngày {hire:dd/MM/yyyy}.");
         if (employee.TerminationDate is { } term && days.Any(d => d > term.Date))
             return Fail($"Nhân viên đã nghỉ việc từ {term.Date:dd/MM/yyyy}.");
+
+        var error = LeaveRules.ValidateRequest(type, from, to, days.Count, employee.Gender);
+        if (error is not null) return Fail(error);
 
         var existing = await db.LeaveRecords.AsNoTracking()
             .Where(l => l.EmployeeId == employee.Id && l.LeaveDate >= from && l.LeaveDate <= to)

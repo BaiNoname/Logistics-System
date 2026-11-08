@@ -61,9 +61,12 @@ public partial class PayrollService
         if (period?.ApprovedAt is not null) return Fail("Bảng đã chốt; ghi khoản điều chỉnh ở tháng chưa chốt, kèm căn cứ tháng gốc.");
         var employees = (await GetEmployeesAsync(r.Year, r.Month)).ToDictionary(e => e.Id);
         var errors = new List<string>();
+        var missingIds = r.EmployeeIds.Where(id => !employees.ContainsKey(id)).ToList();
+        var codes = missingIds.Count == 0 ? new Dictionary<int, string>()
+            : await db.Employees.AsNoTracking().Where(e => missingIds.Contains(e.Id)).ToDictionaryAsync(e => e.Id, e => e.Code);
         foreach (var id in r.EmployeeIds)
         {
-            if (!employees.TryGetValue(id, out var emp)) errors.Add($"{id}: không thuộc tháng này");
+            if (!employees.TryGetValue(id, out var emp)) errors.Add($"{codes.GetValueOrDefault(id) ?? "#" + id}: không thuộc tháng này");
             else if (!emp.IsDriver) errors.Add($"{emp.Code}: không phải tài xế");
         }
         if (errors.Count > 0) return Fail(string.Join(Environment.NewLine, errors));

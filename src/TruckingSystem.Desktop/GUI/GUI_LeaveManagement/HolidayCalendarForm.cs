@@ -24,7 +24,7 @@ public sealed class HolidayCalendarForm : BaseForm
         };
 
         var year = new NumericUpDown { Minimum = 2000, Maximum = 2100, Value = DateTime.Today.Year, Width = 80 };
-        var date = new DateTimePicker { Format = DateTimePickerFormat.Short, Width = 120, Value = DateTime.Today };
+        var date = new DateTimePicker { Format = DateTimePickerFormat.Short, Width = 120, MinDate = new DateTime(2000, 1, 1), MaxDate = new DateTime(2100, 12, 31), Value = DateTime.Today };
         var name = new TextBox { Width = 220, PlaceholderText = "Tên ngày lễ" };
         var add = Theme.MakePrimaryButton("Thêm", 100);
         var bar = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, Padding = new Padding(8) };

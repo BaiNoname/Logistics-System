@@ -19,6 +19,7 @@ public partial class LeaveService
         var name = (request.Name ?? "").Trim();
         if (name.Length == 0 || name.Length > 100) return Fail("Tên ngày lễ bắt buộc, tối đa 100 ký tự.");
         var date = DateTime.SpecifyKind(request.Date.Date, DateTimeKind.Unspecified);
+        if (date.Year < 2000 || date.Year > 2100) return Fail("Năm của ngày lễ phải từ 2000 đến 2100.");
         if (await db.PublicHolidays.AnyAsync(h => h.Date == date))
             return Fail($"Ngày {date:dd/MM/yyyy} đã có trong lịch nghỉ lễ.");
         if ((await ApprovedMonthsAsync(new[] { date })).Count > 0)
