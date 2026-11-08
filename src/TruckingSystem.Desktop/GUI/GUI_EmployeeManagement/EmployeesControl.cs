@@ -53,9 +53,8 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             {
                 var single = SelectedEmployees().Count == 1;
                 var admin = _api is not null && _api.Connection.IsInRole("Admin");
-                editItem.Visible = single && admin;
-                leaveItem.Visible = single;
-                e.Cancel = _api is null || _loading || !(editItem.Visible || leaveItem.Visible);
+                editItem.Visible = leaveItem.Visible = single && admin;
+                e.Cancel = _api is null || _loading || !admin || !single;
             };
             ModernMenu.Apply(menu);
             grid.ContextMenuStrip = menu;
@@ -114,14 +113,14 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
         private async void BtnEdit_Click(object? sender, EventArgs e)
         {
             if (_api is null || _loading || !_api.Connection.IsInRole("Admin")) return;
-            if (grid.CurrentRow is null)
+            var selected = SelectedEmployees();
+            if (selected.Count != 1)
             {
-                MessageBox.Show(FindForm(), "Vui lòng chọn 1 nhân viên trước.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(FindForm(), "Vui lòng chọn đúng 1 nhân viên.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
-            var employeeId = (int)grid.CurrentRow.Cells["Id"].Value;
-            var employee = _employees.First(e => e.Id == employeeId);
+            var employee = selected[0];
             using var f = new CreateEmployeeForm(_api, employee);
             if (f.ShowDialog(FindForm()) == DialogResult.OK) await LoadAsync();
         }

@@ -115,7 +115,7 @@ public sealed class LeaveForm : BaseForm
         }
         void Show(LeaveResult result)
         {
-            if (!result.Success) throw new InvalidOperationException(result.Message);
+            if (!result.Success) throw new InvalidOperationException(result.Message ?? "Không thể thực hiện.");
             var text = string.Join(Environment.NewLine, new[] { result.Message }.Concat(result.Warnings ?? new()).Where(s => !string.IsNullOrWhiteSpace(s)));
             if (text.Length > 0)
                 MessageBox.Show(this, text, "Ngày nghỉ", MessageBoxButtons.OK,
