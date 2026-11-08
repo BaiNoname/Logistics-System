@@ -78,6 +78,10 @@ namespace TruckingSystem.Desktop.DTO_AuditLogManagement
             "PayrollItem" => "Khoản lương", "SalaryPayment" => "Trả lương", "EmployeeSalary" => "Lương nhân viên",
             "ApplicationUser" => "Tài khoản", "ApplicationRole" => "Vai trò", "Permission" => "Quyền", "RolePermission" => "Phân quyền",
             "SalesOrder" => "Đơn bán", "ContractAppendix" => "Phụ lục hợp đồng",
+            "AttendanceAdjustmentRequest" => "Yêu cầu sửa chấm công", "AttendanceQrCode" => "Mã QR chấm công", "AttendanceRecord" => "Lượt chấm công",
+            "AttendanceScan" => "Lượt quét QR chấm công", "DriverKpiRate" => "Hệ số KPI tài xế", "MaxDiscountPercent" => "Ưu đãi tối đa",
+            "PayrollKpiPolicy" => "Chính sách KPI lương", "PayrollMonthlyAdjustment" => "Điều chỉnh lương tháng", "SurchargeLine" => "Dòng phụ phí",
+            "SurchargeList" => "Bảng phụ phí",
             _ => Humanize(code),
         };
 

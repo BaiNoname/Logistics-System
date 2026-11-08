@@ -263,6 +263,7 @@ public class TransportOrderService : ITransportOrderService
         // thông tin khác (lúc Xác nhận sẽ kiểm tra lại hiệu lực).
         // Đổi hạn giao (giữ hợp đồng): hạn mới vẫn phải nằm trong thời hạn hợp đồng.
         var newDeadline = VnClock.ToVnWallClock(request.CommittedDeliveryDate);
+        if (request.ContractId is null) return new OrderActionResult(false, NoContractError); // đơn cũ chưa có hợp đồng: sửa thì phải chọn
         if (request.ContractId != order.ContractId)
         {
             var contractError = await ValidateContractAsync(request.ContractId, order.CustomerId, newDeadline, excludeOrderId: order.Id);
@@ -336,7 +337,7 @@ public class TransportOrderService : ITransportOrderService
         // Hợp đồng có thể đã hết hạn / bị sửa trong lúc đơn còn nháp -> kiểm tra lại.
         var contractError = await ValidateContractAsync(order.ContractId, order.CustomerId, order.CommittedDeliveryDate, excludeOrderId: order.Id);
         if (contractError is not null)
-            return new OrderActionResult(false, contractError + " (Bấm Sửa đơn để chọn hợp đồng khác hoặc bỏ trống.)");
+            return new OrderActionResult(false, contractError + " (Bấm Sửa đơn để chọn hợp đồng.)");
 
         order.Status = TransportOrderStatus.Confirmed;
         await _db.SaveChangesAsync();
@@ -790,10 +791,14 @@ public class TransportOrderService : ITransportOrderService
     ///    phải nằm trong thời hạn hợp đồng; muốn hạn giao xa hơn thì gia hạn hợp đồng trước.
     ///  • Hợp đồng MỘT LẦN chỉ gắn được cho 1 đơn chưa hủy (đơn đó có bao nhiêu chuyến cũng được). Hợp đồng cũ chưa
     ///    có loại (Type = null) coi như dài hạn.</summary>
+    private const string NoContractError =
+        "Đơn phải theo hợp đồng của khách — khách chưa có hợp đồng thì tạo (hoặc gia hạn) hợp đồng ở màn Hợp đồng trước.";
+
     private async Task<string?> ValidateContractAsync(int? contractId, int customerId, DateTime? deadline, int? excludeOrderId,
         bool checkStatus = true, bool checkOneTime = true)
     {
-        if (contractId is null) return null;
+        // ĐƠN BẮT BUỘC THEO HỢP ĐỒNG: có hợp đồng mới có bảng giá (tổng tiền đúng) và lập được hóa đơn.
+        if (contractId is null) return NoContractError;
         var contract = await _db.Contracts
             .Where(c => c.Id == contractId.Value)
             .Select(c => new { c.Code, c.CustomerId, c.StartDate, c.EndDate, c.Type })
@@ -818,7 +823,7 @@ public class TransportOrderService : ITransportOrderService
         {
             var used = await OneTimeUsageAsync(new[] { contractId.Value }, excludeOrderId);
             if (used.TryGetValue(contractId.Value, out var usedBy))
-                return $"Hợp đồng {contract.Code} là hợp đồng một lần, đã dùng cho đơn {usedBy.Code} — chọn hợp đồng khác hoặc khách lẻ.";
+                return $"Hợp đồng {contract.Code} là hợp đồng một lần, đã dùng cho đơn {usedBy.Code} — chọn hợp đồng khác.";
         }
         return null;
     }

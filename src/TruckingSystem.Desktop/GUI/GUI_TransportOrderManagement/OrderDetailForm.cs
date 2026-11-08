@@ -126,7 +126,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                 _currentOrder = order;
 
                 lblHeader.Text = $"Đơn {order.Code} — {order.CustomerName}" +
-                                 (string.IsNullOrWhiteSpace(order.ContractCode) ? "   ·   Không theo hợp đồng" : $"   ·   Hợp đồng {order.ContractCode}");
+                                 (string.IsNullOrWhiteSpace(order.ContractCode) ? "   ·   ⚠️ Chưa có hợp đồng" : $"   ·   Hợp đồng {order.ContractCode}");
                 lblInfo.Text = $"Trạng thái: {TruckingSystem.Desktop.GUI_Shared.ReportFormat.OrderStatus(order.Status)}   |   Tiến độ: {order.ProgressPercent}%   |   " +
                                $"{order.PickupPoint} → {order.DropoffPoint}   |   Hạn giao: " +
                                (order.CommittedDeliveryDate is { } due ? due.ToString("dd/MM/yyyy") : "⚠️ chưa có hạn");

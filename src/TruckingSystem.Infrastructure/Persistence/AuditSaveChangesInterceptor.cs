@@ -269,6 +269,27 @@ public sealed class AuditSaveChangesInterceptor : SaveChangesInterceptor
         ["Department"] = "phòng ban",
         ["Position"] = "chức danh",
         ["CustomerFeedback"] = "đánh giá của khách",
+        // Chức năng mới (chấm công QR, lương KPI, phụ phí, phụ lục, ưu đãi tối đa…) — để dòng nhật ký ghi tiếng Việt.
+        ["AttendanceAdjustmentRequest"] = "yêu cầu sửa chấm công",
+        ["AttendanceQrCode"] = "mã QR chấm công",
+        ["AttendanceRecord"] = "lượt chấm công",
+        ["AttendanceScan"] = "lượt quét QR chấm công",
+        ["ContractAppendix"] = "phụ lục hợp đồng",
+        ["DriverKpiRate"] = "hệ số KPI tài xế",
+        ["EmployeeSalary"] = "lương nhân viên",
+        ["MaxDiscountPercent"] = "mức ưu đãi tối đa",
+        ["MonthlyAttendance"] = "chấm công tháng",
+        ["PayrollItem"] = "khoản lương",
+        ["PayrollKpiPolicy"] = "chính sách KPI lương",
+        ["PayrollMonthlyAdjustment"] = "điều chỉnh lương tháng",
+        ["PayrollPeriod"] = "kỳ lương",
+        ["PayrollSlip"] = "phiếu lương",
+        ["Permission"] = "quyền",
+        ["RolePermission"] = "phân quyền",
+        ["SalaryPayment"] = "trả lương",
+        ["SalesOrder"] = "đơn bán",
+        ["SurchargeLine"] = "dòng phụ phí",
+        ["SurchargeList"] = "bảng phụ phí",
     };
 
     private static readonly Dictionary<string, string> PropLabels = new()

@@ -84,10 +84,43 @@ app.UseRateLimiter();
 app.UseAuthorization();
 app.MapControllers();
 
+// Kiểm tra database trước khi chạy: máy nào pull code mới mà quên Update-Database thì báo RÕ migration nào
+// còn thiếu + lệnh cần chạy, thay vì để API chạy rồi văng lỗi khó hiểu kiểu
+// "42P01: relation \"MaxDiscountPercent\" does not exist" ở giữa chừng.
 // Seed dữ liệu mẫu khi khởi động lần đầu (roles, tài khoản admin/driver1, Trip Id=1)
 using (var scope = app.Services.CreateScope())
 {
-    await TruckingSystem.API.Data.DbSeeder.SeedAsync(scope.ServiceProvider);
+    var startupLog = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("Startup");
+    var db = scope.ServiceProvider.GetRequiredService<TruckingSystem.Infrastructure.Persistence.AppDbContext>();
+    List<string> pending;
+    try
+    {
+        pending = (await Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions.GetPendingMigrationsAsync(db.Database)).ToList();
+    }
+    catch (Exception ex)
+    {
+        startupLog.LogCritical("KHÔNG KẾT NỐI ĐƯỢC DATABASE: {Message}\n" +
+            "-> Kiểm tra PostgreSQL đã chạy chưa và chuỗi ConnectionStrings:DefaultConnection trong appsettings.json.", ex.Message);
+        return;
+    }
+    if (pending.Count > 0)
+    {
+        startupLog.LogCritical("DATABASE CHƯA CẬP NHẬT — còn {Count} migration chưa chạy:\n  {List}\n" +
+            "-> Mở Package Manager Console và chạy:\n" +
+            "   Update-Database -Project TruckingSystem.Infrastructure -StartupProject TruckingSystem.API\n" +
+            "   rồi chạy lại API.", pending.Count, string.Join("\n  ", pending));
+        return;
+    }
+
+    try
+    {
+        await TruckingSystem.API.Data.DbSeeder.SeedAsync(scope.ServiceProvider);
+    }
+    catch (Exception ex)
+    {
+        // Seed chỉ tạo dữ liệu mẫu — lỗi ở đây không được làm sập cả API.
+        startupLog.LogError(ex, "Seed dữ liệu mẫu lỗi (API vẫn chạy tiếp): {Message}", ex.Message);
+    }
 }
 
 app.Run();
