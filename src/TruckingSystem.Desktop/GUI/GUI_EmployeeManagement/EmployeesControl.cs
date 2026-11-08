@@ -49,12 +49,17 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             var menu = new ContextMenuStrip();
             var editItem = menu.Items.Add("✏️ Sửa nhân viên", null, BtnEdit_Click);
             var leaveItem = menu.Items.Add("📅 Ngày nghỉ…", null, BtnLeave_Click);
+            var bonusItem = menu.Items.Add("💰 Thưởng/phụ cấp…", null, BtnBulkBonus_Click);
             menu.Opening += (_, e) =>
             {
-                var single = SelectedEmployees().Count == 1;
+                var selected = SelectedEmployees();
+                var single = selected.Count == 1;
+                var driverCount = selected.Count(x => x.IsDriver);
                 var admin = _api is not null && _api.Connection.IsInRole("Admin");
                 editItem.Visible = leaveItem.Visible = single && admin;
-                e.Cancel = _api is null || _loading || !admin || !single;
+                bonusItem.Visible = admin && driverCount > 0;
+                bonusItem.Text = $"💰 Thưởng/phụ cấp cho {driverCount} tài xế đã chọn…";
+                e.Cancel = _api is null || _loading || !admin || !(editItem.Visible || leaveItem.Visible || bonusItem.Visible);
             };
             ModernMenu.Apply(menu);
             grid.ContextMenuStrip = menu;
@@ -107,6 +112,17 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
             }
             var employee = selected[0];
             using var f = new LeaveForm(_api.Leaves, employee.Id, employee.Code, employee.FullName);
+            f.ShowDialog(FindForm());
+        }
+
+        private void BtnBulkBonus_Click(object? sender, EventArgs e)
+        {
+            if (_api is null || _loading || !_api.Connection.IsInRole("Admin")) return;
+            var selected = SelectedEmployees();
+            var drivers = selected.Where(x => x.IsDriver).Select(x => (x.Id, x.Code, x.FullName)).ToList();
+            if (drivers.Count == 0) return;
+            var excluded = selected.Where(x => !x.IsDriver).Select(x => x.FullName).ToList();
+            using var f = new GUI_PayrollManagement.BulkDriverBonusForm(_api.Payroll, drivers, excluded);
             f.ShowDialog(FindForm());
         }
 

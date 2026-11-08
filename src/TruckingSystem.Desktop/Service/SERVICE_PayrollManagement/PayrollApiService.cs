@@ -14,6 +14,7 @@ public class PayrollApiService(ApiConnection connection)
     public async Task<List<MonthlyAdjustmentDto>> MonthlyAdjustmentsAsync(int year, int month)
         => await connection.GetAsync<List<MonthlyAdjustmentDto>>($"{Root}/monthly-adjustments?year={year}&month={month}") ?? new();
     public Task<PayrollResult> AddMonthlyAdjustmentAsync(MonthlyAdjustmentRequest request) => PostAsync("monthly-adjustments", request);
+    public Task<PayrollResult> AddMonthlyAdjustmentsBulkAsync(BulkMonthlyAdjustmentRequest request) => PostAsync("monthly-adjustments/bulk", request);
     public async Task<PayrollResult> DeleteMonthlyAdjustmentAsync(int id)
         => await connection.DeleteAsync<PayrollResult>($"{Root}/monthly-adjustments/{id}") ?? new(false, "Không nhận được kết quả.");
     private const string Root = "/api/payroll";
