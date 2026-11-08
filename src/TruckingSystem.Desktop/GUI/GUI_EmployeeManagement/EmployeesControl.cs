@@ -56,10 +56,13 @@ namespace TruckingSystem.Desktop.GUI_EmployeeManagement
                 var single = selected.Count == 1;
                 var driverCount = selected.Count(x => x.IsDriver);
                 var admin = _api is not null && _api.Connection.IsInRole("Admin");
-                editItem.Visible = leaveItem.Visible = single && admin;
-                bonusItem.Visible = admin && driverCount > 0;
+                // Không đọc lại ToolStripItem.Visible ở đây: getter trả false khi menu chưa hiện → menu luôn bị hủy.
+                var showSingle = single && admin;
+                var showBonus = admin && driverCount > 0;
+                editItem.Visible = leaveItem.Visible = showSingle;
+                bonusItem.Visible = showBonus;
                 bonusItem.Text = $"💰 Thưởng/phụ cấp cho {driverCount} tài xế đã chọn…";
-                e.Cancel = _api is null || _loading || !admin || !(editItem.Visible || leaveItem.Visible || bonusItem.Visible);
+                e.Cancel = _api is null || _loading || !(showSingle || showBonus);
             };
             ModernMenu.Apply(menu);
             grid.ContextMenuStrip = menu;
