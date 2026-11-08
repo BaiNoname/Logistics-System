@@ -2,6 +2,7 @@ using System.Drawing.Printing;
 using QRCoder;
 using TruckingSystem.Desktop.Common;
 using TruckingSystem.Desktop.DTO_AttendanceManagement;
+using TruckingSystem.Desktop.GUI_LeaveManagement;
 
 namespace TruckingSystem.Desktop.GUI_AttendanceManagement;
 
@@ -79,6 +80,13 @@ public sealed class AttendanceControl : BaseUserControl
         var save = Theme.MakeSecondaryButton("Lưu ảnh PNG");
         var print = Theme.MakeSecondaryButton("In mã QR");
         var bar = Bar(Caption("Kho"), _site, Caption("Ngày"), _qrDate, show, save, print);
+        if (_isAdmin)
+        {
+            var holidays = Theme.MakeSecondaryButton("Lịch nghỉ lễ", 150);
+            holidays.Margin = new Padding(4);
+            holidays.Click += (_, _) => { using var form = new HolidayCalendarForm(_api.Leaves); form.ShowDialog(this); };
+            bar.Controls.Add(holidays);
+        }
 
         var saveSite = Theme.MakeSecondaryButton("Lưu cấu hình", 150);
         saveSite.Enabled = _isAdmin;

@@ -45,6 +45,7 @@ namespace TruckingSystem.Desktop.Common
         public EmployeeApiService Employees { get; }
         public TruckingSystem.Desktop.SERVICE_PayrollManagement.PayrollApiService Payroll { get; }
         public TruckingSystem.Desktop.SERVICE_AttendanceManagement.AttendanceApiService Attendance { get; }
+        public TruckingSystem.Desktop.SERVICE_LeaveManagement.LeaveApiService Leaves { get; }
         public DriverApiService Drivers { get; }
         public InvoiceApiService Invoices { get; }
         public LocationApiService Locations { get; }
@@ -74,6 +75,7 @@ namespace TruckingSystem.Desktop.Common
             Employees = new EmployeeApiService(Connection);
             Payroll = new TruckingSystem.Desktop.SERVICE_PayrollManagement.PayrollApiService(Connection);
             Attendance = new TruckingSystem.Desktop.SERVICE_AttendanceManagement.AttendanceApiService(Connection);
+            Leaves = new TruckingSystem.Desktop.SERVICE_LeaveManagement.LeaveApiService(Connection);
             Drivers = new DriverApiService(Connection);
             Invoices = new InvoiceApiService(Connection);
             Locations = new LocationApiService(Connection);
