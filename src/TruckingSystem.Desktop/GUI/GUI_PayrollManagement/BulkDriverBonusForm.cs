@@ -116,6 +116,7 @@ public sealed class BulkDriverBonusForm : BaseForm
                 return;
             }
             var year = month.Value.Year; var mon = month.Value.Month;
+            var saved = false;
             await Run(async () =>
             {
                 // Cảnh báo trùng: đã có khoản cùng lý do trong tháng
@@ -133,8 +134,9 @@ public sealed class BulkDriverBonusForm : BaseForm
                 if (!result.Success) throw new InvalidOperationException(result.Message ?? "Không thể thực hiện.");
                 if (!string.IsNullOrWhiteSpace(result.Message))
                     MessageBox.Show(this, result.Message, "Thưởng / phụ cấp", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                DialogResult = DialogResult.OK;
+                saved = true;
             });
+            if (saved) DialogResult = DialogResult.OK; // sau khi busy đã được xóa, để FormClosing không hủy
         };
     }
 }
