@@ -50,6 +50,32 @@ public partial class PayrollService
         return new(true);
     });
 
+    public Task<PayrollResult> AddMonthlyAdjustmentsBulkAsync(BulkMonthlyAdjustmentRequest r, string actor) => WriteAsync(async () =>
+    {
+        if (r.EmployeeIds is null || r.EmployeeIds.Count == 0) return Fail("Chưa chọn tài xế nào.");
+        if (r.EmployeeIds.Distinct().Count() != r.EmployeeIds.Count) return Fail("Danh sách tài xế bị trùng.");
+        if (!ValidPeriod(r.Year, r.Month) || !PayrollRules.ValidMoney(r.Amount) || !ValidReason(r.Reason)
+            || !Enum.TryParse<PayrollItemKind>(r.Kind, out var kind) || (kind != PayrollItemKind.Allowance && kind != PayrollItemKind.Bonus))
+            return Fail("Khoản cộng/trừ không hợp lệ.");
+        var period = await db.PayrollPeriods.SingleOrDefaultAsync(p => p.Year == r.Year && p.Month == r.Month);
+        if (period?.ApprovedAt is not null) return Fail("Bảng đã chốt; ghi khoản điều chỉnh ở tháng chưa chốt, kèm căn cứ tháng gốc.");
+        var employees = (await GetEmployeesAsync(r.Year, r.Month)).ToDictionary(e => e.Id);
+        var errors = new List<string>();
+        foreach (var id in r.EmployeeIds)
+        {
+            if (!employees.TryGetValue(id, out var emp)) errors.Add($"{id}: không thuộc tháng này");
+            else if (!emp.IsDriver) errors.Add($"{emp.Code}: không phải tài xế");
+        }
+        if (errors.Count > 0) return Fail(string.Join(Environment.NewLine, errors));
+        foreach (var id in r.EmployeeIds)
+            db.PayrollMonthlyAdjustments.Add(new PayrollMonthlyAdjustment { EmployeeId = id, Year = r.Year,
+                Month = r.Month, Kind = kind, Amount = r.Amount, Reason = r.Reason.Trim(), CreatedBy = actor });
+        if (period is not null) Touch(period);
+        Audit(actor, "AddMonthlyAdjustmentsBulk", "PayrollMonthlyAdjustment", null,
+            new { r.EmployeeIds, r.Year, r.Month, r.Kind, r.Amount, r.Reason });
+        return new(true, $"Đã thêm khoản cho {r.EmployeeIds.Count} tài xế.");
+    });
+
     public Task<PayrollResult> DeleteMonthlyAdjustmentAsync(int id, string actor) => WriteAsync(async () =>
     {
         var row = await db.PayrollMonthlyAdjustments.FindAsync(id);

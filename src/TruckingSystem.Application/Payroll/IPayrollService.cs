@@ -7,6 +7,7 @@ public interface IPayrollService
     Task<PayrollResult> SaveKpiPolicyAsync(SaveKpiPolicyRequest request, string actor);
     Task<List<MonthlyAdjustmentDto>> GetMonthlyAdjustmentsAsync(int year, int month);
     Task<PayrollResult> AddMonthlyAdjustmentAsync(MonthlyAdjustmentRequest request, string actor);
+    Task<PayrollResult> AddMonthlyAdjustmentsBulkAsync(BulkMonthlyAdjustmentRequest request, string actor);
     Task<PayrollResult> DeleteMonthlyAdjustmentAsync(int id, string actor);
     Task<List<DriverKpiRateDto>> GetKpiRatesAsync();
     Task<PayrollResult> SaveKpiRatesAsync(List<DriverKpiRateDto> request, string actor);
