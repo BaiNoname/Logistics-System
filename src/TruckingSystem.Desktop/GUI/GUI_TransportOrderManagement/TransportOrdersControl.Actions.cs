@@ -265,7 +265,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                 $"Đơn {o.Code}  ·  {o.CustomerName}  ·  {TranslateStatus(o.Status)}",
                 new[]
                 {
-                    o.ContractCode is { Length: > 0 } c ? $"📑 HĐ {c}" : "📑 Khách lẻ",
+                    o.ContractCode is { Length: > 0 } c ? $"📑 HĐ {c}" : "📑 Chưa có hợp đồng",
                     $"📍 {(string.IsNullOrWhiteSpace(o.PickupPoint) ? "?" : o.PickupPoint)} → 🏬 {o.WarehouseName ?? "?"} → {(string.IsNullOrWhiteSpace(o.DropoffPoint) ? "?" : o.DropoffPoint)}",
                     o.CommittedDeliveryDate is DateTime due ? $"⏰ Hạn giao {due:dd/MM/yyyy}" : "⏰ Chưa có hạn giao",
                     $"🚚 {o.ActiveTripCount} chuyến",

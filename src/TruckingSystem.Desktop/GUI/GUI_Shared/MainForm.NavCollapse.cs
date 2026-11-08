@@ -179,6 +179,15 @@
             else target.PerformClick();
         }
 
+        /// <summary>Mở màn theo TÊN mục menu (VD "Hợp đồng"); false = tài khoản không có mục đó.</summary>
+        internal bool OpenNavByName(string name)
+        {
+            var btn = _navButtons.FirstOrDefault(b => string.Equals(NavName(b), name, StringComparison.OrdinalIgnoreCase));
+            if (btn is null) return false;
+            OpenNavButton(btn);
+            return true;
+        }
+
         /// <summary>Logo khi thu gọn: chỉ hình xe tải trên nền trời theo chế độ.</summary>
         private bool PaintMiniLogo(Graphics g)
         {

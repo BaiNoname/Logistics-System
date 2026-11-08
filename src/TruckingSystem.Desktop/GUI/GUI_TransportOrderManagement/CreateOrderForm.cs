@@ -26,7 +26,9 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
         private readonly AutoCompleteStringCollection _cargoTypeSuggestions = new();
         private List<string> _cargoTypes = new();
         private int _contractLoadVersion;                    // bỏ kết quả tải hợp đồng cũ khi đổi khách liên tục
-        private const string NoContractText = "(Không theo hợp đồng — khách lẻ)";
+        // ĐƠN BẮT BUỘC THEO HỢP ĐỒNG (không còn "khách lẻ"): dòng đầu danh sách chỉ là lời nhắc, không chọn để lưu được.
+        private const string PickContractText = "-- Chọn hợp đồng --";
+        private const string NoContractText = "— Khách chưa có hợp đồng dùng được —";
 
         // ---- HẠN GIAO (bắt buộc) + gợi ý theo ước tính số ngày chạy của tuyến ----
         private int? _estimatedDays;          // số ngày chạy ước tính (VietMap, 8 giờ lái/ngày)
@@ -517,18 +519,22 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
         }
 
         /// <summary>Dropdown "Hợp đồng": hợp đồng ĐANG HIỆU LỰC của khách (server lọc). Khách chỉ có 1
-        /// hợp đồng -> chọn sẵn; không có -> "(Không theo hợp đồng)". Sửa đơn: giữ đúng hợp đồng đã
+        /// hợp đồng -> chọn sẵn; không có hợp đồng dùng được -> khung cam báo cần tạo hợp đồng. Sửa đơn: giữ đúng hợp đồng đã
         /// lưu, kể cả khi hợp đồng đó nay đã hết hạn (lúc Xác nhận server sẽ báo để chọn lại).</summary>
         private async Task LoadContractsAsync(int customerId, int? selectId, string? selectCode)
         {
             if (_api is null) return;
             var version = ++_contractLoadVersion;
-            var items = new List<OrderContractOption> { new() { Id = 0, Code = NoContractText } };
+            var items = new List<OrderContractOption> { new() { Id = 0, Code = PickContractText } };
+            _noUsableContract = false;
             try
             {
                 var options = await _api.TransportOrders.GetContractOptionsAsync(customerId);
                 if (version != _contractLoadVersion) return; // đã đổi sang khách khác
                 items.AddRange(options);
+                // Không hợp đồng nào dùng được (chưa có / hết hạn / một lần đã dùng) -> báo khung cam dưới ô.
+                _noUsableContract = !options.Any(o => !o.Inactive && !UsedElsewhere(o));
+                if (_noUsableContract) items[0].Code = NoContractText;
                 if (selectId is int keep && options.All(o => o.Id != keep))
                     items.Add(new OrderContractOption { Id = keep, Code = selectCode ?? $"#{keep}", Inactive = true });
             }
@@ -542,6 +548,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             cboContract.Items.Clear();
             foreach (var item in items) cboContract.Items.Add(item);
             cboContract.EndUpdate();
+            UpdateContractDropHeight(); // danh sách mở ra cao đủ cho mọi hợp đồng (CreateOrderForm.Contract.cs)
             var selectable = items.Where(i => i.Id > 0 && !UsedElsewhere(i)).ToList();
             var selected = selectId is int id ? items.FirstOrDefault(i => i.Id == id)
                 : selectable.Count == 1 ? selectable[0]  // khách có đúng 1 hợp đồng dùng được -> chọn sẵn
@@ -570,9 +577,10 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
 
         private async void BtnSave_Click(object? sender, EventArgs e)
         {
-            if (_contractBlocked) // hạn giao sau ngày hết hạn hợp đồng (CreateOrderForm.Contract.cs) — máy chủ cũng chặn
+            if (_contractBlocked) // chưa có / chưa chọn hợp đồng, hoặc hạn giao vượt hạn hợp đồng (CreateOrderForm.Contract.cs) — máy chủ cũng chặn
             {
-                FieldHint.Show(dtCommitted, lblStatus, _contractInfo.Text);
+                var missing = cboContract.SelectedItem is not OrderContractOption { Id: > 0 };
+                FieldHint.Show(missing ? cboContract : dtCommitted, lblStatus, _contractInfo.Text);
                 return;
             }
             if (cboCustomer.SelectedValue is null)
@@ -627,6 +635,11 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             }
 
             int? contractId = cboContract.SelectedItem is OrderContractOption c && c.Id > 0 ? c.Id : null;
+            if (contractId is null)
+            {
+                FieldHint.Show(cboContract, lblStatus, "Đơn phải theo hợp đồng — chọn hợp đồng của khách (chưa có thì tạo ở màn Hợp đồng).");
+                return;
+            }
 
             btnSave.Enabled = false;
             try

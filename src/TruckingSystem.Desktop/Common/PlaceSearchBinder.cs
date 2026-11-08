@@ -73,6 +73,8 @@ namespace TruckingSystem.Desktop.Common
                 }
             };
             _debounce.Tick += async (_, _) => { _debounce.Stop(); await SearchAsync(); };
+            // Đóng form khi đang chờ gõ / đang tìm -> dừng hẳn, không đụng vào ô đã hủy (trước: hiện hộp "lỗi ngoài dự kiến").
+            _txt.Disposed += (_, _) => { _searchVersion++; _debounce.Stop(); _debounce.Dispose(); };
             _lst.Click += async (_, _) => await PickAsync();
             _lst.KeyDown += async (_, e) =>
             {
@@ -118,7 +120,7 @@ namespace TruckingSystem.Desktop.Common
 
         private async Task SearchAsync()
         {
-            if (Api is null) return;
+            if (Api is null || Gone) return;
             var text = _txt.Text.Trim();
             if (text.Length < 2) { _lst.Items.Clear(); _lst.Visible = false; return; }
 
@@ -129,7 +131,7 @@ namespace TruckingSystem.Desktop.Common
                 var results = (await Api.Locations.SearchPlacesAsync(text) ?? new())
                     .Where(r => !string.IsNullOrWhiteSpace(r.Name) || !string.IsNullOrWhiteSpace(r.Address))
                     .ToList();
-                if (version != _searchVersion) return; // đã gõ tiếp -> bỏ kết quả cũ
+                if (version != _searchVersion || Gone) return; // đã gõ tiếp (hoặc đã đóng form) -> bỏ kết quả cũ
 
                 if (results.Count == 0)
                 {
@@ -143,10 +145,12 @@ namespace TruckingSystem.Desktop.Common
             }
             catch (Exception ex)
             {
-                if (version != _searchVersion) return;
+                if (version != _searchVersion || Gone) return;
                 ShowMessage("⚠️ Không gọi được dịch vụ bản đồ: " + ex.Message);
             }
         }
+
+        private bool Gone => _txt.IsDisposed || _lst.IsDisposed || _lblSelected.IsDisposed;
 
         private async Task PickAsync()
         {
@@ -167,6 +171,7 @@ namespace TruckingSystem.Desktop.Common
                     }
                 }
                 catch { /* báo ở dưới */ }
+                if (Gone) return; // form đã đóng trong lúc chờ
             }
             if (item.Lat == 0 && item.Lng == 0)
             {

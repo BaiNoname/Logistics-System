@@ -12,7 +12,7 @@ public record CreateTransportOrderRequest(
     int? PickupLocationId = null,
     int? DropoffLocationId = null,
     string PickupMethod = "CompanyPickup", // "CompanyPickup" | "SelfDelivery"
-    int? ContractId = null                 // hợp đồng của khách (tuỳ chọn)
+    int? ContractId = null                 // hợp đồng của khách (BẮT BUỘC — máy chủ báo lỗi nếu trống)
 );
 
 /// <summary>Sửa đơn — CHỈ cho phép khi đơn còn ở trạng thái Draft (chưa xác

@@ -92,7 +92,7 @@ public class OrderContractOption
 
     public override string ToString()
     {
-        if (Id == 0) return Code; // dòng "(Không theo hợp đồng)"
+        if (Id == 0) return Code; // dòng nhắc "-- Chọn hợp đồng --"
         var period = $"{StartDate:dd/MM/yyyy} – {(EndDate is { } e ? e.ToString("dd/MM/yyyy") : "không thời hạn")}";
         var price = string.IsNullOrWhiteSpace(PriceListName) ? "" : $" · bảng giá {PriceListName}";
         if (Inactive) return $"{Code} (không còn hiệu lực)";

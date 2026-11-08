@@ -17,7 +17,15 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             AutoSize = true, Dock = DockStyle.Fill, Visible = false, UseMnemonic = false,
             Font = new Font("Segoe UI", 9F), Padding = new Padding(6, 4, 6, 4),
         };
-        private bool _contractBlocked;      // hạn giao vượt hạn hợp đồng
+        private bool _contractBlocked;      // chưa có / chưa chọn hợp đồng, hoặc hạn giao vượt hạn hợp đồng
+        private string _contractBlockNote = ""; // ghi ở dòng tóm tắt dưới đáy
+        private bool _noUsableContract;     // khách không có hợp đồng nào dùng được
+        private readonly Button _contractGo = new()
+        {
+            Text = "📄 Mở màn Hợp đồng để tạo hợp đồng", AutoSize = true, Visible = false, Cursor = Cursors.Hand,
+            Anchor = AnchorStyles.Left, FlatStyle = FlatStyle.Flat, UseVisualStyleBackColor = false,
+            BackColor = Color.FromArgb(217, 119, 6), ForeColor = Color.White, Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+        };
         private bool _saveDisabledByContract;
         private OrderContractOption? _lastContract;
         private static readonly Font ContractBold = new("Segoe UI", 9.5F, FontStyle.Bold);
@@ -34,16 +42,22 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             var pos = fields.GetCellPosition(cboContract);
             var box = new TableLayoutPanel
             {
-                ColumnCount = 1, RowCount = 2, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                ColumnCount = 1, RowCount = 3, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 Dock = DockStyle.Fill, Margin = Padding.Empty, Padding = Padding.Empty, TabIndex = cboContract.TabIndex,
             };
             box.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            box.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             box.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             box.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             fields.SuspendLayout();
             fields.Controls.Remove(cboContract);
             box.Controls.Add(cboContract, 0, 0);
             box.Controls.Add(_contractInfo, 0, 1);
+            box.Controls.Add(_contractGo, 0, 2);
+            _contractGo.FlatAppearance.BorderSize = 0;
+            _contractGo.Padding = new Padding(S(8), S(2), S(8), S(2));
+            _contractGo.Margin = new Padding(0, 0, 0, S(6));
+            _contractGo.Click += (_, _) => GoToContracts();
             fields.Controls.Add(box, pos.Column, pos.Row);
             fields.ResumeLayout(true);
             _contractInfo.Margin = new Padding(0, 0, S(8), S(4));
@@ -60,12 +74,9 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             cboContract.MeasureItem += (_, e) => e.ItemHeight = e.Index >= 0 && cboContract.Items[e.Index] is OrderContractOption { Id: > 0 } ? S(38) : S(24);
             cboContract.DrawItem += DrawContractItem;
             // Danh sách cao đủ cho mọi mục (mỗi hợp đồng 2 dòng) — để mặc định Windows chỉ mở cao ~1 dòng, mục bị cắt.
-            cboContract.DropDown += (_, _) =>
-            {
-                var total = 2;
-                foreach (var it in cboContract.Items) total += it is OrderContractOption { Id: > 0 } ? S(38) : S(24);
-                cboContract.DropDownHeight = Math.Max(S(40), Math.Min(S(380), total));
-            };
+            // Tắt IntegralHeight NGAY TỪ ĐẦU (đổi thuộc tính này làm ô tạo lại handle) và chỉ đặt chiều cao lúc nạp
+            // danh sách — đặt trong sự kiện DropDown (lúc đang mở) làm văng AccessViolationException.
+            cboContract.IntegralHeight = false;
             cboContract.SelectedIndexChanged += (_, _) => OnContractPicked();
             dtCommitted.ValueChanged += (_, _) => UpdateContractCheck();
         }
@@ -79,7 +90,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                 BeginInvoke(new Action(() =>
                 {
                     cboContract.SelectedItem = back;
-                    ShowContractText($"⛔ Hợp đồng {o.Code} là hợp đồng một lần, đã dùng cho đơn {o.UsedByOrderCode} — chọn hợp đồng khác hoặc khách lẻ.",
+                    ShowContractText($"⛔ Hợp đồng {o.Code} là hợp đồng một lần, đã dùng cho đơn {o.UsedByOrderCode} — chọn hợp đồng khác.",
                         Theme.Danger, Color.FromArgb(254, 242, 242));
                 }));
                 return;
@@ -93,14 +104,32 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
         {
             var c = cboContract.SelectedItem as OrderContractOption;
             var blocked = false;
+            var note = "";
             if (c is null || c.Id == 0)
-                _contractInfo.Visible = false;
+            {
+                // Đơn BẮT BUỘC theo hợp đồng (có hợp đồng mới có bảng giá -> tổng tiền đúng, lập được hóa đơn).
+                blocked = true;
+                if (cboCustomer.SelectedValue is null || cboContract.Items.Count == 0) { _contractInfo.Visible = false; note = "chưa chọn hợp đồng"; }
+                else if (_noUsableContract)
+                {
+                    note = "khách chưa có hợp đồng";
+                    ShowContractText($"⚠️ Khách \"{cboCustomer.Text}\" chưa có hợp đồng còn hiệu lực. Đơn phải theo hợp đồng để có bảng giá " +
+                                     "và lập được hóa đơn — cần tạo (hoặc gia hạn) hợp đồng cho khách trước.",
+                        Color.FromArgb(180, 83, 9), Color.FromArgb(255, 251, 235));
+                }
+                else
+                {
+                    note = "chưa chọn hợp đồng";
+                    ShowContractText("👉 Chọn 1 hợp đồng của khách — đơn bắt buộc theo hợp đồng.", Theme.Warning, Color.FromArgb(255, 251, 235));
+                }
+            }
             else if (c.Inactive)
-                ShowContractText($"⚠️ Hợp đồng {c.Code} không còn hiệu lực — lúc Xác nhận đơn sẽ bị chặn. Chọn hợp đồng khác hoặc khách lẻ.",
+                ShowContractText($"⚠️ Hợp đồng {c.Code} không còn hiệu lực — lúc Xác nhận đơn sẽ bị chặn. Chọn hợp đồng khác.",
                     Theme.Warning, Color.FromArgb(255, 251, 235));
             else if (c.EndDate is DateTime end && dtCommitted.Value.Date > end.Date)
             {
                 blocked = true;
+                note = "vượt hạn hợp đồng";
                 ShowContractText($"⛔ Hợp đồng {c.Code} hết hạn {end:dd/MM/yyyy}, hạn giao đang chọn là {dtCommitted.Value:dd/MM/yyyy}. " +
                                  "Chọn hạn giao trước hoặc bằng ngày hết hạn, hoặc nhờ bộ phận kinh doanh gia hạn hợp đồng rồi tạo lại.",
                     Theme.Danger, Color.FromArgb(254, 242, 242));
@@ -118,9 +147,38 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             }
 
             _contractBlocked = blocked;
+            _contractBlockNote = note;
+            _contractGo.Visible = _contractInfo.Visible && _noUsableContract && (c is null || c.Id == 0);
             if (blocked && btnSave.Enabled) { btnSave.Enabled = false; _saveDisabledByContract = true; }
             else if (!blocked && _saveDisabledByContract) { btnSave.Enabled = true; _saveDisabledByContract = false; }
             UpdateSummary();
+        }
+
+        /// <summary>Nút trong khung cam: đóng form Tạo đơn và mở màn Hợp đồng (nghiệp vụ tạo hợp đồng là của màn Hợp đồng).</summary>
+        private void GoToContracts()
+        {
+            var main = Application.OpenForms.OfType<TruckingSystem.Desktop.GUI_Shared.MainForm>().FirstOrDefault();
+            if (main is null) return;
+            if (MessageBox.Show(this, "Đóng form tạo đơn (thông tin đang nhập sẽ không được lưu) và mở màn Hợp đồng để tạo hợp đồng cho khách?",
+                    "Mở màn Hợp đồng", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
+            DialogResult = DialogResult.Cancel;
+            Close();
+            main.BeginInvoke(new Action(() =>
+            {
+                if (!main.OpenNavByName("Hợp đồng"))
+                    MessageBox.Show(main, "Tài khoản của bạn không có quyền vào màn Hợp đồng — nhờ bộ phận kinh doanh tạo hợp đồng cho khách.",
+                        "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }));
+        }
+
+        /// <summary>Gọi sau khi nạp lại danh sách hợp đồng (KHÔNG gọi trong lúc danh sách đang mở).</summary>
+        private void UpdateContractDropHeight()
+        {
+            int S(int v) => LogicalToDeviceUnits(v);
+            var total = 2;
+            foreach (var it in cboContract.Items) total += it is OrderContractOption { Id: > 0 } ? S(38) : S(24);
+            var h = Math.Max(S(40), Math.Min(S(380), total));
+            if (cboContract.DropDownHeight != h) cboContract.DropDownHeight = h;
         }
 
         private void ShowContractText(string text, Color fore, Color back)
