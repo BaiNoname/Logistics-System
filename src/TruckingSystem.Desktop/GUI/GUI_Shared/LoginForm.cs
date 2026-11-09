@@ -1,4 +1,4 @@
-using TruckingSystem.Desktop.Common;
+﻿using TruckingSystem.Desktop.Common;
 using TruckingSystem.Desktop.GUI.GUI_ChatBot;
 namespace TruckingSystem.Desktop.GUI_Shared
 {
@@ -61,6 +61,7 @@ namespace TruckingSystem.Desktop.GUI_Shared
             lblAppName.Text = "Logistics System";
             SetupBannerScene();
             SetupRightPanel();
+            SetupWindowButtons(); // [─] [☐] [✕] góc trên phải (LoginForm.WindowButtons.cs)
             txtServerUrl.Text = "https://trucking.logisticssystem.dpdns.org";
             txtUsername.Text = "admin";
         }
