@@ -1,0 +1,68 @@
+{
+  "expo": {
+    "name": "Delivery GPS Tracker",
+    "slug": "delivery-gps-tracker",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "backgroundColor": "#2E7D32"
+    },
+    "android": {
+      "package": "com.yourcompany.deliverygpstracker",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_LOCATION",
+        "CAMERA",
+        "RECORD_AUDIO"
+      ],
+      "manifestPlaceholders": {}
+    },
+    "ios": {
+      "bundleIdentifier": "com.yourcompany.deliverygpstracker",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "This app needs location access to track delivery trips.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "This app needs background location access to continue tracking delivery trips while you use other apps.",
+        "UIBackgroundModes": [
+          "location",
+          "fetch"
+        ],
+        "NSCameraUsageDescription": "Quay video hành trình trong chuyến để đối chiếu minh bạch.",
+        "NSMicrophoneUsageDescription": "Ghi âm thanh kèm video hành trình."
+      }
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow $(PRODUCT_NAME) to use your location in the background for delivery tracking.",
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Cho phép $(PRODUCT_NAME) dùng camera để quay video hành trình.",
+          "microphonePermission": "Cho phép $(PRODUCT_NAME) dùng micro để ghi tiếng trong video hành trình.",
+          "recordAudioAndroid": true
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Cho phép chụp ảnh hàng hóa khi giao nhận."
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "21a2bd58-4c48-4518-8f63-98242e99f64a"
+      }
+    }
+  }
+}
