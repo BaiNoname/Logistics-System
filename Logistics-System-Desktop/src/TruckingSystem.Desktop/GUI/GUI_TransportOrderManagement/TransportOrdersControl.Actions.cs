@@ -3,6 +3,7 @@ using System.Windows.Forms;
 using TruckingSystem.Desktop.Common;
 using TruckingSystem.Desktop.DTO_TransportOrderManagement;
 using TruckingSystem.Desktop.GUI_RouteManagement;
+using TruckingSystem.Desktop.GUI_TripManagement;
 
 namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
 {
@@ -12,7 +13,8 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
     ///    "📅 Hạn giao và phí lưu kho ▾" và "🧰 Công cụ khác ▾".
     ///  • CHUỘT PHẢI vào 1 đơn = menu đủ mọi thao tác (gom nhóm, thao tác không hợp trạng thái thì mờ).
     ///  • Nhấp đúp = Xem chi tiết · F5 = Làm mới.
-    ///  • Thẻ "Đơn đang chọn" (UserControl SelectionCard) ngay trên bảng: thông tin + việc cần làm tiếp.
+    ///  • Thẻ "Đơn đang chọn" ngay trên bảng — CÙNG KIỂU thẻ màn Chuyến (SelectedTripBar): dòng đầu + đường đi
+    ///    (lấy hàng → kho → giao) + 3 ô (Khách và hợp đồng · Thời gian · Hàng và chuyến) + việc cần làm kèm NÚT CHÍNH.
     /// Mọi điều kiện bật/tắt giống màn Chi tiết đơn; server vẫn kiểm tra lại khi thực hiện.</summary>
     public partial class TransportOrdersControl
     {
@@ -20,7 +22,8 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
         private sealed record OrderAction(string Text, Func<TransportOrderListItem, bool> CanRun,
             Func<TransportOrderListItem, Task> Run, Func<TransportOrderListItem, bool>? Show = null);
 
-        private readonly SelectionCard _card = new() { Hint = "🖱 Chuột phải vào dòng: mọi thao tác\n🖱 Nhấp đúp: xem chi tiết đơn" };
+        private readonly SelectedTripBar _card = new() { Hint = "🖱 Chuột phải: mọi thao tác · Nhấp đúp: xem chi tiết đơn" };
+        private Func<Task>? _cardAction; // nút chính trên thẻ
         private readonly ContextMenuStrip _rowMenu = new();
         private readonly List<(ToolStripMenuItem Item, OrderAction Action)> _menuBindings = new();
         private Button? _btnEdit, _btnConfirm, _btnDetail, _btnDeadline, _btnTools;
@@ -38,7 +41,13 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
 
             // 1) Thẻ "Đơn đang chọn" ngay trên bảng.
             KpiStrip.InsertRow(root, _card, root.GetRow(grid));
-            _card.ShowEmpty("Chưa chọn đơn", "Bấm 1 dòng trong bảng bên dưới để xem thông tin và việc cần làm của đơn.");
+            _card.ShowEmpty("Bấm 1 dòng trong bảng bên dưới để xem thông tin và việc cần làm của đơn.", "Chưa chọn đơn");
+            _card.ActionClicked += async (_, _) =>
+            {
+                if (_cardAction is null) return;
+                try { await _cardAction(); }
+                catch (Exception ex) { Ask.Fail(this, "Lỗi: " + ex.Message); }
+            };
 
             // 2) Thanh nút: Làm mới · Tạo đơn · [Sửa đơn · Xác nhận | Chia xe] · Xem chi tiết · 2 nhóm thả xuống.
             _btnEdit = ToolbarButton("✏️ Sửa đơn", _actEdit, primary: false);
@@ -235,21 +244,13 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
 
             if (o is null)
             {
-                _card.ShowEmpty("Chưa chọn đơn", _orders.Count == 0
+                _cardAction = null;
+                _card.ShowEmpty(_orders.Count == 0
                     ? "Chưa có đơn nào (hoặc bộ lọc không khớp đơn nào) — bấm ➕ Tạo đơn mới."
-                    : "Bấm 1 dòng trong bảng bên dưới để xem thông tin và việc cần làm của đơn.");
+                    : "Bấm 1 dòng trong bảng bên dưới để xem thông tin và việc cần làm của đơn.", "Chưa chọn đơn");
                 return;
             }
             var overdue = DeadlineGroup(o) == DeadlineOverdue;
-            var accent = o.Status switch
-            {
-                "Draft" => Theme.TextSecondary,
-                "Confirmed" => GridDecor.AccentTeal,
-                "InProgress" => Theme.Primary,
-                "Done" => Theme.Success,
-                "Cancelled" => Theme.Danger,
-                _ => Theme.BorderColor,
-            };
             var next = o.Status switch
             {
                 "Draft" => "Nháp — kiểm tra lại với khách rồi bấm ✅ Xác nhận đơn (còn sửa được bằng ✏️ Sửa đơn)",
@@ -261,16 +262,67 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                 _ => "",
             };
             if (overdue) next = "⏰ ĐÃ QUÁ HẠN GIAO — " + next;
-            _card.ShowItem(overdue ? Theme.Danger : accent,
-                $"Đơn {o.Code}  ·  {o.CustomerName}  ·  {TranslateStatus(o.Status)}",
-                new[]
-                {
-                    o.ContractCode is { Length: > 0 } c ? $"📑 HĐ {c}" : "📑 Chưa có hợp đồng",
-                    $"📍 {(string.IsNullOrWhiteSpace(o.PickupPoint) ? "?" : o.PickupPoint)} → 🏬 {o.WarehouseName ?? "?"} → {(string.IsNullOrWhiteSpace(o.DropoffPoint) ? "?" : o.DropoffPoint)}",
-                    o.CommittedDeliveryDate is DateTime due ? $"⏰ Hạn giao {due:dd/MM/yyyy}" : "⏰ Chưa có hạn giao",
-                    $"🚚 {o.ActiveTripCount} chuyến",
-                },
-                next, overdue || o.Status == "Confirmed" && o.ActiveTripCount == 0);
+            _card.ShowCard(BuildOrderCard(o, next, overdue));
+        }
+
+        /// <summary>Thẻ đơn (cùng kiểu thẻ màn Chuyến).</summary>
+        private TripCardInfo BuildOrderCard(TransportOrderListItem o, string next, bool overdue)
+        {
+            var status = TranslateStatus(o.Status);
+            var done = o.Status is "Done" or "Cancelled";
+            var info = new TripCardInfo
+            {
+                Title = $"Đơn {o.Code}",
+                FromCaption = "LẤY HÀNG TẠI",
+                ToCaption = "GIAO TỚI",
+                From = string.IsNullOrWhiteSpace(o.PickupPoint) ? "?" : o.PickupPoint,
+                To = string.IsNullOrWhiteSpace(o.DropoffPoint) ? "?" : o.DropoffPoint,
+                RouteMid = string.IsNullOrWhiteSpace(o.WarehouseName) ? "giao thẳng" : $"qua 🏬 {o.WarehouseName}",
+                Next = next,
+                Blocked = overdue || o.OverdueStorageDays > 0 || o.Status == "Confirmed" && o.ActiveTripCount == 0,
+                Done = o.Status == "Done",
+                Accent = StatusColor(o.Status),
+            };
+            info.Pills.Add((status, GridDecor.StatusTone(status) ?? GridDecor.Slate));
+            if (!done && o.CommittedDeliveryDate is not null && DeadlineGroup(o) is DeadlineOverdue or DeadlineSoon)
+                info.Pills.Add(("Hạn " + ScreenKit.Deadline(o.CommittedDeliveryDate), DeadlineGroup(o) == DeadlineOverdue ? GridDecor.Red : GridDecor.Amber));
+            if (o.OverdueStorageDays > 0) info.Pills.Add(("📦 Nằm kho quá hạn", GridDecor.Red));
+
+            info.Boxes.Add(("Khách và hợp đồng", new List<(string, string)>
+            {
+                ("Khách", o.CustomerName),
+                ("Hợp đồng", o.ContractCode is { Length: > 0 } c ? "📑 " + c : "Chưa có hợp đồng"),
+            }));
+            info.Boxes.Add(("Thời gian", new List<(string, string)>
+            {
+                ("Hạn giao", o.CommittedDeliveryDate is DateTime due ? $"{due:dd/MM/yyyy}" : "Chưa có"),
+                ("Tình trạng", o.CommittedDeliveryDate is null ? "—" : ScreenKit.Deadline(o.CommittedDeliveryDate, done)),
+            }));
+            var goods = new List<(string, string)>
+            {
+                ("Chuyến", o.ActiveTripCount > 0 ? $"🚚 {o.ActiveTripCount} chuyến" : "Chưa chia xe"),
+                ("Đã giao", $"{o.ProgressPercent:0.##}%"),
+            };
+            if (o.QtyOnHand > 0) goods.Add(("Đang nằm kho", $"📦 {o.QtyOnHand:#,##0.##}"));
+            info.Boxes.Add(("Hàng và chuyến", goods));
+
+            // Nút chính cạnh "việc cần làm" — cùng xử lý với nút / menu sẵn có.
+            (info.ActionText, _cardAction) = o.Status switch
+            {
+                "Draft" => ("✅ Xác nhận đơn", (Func<Task>)(() => RunAsync(_actConfirm))),
+                "Confirmed" when o.ActiveTripCount == 0 => ("🚚 Chia xe", (Func<Task>)(() => RunAsync(_actAllocate))),
+                "Confirmed" or "InProgress" => ("🛣️ Mở màn Chuyến xe", (Func<Task>)OpenTripsScreen),
+                _ => ("📄 Xem chi tiết", (Func<Task>)(() => RunAsync(_actDetail))),
+            };
+            return info;
+        }
+
+        private Task OpenTripsScreen()
+        {
+            var main = Application.OpenForms.OfType<TruckingSystem.Desktop.GUI_Shared.MainForm>().FirstOrDefault();
+            if (main is not null && !main.OpenNavByName("Chuyến xe"))
+                Toast.Show(this, "Tài khoản của bạn không có quyền vào màn Chuyến xe.", ToastKind.Info);
+            return Task.CompletedTask;
         }
 
         private void SetStatus(string text, Color color)

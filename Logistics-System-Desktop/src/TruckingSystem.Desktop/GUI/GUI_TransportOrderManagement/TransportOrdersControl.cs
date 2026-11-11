@@ -70,32 +70,34 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             ScrollFit.Enable(this, root, grid);
 
             GridDecor.HoverRows(grid);
-            GridDecor.Pills(grid, "Trạng_thái", (text, _) => GridDecor.StatusTone(text));
+            // Dải màu mép trái theo TRẠNG THÁI ĐƠN — cùng quy ước 4 màu với màn Chuyến:
+            // xám nháp / chưa chạy · vàng đang vận chuyển · xanh lá hoàn tất · đỏ đã hủy.
+            grid.RowPostPaint += (_, e) =>
+            {
+                if (OrderAt(e.RowIndex) is not { } o) return;
+                using var b = new SolidBrush(StatusColor(o.Status));
+                e.Graphics.FillRectangle(b, LogicalToDeviceUnits(3), e.RowBounds.Y, LogicalToDeviceUnits(4), e.RowBounds.Height);
+            };
+            // Cột "Việc cần làm": xanh đậm = việc bình thường, cam = cần làm gấp / đang vướng, xám = không còn việc.
+            grid.CellFormatting += (_, e) =>
+            {
+                if (e.RowIndex < 0 || grid.Columns[e.ColumnIndex].Name != "Việc_cần_làm" || e.CellStyle is null) return;
+                var text = e.Value as string ?? "";
+                e.CellStyle.ForeColor = text == "—" ? Theme.TextSecondary
+                    : text.StartsWith("🚚") || text.StartsWith("⏰") || text.StartsWith("📦") ? Theme.Warning : Theme.Primary;
+                e.CellStyle.SelectionForeColor = e.CellStyle.ForeColor;
+                if (text != "—") e.CellStyle.Font = Theme.FontBold;
+            };
+            // Màu nhãn theo trạng thái GỐC của đơn (chữ có thể kèm "· 40%" khi đang giao dở).
+            GridDecor.Pills(grid, "Trạng_thái", (text, row) => GridDecor.StatusTone(OrderAt(row) is { } so ? TranslateStatus(so.Status) : text));
             GridDecor.Pills(grid, "Hạn_giao", (_, row) => OrderAt(row) is { } o ? o.OverdueStorageDays > 0 ? GridDecor.Red : DeadlineGroup(o) switch
             {
                 DeadlineOverdue => GridDecor.Red,
                 DeadlineSoon => GridDecor.Amber,
                 _ => null,
             } : null);
-            // "Tiến độ" = phần trăm số hàng của đơn ĐÃ GIAO tới khách — rê chuột vào ô / tiêu đề cột để xem giải thích.
-            grid.CellToolTipTextNeeded += (_, e) =>
-            {
-                if (e.ColumnIndex < 0 || grid.Columns[e.ColumnIndex].Name != "Tiến_độ") return;
-                if (e.RowIndex < 0) { e.ToolTipText = "Tiến độ = phần trăm số hàng của đơn đã giao tới khách"; return; }
-                if (OrderAt(e.RowIndex) is { } o)
-                    e.ToolTipText = o.Status switch
-                    {
-                        "Draft" => "Đơn nháp — chưa xác nhận, chưa vận chuyển",
-                        "Cancelled" => "Đơn đã hủy",
-                        _ => $"Đã giao {o.ProgressPercent:0.##}% số hàng của đơn tới khách",
-                    };
-            };
-            GridDecor.ProgressBars(grid, "Tiến_độ", row =>
-            {
-                if (OrderAt(row) is not { } o || o.Status is "Draft" or "Cancelled") return null;
-                var ratio = (double)o.ProgressPercent / 100.0;
-                return (ratio, $"{o.ProgressPercent:0.##}%", ratio >= 1 ? Theme.Success : Theme.Primary);
-            });
+            // Cột "Tiến độ %" đã bỏ (trùng ý với Trạng thái): đơn đang giao DỞ ghi % ngay trong nhãn trạng thái
+            // ("Đang vận chuyển · 40%"); thẻ đơn phía trên vẫn có dòng "Đã giao x%".
         }
 
         private TransportOrderListItem? OrderAt(int row)
@@ -206,8 +208,8 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                 o.Id,
                 Mã_đơn = o.Code,
                 Khách_hàng = o.CustomerName,
-                Trạng_thái = TranslateStatus(o.Status),
-                Tiến_độ = $"{o.ProgressPercent}%",
+                Trạng_thái = StatusWithProgress(o),
+                Việc_cần_làm = TodoText(o), // bước tiếp theo, ghi ngắn (chi tiết + nút ở thẻ phía trên)
                 // Ghi luôn số ngày: "01/11 · trễ 1 ngày" / "mai" / "còn 7 ngày" (đơn đã xong / hủy chỉ ghi ngày).
                 Hạn_giao = ScreenKit.Deadline(o.CommittedDeliveryDate, done: o.Status is "Done" or "Cancelled")
                            + (o.OverdueStorageDays > 0 ? " · 📦 nằm kho quá hạn — chưa rõ do ai" : ""),
@@ -298,6 +300,35 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             btnAllocate.Enabled = !_allocating && order?.Status == "Confirmed" && order.ActiveTripCount == 0;
             UpdateSelectionUi(order);
         }
+
+        /// <summary>Chữ cột Trạng thái: đơn đang vận chuyển đã giao được 1 phần thì kèm % ("Đang vận chuyển · 40%").</summary>
+        private static string StatusWithProgress(TransportOrderListItem o)
+            => o.Status == "InProgress" && o.ProgressPercent > 0 && o.ProgressPercent < 100
+                ? $"{TranslateStatus(o.Status)} · {o.ProgressPercent:0.##}%"
+                : TranslateStatus(o.Status);
+
+        /// <summary>Bước tiếp theo của đơn — ghi NGẮN cho cột "Việc cần làm".</summary>
+        private string TodoText(TransportOrderListItem o)
+        {
+            if (o.OverdueStorageDays > 0) return "📦 Xử lý hàng nằm kho quá hạn";
+            return o.Status switch
+            {
+                "Draft" => "✅ Xác nhận đơn",
+                "Confirmed" when o.ActiveTripCount == 0 => "🚚 Chia xe",
+                "Confirmed" => DeadlineGroup(o) == DeadlineOverdue ? "⏰ Quá hạn — chờ xe chạy" : "⏳ Chờ xe xuất phát",
+                "InProgress" => DeadlineGroup(o) == DeadlineOverdue ? "⏰ Quá hạn — theo dõi gấp" : "🛣️ Theo dõi chuyến",
+                _ => "—",
+            };
+        }
+
+        /// <summary>4 màu trạng thái đơn (giống màn Chuyến).</summary>
+        private static Color StatusColor(string status) => status switch
+        {
+            "InProgress" => ColorTranslator.FromHtml("#F59E0B"),
+            "Done" => ColorTranslator.FromHtml("#16A34A"),
+            "Cancelled" => ColorTranslator.FromHtml("#DC2626"),
+            _ => ColorTranslator.FromHtml("#94A3B8"), // Nháp / Đã xác nhận (chưa chạy)
+        };
 
         private static string TranslateStatus(string s) => s switch
         {
