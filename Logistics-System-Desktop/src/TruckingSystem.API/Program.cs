@@ -14,6 +14,9 @@ using TruckingSystem.Infrastructure;
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
 var builder = WebApplication.CreateBuilder(args);
+// Chạy được như DỊCH VỤ WINDOWS (bật máy là API tự chạy, không cần mở Visual Studio — xem installer\api_service_install.bat).
+// Chạy bằng Visual Studio / gõ lệnh như bình thường thì dòng này không làm gì.
+builder.Host.UseWindowsService();
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 
@@ -84,43 +87,57 @@ app.UseRateLimiter();
 app.UseAuthorization();
 app.MapControllers();
 
-// Kiểm tra database trước khi chạy: máy nào pull code mới mà quên Update-Database thì báo RÕ migration nào
-// còn thiếu + lệnh cần chạy, thay vì để API chạy rồi văng lỗi khó hiểu kiểu
-// "42P01: relation \"MaxDiscountPercent\" does not exist" ở giữa chừng.
-// Seed dữ liệu mẫu khi khởi động lần đầu (roles, tài khoản admin/driver1, Trip Id=1)
+// Kiểm tra database lúc khởi động: máy nào pull code mới mà quên Update-Database thì API VẪN CHẠY (không tắt —
+// tắt thì Visual Studio chỉ báo "web server is no longer running", cửa sổ console đóng mất, không đọc được lý do),
+// nhưng mọi lượt gọi trả về 503 kèm câu báo rõ ràng -> app Desktop hiện đúng câu đó (thay vì lỗi khó hiểu kiểu
+// "42P01: relation \"MaxDiscountPercent\" does not exist"). Cửa sổ console cũng in danh sách migration còn thiếu.
+// Seed dữ liệu mẫu khi khởi động lần đầu (roles, tài khoản admin/driver1, Trip Id=1) — chỉ khi database đã đủ.
+string? startupProblem = null;
 using (var scope = app.Services.CreateScope())
 {
     var startupLog = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("Startup");
     var db = scope.ServiceProvider.GetRequiredService<TruckingSystem.Infrastructure.Persistence.AppDbContext>();
-    List<string> pending;
     try
     {
-        pending = (await Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions.GetPendingMigrationsAsync(db.Database)).ToList();
+        var pending = (await Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions.GetPendingMigrationsAsync(db.Database)).ToList();
+        if (pending.Count > 0)
+        {
+            startupProblem = $"Database chưa cập nhật — còn {pending.Count} migration chưa chạy ({string.Join(", ", pending)}). " +
+                             "Mở Package Manager Console chạy: Update-Database -Project TruckingSystem.Infrastructure " +
+                             "-StartupProject TruckingSystem.API, rồi chạy lại API.";
+            startupLog.LogCritical("{Problem}", startupProblem);
+        }
     }
     catch (Exception ex)
     {
-        startupLog.LogCritical("KHÔNG KẾT NỐI ĐƯỢC DATABASE: {Message}\n" +
-            "-> Kiểm tra PostgreSQL đã chạy chưa và chuỗi ConnectionStrings:DefaultConnection trong appsettings.json.", ex.Message);
-        return;
-    }
-    if (pending.Count > 0)
-    {
-        startupLog.LogCritical("DATABASE CHƯA CẬP NHẬT — còn {Count} migration chưa chạy:\n  {List}\n" +
-            "-> Mở Package Manager Console và chạy:\n" +
-            "   Update-Database -Project TruckingSystem.Infrastructure -StartupProject TruckingSystem.API\n" +
-            "   rồi chạy lại API.", pending.Count, string.Join("\n  ", pending));
-        return;
+        startupProblem = "API không kết nối được database: " + ex.Message +
+                         " — kiểm tra PostgreSQL đã chạy chưa và chuỗi ConnectionStrings:DefaultConnection trong appsettings.json.";
+        startupLog.LogCritical("{Problem}", startupProblem);
     }
 
-    try
+    if (startupProblem is null)
     {
-        await TruckingSystem.API.Data.DbSeeder.SeedAsync(scope.ServiceProvider);
+        try
+        {
+            await TruckingSystem.API.Data.DbSeeder.SeedAsync(scope.ServiceProvider);
+        }
+        catch (Exception ex)
+        {
+            // Seed chỉ tạo dữ liệu mẫu — lỗi ở đây không được làm sập cả API.
+            startupLog.LogError(ex, "Seed dữ liệu mẫu lỗi (API vẫn chạy tiếp): {Message}", ex.Message);
+        }
     }
-    catch (Exception ex)
+}
+
+if (startupProblem is not null)
+{
+    // Chạy trước controller (endpoint luôn ở cuối pipeline): trả câu báo cho mọi lượt gọi.
+    app.Use(async (HttpContext context, Func<Task> _) =>
     {
-        // Seed chỉ tạo dữ liệu mẫu — lỗi ở đây không được làm sập cả API.
-        startupLog.LogError(ex, "Seed dữ liệu mẫu lỗi (API vẫn chạy tiếp): {Message}", ex.Message);
-    }
+        context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+        context.Response.ContentType = "application/json; charset=utf-8";
+        await context.Response.WriteAsync(System.Text.Json.JsonSerializer.Serialize(new { success = false, message = startupProblem }));
+    });
 }
 
 app.Run();
