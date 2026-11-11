@@ -23,7 +23,28 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             ScreenKit.Shortcuts(this, grid, null, () => btnCreate.PerformClick(), () => _ = OpenDetailAsync());
             ScreenKit.Help(this, "orders", "Quản lý đơn của khách từ lúc tạo đến khi giao xong.",
                 new[] { "Tạo đơn (➕ Tạo đơn mới)", "Kiểm tra thông tin rồi ✅ Xác nhận đơn", "🚚 Chia xe — hệ thống tự xếp xe + tài xế", "Theo dõi tiến độ; nhấp đúp 1 đơn để xem chi tiết" },
-                "Ctrl+N tạo đơn · Enter mở chi tiết · F5 làm mới · Ctrl+F tìm nhanh");
+                "Ctrl+N tạo đơn · Enter mở chi tiết · F5 làm mới · Ctrl+F tìm nhanh",
+                new[]
+                {
+                    ColorLegend.Header("Dải màu bên trái mỗi đơn"),
+                    ColorLegend.Bar(ColorLegend.Gray, "Nháp, hoặc đã xác nhận nhưng chưa chạy"),
+                    ColorLegend.Bar(ColorLegend.Amber, "Đang vận chuyển"),
+                    ColorLegend.Bar(ColorLegend.Green, "Hoàn tất"),
+                    ColorLegend.Bar(ColorLegend.Red, "Đã hủy"),
+                    ColorLegend.Header("Cột Trạng thái"),
+                    ColorLegend.Pill("Nháp", GridDecor.Slate, "Chưa xác nhận, còn sửa được"),
+                    ColorLegend.Pill("Đã xác nhận", GridDecor.Teal, "Đã chốt với khách, chờ chia xe / chờ xe chạy"),
+                    ColorLegend.Pill("Đang vận chuyển · 40%", GridDecor.Blue, "Đang chạy — số % = phần hàng đã giao tới khách"),
+                    ColorLegend.Pill("Hoàn tất", GridDecor.Green, "Đã giao xong"),
+                    ColorLegend.Pill("Đã hủy", GridDecor.Red, "Đơn bị hủy"),
+                    ColorLegend.Header("Cột Việc cần làm"),
+                    ColorLegend.Text("✅ Xác nhận đơn", Theme.Primary, "Việc bình thường"),
+                    ColorLegend.Text("🚚 Chia xe", Theme.Warning, "Cần làm gấp / đang vướng"),
+                    ColorLegend.Header("Cột Hạn giao"),
+                    ColorLegend.Pill("01/11 · trễ 1 ngày", GridDecor.Red, "Quá hạn giao, hoặc hàng nằm kho quá hạn"),
+                    ColorLegend.Pill("13/11 · mai", GridDecor.Amber, "Tới hạn trong 3 ngày"),
+                    ColorLegend.Note("Không tô màu = còn xa hạn, hoặc đơn đã xong / đã hủy."),
+                });
             new ToolTip().SetToolTip(btnCreate, "Tạo đơn mới (Ctrl+N)");
             new ToolTip().SetToolTip(btnRefresh, "Tải lại danh sách (F5)");
             Theme.StyleGrid(grid);
@@ -89,7 +110,11 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                 if (text != "—") e.CellStyle.Font = Theme.FontBold;
             };
             // Màu nhãn theo trạng thái GỐC của đơn (chữ có thể kèm "· 40%" khi đang giao dở).
-            GridDecor.Pills(grid, "Trạng_thái", (text, row) => GridDecor.StatusTone(OrderAt(row) is { } so ? TranslateStatus(so.Status) : text));
+            GridDecor.Pills(grid, "Trạng_thái", (text, row) =>
+            {
+                var plain = OrderAt(row) is { } so ? TranslateStatus(so.Status) : text;
+                return plain == "Đã hủy" ? GridDecor.Red : GridDecor.StatusTone(plain); // hủy = ĐỎ (quy ước 4 màu)
+            });
             GridDecor.Pills(grid, "Hạn_giao", (_, row) => OrderAt(row) is { } o ? o.OverdueStorageDays > 0 ? GridDecor.Red : DeadlineGroup(o) switch
             {
                 DeadlineOverdue => GridDecor.Red,

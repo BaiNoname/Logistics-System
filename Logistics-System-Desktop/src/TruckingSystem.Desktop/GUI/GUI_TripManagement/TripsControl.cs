@@ -38,7 +38,35 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
             ScreenKit.Help(this, "trips", "Theo dõi và điều hành từng chuyến xe (Lấy hàng · Giao hàng · Trả hàng).",
                 new[] { "Chọn 1 chuyến — thẻ \"Chuyến đang chọn\" cho biết việc tiếp theo", "Bấm nút xanh: Bắt đầu / Hoàn tất / Duyệt",
                         "Chi phí, xăng, sự cố: menu 💰 hoặc chuột phải vào dòng" },
-                "Enter xem lộ trình · chuột phải = mọi thao tác · F5 làm mới · Ctrl+F tìm nhanh");
+                "Enter xem lộ trình · chuột phải = mọi thao tác · F5 làm mới · Ctrl+F tìm nhanh",
+                new[]
+                {
+                    ColorLegend.Header("Ô vuông ở dòng ĐƠN + dải màu bên trái các chuyến (trạng thái đơn)"),
+                    ColorLegend.Bar(ColorLegend.Gray, "Chưa bắt đầu — chưa xe nào chạy"),
+                    ColorLegend.Bar(ColorLegend.Amber, "Đang thực hiện — đã có chuyến chạy, chưa xong hết"),
+                    ColorLegend.Bar(ColorLegend.Green, "Hoàn tất — mọi chuyến đã xong"),
+                    ColorLegend.Bar(ColorLegend.Red, "Đã hủy — mọi chuyến của đơn bị hủy"),
+                    ColorLegend.Note("Chuỗi chặng ở dòng đơn: ✓ đã xong · ▶ đang chạy · ⏳ đang chờ (duyệt / kho) · ○ chưa chạy"),
+                    ColorLegend.Header("Cột Chặng"),
+                    ColorLegend.Pill("Lấy hàng", GridDecor.Teal, "Xe đi lấy hàng của khách (về kho)"),
+                    ColorLegend.Pill("Giao hàng", GridDecor.Blue, "Xe chở hàng đi giao cho người nhận"),
+                    ColorLegend.Pill("Trả hàng", GridDecor.Violet, "Chở hàng trả lại"),
+                    ColorLegend.Header("Cột Trạng thái (chuyến)"),
+                    ColorLegend.Pill("Đã lên kế hoạch", GridDecor.Teal, "Chưa chạy, chờ xuất phát"),
+                    ColorLegend.Pill("Đang chạy", GridDecor.Blue, "Xe đang trên đường"),
+                    ColorLegend.Pill("🟡 Chờ xác nhận", GridDecor.Amber, "Đang chờ người khác làm: duyệt, lấy hàng, nhập kho"),
+                    ColorLegend.Pill("📤 Chờ kho xuất", GridDecor.Violet, "Kho chưa xuất hàng lên xe"),
+                    ColorLegend.Pill("Hoàn tất", GridDecor.Green, "Chuyến đã xong"),
+                    ColorLegend.Pill("Đã hủy", GridDecor.Red, "Chuyến bị hủy"),
+                    ColorLegend.Header("Cột Hạn"),
+                    ColorLegend.Pill("🟢 Kịp", GridDecor.Green, "Kịp hạn / đã giao đúng hạn"),
+                    ColorLegend.Pill("🟡 Sắp tới mốc", GridDecor.Amber, "Sắp tới mốc xuất phát muộn nhất"),
+                    ColorLegend.Pill("🔴 Trễ", GridDecor.Red, "Đã trễ hạn / đã giao trễ"),
+                    ColorLegend.Header("Ô \"việc tiếp theo\" trên thẻ phía trên"),
+                    ColorLegend.Pill("👉 …", GridDecor.Blue, "Việc bình thường — bấm nút bên cạnh"),
+                    ColorLegend.Pill("👉 …", GridDecor.Amber, "Đang vướng / cần làm ở màn khác (VD màn Kho)"),
+                    ColorLegend.Pill("👉 …", GridDecor.Green, "Đã xong, chỉ xem lại"),
+                });
             lblTitle.Text = "Quản lý chuyến xe"; // bỏ chữ "(Trip)" — đặt bằng code, không sửa Designer
             Theme.StyleGrid(grid);
             GridLayout.FitColumns(grid); // cột vừa nội dung, nhiều cột thì cuộn ngang thay vì cắt chữ
@@ -76,7 +104,8 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
             ScrollFit.Enable(this, root, grid);
 
             GridDecor.HoverRows(grid);
-            GridDecor.Pills(grid, "Trạng_thái", (text, _) => GridDecor.StatusTone(text));
+            // Đã hủy = ĐỎ (quy ước 4 màu của màn Đơn / Chuyến) — riêng màn này, không đổi màu chung của app.
+            GridDecor.Pills(grid, "Trạng_thái", (text, _) => text == "Đã hủy" ? GridDecor.Red : GridDecor.StatusTone(text));
             GridDecor.Pills(grid, "Chặng", (text, _) => text.Contains("Lấy") ? GridDecor.Teal
                 : text.Contains("Giao") ? GridDecor.Blue : GridDecor.Violet);
             // Rê chuột vào ô "Hạn" -> câu đầy đủ (trễ mấy ngày / phải xuất phát trước lúc nào), khỏi phải bấm dòng.

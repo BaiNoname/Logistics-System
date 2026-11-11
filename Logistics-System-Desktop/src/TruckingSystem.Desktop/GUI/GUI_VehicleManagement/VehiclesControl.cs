@@ -19,7 +19,22 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
             ScreenKit.Shortcuts(this, grid, null, () => btnCreate.PerformClick(), () => ShowDetail());
             ScreenKit.Help(this, "vehicles", "Danh sách xe của công ty: tình trạng, giấy tờ, sức chứa.",
                 new[] { "Thêm xe (➕) và khai giấy tờ còn hạn", "Nhấp đúp 1 xe để xem đủ thông tin, sửa, thêm giấy tờ", "Xe thiếu / hết hạn giấy tờ sẽ không được chia chuyến" },
-                "Ctrl+N thêm xe · Enter xem chi tiết · F5 làm mới");
+                "Ctrl+N thêm xe · Enter xem chi tiết · F5 làm mới",
+                new[]
+                {
+                    ColorLegend.Header("Cột Trạng thái"),
+                    ColorLegend.Pill("Rảnh", GridDecor.Green, "Sẵn sàng nhận chuyến"),
+                    ColorLegend.Pill("Đang chạy", GridDecor.Blue, "Đang chạy 1 chuyến"),
+                    ColorLegend.Pill("Bảo trì", GridDecor.Amber, "Đang bảo trì — không chia chuyến"),
+                    ColorLegend.Pill("Ngưng hoạt động", GridDecor.Slate, "Không dùng nữa"),
+                    ColorLegend.Header("Cột Giấy tờ"),
+                    ColorLegend.Pill("✅ Hợp lệ", GridDecor.Green, "Đủ giấy tờ còn hạn"),
+                    ColorLegend.Pill("⛔ …", GridDecor.Red, "Thiếu / hết hạn giấy tờ — xe KHÔNG được chia chuyến"),
+                    ColorLegend.Header("Cột Nhiên liệu (thanh)"),
+                    ColorLegend.Bar(Theme.Success, "Còn trên 35% bình"),
+                    ColorLegend.Bar(Theme.Warning, "Còn 15–35% — nên đổ thêm"),
+                    ColorLegend.Bar(Theme.Danger, "Còn 15% trở xuống — sắp hết"),
+                });
             Theme.StyleGrid(grid);
             GridLayout.FitColumns(grid); // cột vừa nội dung, nhiều cột thì cuộn ngang thay vì cắt chữ
             Load += (_, _) => Theme.UniformButtons(toolbar); // nút đều nhau, xuống dòng vẫn thẳng cột

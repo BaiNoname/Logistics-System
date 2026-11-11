@@ -5,7 +5,8 @@
     ///    ghi câu giải thích + nút làm ngay ("Bỏ lọc" khi bộ lọc đang ẩn hết, "➕ Tạo đơn" khi chưa có dữ liệu).
     ///  • Shortcuts(screen, grid, …): F5 làm mới · Ctrl+N tạo mới · Enter mở chi tiết dòng đang chọn.
     ///  • Help(screen, …): nút "?" góc trên phải màn — thẻ "Màn này dùng để làm gì · làm theo thứ tự nào · phím tắt".
-    ///    Lần đầu tài khoản mở màn đó thẻ tự hiện (nhớ ở %AppData%/LogisticsSystem/help-seen.txt).</summary>
+    ///    Lần đầu tài khoản mở màn đó thẻ tự hiện (nhớ ở %AppData%/LogisticsSystem/help-seen.txt).
+    ///    Tuỳ chọn colors: thêm phần "Ý nghĩa màu" (ColorLegend) — màu nhãn / dải màu ứng với trạng thái nào.</summary>
     public static class ScreenKit
     {
         // ================= Bảng trống / đang tải =================
@@ -161,7 +162,8 @@
         private static readonly string SeenFile = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "LogisticsSystem", "help-seen.txt");
 
-        public static void Help(Control screen, string key, string what, string[] steps, string keys)
+        public static void Help(Control screen, string key, string what, string[] steps, string keys,
+            IReadOnlyList<ColorLegend.Item>? colors = null)
         {
             int S(int v) => screen.LogicalToDeviceUnits(v);
             var btn = new Button
@@ -183,7 +185,10 @@
             void Open()
             {
                 if (card is not null) { Close(); return; }
-                card = BuildCard(screen, what, steps, keys, Close);
+                card = BuildCard(screen, what, steps, keys, Close, colors);
+                // Thẻ dài (có phần màu) mà màn thấp -> giới hạn chiều cao, cuộn bên trong thẻ.
+                var maxH = Math.Max(S(220), screen.ClientSize.Height - btn.Bottom - S(20));
+                if (card.Height > maxH) { card.Height = maxH; card.AutoScroll = true; }
                 screen.Controls.Add(card);
                 card.Location = new Point(Math.Max(0, screen.ClientSize.Width - card.Width - S(16)), btn.Bottom + S(6));
                 card.BringToFront();
@@ -197,14 +202,17 @@
             screen.Disposed += (_, _) => Close();
         }
 
-        private static Panel BuildCard(Control screen, string what, string[] steps, string keys, Action close)
+        private static Panel BuildCard(Control screen, string what, string[] steps, string keys, Action close,
+            IReadOnlyList<ColorLegend.Item>? colors = null)
         {
             int S(int v) => screen.LogicalToDeviceUnits(v);
-            var card = new Panel { Width = S(360), BackColor = Color.White, Padding = new Padding(S(14), S(12), S(14), S(12)) };
-            var flow = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoSize = true, BackColor = Color.White };
+            var hasColors = colors is { Count: > 0 };
+            var card = new Panel { Width = S(hasColors ? 400 : 360), BackColor = Color.White, Padding = new Padding(S(14), S(12), S(14), S(12)) };
+            // Không Dock: thẻ dài thì cuộn được bên trong (AutoScroll của card).
+            var flow = new FlowLayoutPanel { Location = new Point(card.Padding.Left, card.Padding.Top), FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoSize = true, BackColor = Color.White };
             Label L(string text, bool bold = false, Color? color = null) => new()
             {
-                Text = text, AutoSize = true, MaximumSize = new Size(S(330), 0), Margin = new Padding(0, 0, 0, S(4)),
+                Text = text, AutoSize = true, MaximumSize = new Size(S(hasColors ? 370 : 330), 0), Margin = new Padding(0, 0, 0, S(4)),
                 Font = new Font("Segoe UI", bold ? 10F : 9.5F, bold ? FontStyle.Bold : FontStyle.Regular),
                 ForeColor = color ?? Theme.TextPrimary,
             };
@@ -220,6 +228,11 @@
                 flow.Controls.Add(L("Phím tắt:", true, Theme.Primary));
                 flow.Controls.Add(L(keys));
             }
+            if (hasColors)
+            {
+                flow.Controls.Add(L("Ý nghĩa màu:", true, Theme.Primary));
+                ColorLegend.AddTo(flow, screen, colors!, S(370));
+            }
             var ok = new Button { Text = "Đã hiểu", AutoSize = true, Margin = new Padding(0, S(6), 0, 0) };
             ButtonStyles.Primary(ok);
             ok.Click += (_, _) => close();
@@ -227,6 +240,7 @@
             flow.Controls.Add(L("Bấm \"?\" ở góc trên phải để xem lại.", false, Theme.TextSecondary));
             card.Controls.Add(flow);
             card.Height = flow.PreferredSize.Height + card.Padding.Vertical;
+            card.AutoScrollMargin = new Size(0, card.Padding.Bottom);
             card.Paint += (_, e) =>
             {
                 using var pen = new Pen(Color.FromArgb(191, 219, 254), 2);
