@@ -24,8 +24,8 @@
         // ---- Kiểm soát nhiên liệu ----
         public decimal FuelPlannedCost { get; set; }   // dự toán theo km VietMap
         public decimal FuelNormCost { get; set; }      // định mức theo km GPS thực tế
-        public decimal FuelActualCost { get; set; }    // thực đổ (hóa đơn)
-        public int TripsUsingFuelEstimate { get; set; }
+        public decimal FuelActualCost { get; set; }    // xăng ĐÃ MUA (đổ vào bình) trong kỳ — mọi xe
+        public int TripsUsingFuelEstimate { get; set; } // số chuyến thiếu GPS -> xăng tạm tính theo km dự kiến
         /// <summary>Dự toán / định mức chỉ trên CÙNG 1 tập chuyến (hoàn tất, có đủ cả 2 số)
         /// — dùng để tính "Lệch dự toán" cho đúng.</summary>
         public decimal FuelPlannedCostCompared { get; set; }
@@ -37,6 +37,27 @@
         public int OnTimeOrders { get; set; }
         public int LateOrders { get; set; }
         public int OrdersWithoutDeadline { get; set; }
+
+        // ---- Quyết toán xăng THEO XE trong kỳ ----
+        public decimal FuelActualLiters { get; set; }
+        public decimal FuelNormLiters { get; set; }
+        public List<VehicleFuelRowItem>? VehicleFuel { get; set; }
+    }
+
+    /// <summary>1 xe trong bảng "Xăng từng xe trong kỳ" — tham khảo (xem VehicleFuelRowDto phía API).</summary>
+    public class VehicleFuelRowItem
+    {
+        public int VehicleId { get; set; }
+        public string PlateNumber { get; set; } = "";
+        public decimal? ConsumptionPer100Km { get; set; }
+        public decimal RefuelLiters { get; set; }
+        public decimal RefuelCost { get; set; }
+        public decimal GpsKm { get; set; }
+        public decimal NormLiters { get; set; }
+        public int TripCount { get; set; }
+        public int TripsWithoutGps { get; set; }
+        public decimal? DeviationPct { get; set; }
+        public string? Note { get; set; }
     }
 
     /// <summary>1 chuyến đã chạy trong bảng "Kiểm soát nhiên liệu".</summary>

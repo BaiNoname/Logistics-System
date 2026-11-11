@@ -5,7 +5,8 @@ using System.Runtime.CompilerServices;
 
 namespace TruckingSystem.Desktop.Common
 {
-    /// <summary>Kiểu hiển thị theo theme cho các phân hệ đăng ký bên dưới và các hộp thoại của chúng.
+    /// <summary>KIỂU MỚI BÊN TRONG MÀN (mẫu 4_buoi đã duyệt) — CHỈ áp cho các màn của Nhân (Tổng quan, Đơn, Chuyến, Kho, Đội xe,
+    /// Tài xế, Địa điểm, Nhiên liệu, Nguồn lực theo kho, Nhật ký hệ thống, Thông báo) và các hộp thoại của chúng. Màn của Minh giữ nguyên (Theme.cs không đổi).
     ///  • Bảng: tiêu đề sáng (nền xám rất nhạt, chữ xám đậm), chỉ kẻ ngang mảnh, dòng cao hơn, dòng chọn xanh trời nhạt.
     ///  • Nút: bo góc; nút chính (màu Primary) tô dải màu theo buổi đang chọn (Bình minh hồng–cam, Trưa xanh trời, Chiều cam–hồng,
     ///    Tối chàm–tím).
@@ -17,14 +18,10 @@ namespace TruckingSystem.Desktop.Common
         {
             "GUI_TransportOrderManagement", "GUI_TripManagement", "GUI_WarehouseManagement", "GUI_VehicleManagement",
             "GUI_DriverManagement", "GUI_LocationManagement", "GUI_FuelManagement", "GUI_ResourceManagement", "GUI_RouteManagement",
-            "GUI_AuditLogManagement", "GUI_NotificationManagement",
-            "GUI_CustomerManagement", "GUI_ContractManagement", "GUI_SurchargeManagement",
-            "GUI_PricingManagement", "GUI_InvoiceManagement",
-            "GUI_EmployeeManagement", "GUI_PayrollManagement", "GUI_AttendanceManagement",
-            "GUI_AccountManagement", "GUI_SystemManagement",
+            "GUI_AuditLogManagement", "GUI_NotificationManagement", // Nhật ký hệ thống + Thông báo
         };
 
-        /// <summary>Màn hoặc hộp thoại dùng kiểu hiển thị theo theme.</summary>
+        /// <summary>Màn / hộp thoại thuộc phần của Nhân.</summary>
         public static bool IsMine(Type t)
             => t.Name == "DashboardControl"
                || (t.Namespace is { } ns && MineNamespaces.Any(m => ns.EndsWith(m, StringComparison.Ordinal)));
@@ -110,6 +107,42 @@ namespace TruckingSystem.Desktop.Common
             if (grid.AlternatingRowsDefaultCellStyle.BackColor == Theme.GridAltRow) grid.AlternatingRowsDefaultCellStyle.BackColor = AltRow;
             if (grid.DefaultCellStyle.Padding == new Padding(8, 0, 4, 0)) grid.DefaultCellStyle.Padding = new Padding(10, 0, 6, 0);
             if (grid.RowTemplate.Height == 36) grid.RowTemplate.Height = 38;
+            HookHeaderAlign(grid);
+        }
+
+        // ------------------------------------------------------------ tiêu đề cột thẳng hàng với số
+
+        private static readonly ConditionalWeakTable<DataGridView, object> AlignHooked = new();
+
+        /// <summary>CỘT SỐ (tiền, km, lít, %…) căn PHẢI nhưng tiêu đề vẫn căn TRÁI -> số dồn về cuối ô, cách xa chữ tiêu đề,
+        /// nhìn lệch. Tiêu đề tự căn THEO đúng kiểu căn của dữ liệu trong cột (phải / giữa / trái), áp cho mọi bảng của
+        /// các màn ModernLook — kể cả cột đặt căn sau khi nạp dữ liệu (chạy sau các xử lý DataBindingComplete của màn).</summary>
+        private static void HookHeaderAlign(DataGridView grid)
+        {
+            if (AlignHooked.TryGetValue(grid, out _)) return;
+            AlignHooked.Add(grid, new object());
+            void Sync()
+            {
+                if (grid.IsDisposed) return;
+                foreach (DataGridViewColumn c in grid.Columns)
+                {
+                    var a = c.DefaultCellStyle.Alignment;
+                    var want = a switch
+                    {
+                        DataGridViewContentAlignment.TopRight or DataGridViewContentAlignment.MiddleRight or DataGridViewContentAlignment.BottomRight
+                            => DataGridViewContentAlignment.MiddleRight,
+                        DataGridViewContentAlignment.TopCenter or DataGridViewContentAlignment.MiddleCenter or DataGridViewContentAlignment.BottomCenter
+                            => DataGridViewContentAlignment.MiddleCenter,
+                        _ => DataGridViewContentAlignment.NotSet, // trái: theo kiểu chung của tiêu đề
+                    };
+                    if (c.HeaderCell.Style.Alignment != want) c.HeaderCell.Style.Alignment = want;
+                }
+            }
+            void Later() { if (!grid.IsDisposed && grid.IsHandleCreated) grid.BeginInvoke(new Action(Sync)); else Sync(); }
+            grid.DataBindingComplete += (_, _) => Later();
+            grid.ColumnAdded += (_, _) => Later();
+            grid.HandleCreated += (_, _) => Later();
+            Sync();
         }
 
         // ------------------------------------------------------------ nút bo góc

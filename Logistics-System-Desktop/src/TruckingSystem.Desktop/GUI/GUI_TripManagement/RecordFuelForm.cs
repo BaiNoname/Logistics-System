@@ -111,11 +111,8 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
             {
                 var est = await _api.Trips.GetFuelEstimateAsync(_tripId);
                 if (IsDisposed || est?.EstimatedCost is not decimal estCost) return;
-                var variance = est.VarianceCost ?? 0;
-                var verdict = variance > 0 ? $"⚠️ tốn hơn ước tính {variance:N0} đ"
-                    : variance < 0 ? $"✅ tiết kiệm hơn ước tính {Math.Abs(variance):N0} đ"
-                    : "khớp ước tính";
-                lblTotal.Text += $"\n📊 Ước tính theo {est.ActualDistanceKm:0.0} km đã chạy (GPS): ~{est.EstimatedLiters:0.0} lít · {estCost:N0} đ — {verdict}";
+                // Không phán "tốn hơn / tiết kiệm" theo từng chuyến (đổ đầy bình thì xăng còn dùng cho chuyến sau).
+                lblTotal.Text += $"\n📊 Chuyến này tiêu ~{est.EstimatedLiters:0.0} lít theo {est.ActualDistanceKm:0.0} km GPS · {estCost:N0} đ (tính vào đơn)";
             }
             catch
             {
