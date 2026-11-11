@@ -79,9 +79,15 @@ namespace TruckingSystem.Desktop.GUI_Shared
                 {
                     var c = grid.Columns["Số_tiền"]!;
                     c.DefaultCellStyle.Format = "N0";
-                    c.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
                     c.HeaderText = "Số tiền (đ)";
                 }
+                // Cột số / ngày / trạng thái căn GIỮA cho cân, tiêu đề căn theo.
+                foreach (var name in new[] { "Trạng_thái", "Ngày", "Số_tiền" })
+                    if (grid.Columns.Contains(name))
+                    {
+                        grid.Columns[name]!.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+                        grid.Columns[name]!.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
+                    }
             }
             catch (Exception ex)
             {

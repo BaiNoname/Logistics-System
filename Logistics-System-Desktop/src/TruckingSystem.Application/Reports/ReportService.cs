@@ -242,13 +242,24 @@ public class ReportService : IReportService
             // Chỉ gắn cờ chuyến ĐÃ HOÀN TẤT — chuyến đang chạy / chờ duyệt / hủy giữa đường
             // có km GPS dở dang, so với km kế hoạch luôn "thiếu" -> cờ đỏ oan.
             // Chỉ so KM (chạy vòng / sai tuyến / mất sóng). Tiền đổ xăng KHÔNG so theo chuyến — quyết toán theo xe.
-            Status == TripStatus.Completed && Math.Abs(KmDeviationPct ?? 0) > FuelDeviationThresholdPct,
+            // Quãng ngắn: lệch vài trăm mét đã thành hàng trăm % -> phải lệch QUÁ 15% VÀ từ 2 km trở lên mới gắn cờ.
+            Status == TripStatus.Completed && Math.Abs(KmDeviationPct ?? 0) > FuelDeviationThresholdPct
+                && PlannedKm.HasValue && GpsKm.HasValue && Math.Abs(GpsKm.Value - PlannedKm.Value) >= FuelDeviationMinKm,
             Note);
     }
 
     /// <summary>Ngưỡng cảnh báo lệch (%). GPS hụt ~2–5% ở khúc cua/mất sóng nên
     /// không bắt lỗi từng phần trăm — chỉ đánh dấu khi lệch quá 15%.</summary>
     private const decimal FuelDeviationThresholdPct = 15m;
+
+    /// <summary>Lệch tối thiểu (km) mới gắn cờ chuyến — tránh cờ đỏ oan ở chuyến quãng ngắn.</summary>
+    private const decimal FuelDeviationMinKm = 2m;
+
+    /// <summary>Km GPS dưới mức này coi như CHƯA ĐỦ dữ liệu GPS (các điểm trùng một chỗ, xe chưa thật sự chạy).</summary>
+    private const decimal GpsMinKm = 0.1m;
+
+    /// <summary>Bảng xăng theo xe: định mức dưới mức này (lít) thì quá ít để so % (đổ 2 L / định mức 0,04 L = +4000%).</summary>
+    private const decimal VehicleFuelMinNormLiters = 20m;
 
     private async Task<List<TripFuelStats>> ComputeFuelStatsAsync(List<int> orderIds)
     {
@@ -321,7 +332,9 @@ public class ReportService : IReportService
                 unitPrice = (candidates.FirstOrDefault(p => p.FuelProviderId == null) ?? candidates.FirstOrDefault())?.Price;
                 if (unitPrice is null) note = $"Chưa có giá \"{fuelType}\" tới ngày chạy";
             }
-            if (note is null && gpsKm is null) note = "Chưa đủ dữ liệu GPS (cần ít nhất 2 điểm)";
+            if (note is null && gpsKm is null) note = t.EstimatedDistanceKm is > 0
+                ? "Chưa đủ dữ liệu GPS (xe chưa di chuyển / dưới 2 điểm) — tạm tính theo km dự kiến"
+                : "Chưa đủ dữ liệu GPS (xe chưa di chuyển / dưới 2 điểm)";
 
             decimal? Cost(decimal? km) => km.HasValue && unitPrice.HasValue && t.FuelConsumptionPer100Km is > 0
                 ? km.Value / 100m * t.FuelConsumptionPer100Km.Value * unitPrice.Value : null;
@@ -363,6 +376,7 @@ public class ReportService : IReportService
                     double sum = 0;
                     for (var i = 1; i < pts.Count; i++) sum += HaversineKm(pts[i - 1].Lat, pts[i - 1].Lng, pts[i].Lat, pts[i].Lng);
                     km = Math.Round((decimal)sum, 1);
+                    if (km < GpsMinKm) km = null; // điểm GPS trùng một chỗ -> coi như chưa đủ dữ liệu GPS
                 }
                 if (km is not null) gpsKmByTrip[id] = km;
                 if (closed.Contains(id)) GpsKmCache[id] = km;
@@ -411,9 +425,12 @@ public class ReportService : IReportService
             }
             var rf = refuels.Where(r => r.VehicleId == v.Id).ToList();
             var refuelL = rf.Sum(r => r.Liters);
-            decimal? dev = normL > 0 ? Math.Round((refuelL - normL) / normL * 100, 1) : null;
+            // Chỉ so % khi đủ dữ liệu: không chuyến nào thiếu GPS và định mức đủ lớn (quãng ngắn -> % vô nghĩa).
+            decimal? dev = noGps == 0 && normL >= VehicleFuelMinNormLiters
+                ? Math.Round((refuelL - normL) / normL * 100, 1) : null;
             string? note = v.FuelConsumptionPer100Km is null or <= 0 ? "Xe chưa khai báo định mức L/100km"
-                : noGps > 0 ? $"{noGps} chuyến thiếu GPS — định mức thiếu phần km đó"
+                : noGps > 0 ? $"{noGps} chuyến thiếu GPS — chưa so được"
+                : normL < VehicleFuelMinNormLiters ? "Quãng đường quá ngắn để so"
                 : dev is decimal d && Math.Abs(d) > FuelDeviationThresholdPct
                     ? (d > 0 ? "Đổ nhiều hơn định mức cả kỳ — có thể còn xăng trong bình, theo dõi thêm"
                              : "Đổ ít hơn định mức cả kỳ — có thể dùng xăng còn từ kỳ trước, hoặc thiếu hóa đơn đổ")
