@@ -26,6 +26,11 @@ namespace TruckingSystem.Desktop.Common
             => t.Name == "DashboardControl"
                || (t.Namespace is { } ns && MineNamespaces.Any(m => ns.EndsWith(m, StringComparison.Ordinal)));
 
+        /// <summary>Màn / hộp thoại KHÔNG thuộc phần của Nhân (màn của Minh) -> CHỈ bo góc nút cho đồng bộ toàn ứng dụng;
+        /// bảng, màu chữ, bố cục, nghiệp vụ giữ nguyên. Trừ khung chính (menu) và màn đăng nhập — 2 màn này có kiểu nút riêng.</summary>
+        public static bool RoundButtonsOnly(Type t)
+            => !IsMine(t) && t.Name is not ("MainForm" or "LoginForm");
+
         // Dải màu nút chính — MainForm đặt theo buổi đang chọn.
         public static Color AccentStart { get; private set; } = ColorTranslator.FromHtml("#0EA5E9");
         public static Color AccentEnd { get; private set; } = ColorTranslator.FromHtml("#0891B2");
@@ -78,6 +83,40 @@ namespace TruckingSystem.Desktop.Common
                     };
                 }
                 foreach (var child in c.Controls.Cast<Control>().ToList()) Visit(child);
+            }
+            catch
+            {
+                // Chỉ là trang trí — lỗi ở đây không được làm hỏng màn hình.
+            }
+        }
+
+        // ------------------------------------------------------------ chỉ bo góc nút (màn của Minh)
+
+        private static readonly ConditionalWeakTable<Control, object> DoneButtons = new();
+
+        /// <summary>Chỉ bo góc các nút trong <paramref name="root"/> (kể cả nút thêm sau bằng code) — không đụng bảng / màu / bố cục.
+        /// Gọi SAU khi màn đã chạy xong sự kiện Load để các nút đã được tô kiểu (ButtonStyles) xong.</summary>
+        public static void ApplyButtons(Control root) => VisitButtons(root);
+
+        private static void VisitButtons(Control c)
+        {
+            try
+            {
+                if (!DoneButtons.TryGetValue(c, out _))
+                {
+                    DoneButtons.Add(c, new object());
+                    if (c is DataGridView) return; // không đi vào bên trong bảng
+                    if (c is Button b) RoundButton(b);
+                    c.ControlAdded += (_, e) =>
+                    {
+                        var added = e.Control;
+                        if (added is null) return;
+                        if (c.IsHandleCreated && !c.IsDisposed)
+                            c.BeginInvoke(new Action(() => { if (!added.IsDisposed) VisitButtons(added); }));
+                        else VisitButtons(added);
+                    };
+                }
+                foreach (var child in c.Controls.Cast<Control>().ToList()) VisitButtons(child);
             }
             catch
             {
@@ -164,6 +203,7 @@ namespace TruckingSystem.Desktop.Common
 
         private static void RoundButton(Button b)
         {
+            if (States.TryGetValue(b, out _)) return; // đã bo rồi — không gắn vẽ 2 lần
             if (b.FlatStyle != FlatStyle.Flat || b.Image is not null || b.BackgroundImage is not null
                 || b.BackColor.A < 255 || b.Parent is DataGridView || HasOwnPaint(b)) return;
             var st = new ButtonState();

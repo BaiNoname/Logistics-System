@@ -19,6 +19,8 @@ namespace TruckingSystem.Desktop.Common
             UiStyle.ApplyDefaults(this);
             if (ModernLook.IsMine(GetType())) ModernLook.Apply(this);
             base.OnLoad(e);
+            // Màn khác (của Minh): chỉ bo góc nút cho đồng bộ — gọi sau Load để nút đã tô kiểu xong.
+            if (ModernLook.RoundButtonsOnly(GetType())) ModernLook.ApplyButtons(this);
         }
     }
 }
