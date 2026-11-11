@@ -25,6 +25,8 @@ namespace TruckingSystem.Desktop.Common
             if (ModernLook.IsMine(GetType())) ModernLook.Apply(this);
             FitToScreen();
             base.OnLoad(e);
+            // Hộp thoại khác (của Minh): chỉ bo góc nút cho đồng bộ — gọi sau Load để nút đã tô kiểu xong.
+            if (ModernLook.RoundButtonsOnly(GetType())) ModernLook.ApplyButtons(this);
         }
 
         /// <summary>Form mở ra LỚN HƠN vùng làm việc của màn hình (laptop 14 inch để 150%: chỉ
