@@ -29,7 +29,12 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
             _overlay = ScreenKit.Overlay(grid, () => _trips.Count, "Chưa có chuyến xe nào",
                 "Chuyến được tạo khi bạn 🚚 Chia xe cho đơn ở màn Đơn vận chuyển.", null,
                 () => { _pendingOnly = false; filterBar.ClearFilters(); BindGrid(); });
-            ScreenKit.Shortcuts(this, grid, null, null, () => BtnViewRoute_Click(this, EventArgs.Empty));
+            // Enter: dòng ĐƠN -> thu gọn / mở; dòng chuyến -> xem lộ trình.
+            ScreenKit.Shortcuts(this, grid, null, null, () =>
+            {
+                if (CurrentGroupCode() is string code) ToggleGroup(code);
+                else BtnViewRoute_Click(this, EventArgs.Empty);
+            });
             ScreenKit.Help(this, "trips", "Theo dõi và điều hành từng chuyến xe (Lấy hàng · Giao hàng · Trả hàng).",
                 new[] { "Chọn 1 chuyến — thẻ \"Chuyến đang chọn\" cho biết việc tiếp theo", "Bấm nút xanh: Bắt đầu / Hoàn tất / Duyệt",
                         "Chi phí, xăng, sự cố: menu 💰 hoặc chuột phải vào dòng" },
@@ -53,6 +58,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
             FilterMemory.Attach(filterBar, "trips"); // nhớ bộ lọc khi chuyển màn rồi quay lại
             SetupModernLook();
             SetupActions(); // thanh nút gọn + menu chuột phải + thẻ "Chuyến đang chọn" (TripsControl.Actions.cs)
+            SetupGrouping(); // gom chuyến theo đơn: dòng đơn + dải màu + thẻ đơn (TripsControl.Groups.cs)
             // Dải nhắc việc (giải thích số đỏ trên menu): chuyến tài xế báo xong chờ duyệt.
             KpiStrip.InsertRow(root, _pendingBanner, root.GetRow(_selectedBar));
             _pendingBanner.FilterToggled += (_, on) => { _pendingOnly = on; BindGrid(); };
@@ -97,7 +103,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
         /// <summary>1 dòng tóm tắt thay cho 6 thẻ số liệu: tổng số chuyến + CHỈ những việc cần chú ý (có số > 0).</summary>
         private string SummaryText()
         {
-            var parts = new List<string> { $"Tổng {_trips.Count} chuyến" };
+            var parts = new List<string> { $"Tổng {_trips.Select(t => t.OrderCode).Distinct().Count()} đơn · {_trips.Count} chuyến" };
             void Add(int n, string text) { if (n > 0) parts.Add($"{text}: {n}"); }
             Add(_trips.Count(t => t.Status == "InProgress"), "🚚 đang chạy");
             Add(_trips.Count(t => t.Status == "PendingConfirmation"), "📝 chờ duyệt");
@@ -180,6 +186,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
         private void BindGrid()
         {
             var keepId = _trips.Count > 0 && _focusTripId is int focus ? focus : GetSelectedTripId();
+            var keepGroup = keepId is null ? CurrentGroupCode() : null; // đang chọn dòng ĐƠN -> giữ dòng đơn đó
             if (_trips.Count > 0) _focusTripId = null;
             // "#15" -> đúng chuyến 15 (không lẫn #150, #151...).
             var exactId = System.Text.RegularExpressions.Regex.Match(filterBar.SearchText, @"^#(\d+)$") is { Success: true } m
@@ -195,26 +202,19 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
                     filterBar.MatchesSearch($"#{t.Id}", t.OrderCode, t.VehiclePlate, t.DriverName, t.WarehouseName, t.FromName, t.ToName))
                 .ToList();
             var rows = filtered;
-            // CHỈ các cột cần để nhận ra chuyến và biết việc cần làm; chi tiết (điểm đi/đến đầy đủ, số lượng,
-            // tiến độ kho, hạn giao, mốc xuất phát muộn nhất...) hiện ở thẻ "Chuyến đang chọn" khi bấm 1 dòng.
-            // Ô tìm vẫn tìm theo cả các thông tin không hiện cột (kho, điểm đi, điểm đến).
-            grid.DataSource = rows.Select(t => new
-            {
-                t.Id,
-                Chuyến = $"#{t.Id}",
-                Chặng = TranslateLegType(t.LegType),
-                Mã_đơn = t.OrderCode,
-                Xe_và_tài_xế = $"{t.VehiclePlate} · {t.DriverName}",
-                Xuất_phát = ScreenKit.Day(t.PlannedStartDate), // "Hôm nay" / "Mai" / "05/11"
-                Trạng_thái = StatusText(t),
-                Hạn = DeadlineShort(t),
-            }).ToList();
+            // GOM THEO ĐƠN (TripsControl.Groups.cs): mỗi đơn 1 dòng đầu nhóm (mã đơn, chuỗi chặng, tiến độ, việc
+            // tiếp theo) + các chuyến của đơn ngay bên dưới (├ / └, cùng dải màu). Cột "Mã đơn" bỏ vì đã nằm ở dòng đơn.
+            // Chi tiết từng chuyến hiện ở thẻ phía trên khi bấm 1 dòng. Ô tìm vẫn tìm theo mã đơn, kho, điểm đi, điểm đến.
+            grid.DataSource = BuildGroupedRows(rows, keepId);
             filterBar.SetCount(rows.Count, _trips.Count);
             var waitApprove = _trips.Count(t => t.Status == "PendingConfirmation");
             _pendingBanner.Update($"{waitApprove} chuyến tài xế báo xong, chờ duyệt", waitApprove, _pendingOnly);
             if (keepId is int id)
+            {
                 foreach (DataGridViewRow r in grid.Rows)
                     if (r.Cells["Id"].Value is int rid && rid == id) { grid.CurrentCell = r.Cells["Chuyến"]; break; }
+            }
+            else if (keepGroup is not null) SelectGroupRow(keepGroup);
             UpdateActionButtons();
         }
 
@@ -617,8 +617,8 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
 
         private int? GetSelectedTripId()
         {
-            if (grid.CurrentRow is null) return null;
-            return (int)grid.CurrentRow.Cells["Id"].Value;
+            // Dòng ĐƠN không có mã chuyến -> null (các thao tác chuyến báo "chọn 1 chuyến").
+            return grid.CurrentRow?.Cells["Id"].Value as int?;
         }
 
         private void ShowNoSelection()
@@ -750,6 +750,8 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
             UpdatePrimaryButtons(trip);
             if (trip is null)
             {
+                if (CurrentGroupCode() is string code) { ShowOrderCard(code); return; } // đang chọn dòng ĐƠN
+                _cardAction = null;
                 _selectedBar.ShowEmpty(_trips.Count == 0 ? "Chưa có chuyến nào (hoặc bộ lọc không khớp chuyến nào)." : null);
                 return;
             }
@@ -768,14 +770,9 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
                 "Cancelled" => hasRun ? "Đã hủy giữa đường — xem lại / ghi chi phí đã phát sinh" : "Đã hủy trước khi chạy — chỉ xem lại",
                 _ => "",
             };
-            var extra = new List<string> { $"📦 Số lượng {trip.TotalQtyPlanned:#,##0.##}" };
-            if (trip.Status != "Cancelled" && _progress.ContainsKey(trip.Id)) extra.Add("🏬 " + WarehouseText(trip));
-            if (trip.EstimatedDistanceKm is decimal km && km > 0)
-                extra.Add($"📏 ~{km:0.#} km" + (trip.EstimatedDurationMinutes is int min && min > 0 ? $" · ⏱ ~{min / 60} giờ {min % 60} phút" : ""));
-            if (trip.LatestStartDate is DateTime latest && st == "Planned") extra.Add($"🕒 Xuất phát muộn nhất {latest:dd/MM/yyyy}");
-            if (!string.IsNullOrWhiteSpace(trip.DeadlineStatus) && trip.DeadlineStatus != "—") extra.Add(trip.DeadlineStatus);
-            _selectedBar.ShowTrip(trip, StatusText(trip), TranslateLegType(trip.LegType), nextStep, extra,
-                blocked || (st == "Completed" && nextStep.Contains("CHỜ NHẬP KHO")));
+            // Thẻ mới: dòng đầu + đường đi + 3 ô (Xe và tài xế · Thời gian · Hàng và kho) + việc tiếp theo kèm nút chính.
+            _selectedBar.ShowCard(BuildTripCard(trip, nextStep,
+                blocked || (st == "Completed" && nextStep.Contains("CHỜ NHẬP KHO"))));
         }
 
         /// <summary>Mô tả lộ trình theo chặng — khớp server (chặng Trả hàng chở về NGƯỜI GỬI).</summary>

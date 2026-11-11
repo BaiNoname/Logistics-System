@@ -58,7 +58,18 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
                 if (grid.Rows[e.RowIndex].Cells[col].Visible) grid.CurrentCell = grid.Rows[e.RowIndex].Cells[col];
                 else grid.Rows[e.RowIndex].Selected = true;
             };
-            grid.CellDoubleClick += (s, e) => { if (e.RowIndex >= 0) BtnViewRoute_Click(s, e); };
+            // Nhấp đúp: dòng ĐƠN -> thu gọn / mở các chuyến; dòng chuyến -> xem lộ trình.
+            grid.CellDoubleClick += (s, e) =>
+            {
+                if (e.RowIndex < 0) return;
+                if (GroupCodeAt(e.RowIndex) is string code)
+                {
+                    // Nhấp đúp ngay mũi tên ▼/▶ thì mỗi lần bấm đã tự thu gọn / mở rồi — không đảo thêm lần nữa.
+                    if (grid.PointToClient(Cursor.Position).X >= LogicalToDeviceUnits(30))
+                        BeginInvoke(new Action(() => ToggleGroup(code)));
+                }
+                else BtnViewRoute_Click(s, e);
+            };
             grid.KeyDown += (_, e) =>
             {
                 if (e.KeyCode == Keys.F5) { e.Handled = true; _ = LoadAsync(); }
