@@ -404,7 +404,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
             };
             info.Pills.Add((TranslateLegType(t.LegType), LegTone(t.LegType)));
             var stText = StatusText(t);
-            info.Pills.Add((stText, GridDecor.StatusTone(stText) ?? GridDecor.Slate));
+            info.Pills.Add((stText, stText == "Đã hủy" ? GridDecor.Red : GridDecor.StatusTone(stText) ?? GridDecor.Slate));
             if (DeadlineTone(t.DeadlineLevel) is { } dl) info.Pills.Add((DeadlineShort(t), dl));
             if (t.EstimatedDistanceKm is decimal km && km > 0)
                 info.RouteMid = $"📏 ~{km:0.#} km" + (t.EstimatedDurationMinutes is int min && min > 0

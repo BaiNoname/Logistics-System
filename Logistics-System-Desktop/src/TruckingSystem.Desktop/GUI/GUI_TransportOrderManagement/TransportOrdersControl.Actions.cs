@@ -283,7 +283,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                 Done = o.Status == "Done",
                 Accent = StatusColor(o.Status),
             };
-            info.Pills.Add((status, GridDecor.StatusTone(status) ?? GridDecor.Slate));
+            info.Pills.Add((status, status == "Đã hủy" ? GridDecor.Red : GridDecor.StatusTone(status) ?? GridDecor.Slate));
             if (!done && o.CommittedDeliveryDate is not null && DeadlineGroup(o) is DeadlineOverdue or DeadlineSoon)
                 info.Pills.Add(("Hạn " + ScreenKit.Deadline(o.CommittedDeliveryDate), DeadlineGroup(o) == DeadlineOverdue ? GridDecor.Red : GridDecor.Amber));
             if (o.OverdueStorageDays > 0) info.Pills.Add(("📦 Nằm kho quá hạn", GridDecor.Red));

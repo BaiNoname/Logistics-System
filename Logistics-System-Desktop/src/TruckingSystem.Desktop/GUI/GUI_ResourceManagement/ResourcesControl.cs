@@ -24,7 +24,18 @@ namespace TruckingSystem.Desktop.GUI_ResourceManagement
             InitializeComponent();
             ScreenKit.Help(this, "resources", "Xem nhanh xe và tài xế của từng kho: ai / xe nào chạy được hôm nay, vì sao không.",
                 new[] { "Chọn kho", "Xem cột \"Chạy được hôm nay\" — rê chuột để xem lý do", "Nhấp đúp 1 dòng để xem đủ thông tin và sửa" },
-                "Ctrl+F tìm nhanh");
+                "Ctrl+F tìm nhanh",
+                new[]
+                {
+                    ColorLegend.Header("Cột Tình trạng / giấy tờ"),
+                    ColorLegend.Text("✅ Chạy được", Theme.Success, "Đủ điều kiện chạy hôm nay / giấy tờ còn hạn"),
+                    ColorLegend.Text("🟡 … (còn 6 ngày)", Theme.Warning, "Sắp hết hạn — cần gia hạn sớm"),
+                    ColorLegend.Text("⛔ …", Theme.Danger, "Không chạy được / hết hạn / chưa nhập — rê chuột xem lý do"),
+                    ColorLegend.Text("🚚 Đang bận chuyến", Theme.TextPrimary, "Đang chạy chuyến khác"),
+                    ColorLegend.Header("Cột Lái được"),
+                    ColorLegend.Text("✔ Lái được", Theme.Success, "Tài xế đủ hạng bằng lái xe này"),
+                    ColorLegend.Text("✖ Không đủ hạng bằng", Theme.TextSecondary, "Bằng lái không đủ hạng cho xe này"),
+                });
             Theme.StyleGrid(gridVehicles);
             Theme.StyleGrid(gridDrivers);
             gridVehicles.DataBindingComplete += (_, _) =>

@@ -140,7 +140,20 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             SetupTaskTiles(); // 3 ô "việc hôm nay" (WarehousesControl.Tiles.cs)
             ScreenKit.Help(this, "warehouses", "Việc hằng ngày ở kho trung chuyển: nhập hàng xe về, xuất hàng lên xe giao, nhận hàng khách mang tới.",
                 new[] { "Chọn kho ở ô \"Chọn kho\"", "Bấm 1 trong 3 ô việc phía trên (ô xanh = đang có việc chờ)", "Rê chuột lên 1 kệ trên sơ đồ để xem hàng bên trong; bấm để sửa" },
-                "Esc đóng cửa sổ đang mở · Enter = nút chính của cửa sổ");
+                "Esc đóng cửa sổ đang mở · Enter = nút chính của cửa sổ",
+                new[]
+                {
+                    ColorLegend.Header("Màu ô kệ trên sơ đồ (đã dùng bao nhiêu chỗ)"),
+                    ColorLegend.Bar(FillLow, "Còn nhiều chỗ (dưới 50%)"),
+                    ColorLegend.Bar(FillMid, "Quá nửa (50–85%)"),
+                    ColorLegend.Bar(FillHigh, "Gần đầy (từ 85%) — nên xếp hàng sang ô khác"),
+                    ColorLegend.Note("Ô có sọc = ô trống."),
+                    ColorLegend.Header("3 ô việc phía trên"),
+                    ColorLegend.Bar(Theme.Primary, "📥 Hàng xe chở về, chờ NHẬP kho"),
+                    ColorLegend.Bar(Theme.Warning, "📤 Hàng chờ XUẤT lên xe đi giao"),
+                    ColorLegend.Bar(Theme.TextSecondary, "🧍 Khách tự mang hàng tới kho"),
+                    ColorLegend.Note("Số đậm = đang có việc chờ; số xám = không có việc."),
+                });
             ScrollFit.Enable(this, root, zonesPanel, LogicalToDeviceUnits(320));
         }
 

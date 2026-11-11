@@ -26,7 +26,16 @@ namespace TruckingSystem.Desktop.GUI_DriverManagement
             ScreenKit.Shortcuts(this, grid, null, null, () => { if (grid.CurrentRow is { } r) Grid_CellDoubleClick(grid, new DataGridViewCellEventArgs(0, r.Index)); });
             ScreenKit.Help(this, "drivers", "Hồ sơ tài xế, bằng lái và ngày làm việc.",
                 new[] { "Tài xế chưa có hồ sơ: bấm Tạo hồ sơ", "Đăng ký ngày làm — chỉ tài xế có ngày làm mới được chia chuyến", "Theo dõi cảnh báo bằng lái / giấy khám sắp hết hạn" },
-                "Enter mở chi tiết · F5 làm mới · Ctrl+F tìm nhanh");
+                "Enter mở chi tiết · F5 làm mới · Ctrl+F tìm nhanh",
+                new[]
+                {
+                    ColorLegend.Header("Cột Trạng thái"),
+                    ColorLegend.Pill("Sẵn sàng", GridDecor.Green, "Đủ điều kiện nhận chuyến"),
+                    ColorLegend.Pill("Đang làm", GridDecor.Blue, "Đang chạy 1 chuyến"),
+                    ColorLegend.Pill("Không sẵn sàng", GridDecor.Red, "Chưa đủ điều kiện (bằng lái, ngày làm…) — nhấp đúp xem lý do"),
+                    ColorLegend.Header("Cột Cảnh báo"),
+                    ColorLegend.Text("⚠️ Có", Theme.Warning, "Có giấy tờ sắp / đã hết hạn — nhấp đúp xem chi tiết"),
+                });
             Theme.StyleGrid(grid);
             GridLayout.FitColumns(grid); // cột vừa nội dung, nhiều cột thì cuộn ngang thay vì cắt chữ
             Load += (_, _) => Theme.UniformButtons(toolbar); // nút đều nhau, xuống dòng vẫn thẳng cột
