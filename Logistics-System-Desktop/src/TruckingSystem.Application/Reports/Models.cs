@@ -5,9 +5,10 @@
 /// và chi phí của cùng 1 đơn nằm chung 1 kỳ), không bị lệch khi chi phí phát
 /// sinh sang tháng sau.
 ///   Doanh thu = tổng hóa đơn của đơn (bỏ qua hóa đơn đã hủy).
-///   Chi phí   = nhiên liệu (thực đổ theo hóa đơn; chuyến chưa nhập hóa đơn thì tạm
-///               tính theo định mức GPS) + chi phí phát sinh + chi phí sự cố,
-///               của TẤT CẢ chuyến thuộc đơn (kể cả chuyến Trả hàng khi hủy đơn).</summary>
+///   Chi phí   = nhiên liệu THỰC TIÊU của chuyến (km GPS × định mức × giá; thiếu GPS thì tạm theo km dự kiến)
+///               + chi phí phát sinh + chi phí sự cố, của TẤT CẢ chuyến thuộc đơn (kể cả chuyến Trả hàng khi hủy đơn).
+///   Tiền ĐỔ XĂNG là tiền mua vào BÌNH XE (xăng còn lại chạy tiếp các chuyến sau) -> KHÔNG gán vào đơn; được
+///   tổng hợp theo TỪNG XE trong kỳ (VehicleFuel) để tham khảo.</summary>
 public record ProfitReportDto(
     DateTime From, DateTime To,
     decimal Revenue, decimal Collected,
@@ -21,8 +22,8 @@ public record ProfitReportDto(
     // ---- Kiểm soát nhiên liệu (các chuyến đã chạy của các đơn trong kỳ) ----
     decimal FuelPlannedCost = 0,          // dự toán theo km VietMap
     decimal FuelNormCost = 0,             // định mức theo km GPS thực tế
-    decimal FuelActualCost = 0,           // thực đổ (hóa đơn đã ghi)
-    int TripsUsingFuelEstimate = 0,       // số chuyến chưa nhập hóa đơn xăng -> lãi/lỗ đang tạm tính theo định mức
+    decimal FuelActualCost = 0,           // tiền xăng ĐÃ MUA (đổ vào bình) trong kỳ — mọi xe, theo ngày đổ
+    int TripsUsingFuelEstimate = 0,       // số chuyến THIẾU GPS -> xăng của chuyến tạm tính theo km dự kiến
     List<FuelControlRowDto>? FuelControl = null,
     decimal FuelPlannedCostCompared = 0,  // dự toán — chỉ các chuyến hoàn tất có đủ cả dự toán lẫn định mức
     decimal FuelNormCostCompared = 0,     // định mức — cùng tập chuyến trên (để tính "Lệch dự toán")
@@ -30,10 +31,24 @@ public record ProfitReportDto(
     // ---- Giao đúng hạn (đơn HOÀN TẤT có hạn giao): ngày xong chặng Giao cuối ≤ hạn giao ----
     int OnTimeOrders = 0,
     int LateOrders = 0,
-    int OrdersWithoutDeadline = 0);
+    int OrdersWithoutDeadline = 0,
+    // ---- Quyết toán xăng THEO XE trong kỳ ----
+    decimal FuelActualLiters = 0,         // lít đã mua (đổ) trong kỳ
+    decimal FuelNormLiters = 0,           // lít thực tiêu theo km của các chuyến trong báo cáo (tính vào đơn)
+    List<VehicleFuelRowDto>? VehicleFuel = null);
+
+/// <summary>1 xe trong bảng "Xăng từng xe trong kỳ" — THAM KHẢO: lít đã đổ cả kỳ so với lít định mức theo km GPS cả kỳ.
+/// Xăng còn lại trong bình đầu / cuối kỳ làm số này lệch (VD đổ đầy bình cuối kỳ) -> chỉ nhắc khi lệch > 15%, KHÔNG
+/// gắn cờ đỏ, không đưa vào "Việc cần chú ý". Kỳ càng dài (tháng / quý) thì phần dư trong bình càng ít ảnh hưởng.</summary>
+public record VehicleFuelRowDto(
+    int VehicleId, string PlateNumber, decimal? ConsumptionPer100Km,
+    decimal RefuelLiters, decimal RefuelCost,
+    decimal GpsKm, decimal NormLiters, int TripCount, int TripsWithoutGps,
+    decimal? DeviationPct, string? Note);
 
 /// <summary>1 dòng bảng "Kiểm soát nhiên liệu" — 1 chuyến đã chạy.
-/// Flagged = lệch km (GPS so với VietMap) hoặc lệch tiền (thực đổ so với định mức) quá 15%.</summary>
+/// Flagged = km GPS lệch km tuyến dự kiến (VietMap) quá 15% — chỉ so KM. Tiền đổ xăng không so theo chuyến
+/// (đổ đầy bình ở chuyến này nhưng chạy cho nhiều chuyến sau) mà quyết toán theo xe (VehicleFuelRowDto).</summary>
 public record FuelControlRowDto(
     int TripId, string OrderCode, string LegType, string PlateNumber, string Status, DateTime TripDate,
     decimal? PlannedKm, decimal? GpsKm, decimal? KmDeviationPct,

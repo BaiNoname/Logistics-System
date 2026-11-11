@@ -501,18 +501,13 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
                     return;
                 }
 
-                var variance = est.VarianceCost ?? 0;
-                var varianceText = variance > 0
-                    ? $"⚠️ Tốn THỰC TẾ nhiều hơn ước tính {variance:N0} đ"
-                    : variance < 0
-                        ? $"✅ Tiết kiệm hơn ước tính {Math.Abs(variance):N0} đ"
-                        : "Đúng khớp ước tính";
-
+                // Không so "tiền đã đổ" với "tiêu hao" theo TỪNG chuyến: đổ đầy bình ở chuyến này thì xăng còn lại chạy
+                // tiếp các chuyến sau -> so theo chuyến luôn lệch oan. Đổi chiếu tiền đổ được quyết toán THEO XE trong kỳ.
                 var message = $"📏 Khoảng cách THẬT (từ GPS): {est.ActualDistanceKm:0.0} km\n" +
-                              $"⛽ Ước tính tiêu hao: {est.EstimatedLiters:0.0} lít\n" +
-                              $"💰 Chi phí ƯỚC TÍNH: {est.EstimatedCost:N0} đ\n" +
-                              $"💰 Chi phí THỰC TẾ (đã ghi): {est.ActualFuelCost:N0} đ\n\n" +
-                              varianceText;
+                              $"⛽ Chuyến này tiêu hao (theo định mức): {est.EstimatedLiters:0.0} lít\n" +
+                              $"💰 Tiền xăng TÍNH VÀO ĐƠN: {est.EstimatedCost:N0} đ\n\n" +
+                              $"🧾 Đã đổ ở chuyến này: {est.ActualFuelCost:N0} đ — đổ vào BÌNH XE, xăng còn lại chạy tiếp chuyến sau.\n" +
+                              "Đối chiếu tiền đổ với tiêu hao xem theo từng xe: Tổng quan → Nhiên liệu → Xăng từng xe trong kỳ.";
 
                 MessageBox.Show(FindForm(), message, "So sánh chi phí nhiên liệu", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }

@@ -57,6 +57,9 @@ namespace TruckingSystem.Desktop.GUI_Shared
         private bool _showAllOrders;
         // Lọc nhanh từ khung "Cần chú ý" (VD đơn hoàn tất bị lỗ) — cộng thêm với bộ lọc của bảng; bấm "Bỏ lọc" để tắt.
         private Func<OrderProfitItem, bool>? _preset;
+        // Bảng "Xăng từng xe trong kỳ" (trang Nhiên liệu) — tạo bằng code, không qua Designer.
+        private readonly DataGridView _gridVehicleFuel = new();
+        private readonly Label _lblVehicleFuelTitle = new();
         private string? _presetText;
 
         public DashboardControl()
@@ -64,8 +67,14 @@ namespace TruckingSystem.Desktop.GUI_Shared
             InitializeComponent();
             Theme.StyleGrid(_grid);
             Theme.StyleGrid(_gridFuel);
+            Theme.StyleGrid(_gridVehicleFuel);
             GridLayout.FitColumns(_grid);
             GridLayout.FitColumns(_gridFuel);
+            GridLayout.FitColumns(_gridVehicleFuel);
+            _gridVehicleFuel.Dock = DockStyle.Fill;
+            _gridVehicleFuel.Margin = new Padding(0, 0, 0, 16);
+            _gridVehicleFuel.CellFormatting += GridVehicleFuel_CellFormatting;
+            _gridVehicleFuel.DataBindingComplete += GridVehicleFuel_DataBindingComplete;
 
             // Bộ lọc riêng cho 2 bảng dài (lọc ngay trên số liệu đã tải, không gọi lại API).
             _ordersFilter.AddChoice("status", "Trạng thái", Array.Empty<string>());
@@ -76,7 +85,6 @@ namespace TruckingSystem.Desktop.GUI_Shared
             _ordersFilter.FilterChanged += (_, _) => BindOrdersGrid();
 
             _fuelFilter.AddChoice("state", "Tình trạng", new[] { FuelFlagged, FuelNormal, FuelOpen });
-            _fuelFilter.AddChoice("actual", "Hóa đơn xăng", new[] { FuelHasActual, FuelNoActual });
             _fuelFilter.AddChoice("plate", "Xe", Array.Empty<string>());
             _fuelFilter.FilterChanged += (_, _) => BindFuelGrid();
 
@@ -128,7 +136,7 @@ namespace TruckingSystem.Desktop.GUI_Shared
 
             _pages.Add(PageOverview, "Tổng quan", "Số liệu chính và những việc cần chú ý");
             _pages.Add(PageFinance, "Tài chính", "Chi phí chi tiết, lãi / lỗ từng đơn");
-            _pages.Add(PageFuel, "Nhiên liệu", "So sánh xăng dự kiến – theo km thực chạy – đã đổ");
+            _pages.Add(PageFuel, "Nhiên liệu", "Xăng thực tiêu theo km, quyết toán xăng từng xe");
             _pages.Margin = new Padding(0, 4, 0, 12);
             _pages.Changed += (_, _) => ApplyPage();
 
@@ -153,12 +161,22 @@ namespace TruckingSystem.Desktop.GUI_Shared
                 "Đơn lỗ nhiều nhất lên đầu. Nhấp đúp 1 đơn để xem chi tiết từng khoản chi.\n" +
                 "Đơn đang chạy hoặc chưa xuất hóa đơn thì chưa có doanh thu nên có thể tạm hiện lỗ.", _lnkAllOrders);
 
+            _lblVehicleFuelTitle.Text = "🚛 Xăng từng xe trong kỳ";
+            _lblVehicleFuelTitle.AutoSize = true;
+            _lblVehicleFuelTitle.Font = _lblFuelTitle.Font;
+            _lblVehicleFuelTitle.ForeColor = _lblFuelTitle.ForeColor;
+            var vehicleFuelHeader = HeaderRow(_lblVehicleFuelTitle,
+                "Đổ xăng là MUA vào bình xe — xăng còn lại chạy tiếp các chuyến sau, nên không so theo từng chuyến.\n" +
+                "Bảng này cộng cả kỳ cho từng xe: lít đã đổ so với lít định mức theo km GPS — để THAM KHẢO.\n" +
+                "Xăng còn trong bình đầu / cuối kỳ làm số này lệch, nên lệch > 15% chỉ được nhắc ở cột Ghi chú, không tô đỏ.\n" +
+                "Chọn kỳ dài (tháng, 3 tháng) thì phần xăng dư trong bình ảnh hưởng ít hơn.", null);
+
             _lblFuelTitle.Text = "⛽ Xăng từng chuyến";
             var fuelHeader = HeaderRow(_lblFuelTitle,
-                "Xăng dự kiến = km tuyến đường lúc lập chuyến × mức tiêu hao của xe × giá xăng.\n" +
-                "Xăng theo km thực chạy = km xe thật sự chạy × mức tiêu hao × giá xăng ngày chạy (bảng giá ở màn Nhiên liệu).\n" +
-                "Dòng tô đỏ: lệch quá 15% — km thực chạy dài hơn dự kiến (chạy vòng / sai tuyến) hoặc tiền đổ nhiều hơn mức đáng lẽ (hao hụt).\n" +
-                "Chuyến chưa nhập hóa đơn xăng thì lãi/lỗ tạm tính theo km thực chạy.", null);
+                "Tiền xăng tính vào đơn = km GPS xe thật sự chạy × mức tiêu hao × giá xăng ngày chạy (bảng giá ở màn Nhiên liệu).\n" +
+                "Chuyến thiếu GPS thì tạm tính theo km tuyến dự kiến.\n" +
+                "Dòng tô đỏ: km thực chạy lệch km dự kiến quá 15% (chạy vòng / sai tuyến / mất tín hiệu định vị).\n" +
+                "Tiền đổ xăng không so theo chuyến — xem bảng Xăng từng xe ở trên.", null);
 
             // Gỡ khỏi bố cục cũ (1 trang dài) rồi xếp lại.
             dashLayout.SuspendLayout();
@@ -185,6 +203,8 @@ namespace TruckingSystem.Desktop.GUI_Shared
             AddRow(_grid, PageFinance, 440);
             // ⛽ Nhiên liệu
             AddRow(_fuelCards, PageFuel);
+            AddRow(vehicleFuelHeader, PageFuel);
+            AddRow(_gridVehicleFuel, PageFuel, 240);
             AddRow(fuelHeader, PageFuel);
             AddRow(_fuelFilter, PageFuel);
             AddRow(_gridFuel, PageFuel, 420);
@@ -426,14 +446,12 @@ namespace TruckingSystem.Desktop.GUI_Shared
                 Item("🕳️", $"Đơn hủy sau khi xe đã chạy — mất {ReportFormat.Money(r.CancelledOrdersCost)}", cancelledWithCost, true,
                     () => ShowOrders("đơn hủy mất chi phí", o => o.Status == "Cancelled" && o.TotalCost > 0));
             if (flagged > 0)
-                Item("🚩", "Chuyến tốn xăng bất thường (lệch > 15%)", flagged, true, () => ShowFuel("state", FuelFlagged));
+                Item("🛣️", "Chuyến chạy lệch tuyến (km GPS lệch > 15%)", flagged, true, () => ShowFuel("state", FuelFlagged));
             if (blockedVehicles > 0)
                 Item("📄", "Xe hết hạn / thiếu giấy tờ — không chạy được", blockedVehicles, true, () => OpenMenu("Đội xe"));
             if (r.UninvoicedDoneOrders > 0)
                 Item("🧾", "Đơn đã xong chưa xuất hóa đơn", r.UninvoicedDoneOrders, false,
                     () => ShowOrders("đơn đã xong chưa xuất hóa đơn", o => o.Status == "Done" && !o.HasInvoice));
-            if (r.TripsUsingFuelEstimate > 0)
-                Item("⛽", "Chuyến chưa nhập hóa đơn xăng", r.TripsUsingFuelEstimate, false, () => ShowFuel("actual", FuelNoActual));
 
             _attnView.SetData(items, availableVehicles, totalVehicles);
         }
@@ -498,7 +516,7 @@ namespace TruckingSystem.Desktop.GUI_Shared
             ClearCards(_finCards);
             _finCards.Controls.Add(MakeCard("⛽", "Chi phí xăng", ReportFormat.Money(r.FuelCost), Theme.Primary, Theme.TextPrimary,
                 $"{ReportFormat.Percent(r.FuelCost, r.TotalCost)} tổng chi phí",
-                $"{ReportFormat.FullMoney(r.FuelCost)} = xăng đã đổ (hóa đơn) + tạm tính theo km thực chạy cho chuyến chưa nhập hóa đơn"));
+                $"{ReportFormat.FullMoney(r.FuelCost)} = xăng các chuyến thực tiêu theo km GPS × định mức × giá (chuyến thiếu GPS tạm theo km dự kiến)"));
             _finCards.Controls.Add(MakeCard("⚠️", "Sự cố + phát sinh", ReportFormat.Money(r.IncidentCost + r.ExpenseCost), Theme.Danger, Theme.TextPrimary,
                 $"Riêng sự cố: {ReportFormat.Money(r.IncidentCost)}", ReportFormat.FullMoney(r.IncidentCost + r.ExpenseCost)));
             _finCards.Controls.Add(MakeCard("❌", "Đơn bị hủy", r.CancelledOrders.ToString(), Theme.Danger,
@@ -645,8 +663,6 @@ namespace TruckingSystem.Desktop.GUI_Shared
         private const string FuelFlagged = "🚩 Lệch > 15%";
         private const string FuelNormal = "Hoàn tất, không lệch";
         private const string FuelOpen = "Chưa hoàn tất / đã hủy";
-        private const string FuelHasActual = "Đã nhập";
-        private const string FuelNoActual = "Chưa nhập";
 
         private static string FuelState(FuelControlRowItem x)
             => x.Flagged ? FuelFlagged : x.Status == "Completed" ? FuelNormal : FuelOpen;
@@ -656,22 +672,26 @@ namespace TruckingSystem.Desktop.GUI_Shared
             var rows = r.FuelControl ?? new List<FuelControlRowItem>();
             var flagged = rows.Count(x => x.Flagged);
 
+            var vehicles = r.VehicleFuel ?? new List<VehicleFuelRowItem>();
             ClearCards(_fuelCards);
-            _fuelCards.Controls.Add(MakeCard("🗺️", "Xăng dự kiến", ReportFormat.Money(r.FuelPlannedCost), Theme.Primary, Theme.TextPrimary,
-                "Theo km tuyến đường lúc lập chuyến", ReportFormat.FullMoney(r.FuelPlannedCost)));
-            _fuelCards.Controls.Add(MakeCard("📡", "Xăng theo km thực chạy", ReportFormat.Money(r.FuelNormCost), Theme.Primary, Theme.TextPrimary,
-                // "Chênh dự kiến" chỉ so trên các chuyến hoàn tất có ĐỦ cả 2 số (2 tổng ở trên có thể gồm 2 tập chuyến khác nhau).
-                r.FuelComparedTripCount > 0
-                    ? $"Chênh dự kiến {DeviationText(r.FuelNormCostCompared, r.FuelPlannedCostCompared)} ({r.FuelComparedTripCount} chuyến)"
-                    : "Chưa có chuyến xong đủ số liệu để so",
-                ReportFormat.FullMoney(r.FuelNormCost)));
-            _fuelCards.Controls.Add(MakeCard("🧾", "Xăng đã đổ (hóa đơn)", ReportFormat.Money(r.FuelActualCost), Theme.Warning, Theme.TextPrimary,
-                r.TripsUsingFuelEstimate > 0 ? $"{r.TripsUsingFuelEstimate} chuyến chưa nhập hóa đơn" : "Đã nhập đủ hóa đơn",
+            _fuelCards.Controls.Add(MakeCard("🧾", "Xăng đã mua (đổ vào bình)", ReportFormat.Money(r.FuelActualCost), Theme.Warning, Theme.TextPrimary,
+                $"{r.FuelActualLiters:N0} lít — tiền mua vào xe, không gán cho đơn",
                 ReportFormat.FullMoney(r.FuelActualCost)));
-            _fuelCards.Controls.Add(MakeCard("🚩", "Chuyến bất thường", $"{flagged}/{rows.Count}", Theme.Danger,
-                flagged > 0 ? Theme.Danger : Theme.TextPrimary,
-                flagged > 0 ? "Lệch quá 15% — tô đỏ, nằm đầu bảng" : "Không có chuyến bất thường", null));
+            _fuelCards.Controls.Add(MakeCard("📡", "Xăng thực tiêu theo km", ReportFormat.Money(r.FuelCost), Theme.Primary, Theme.TextPrimary,
+                $"{r.FuelNormLiters:N0} lít — tính vào chi phí từng đơn" +
+                (r.TripsUsingFuelEstimate > 0 ? $" · {r.TripsUsingFuelEstimate} chuyến thiếu GPS tạm theo km dự kiến" : "") +
+                (r.FuelComparedTripCount > 0 ? $" · chênh dự kiến {DeviationText(r.FuelNormCostCompared, r.FuelPlannedCostCompared)}" : ""),
+                ReportFormat.FullMoney(r.FuelCost) + (r.TripsUsingFuelEstimate > 0 ? $" ({r.TripsUsingFuelEstimate} chuyến thiếu GPS tạm tính theo km dự kiến)" : "")));
+            var vehiclesOff = vehicles.Count(v => Math.Abs(v.DeviationPct ?? 0) > 15);
+            _fuelCards.Controls.Add(MakeCard("🚛", "Xe đổ lệch định mức (tham khảo)", $"{vehiclesOff}/{vehicles.Count}", Theme.Warning,
+                Theme.TextPrimary,
+                vehiclesOff > 0 ? "Cả kỳ đổ lệch định mức > 15% — có thể do xăng còn trong bình" : "Lít đã đổ khớp định mức",
+                "Chỉ để tham khảo: đổ đầy bình cuối kỳ hay dùng xăng còn từ kỳ trước đều làm lệch số này."));
+            _fuelCards.Controls.Add(MakeCard("🛣️", "Chuyến lệch tuyến", $"{flagged}/{rows.Count}", Theme.Warning,
+                flagged > 0 ? Theme.Warning : Theme.TextPrimary,
+                flagged > 0 ? "Km GPS lệch km dự kiến quá 15%" : "Không có chuyến lệch tuyến", null));
 
+            BindVehicleFuelGrid(vehicles);
             _fuelFilter.SetChoiceOptions("plate", rows.Select(x => x.PlateNumber));
             BindFuelGrid();
         }
@@ -681,7 +701,6 @@ namespace TruckingSystem.Desktop.GUI_Shared
             var all = _report?.FuelControl ?? new List<FuelControlRowItem>();
             var rows = all.Where(x =>
                     _fuelFilter.Is("state", FuelState(x)) &&
-                    _fuelFilter.Is("actual", x.HasActual ? FuelHasActual : FuelNoActual) &&
                     _fuelFilter.Is("plate", x.PlateNumber) &&
                     _fuelFilter.MatchesSearch($"#{x.TripId}", x.OrderCode, x.PlateNumber, FuelNote(x)))
                 .OrderByDescending(x => x.Flagged).ThenByDescending(x => x.TripDate) // chuyến bất thường lên đầu
@@ -696,9 +715,8 @@ namespace TruckingSystem.Desktop.GUI_Shared
                 Km_dự_kiến = x.PlannedKm,
                 Km_thực_chạy = x.GpsKm,
                 Lệch_km = x.KmDeviationPct.HasValue ? $"{x.KmDeviationPct:+0.#;-0.#;0}%" : "",
-                Xăng_đáng_lẽ = x.NormCost,
-                Xăng_đã_đổ = x.HasActual ? x.ActualCost : (decimal?)null,
-                Lệch_tiền = x.CostDeviationPct.HasValue ? $"{x.CostDeviationPct:+0.#;-0.#;0}%" : "",
+                Lít_theo_km = x.NormLiters,
+                Tiền_xăng_tính_vào_đơn = x.NormCost ?? (x.GpsKm is null ? x.PlannedCost : null),
                 Ghi_chú = FuelNote(x),
                 Cờ = x.Flagged,
             }).ToList();
@@ -716,13 +734,11 @@ namespace TruckingSystem.Desktop.GUI_Shared
                 return x.Status == "Cancelled" ? "Chuyến đã hủy — chỉ tính chi phí đã phát sinh" : "Chuyến chưa hoàn tất — chưa so lệch";
             if (x.KmDeviationPct is > 15) notes.Add("Chạy dài hơn tuyến dự kiến");
             if (x.KmDeviationPct is < -15) notes.Add("Km thực chạy thiếu (mất tín hiệu định vị?)");
-            if (x.CostDeviationPct is > 15) notes.Add("Đổ nhiều hơn mức đáng lẽ");
-            if (x.CostDeviationPct is < -15) notes.Add("Đổ ít hơn mức đáng lẽ (chưa nhập đủ hóa đơn?)");
-            if (!x.HasActual) notes.Add("Chưa nhập hóa đơn xăng");
+            if (x.HasActual) notes.Add($"Có đổ {x.ActualLiters:0.#} L ở chuyến này (tính vào bình xe)");
             return string.Join(" · ", notes);
         }
 
-        private static readonly string[] FuelMoneyColumns = { "Xăng_đáng_lẽ", "Xăng_đã_đổ" };
+        private static readonly string[] FuelMoneyColumns = { "Tiền_xăng_tính_vào_đơn" };
 
         private void GridFuel_DataBindingComplete(object? sender, DataGridViewBindingCompleteEventArgs e)
         {
@@ -733,7 +749,7 @@ namespace TruckingSystem.Desktop.GUI_Shared
                 col.DefaultCellStyle.Format = "N0";
                 col.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
             }
-            foreach (var name in new[] { "Km_dự_kiến", "Km_thực_chạy", "Lệch_km", "Lệch_tiền" })
+            foreach (var name in new[] { "Km_dự_kiến", "Km_thực_chạy", "Lệch_km", "Lít_theo_km" })
                 if (_gridFuel.Columns[name] is { } col) col.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
 
             foreach (DataGridViewRow row in _gridFuel.Rows)
@@ -741,10 +757,49 @@ namespace TruckingSystem.Desktop.GUI_Shared
                     row.DefaultCellStyle.BackColor = ColorTranslator.FromHtml("#FEE2E2");
         }
 
+        // ---- Bảng "Xăng từng xe trong kỳ" ----
+
+        private void BindVehicleFuelGrid(List<VehicleFuelRowItem> rows)
+        {
+            _gridVehicleFuel.DataSource = rows.Select(x => new
+            {
+                Xe = x.PlateNumber,
+                Định_mức = x.ConsumptionPer100Km is decimal n ? $"{n:0.#} L/100km" : "",
+                Số_chuyến = x.TripCount,
+                Km_GPS = x.GpsKm,
+                Lít_định_mức = x.NormLiters,
+                Lít_đã_đổ = x.RefuelLiters,
+                Lệch = x.DeviationPct.HasValue ? $"{x.DeviationPct:+0.#;-0.#;0}%" : "",
+                Tiền_đã_đổ = x.RefuelCost,
+                Ghi_chú = x.Note ?? "",
+            }).ToList();
+        }
+
+        private void GridVehicleFuel_DataBindingComplete(object? sender, DataGridViewBindingCompleteEventArgs e)
+        {
+            if (_gridVehicleFuel.Columns["Tiền_đã_đổ"] is { } money) money.DefaultCellStyle.Format = "N0";
+            foreach (var name in new[] { "Số_chuyến", "Km_GPS", "Lít_định_mức", "Lít_đã_đổ", "Lệch", "Tiền_đã_đổ" })
+                if (_gridVehicleFuel.Columns[name] is { } col) col.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+        }
+
+        /// <summary>Chỉ tham khảo -> lệch > 15% tô VÀNG (không đỏ), không gắn cờ.</summary>
+        private void GridVehicleFuel_CellFormatting(object? sender, DataGridViewCellFormattingEventArgs e)
+        {
+            if (e.RowIndex < 0) return;
+            var name = _gridVehicleFuel.Columns[e.ColumnIndex].Name;
+            if (name == "Lệch" && e.Value is string s && s.Length > 0)
+            {
+                var number = decimal.TryParse(s.TrimEnd('%').Replace("+", ""), System.Globalization.NumberStyles.Any,
+                    System.Globalization.CultureInfo.CurrentCulture, out var v) ? v : 0;
+                e.CellStyle!.ForeColor = Math.Abs(number) > 15 ? Theme.Warning : Theme.TextSecondary;
+            }
+            else if (name == "Ghi_chú") e.CellStyle!.ForeColor = Theme.TextSecondary;
+        }
+
         private void GridFuel_CellFormatting(object? sender, DataGridViewCellFormattingEventArgs e)
         {
             var name = _gridFuel.Columns[e.ColumnIndex].Name;
-            if ((name == "Lệch_km" || name == "Lệch_tiền") && e.Value is string s && s.Length > 0)
+            if (name == "Lệch_km" && e.Value is string s && s.Length > 0)
             {
                 var number = decimal.TryParse(s.TrimEnd('%').Replace("+", ""), System.Globalization.NumberStyles.Any,
                     System.Globalization.CultureInfo.CurrentCulture, out var v) ? v : 0;
