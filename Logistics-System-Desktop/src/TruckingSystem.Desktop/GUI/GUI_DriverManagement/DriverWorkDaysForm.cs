@@ -35,7 +35,7 @@ namespace TruckingSystem.Desktop.GUI_DriverManagement
             Theme.StyleGrid(grid);
             SetupGrid();
             dtFrom.Value = DateTime.Today;
-            dtTo.Value = DateTime.Today.AddDays(6);
+            dtTo.Value = DateTime.Today.AddDays(MaxConsecutiveDays - 1); // 6 ngày (hôm nay + 5) — tải lịch xong sẽ gợi ý lại cho khớp
         }
 
         public DriverWorkDaysForm(ApiServices api, int employeeId, string driverName) : this()
@@ -76,8 +76,49 @@ namespace TruckingSystem.Desktop.GUI_DriverManagement
                 return;
             }
             var count = (int)(to - from).TotalDays + 1;
-            lblHint.Text = $"Sẽ đăng ký {count} ngày (ngày đã có lịch sẽ tự bỏ qua).";
+            // Tính cả ngày ĐÃ đăng ký ngay trước / sau khoảng chọn: chuỗi làm liên tục thật sự dài bao nhiêu.
+            var chain = ChainLength(WorkDateSet(), from, to);
+            if (chain > MaxConsecutiveDays)
+            {
+                lblHint.Text = $"⚠️ Sẽ đăng ký {count} ngày — tài xế sẽ làm liên tục {chain} ngày, quá {MaxConsecutiveDays} ngày. " +
+                               "Nên rút bớt hoặc chừa 1 ngày nghỉ.";
+                lblHint.ForeColor = Theme.Warning;
+                return;
+            }
+            lblHint.Text = $"Sẽ đăng ký {count} ngày (ngày đã có lịch sẽ tự bỏ qua) — làm liên tục {chain} ngày.";
             lblHint.ForeColor = Theme.TextSecondary;
+        }
+
+        /// <summary>Độ dài chuỗi làm liên tục chứa khoảng [from, to] nếu đăng ký thêm khoảng này
+        /// (nối cả ngày đã có lịch liền trước / liền sau).</summary>
+        private static int ChainLength(HashSet<DateTime> registered, DateTime from, DateTime to)
+        {
+            bool Works(DateTime d) => (d >= from && d <= to) || registered.Contains(d);
+            var start = from;
+            while (Works(start.AddDays(-1))) start = start.AddDays(-1);
+            var end = to;
+            while (Works(end.AddDays(1))) end = end.AddDays(1);
+            return (int)(end - start).TotalDays + 1;
+        }
+
+        /// <summary>GỢI Ý SẴN khoảng ngày hợp lệ (không vượt quá 6 ngày làm liên tục), tính cả lịch đã có:
+        /// bắt đầu từ ngày trống đầu tiên kể từ hôm nay (đã làm đủ 6 ngày liền trước thì chừa 1 ngày nghỉ),
+        /// rồi lấy tối đa số ngày còn được phép. Nhân viên không phải tự rút bớt nữa.</summary>
+        private void SuggestRange()
+        {
+            var set = WorkDateSet();
+            var start = DateTime.Today;
+            for (var guard = 0; guard < 120; guard++)
+            {
+                if (set.Contains(start)) { start = start.AddDays(1); continue; }
+                if (ChainLength(set, start, start) > MaxConsecutiveDays) { start = start.AddDays(1); continue; } // ngày này phải nghỉ
+                break;
+            }
+            var end = start.AddDays(MaxConsecutiveDays - 1);
+            while (end > start && ChainLength(set, start, end) > MaxConsecutiveDays) end = end.AddDays(-1);
+            dtFrom.Value = start;
+            dtTo.Value = end;
+            UpdateHint();
         }
 
         private async Task LoadAsync()
@@ -87,6 +128,7 @@ namespace TruckingSystem.Desktop.GUI_DriverManagement
             {
                 _days = await _service.GetWorkDaysAsync(_employeeId);
                 BindGrid();
+                SuggestRange(); // gợi ý khoảng ngày tiếp theo hợp lệ (lần mở + sau mỗi lần đăng ký / xóa)
             }
             catch (Exception ex)
             {

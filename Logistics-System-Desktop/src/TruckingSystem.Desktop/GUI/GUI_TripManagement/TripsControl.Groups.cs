@@ -11,7 +11,8 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
     ///    👉 VIỆC TIẾP THEO (chỉ khi còn việc) | nhãn trạng thái ĐƠN | hạn xấu nhất.
     ///  • Màu theo TRẠNG THÁI ĐƠN (4 màu): xám chưa bắt đầu · vàng đang thực hiện · xanh lá hoàn tất · đỏ đã hủy.
     ///  • Các chuyến của đơn nằm ngay dưới (├ / └), cùng DẢI MÀU trạng thái đơn bên trái -> nhìn là biết thuộc đơn nào.
-    ///  • Bấm ▼ (hoặc nhấp đúp / Enter / ← →) ở dòng đơn để thu gọn / mở. Đơn đã chạy xong hết tự thu gọn lần đầu thấy.
+    ///  • Bấm ▼ (hoặc nhấp đúp / Enter / ← →) ở dòng đơn để thu gọn / mở. Mặc định chỉ MỞ đơn đang có việc
+    ///    (chờ duyệt / đang chạy / chờ kho / xuất phát hôm nay); đơn đã xong, chưa tới ngày, đã hủy thì thu gọn.
     ///  • Bấm dòng đơn -> thẻ phía trên hiện thông tin CẢ ĐƠN; bấm dòng chuyến -> thẻ của chuyến.
     /// Chỉ đổi phần hiển thị — thao tác, bộ lọc, chuột phải, phím tắt giữ nguyên.</summary>
     public partial class TripsControl
@@ -50,7 +51,8 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
         }
 
         private readonly HashSet<string> _collapsed = new();
-        private readonly HashSet<string> _seenOrders = new();
+        /// <summary>Đơn người dùng đã tự bấm thu gọn / mở -> giữ đúng ý họ, không tự đổi nữa.</summary>
+        private readonly HashSet<string> _userToggled = new();
         private Dictionary<string, OrderGroup> _groups = new();
         private Action? _cardAction;
         private string? _cardOrder;
@@ -133,7 +135,9 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
             _groups = new Dictionary<string, OrderGroup>();
             // Đang tìm kiếm -> mở hết để thấy chuyến khớp; chuyến cần chọn sẵn (từ thông báo) -> mở đơn của nó.
             var searching = !string.IsNullOrWhiteSpace(filterBar.SearchText) || _pendingOnly;
-            if (keepId is int k && _trips.FirstOrDefault(t => t.Id == k) is { } keep) _collapsed.Remove(keep.OrderCode);
+            // Chuyến đang chọn / cần chọn sẵn -> đơn của nó luôn MỞ (không bị luật mặc định thu gọn lại).
+            var forcedOpen = keepId is int k && _trips.FirstOrDefault(t => t.Id == k) is { } keep ? keep.OrderCode : null;
+            if (forcedOpen is not null) _collapsed.Remove(forcedOpen);
 
             var rows = new List<TripGridRow>();
             foreach (var grp in filtered.GroupBy(t => t.OrderCode))
@@ -141,7 +145,14 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
                 var code = grp.Key;
                 var info = BuildOrderGroup(code);
                 _groups[code] = info;
-                if (_seenOrders.Add(code) && info.AllDone) _collapsed.Add(code); // đơn đã xong: thu gọn lần đầu
+                // MẶC ĐỊNH chỉ MỞ đơn đang có việc (chờ duyệt / đang chạy / chờ kho / xuất phát hôm nay hoặc đã tới mốc);
+                // đơn đã xong, chưa tới ngày chạy, đã hủy -> thu gọn. Tự cập nhật mỗi lần tải lại cho tới khi
+                // người dùng tự bấm ▼/▶ ở đơn đó (từ đó giữ theo ý họ).
+                if (!_userToggled.Contains(code))
+                {
+                    if (HasWorkNow(info) || code == forcedOpen) _collapsed.Remove(code);
+                    else _collapsed.Add(code);
+                }
                 rows.Add(new TripGridRow { Nhóm = code, Là_dòng_đơn = true });
                 if (_collapsed.Contains(code) && !searching) continue;
                 var kids = grp.OrderBy(LegOrder).ThenBy(t => t.Id).ToList();
@@ -243,11 +254,50 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
 
         private string? CurrentGroupCode() => grid.CurrentRow is null ? null : GroupCodeAt(grid.CurrentRow.Index);
 
+        /// <summary>Đơn đang có việc cần làm NGAY: có chuyến chờ duyệt / đang chạy / chờ kho nhập-xuất,
+        /// hoặc chuyến chưa chạy mà xuất phát hôm nay (hay đã quá ngày / sắp tới mốc muộn nhất).</summary>
+        private bool HasWorkNow(OrderGroup g)
+        {
+            var today = DateTime.Today;
+            return g.Trips.Any(t =>
+                t.Status is "PendingConfirmation" or "InProgress"
+                || IsWaitingForReceipt(t) || IsWaitingForIssue(t)
+                || t.Status == "Planned" && (t.PlannedStartDate is DateTime d && d.Date <= today
+                                             || t.DeadlineLevel is "Late" or "Warning"));
+        }
+
         private void ToggleGroup(string code)
         {
-            if (!_collapsed.Remove(code)) _collapsed.Add(code);
-            BindGrid();
+            _userToggled.Add(code);
+            var opening = _collapsed.Remove(code);
+            if (!opening) _collapsed.Add(code);
+            BindGrid(); // giữ nguyên vị trí cuộn (BindGrid tự lưu / trả lại)
             SelectGroupRow(code);
+            if (opening) RevealChildren(code);
+        }
+
+        /// <summary>Vừa MỞ 1 đơn ở cuối khung nhìn: cuộn xuống vừa đủ để thấy các chuyến của nó
+        /// (dòng đơn vẫn nằm trong khung) — không phải tự kéo xuống.</summary>
+        private void RevealChildren(string code)
+        {
+            try
+            {
+                int groupRow = -1, lastChild = -1;
+                for (var i = 0; i < grid.Rows.Count; i++)
+                {
+                    if (RowItem(i) is not { } item || item.Nhóm != code) continue;
+                    if (item.Là_dòng_đơn) groupRow = i; else lastChild = i;
+                }
+                if (groupRow < 0 || lastChild < 0) return;
+                var first = grid.FirstDisplayedScrollingRowIndex;
+                var visible = grid.DisplayedRowCount(false);
+                if (visible <= 0 || lastChild < first + visible) return; // đã thấy hết
+                grid.FirstDisplayedScrollingRowIndex = Math.Min(groupRow, lastChild - visible + 1);
+            }
+            catch (InvalidOperationException)
+            {
+                // Bảng chưa vẽ xong — bỏ qua.
+            }
         }
 
         /// <summary>Chọn dòng đơn (mở nhóm nếu đang thu gọn thì không cần — dòng đơn luôn hiện).</summary>
@@ -271,7 +321,11 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
 
         private void SelectTripRow(int id)
         {
-            if (_trips.FirstOrDefault(t => t.Id == id) is { } t && _collapsed.Remove(t.OrderCode)) BindGrid();
+            if (_trips.FirstOrDefault(t => t.Id == id) is { } t)
+            {
+                _userToggled.Add(t.OrderCode); // người dùng chủ động chọn chuyến này -> giữ đơn mở
+                if (_collapsed.Remove(t.OrderCode)) BindGrid();
+            }
             foreach (DataGridViewRow r in grid.Rows)
                 if (r.Cells["Id"].Value is int rid && rid == id) { grid.CurrentCell = r.Cells["Chuyến"]; break; }
             grid.Focus();

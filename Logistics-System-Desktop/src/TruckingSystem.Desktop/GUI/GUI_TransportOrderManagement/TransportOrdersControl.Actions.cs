@@ -29,7 +29,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
         private Button? _btnEdit, _btnConfirm, _btnDetail, _btnDeadline, _btnTools;
 
         private OrderAction _actDetail = null!, _actEdit = null!, _actConfirm = null!, _actAllocate = null!,
-            _actDeadline = null!, _actFee = null!, _actRecordFee = null!, _actRoute = null!,
+            _actDeadline = null!, _actFee = null!, _actRoute = null!,
             _actCopyCode = null!, _actCopyLink = null!, _actCancel = null!, _actHistory = null!;
 
         private TransportOrderListItem? SelectedOrder
@@ -89,7 +89,6 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                 _ => AllocateSelectedAsync(), o => o.Status is "Draft" or "Confirmed");
             _actDeadline = new("📅  Đổi hạn giao", o => o.Status is "Confirmed" or "InProgress", ChangeDeadlineAsync);
             _actFee = new("💰  Xem phí lưu kho (chi tiết từng ngày)", o => o.Status != "Draft", StorageFeeAsync);
-            _actRecordFee = new("➕  Ghi nhận phí lưu kho bổ sung", o => o.Status != "Draft" && o.CommittedDeliveryDate.HasValue, RecordFeeAsync);
             _actRoute = new("🗺️  Xem lộ trình (lấy → kho → giao)", _ => true, ViewRouteAsync);
             _actCopyCode = new("📋  Sao chép mã đơn", _ => true, o =>
             {
@@ -141,7 +140,8 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             AddItem(items, _actDeadline);
             items.Add(new ToolStripSeparator());
             AddItem(items, _actFee);
-            AddItem(items, _actRecordFee);
+            // "➕ Ghi nhận phí lưu kho bổ sung" bỏ khỏi menu — đã có nút cùng tên trong cửa sổ "Xem phí lưu kho"
+            // (xem phí rồi mới ghi bổ sung, đỡ trùng 2 chỗ mở cùng 1 cửa sổ).
         }
 
         private void AddToolItems(ToolStripItemCollection items)
@@ -376,14 +376,6 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             using var f = new StorageFeeForm(_api, detail);
             f.ShowDialog(FindForm());
             if (f.ChangedAny) await LoadAsync();
-        }
-
-        private async Task RecordFeeAsync(TransportOrderListItem o)
-        {
-            var detail = await _api!.TransportOrders.GetOrderDetailAsync(o.Id);
-            using var f = new RecordStorageFeeForm(_api, detail);
-            if (f.ShowDialog(FindForm()) != DialogResult.OK) return;
-            SetStatus("✅ " + (f.ResultMessage ?? "Đã ghi nhận phí lưu kho.").Replace("\n", "  "), Theme.Success);
         }
 
         private async Task ViewRouteAsync(TransportOrderListItem o)
