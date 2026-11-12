@@ -1,0 +1,8 @@
+<Project>
+  <PropertyGroup>
+    <!-- Gói chatbot dùng lại Domain/Application/Infrastructure (DbContext, bảng giá, VietMap) của hệ thống chính.
+         Mặc định thư mục hệ thống nằm cạnh thư mục này trong cùng repo: ..\Logistics-System-Desktop. Đổi bằng
+         dotnet build -p:TruckingSystemSrc=<đường dẫn tới src của hệ thống>\ nếu đặt chỗ khác. -->
+    <TruckingSystemSrc Condition="'$(TruckingSystemSrc)' == ''">$(MSBuildThisFileDirectory)..\Logistics-System-Desktop\src\</TruckingSystemSrc>
+  </PropertyGroup>
+</Project>

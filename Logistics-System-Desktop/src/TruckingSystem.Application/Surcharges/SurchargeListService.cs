@@ -7,7 +7,7 @@ using TruckingSystem.Domain.Entities;
 namespace TruckingSystem.Application.Surcharges;
 
 public record SurchargeListDto(int Id, string Name, DateOnly EffectiveDate, bool Published, int Revision,
-    decimal FragilePercent, decimal HazmatPercent, bool IsActive = false);
+    decimal FragilePercent, decimal HazmatPercent, bool IsActive = false, bool IsPending = false);
 public record SaveDraft(string Name, DateOnly EffectiveDate, decimal FragilePercent, decimal HazmatPercent, int Revision = 0);
 public record PublishDraft(int Revision);
 
@@ -24,18 +24,21 @@ public sealed class SurchargeListService(IApplicationDbContext db) : ISurchargeL
     private static SurchargeListDto Dto(SurchargeList list, int? activeId)
     {
         var rates = list.Rates();
-        return new(list.Id, list.Name, list.EffectiveDate, list.Published, list.Revision, rates.FragilePercent, rates.HazmatPercent, list.Id == activeId);
+        return new(list.Id, list.Name, list.EffectiveDate, list.Published, list.Revision, rates.FragilePercent, rates.HazmatPercent, list.Id == activeId,
+            list.Published && list.EffectiveDate > DateOnly.FromDateTime(VnClock.Today));
     }
 
     public async Task<List<SurchargeListDto>> ListAsync()
     {
         var lists = await db.SurchargeLists.AsNoTracking().Include(p => p.Lines)
             .OrderByDescending(p => p.Id).ToListAsync();
-        var activeId = lists.FirstOrDefault(p => p.Published)?.Id;
+        var today = DateOnly.FromDateTime(VnClock.Today);
+        var activeId = lists.FirstOrDefault(p => p.Published && p.EffectiveDate <= today)?.Id;
         return lists.Select(p => Dto(p, activeId)).ToList();
     }
 
-    private Task<int?> ActiveIdAsync() => db.SurchargeLists.AsNoTracking().Where(p => p.Published)
+    private Task<int?> ActiveIdAsync() => db.SurchargeLists.AsNoTracking()
+        .Where(p => p.Published && p.EffectiveDate <= DateOnly.FromDateTime(VnClock.Today))
         .OrderByDescending(p => p.Id)
         .Select(p => (int?)p.Id).FirstOrDefaultAsync();
 

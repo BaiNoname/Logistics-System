@@ -1,0 +1,27 @@
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Host=localhost;Port=5432;Database=trucking_system;Username=postgres;Password=YOUR_DATABASE_PASSWORD"
+  },
+  "VietMap": {
+    "RouteApiKey": "",
+    "MapApiKey": ""
+  },
+  "FreightChat": {
+    "Provider": "OpenAICompatible"
+  },
+  "Nvidia": {
+    "BaseUrl": "https://integrate.api.nvidia.com/v1/",
+    "ApiKey": "",
+    "Model": "nvidia/nemotron-3.5-lightning-30b-a3b"
+  },
+  "Gemini": {
+    "ApiKey": ""
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "AllowedHosts": "*"
+}

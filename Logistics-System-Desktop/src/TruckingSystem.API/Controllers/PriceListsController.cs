@@ -31,6 +31,7 @@ public class PriceListsController(IPricingService service) : ControllerBase
     {
         try { return Ok(await service.CreatePriceListAsync(request)); }
         catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
+        catch (InvalidOperationException ex) { return Conflict(new { message = ex.Message }); }
     }
 
     [HttpPost("{id:int}/copy")]
@@ -44,6 +45,7 @@ public class PriceListsController(IPricingService service) : ControllerBase
                 : Ok(copy);
         }
         catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
+        catch (InvalidOperationException ex) { return Conflict(new { message = ex.Message }); }
     }
 
     [HttpPut("{id:int}")]
@@ -54,8 +56,10 @@ public class PriceListsController(IPricingService service) : ControllerBase
         catch (InvalidOperationException ex) { return Conflict(new { message = ex.Message }); }
     }
 
+    // Giữ DELETE cho client cũ; cả hai đường dẫn đều hủy, không xóa dữ liệu.
+    [HttpPost("{id:int}/cancel")]
     [HttpDelete("{id:int}")]
-    public async Task<IActionResult> Delete(int id)
+    public async Task<IActionResult> Cancel(int id)
     {
         try { return await service.DeletePriceListAsync(id) ? NoContent() : NotFound(); }
         catch (InvalidOperationException ex) { return Conflict(new { message = ex.Message }); }

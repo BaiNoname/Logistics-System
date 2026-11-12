@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui" xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml" x:Class="LogisticsSystem.Employee.Pages.AdjustmentPage" Title="Điều chỉnh" >
+    <ScrollView>
+        <VerticalStackLayout Spacing="0">
+            <VerticalStackLayout Padding="24,32" Spacing="8" BackgroundColor="{StaticResource Canvas}">
+                <Label Text="Để mỗi giờ làm&#10;được ghi nhận." Style="{StaticResource DisplayLg}" />
+                <Label Text="Gửi yêu cầu khi cần bổ sung hoặc điều chỉnh chấm công." Style="{StaticResource Caption}" />
+            </VerticalStackLayout>
+            <VerticalStackLayout Padding="24,24,24,32" Spacing="20" MaximumWidthRequest="760" HorizontalOptions="Center">
+                <Border>
+                    <VerticalStackLayout Spacing="16">
+                        <Label Text="Thông tin điều chỉnh" Style="{StaticResource Tagline}" />
+                        <Label Text="Ngày cần điều chỉnh" Style="{StaticResource Caption}" />
+                        <DatePicker x:Name="DatePicker" Format="dd/MM/yyyy" SemanticProperties.Description="Ngày cần điều chỉnh" />
+                        <BoxView HeightRequest="1" />
+                        <Label Text="Lý do" Style="{StaticResource Caption}" />
+                        <Picker x:Name="ReasonPicker" Title="Chọn lý do" />
+                        <BoxView HeightRequest="1" />
+                        <Grid ColumnDefinitions="44,*" ColumnSpacing="8">
+                            <CheckBox x:Name="InCheck" SemanticProperties.Description="Đề xuất giờ vào" />
+                            <Label Grid.Column="1" Text="Đề xuất giờ vào" VerticalOptions="Center" />
+                        </Grid>
+                        <TimePicker x:Name="InTimePicker" Format="HH:mm" IsVisible="{Binding IsChecked, Source={x:Reference InCheck}}" SemanticProperties.Description="Giờ vào đề xuất" />
+                        <Grid ColumnDefinitions="44,*" ColumnSpacing="8">
+                            <CheckBox x:Name="OutCheck" SemanticProperties.Description="Đề xuất giờ ra" />
+                            <Label Grid.Column="1" Text="Đề xuất giờ ra" VerticalOptions="Center" />
+                        </Grid>
+                        <TimePicker x:Name="OutTimePicker" Format="HH:mm" IsVisible="{Binding IsChecked, Source={x:Reference OutCheck}}" SemanticProperties.Description="Giờ ra đề xuất" />
+                        <BoxView HeightRequest="1" />
+                        <Label Text="Nội dung chi tiết" Style="{StaticResource Caption}" />
+                        <Editor x:Name="NoteEditor" Placeholder="Ví dụ: Quên quét QR khi vào ca…" AutoSize="TextChanges" MinimumHeightRequest="100" SemanticProperties.Description="Nội dung yêu cầu điều chỉnh" />
+                    </VerticalStackLayout>
+                </Border>
+                <Label x:Name="ErrorLabel" TextColor="{StaticResource Error}" IsVisible="False" />
+                <Button x:Name="SubmitButton" Text="Gửi yêu cầu" Clicked="OnSubmitClicked" />
+                <Label Text="Yêu cầu đã gửi." Style="{StaticResource Tagline}" Margin="0,12,0,0" />
+                <Label x:Name="StatusLabel" Style="{StaticResource Caption}" />
+                <VerticalStackLayout x:Name="RequestsHost" Spacing="12" />
+            </VerticalStackLayout>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

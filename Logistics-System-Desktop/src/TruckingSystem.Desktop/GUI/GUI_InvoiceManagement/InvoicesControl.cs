@@ -18,7 +18,7 @@ namespace TruckingSystem.Desktop.GUI_InvoiceManagement
             Theme.StyleGrid(grid);
             GridDecor.Pills(grid, "Trạng_thái", (text, _) => GridDecor.StatusTone(text));
             filterBar.AddChoice("status", "Trạng thái", new[]
-                { "Nháp", "Đã phát hành", "Thanh toán một phần", "Đã thanh toán", "Quá hạn", "Đã hủy" });
+                { "Chưa thanh toán", "Đã thanh toán" });
             filterBar.AddDate("from", "Lập từ ngày");
             filterBar.AddDate("to", "Đến ngày");
             filterBar.FilterChanged += (_, _) => BindGrid();
@@ -66,14 +66,14 @@ namespace TruckingSystem.Desktop.GUI_InvoiceManagement
             filterBar.Enabled = !_busy;
             var id = grid.CurrentRow?.Cells["Mã_hóa_đơn"].Value;
             _markPaid.Enabled = !_busy && _invoices.Any(i => Equals(i.Id, id)
-                && i.Status is not ("Paid" or "Cancelled"));
+                && i.Status != "Paid");
         }
 
         private async Task MarkAsPaidAsync()
         {
             if (_api is null || _busy || grid.CurrentRow?.Cells["Mã_hóa_đơn"].Value is not int id) return;
             var invoice = _invoices.SingleOrDefault(i => i.Id == id);
-            if (invoice is null || invoice.Status is "Paid" or "Cancelled") return;
+            if (invoice is null || invoice.Status == "Paid") return;
             if (MessageBox.Show(FindForm(),
                 $"Đánh dấu hóa đơn #{id} của {invoice.CustomerName} là đã thanh toán?\nThao tác này chỉ đổi trạng thái, không tạo giao dịch thu tiền.",
                 "Xác nhận trạng thái hóa đơn", MessageBoxButtons.YesNo, MessageBoxIcon.Question,
@@ -186,10 +186,6 @@ namespace TruckingSystem.Desktop.GUI_InvoiceManagement
             UpdateActions();
         }
 
-        private static string TranslateStatus(string s) => s switch
-        {
-            "Draft" => "Nháp", "Sent" => "Đã phát hành", "PartiallyPaid" => "Thanh toán một phần",
-            "Paid" => "Đã thanh toán", "Overdue" => "Quá hạn", "Cancelled" => "Đã hủy", _ => s,
-        };
+        private static string TranslateStatus(string s) => s == "Paid" ? "Đã thanh toán" : "Chưa thanh toán";
     }
 }

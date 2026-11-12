@@ -46,9 +46,9 @@ public class ReportService : IReportService
             => status == TransportOrderStatus.Done && dueVn is { } due && lastDeliveryEnd.TryGetValue(orderId, out var done)
                 ? (done - due.Date).Days : null;
 
-        // Doanh thu: hóa đơn của các đơn này, BỎ QUA hóa đơn đã hủy.
+        // Doanh thu gồm cả hóa đơn chưa thanh toán; trạng thái hủy cũ đã gộp vào chưa thanh toán.
         var invoices = await _db.Invoices
-            .Where(i => orderIds.Contains(i.TransportOrderId) && i.Status != InvoiceStatus.Cancelled)
+            .Where(i => orderIds.Contains(i.TransportOrderId))
             .Select(i => new { i.Id, i.TransportOrderId, i.TotalAmount })
             .ToListAsync();
         var revenueByOrder = invoices.GroupBy(i => i.TransportOrderId).ToDictionary(g => g.Key, g => g.Sum(x => x.TotalAmount));
@@ -141,7 +141,7 @@ public class ReportService : IReportService
         if (order is null) return null;
 
         var revenue = await _db.Invoices
-            .Where(i => i.TransportOrderId == orderId && i.Status != InvoiceStatus.Cancelled)
+            .Where(i => i.TransportOrderId == orderId)
             .SumAsync(i => (decimal?)i.TotalAmount) ?? 0;
 
         var trips = order.Trips.ToDictionary(t => t.Id);

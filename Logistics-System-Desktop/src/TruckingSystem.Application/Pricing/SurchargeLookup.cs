@@ -4,7 +4,8 @@ using TruckingSystem.Domain.Entities;
 
 namespace TruckingSystem.Application.Pricing;
 
-internal static class SurchargeLookup
+/// <summary>Tra bảng phụ phí đã công bố hiệu lực tại một ngày; dùng chung cho hóa đơn và gói chatbot (Logistics-System-ChatBot).</summary>
+public static class SurchargeLookup
 {
     public static async Task<SurchargePolicy?> AtAsync(IApplicationDbContext db, DateTime date, CancellationToken ct = default)
     {

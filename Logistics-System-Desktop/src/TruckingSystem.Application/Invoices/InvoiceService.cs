@@ -33,7 +33,7 @@ public class InvoiceService : IInvoiceService
             .Include(i => i.Customer)
             .OrderByDescending(i => i.Id)
             .Select(i => new InvoiceListItemDto(
-                i.Id, i.TransportOrder.Code, i.Customer.Name, i.TotalAmount, i.Status.ToString(), i.IssueDate))
+                i.Id, i.TransportOrder.Code, i.Customer.Name, i.TotalAmount, i.Status == InvoiceStatus.Paid ? "Paid" : "Unpaid", i.IssueDate))
             .ToListAsync();
     }
 
@@ -42,14 +42,29 @@ public class InvoiceService : IInvoiceService
             .Where(i => i.Id == id)
             .Select(i => new InvoiceDetailDto(i.Id, i.TransportOrder.Code, i.Customer.Name, i.TotalAmount,
                 i.Lines.OrderBy(l => l.Id)
-                    .Select(l => new InvoiceQuoteLineDto(l.Description, l.Quantity, l.UnitPrice, l.Amount)).ToList()))
+                    .Select(l => new InvoiceQuoteLineDto(l.Description, l.Quantity, l.UnitPrice, l.Amount)).ToList())
+            {
+                Status = i.Status == InvoiceStatus.Paid ? "Paid" : "Unpaid",
+                IssueDate = i.IssueDate,
+                DueDate = i.DueDate,
+                CustomerId = i.CustomerId,
+                CustomerTaxCode = i.Customer.TaxCode,
+                CustomerPhone = i.Customer.Phone,
+                CustomerAddress = i.Customer.Address,
+                TransportOrderId = i.TransportOrderId,
+                ContractCode = i.TransportOrder.Contract == null ? null : i.TransportOrder.Contract.Code,
+                PickupPoint = i.TransportOrder.PickupPoint,
+                DropoffPoint = i.TransportOrder.DropoffPoint,
+                Payments = i.Payments.OrderBy(p => p.PaymentDate).ThenBy(p => p.Id)
+                    .Select(p => new InvoicePaymentDto(p.Id, p.PaymentDate, p.Amount, p.Method.ToString())).ToList()
+            })
             .SingleOrDefaultAsync()
             ?? throw new KeyNotFoundException("Không tìm thấy hóa đơn.");
 
     public Task<List<InvoiceOrderOptionDto>> GetEligibleOrdersAsync()
         => _db.TransportOrders.AsNoTracking()
             .Where(o => o.Status == TransportOrderStatus.Done
-                && !o.Invoices.Any(i => i.Status != InvoiceStatus.Cancelled))
+                && !o.Invoices.Any())
             .OrderByDescending(o => o.Id)
             .Select(o => new InvoiceOrderOptionDto(o.Id, o.Code, o.Customer.Name, o.PickupPoint, o.DropoffPoint))
             .ToListAsync();
@@ -63,8 +78,8 @@ public class InvoiceService : IInvoiceService
             ?? throw new KeyNotFoundException("Không tìm thấy đơn hàng.");
         if (order.Status != TransportOrderStatus.Done)
             throw new InvalidOperationException("Chỉ được lập hóa đơn cho đơn hàng đã hoàn thành.");
-        if (await _db.Invoices.AnyAsync(i => i.TransportOrderId == orderId && i.Status != InvoiceStatus.Cancelled))
-            throw new InvalidOperationException("Đơn hàng này đã có hóa đơn chưa hủy.");
+        if (await _db.Invoices.AnyAsync(i => i.TransportOrderId == orderId))
+            throw new InvalidOperationException("Đơn hàng này đã có hóa đơn.");
         var contract = order.Contract
             ?? throw new InvalidOperationException("Đơn hàng chưa gắn hợp đồng, không thể tự tính hóa đơn.");
         if (contract.CustomerId != order.CustomerId)
@@ -134,8 +149,8 @@ public class InvoiceService : IInvoiceService
         var order = await _db.TransportOrders.Include(o => o.Customer)
             .SingleOrDefaultAsync(o => o.Id == request.TransportOrderId)
             ?? throw new KeyNotFoundException("Không tìm thấy đơn hàng.");
-        if (await _db.Invoices.AnyAsync(i => i.TransportOrderId == order.Id && i.Status != InvoiceStatus.Cancelled))
-            throw new InvalidOperationException("Đơn hàng này đã có hóa đơn chưa hủy.");
+        if (await _db.Invoices.AnyAsync(i => i.TransportOrderId == order.Id))
+            throw new InvalidOperationException("Đơn hàng này đã có hóa đơn.");
 
         var invoice = Invoice.Create(order, request.Amount);
         var quote = await GetQuoteAsync(order.Id);
@@ -153,6 +168,6 @@ public class InvoiceService : IInvoiceService
         await _db.SaveChangesAsync();
         if (transaction is not null) await transaction.CommitAsync();
         return new InvoiceListItemDto(invoice.Id, order.Code, order.Customer.Name,
-            invoice.TotalAmount, invoice.Status.ToString(), invoice.IssueDate);
+            invoice.TotalAmount, invoice.Status == InvoiceStatus.Paid ? "Paid" : "Unpaid", invoice.IssueDate);
     }
 }

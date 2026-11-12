@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui" xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml" x:Class="LogisticsSystem.Employee.Pages.HomePage" Title="Trang chủ" >
+    <RefreshView x:Name="Refresher" Refreshing="OnRefresh">
+        <ScrollView>
+            <VerticalStackLayout Spacing="0">
+                <VerticalStackLayout Padding="24,32" Spacing="12" BackgroundColor="{StaticResource Canvas}">
+                    <Label Text="NGÀY LÀM VIỆC CỦA BẠN" Style="{StaticResource Caption}" CharacterSpacing="1.5" />
+                    <Label x:Name="GreetingLabel" Text="Xin chào" Style="{StaticResource DisplayLg}" />
+                    <Label x:Name="DateLabel" Style="{StaticResource Caption}" />
+                </VerticalStackLayout>
+                <Border Style="{StaticResource DarkTile}">
+                    <VerticalStackLayout Spacing="16" MaximumWidthRequest="640" HorizontalOptions="Center">
+                        <Image Source="qr_mark_light.svg" HeightRequest="80" WidthRequest="80" Margin="0,0,0,8" SemanticProperties.Description="Chấm công bằng mã QR" />
+                        <Label Text="Sẵn sàng cho&#10;một ngày mới." Style="{StaticResource HeroDisplay}" HorizontalTextAlignment="Center" />
+                        <Label Text="Quét mã tại nơi làm việc để ghi nhận giờ vào hoặc giờ ra của bạn." Style="{StaticResource OnDarkBody}" HorizontalTextAlignment="Center" />
+                        <Button x:Name="ScanButton" Text="Quét QR chấm công" Clicked="OnScanClicked" HorizontalOptions="Center" Margin="0,8,0,0" Padding="28,14" />
+                        <Label Text="Camera và vị trí được sử dụng khi chấm công." TextColor="{StaticResource BodyMutedOnDark}" FontSize="14" HorizontalTextAlignment="Center" />
+                    </VerticalStackLayout>
+                </Border>
+                <VerticalStackLayout Padding="24,32" Spacing="16" MaximumWidthRequest="760" HorizontalOptions="Center">
+                    <Label Text="Hôm nay của bạn." Style="{StaticResource Tagline}" />
+                    <Border>
+                        <VerticalStackLayout Spacing="16">
+                            <Label Text="TRẠNG THÁI CHẤM CÔNG" Style="{StaticResource Caption}" CharacterSpacing="1" />
+                            <Label x:Name="StateLabel" Text="Đang tải dữ liệu…" Style="{StaticResource Tagline}" />
+                            <BoxView HeightRequest="1" />
+                            <Label x:Name="CheckInLabel" />
+                            <Label x:Name="CheckOutLabel" />
+                            <Label x:Name="LocationLabel" Style="{StaticResource Caption}" />
+                            <Label x:Name="PendingLabel" TextColor="{StaticResource InkMuted80}" FontSize="14" IsVisible="False" />
+                        </VerticalStackLayout>
+                    </Border>
+                    <Label x:Name="ErrorLabel" TextColor="{StaticResource Error}" IsVisible="False" />
+                    <Label Text="Kéo xuống để cập nhật dữ liệu mới nhất." Style="{StaticResource Caption}" HorizontalTextAlignment="Center" />
+                </VerticalStackLayout>
+            </VerticalStackLayout>
+        </ScrollView>
+    </RefreshView>
+</ContentPage>

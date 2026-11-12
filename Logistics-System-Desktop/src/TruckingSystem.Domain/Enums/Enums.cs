@@ -14,7 +14,7 @@ public enum TripStatus { Planned, InProgress, Completed, Cancelled, PendingConfi
 
 public enum TripLineStatus { Planned, Picked, Delivered }
 
-public enum InvoiceStatus { Draft, Sent, PartiallyPaid, Paid, Overdue, Cancelled }
+public enum InvoiceStatus { Unpaid = 0, Paid = 3 }
 
 public enum CustomerType { Individual, Company }
 

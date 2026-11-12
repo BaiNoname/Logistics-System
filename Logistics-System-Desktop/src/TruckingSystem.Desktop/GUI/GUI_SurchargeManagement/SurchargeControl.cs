@@ -95,7 +95,7 @@ public sealed class SurchargeControl : BaseUserControl
             if (IsDisposed) return;
             _items = rows;
             BindGrid(selected);
-            FormStyle.Status(_status, rows.Count == 0 ? "Chưa có bảng phụ phí." : "Chỉ bảng mới thêm đã xác nhận đang áp dụng. Phí từng đơn vẫn tính theo ngày hiệu lực tương ứng.", StatusKind.Info);
+            FormStyle.Status(_status, rows.Count == 0 ? "Chưa có bảng phụ phí." : "Chỉ bảng đã xác nhận và đến ngày hiệu lực được áp dụng. Bảng tương lai chưa thay bảng hiện hành; phí từng đơn tính theo ngày tương ứng.", StatusKind.Info);
         }
         catch (Exception ex) { FormStyle.Status(_status, ex.Message); }
         finally { _busy = false; if (!IsDisposed) UpdateActions(); }

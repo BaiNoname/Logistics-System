@@ -1,5 +1,4 @@
-﻿using TruckingSystem.Desktop.Common;
-using TruckingSystem.Desktop.GUI.GUI_ChatBot;
+using TruckingSystem.Desktop.Common;
 namespace TruckingSystem.Desktop.GUI_Shared
 {
     /// <summary>Màn đăng nhập. Khung tĩnh (form đăng nhập bên phải) nằm ở LoginForm.Designer.cs.
@@ -160,7 +159,7 @@ namespace TruckingSystem.Desktop.GUI_Shared
                     DayScene.FillRound(e.Graphics, Color.FromArgb(18, 37, 99, 235), r.X + 4 - i, r.Y + 3 + i, r.Width - 8 + 2 * i, r.Height, S(8));
             };
 
-            // Nền đổi màu chậm -> chỉ vẽ lại nửa phải ~3 lần / giây (nhẹ máy), vẽ lại cả nút ✕ / ChatBot nằm trên nền.
+            // Nền đổi màu chậm -> chỉ vẽ lại nửa phải ~3 lần / giây (nhẹ máy), vẽ lại cả nút ✕ nằm trên nền.
             _animTimer.Tick += (_, _) =>
             {
                 if (++_rightTick % 10 != 0) return;
@@ -403,25 +402,5 @@ namespace TruckingSystem.Desktop.GUI_Shared
             }
         }
 
-        private void btnOpenChatBot_Click(object sender, EventArgs e)
-        {
-            DialogResult result = MessageBox.Show("Bạn có muốn mở ChatBot hỗ trợ không?", "Xác nhận", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-            if (result == DialogResult.Yes)
-            {
-                try
-                {
-                    var chatBot = new ChatBotForm(new ApiServices(txtServerUrl.Text.Trim()).Connection);
-                    chatBot.ShowDialog();
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show(this,
-                        "Không thể mở ChatBot vì thiếu thông tin hoặc có lỗi xảy ra:\n" + ex.Message,
-                        "Lỗi ChatBot",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Error);
-                }
-            }
-        }
     }
 }

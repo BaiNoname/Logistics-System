@@ -59,7 +59,6 @@ public static class DependencyInjection
         services.AddScoped<ITripVideoService, TripVideoService>();
         services.AddScoped<ITripPhotoService, TripPhotoService>();
         services.AddScoped<IResourceOverviewService, ResourceOverviewService>();
-        services.AddScoped<FreightChat.FreightChatService>();
         return services;
     }
 }

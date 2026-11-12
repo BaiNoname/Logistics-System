@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <AssemblyName>TruckingChatBot</AssemblyName>
+    <RootNamespace>TruckingSystem.ChatBot.Desktop</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Dùng lại lớp kết nối API và bảng màu của app hệ thống thay vì viết lớp mạng/UI song song. -->
+    <Compile Include="$(TruckingSystemSrc)TruckingSystem.Desktop\Common\ApiConnection.cs" Link="Common\ApiConnection.cs" />
+    <Compile Include="$(TruckingSystemSrc)TruckingSystem.Desktop\Common\Theme.cs" Link="Common\Theme.cs" />
+    <Compile Include="$(TruckingSystemSrc)TruckingSystem.Desktop\Common\UiStyle.cs" Link="Common\UiStyle.cs" />
+    <Compile Include="$(TruckingSystemSrc)TruckingSystem.Desktop\Common\Modern\Anim.cs" Link="Common\Modern\Anim.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Update="chatbot.settings.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

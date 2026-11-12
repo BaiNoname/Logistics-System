@@ -1,0 +1,207 @@
+﻿<?xml version="1.0" encoding="UTF-8" ?>
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
+
+    <!-- ===== Kiểu chữ (Apple): chữ tiêu đề có letter-spacing âm, nội dung 17px ===== -->
+    <!-- Font hệ thống: SF Pro trên Apple, Segoe UI / Roboto trên Windows / Android. -->
+
+    <Style TargetType="Label">
+        <Setter Property="TextColor" Value="{StaticResource Ink}" />
+        <Setter Property="FontSize" Value="17" />
+        <Setter Property="CharacterSpacing" Value="-0.37" />
+        <Setter Property="LineHeight" Value="1.47" />
+    </Style>
+
+    <!-- Hero display: 56px / 600 (dùng cho khối "tile" tối) -->
+    <Style x:Key="HeroDisplay" TargetType="Label">
+        <Setter Property="TextColor" Value="{StaticResource OnDark}" />
+        <Setter Property="FontSize" Value="{OnIdiom Phone=34, Default=56}" />
+        <Setter Property="FontAttributes" Value="Bold" />
+        <Setter Property="CharacterSpacing" Value="-0.28" />
+        <Setter Property="LineHeight" Value="1.07" />
+    </Style>
+
+    <!-- Display lg: 40px / 600 -->
+    <Style x:Key="DisplayLg" TargetType="Label">
+        <Setter Property="TextColor" Value="{StaticResource Ink}" />
+        <Setter Property="FontSize" Value="{OnIdiom Phone=28, Default=40}" />
+        <Setter Property="FontAttributes" Value="Bold" />
+        <Setter Property="CharacterSpacing" Value="-0.37" />
+        <Setter Property="LineHeight" Value="1.1" />
+    </Style>
+
+    <!-- Tagline: 21px / 600 -->
+    <Style x:Key="Tagline" TargetType="Label">
+        <Setter Property="FontSize" Value="21" />
+        <Setter Property="FontAttributes" Value="Bold" />
+        <Setter Property="CharacterSpacing" Value="0.23" />
+    </Style>
+
+    <!-- Caption: 14px -->
+    <Style x:Key="Caption" TargetType="Label">
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="TextColor" Value="{StaticResource InkMuted48}" />
+        <Setter Property="CharacterSpacing" Value="-0.22" />
+    </Style>
+
+    <!-- Nhãn trên nền tối -->
+    <Style x:Key="OnDarkBody" TargetType="Label">
+        <Setter Property="TextColor" Value="{StaticResource BodyMutedOnDark}" />
+        <Setter Property="FontSize" Value="17" />
+        <Setter Property="CharacterSpacing" Value="-0.37" />
+    </Style>
+
+    <!-- ===== Trang và khối nội dung ===== -->
+
+    <Style TargetType="Page" ApplyToDerivedTypes="True">
+        <Setter Property="BackgroundColor" Value="{StaticResource Parchment}" />
+    </Style>
+
+    <!-- Card "utility": nền trắng, viền hairline 1px, bo 18px, không bóng -->
+    <Style TargetType="Border">
+        <Setter Property="BackgroundColor" Value="{StaticResource Canvas}" />
+        <Setter Property="Stroke" Value="{StaticResource Hairline}" />
+        <Setter Property="StrokeThickness" Value="1" />
+        <Setter Property="StrokeShape" Value="RoundRectangle 18" />
+        <Setter Property="Padding" Value="24" />
+    </Style>
+
+    <!-- Khối tile tối: không bo góc, nền đen -->
+    <Style x:Key="DarkTile" TargetType="Border">
+        <Setter Property="BackgroundColor" Value="{StaticResource Tile1}" />
+        <Setter Property="Stroke" Value="Transparent" />
+        <Setter Property="StrokeThickness" Value="0" />
+        <Setter Property="StrokeShape" Value="Rectangle" />
+        <Setter Property="Padding" Value="24,40" />
+    </Style>
+
+    <Style TargetType="BoxView">
+        <Setter Property="BackgroundColor" Value="{StaticResource DividerSoft}" />
+    </Style>
+
+    <!-- ===== Nút: pill xanh (primary), pill viền xanh (secondary) ===== -->
+
+    <Style x:Key="PrimaryButton" TargetType="Button">
+        <Setter Property="TextColor" Value="{StaticResource OnDark}" />
+        <Setter Property="BackgroundColor" Value="{StaticResource ActionBlue}" />
+        <Setter Property="FontSize" Value="17" />
+        <Setter Property="CharacterSpacing" Value="-0.37" />
+        <Setter Property="BorderWidth" Value="0" />
+        <Setter Property="CornerRadius" Value="980" />
+        <Setter Property="Padding" Value="22,11" />
+        <Setter Property="MinimumHeightRequest" Value="44" />
+        <Setter Property="VisualStateManager.VisualStateGroups">
+            <VisualStateGroupList>
+                <VisualStateGroup x:Name="CommonStates">
+                    <VisualState x:Name="Normal">
+                        <VisualState.Setters>
+                            <Setter Property="Scale" Value="1" />
+                        </VisualState.Setters>
+                    </VisualState>
+                    <VisualState x:Name="Focused">
+                        <VisualState.Setters>
+                            <Setter Property="BorderColor" Value="{StaticResource FocusBlue}" />
+                            <Setter Property="BorderWidth" Value="2" />
+                        </VisualState.Setters>
+                    </VisualState>
+                    <!-- Nhấn: scale 0.95 là micro-interaction chuẩn của hệ thống -->
+                    <VisualState x:Name="Pressed">
+                        <VisualState.Setters>
+                            <Setter Property="Scale" Value="0.95" />
+                        </VisualState.Setters>
+                    </VisualState>
+                    <VisualState x:Name="Disabled">
+                        <VisualState.Setters>
+                            <Setter Property="BackgroundColor" Value="{StaticResource DividerSoft}" />
+                            <Setter Property="TextColor" Value="{StaticResource InkMuted48}" />
+                        </VisualState.Setters>
+                    </VisualState>
+                </VisualStateGroup>
+            </VisualStateGroupList>
+        </Setter>
+    </Style>
+
+    <Style TargetType="Button" BasedOn="{StaticResource PrimaryButton}" />
+
+    <!-- Pill viền xanh -->
+    <Style x:Key="SecondaryButton" TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
+        <Setter Property="TextColor" Value="{StaticResource ActionBlue}" />
+        <Setter Property="BackgroundColor" Value="{StaticResource Canvas}" />
+        <Setter Property="BorderColor" Value="{StaticResource ActionBlue}" />
+        <Setter Property="BorderWidth" Value="1" />
+    </Style>
+
+    <!-- Nút chữ đơn giản (text-link) -->
+    <Style x:Key="TextLinkButton" TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
+        <Setter Property="TextColor" Value="{StaticResource ActionBlue}" />
+        <Setter Property="BackgroundColor" Value="Transparent" />
+        <Setter Property="BorderWidth" Value="0" />
+    </Style>
+
+    <!-- ===== Ô nhập: nền trắng, bo pill, không viền đậm ===== -->
+
+    <Style TargetType="Entry">
+        <Setter Property="TextColor" Value="{StaticResource Ink}" />
+        <Setter Property="PlaceholderColor" Value="{StaticResource InkMuted48}" />
+        <Setter Property="BackgroundColor" Value="{StaticResource Canvas}" />
+        <Setter Property="FontSize" Value="17" />
+        <Setter Property="CharacterSpacing" Value="-0.37" />
+        <Setter Property="MinimumHeightRequest" Value="44" />
+    </Style>
+
+    <Style TargetType="Editor">
+        <Setter Property="TextColor" Value="{StaticResource Ink}" />
+        <Setter Property="PlaceholderColor" Value="{StaticResource InkMuted48}" />
+        <Setter Property="BackgroundColor" Value="{StaticResource Canvas}" />
+        <Setter Property="FontSize" Value="17" />
+    </Style>
+
+    <Style TargetType="Picker">
+        <Setter Property="TextColor" Value="{StaticResource Ink}" />
+        <Setter Property="TitleColor" Value="{StaticResource InkMuted48}" />
+        <Setter Property="BackgroundColor" Value="{StaticResource Canvas}" />
+        <Setter Property="FontSize" Value="17" />
+    </Style>
+
+    <Style TargetType="DatePicker">
+        <Setter Property="TextColor" Value="{StaticResource Ink}" />
+        <Setter Property="BackgroundColor" Value="{StaticResource Canvas}" />
+        <Setter Property="FontSize" Value="17" />
+    </Style>
+
+    <Style TargetType="TimePicker">
+        <Setter Property="TextColor" Value="{StaticResource Ink}" />
+        <Setter Property="BackgroundColor" Value="{StaticResource Canvas}" />
+        <Setter Property="FontSize" Value="17" />
+    </Style>
+
+    <Style TargetType="CheckBox">
+        <Setter Property="Color" Value="{StaticResource ActionBlue}" />
+    </Style>
+
+    <Style TargetType="ActivityIndicator">
+        <Setter Property="Color" Value="{StaticResource ActionBlue}" />
+    </Style>
+
+    <Style TargetType="RefreshView">
+        <Setter Property="RefreshColor" Value="{StaticResource ActionBlue}" />
+    </Style>
+
+    <!-- ===== Thanh điều hướng: global-nav đen, tab bar trắng, chỉ dùng xanh cho mục đang chọn ===== -->
+
+    <Style TargetType="NavigationPage">
+        <Setter Property="BarBackgroundColor" Value="{StaticResource PureBlack}" />
+        <Setter Property="BarTextColor" Value="{StaticResource OnDark}" />
+    </Style>
+
+    <Style TargetType="Shell" ApplyToDerivedTypes="True">
+        <Setter Property="Shell.BackgroundColor" Value="{StaticResource PureBlack}" />
+        <Setter Property="Shell.ForegroundColor" Value="{StaticResource OnDark}" />
+        <Setter Property="Shell.TabBarBackgroundColor" Value="{StaticResource Canvas}" />
+        <Setter Property="Shell.TabBarForegroundColor" Value="{StaticResource ActionBlue}" />
+        <Setter Property="Shell.TabBarUnselectedColor" Value="{StaticResource InkMuted48}" />
+        <Setter Property="Shell.TabBarTitleColor" Value="{StaticResource ActionBlue}" />
+    </Style>
+
+</ResourceDictionary>

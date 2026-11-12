@@ -15,9 +15,9 @@ public class ContractService(IApplicationDbContext db) : IContractService
         MaxDiscountPercent = await GetMaxDiscountPercentAsync(),
         Customers = await db.Customers.AsNoTracking().OrderBy(c => c.Name)
             .Select(c => new ContractOptionDto { Id = c.Id, Name = c.Name }).ToListAsync(),
-        PriceLists = await db.PriceLists.AsNoTracking().Where(p => p.Status == PriceListStatus.Active).OrderBy(p => p.Name)
+        PriceLists = await PriceListLookup.Current(db).OrderBy(p => p.Name)
             .Select(p => new ContractOptionDto { Id = p.Id, Name = p.Name }).ToListAsync(),
-        TariffRules = await db.TariffRules.AsNoTracking().Where(r => r.PriceList.Status == PriceListStatus.Active)
+        TariffRules = await db.TariffRules.AsNoTracking().Where(r => PriceListLookup.Current(db).Select(p => p.Id).Contains(r.PriceListId))
             .OrderBy(r => r.VehicleType).ThenBy(r => r.Id)
             .Select(r => new TariffRuleDto(r.Id, r.PriceListId, r.VehicleType, r.PricePerKm,
                 r.PricePerTon, r.SurchargeFragile, r.SurchargeHazmat)).ToListAsync(),
@@ -99,7 +99,7 @@ public class ContractService(IApplicationDbContext db) : IContractService
         if (!priceListId.HasValue) return;
         var priceList = await db.PriceLists.AsNoTracking().FirstOrDefaultAsync(p => p.Id == priceListId);
         if (priceList is null) throw new ArgumentException("Bảng giá không tồn tại.");
-        if (priceList.Status != PriceListStatus.Active && priceListId != currentPriceListId)
+        if (priceListId != currentPriceListId && !await PriceListLookup.Current(db).AnyAsync(p => p.Id == priceListId))
             throw new ArgumentException("Chỉ được chọn bảng giá đang áp dụng.");
     }
 
@@ -107,10 +107,10 @@ public class ContractService(IApplicationDbContext db) : IContractService
     {
         if (!tariffRuleId.HasValue) return;
         var rule = await db.TariffRules.AsNoTracking().Where(r => r.Id == tariffRuleId)
-            .Select(r => new { r.PriceListId, r.PriceList.Status }).FirstOrDefaultAsync();
+            .Select(r => new { r.PriceListId }).FirstOrDefaultAsync();
         if (rule is null || rule.PriceListId != priceListId)
             throw new ArgumentException("Chi tiết giá phải thuộc bảng giá đã chọn.");
-        if (rule.Status != PriceListStatus.Active && tariffRuleId != currentTariffRuleId)
+        if (tariffRuleId != currentTariffRuleId && !await PriceListLookup.Current(db).AnyAsync(p => p.Id == rule.PriceListId))
             throw new ArgumentException("Chỉ được chọn chi tiết thuộc bảng giá đang áp dụng.");
     }
 

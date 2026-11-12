@@ -38,7 +38,6 @@ namespace TruckingSystem.Desktop.GUI_Shared
             txtPassword = new System.Windows.Forms.TextBox();
             btnLogin = new System.Windows.Forms.Button();
             lblStatus = new System.Windows.Forms.Label();
-            btnOpenChatBot = new System.Windows.Forms.Button();
             bannerPanel.SuspendLayout();
             rightPanel.SuspendLayout();
             loginBox.SuspendLayout();
@@ -115,7 +114,6 @@ namespace TruckingSystem.Desktop.GUI_Shared
             rightPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 15F));
             rightPanel.Controls.Add(btnClose, 0, 0);
             rightPanel.Controls.Add(loginBox, 1, 2);
-            rightPanel.Controls.Add(btnOpenChatBot, 0, 4);
             rightPanel.Dock = System.Windows.Forms.DockStyle.Fill;
             rightPanel.Margin = new System.Windows.Forms.Padding(0);
             rightPanel.Name = "rightPanel";
@@ -126,7 +124,6 @@ namespace TruckingSystem.Desktop.GUI_Shared
             rightPanel.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 50F));
             rightPanel.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
             rightPanel.SetColumnSpan(btnClose, 3);
-            rightPanel.SetColumnSpan(btnOpenChatBot, 3);
             rightPanel.Size = new System.Drawing.Size(540, 640);
             rightPanel.TabIndex = 0;
             //
@@ -291,27 +288,6 @@ namespace TruckingSystem.Desktop.GUI_Shared
             lblStatus.Name = "lblStatus";
             lblStatus.TabIndex = 9;
             //
-            // btnOpenChatBot
-            //
-            btnOpenChatBot.Anchor = System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right;
-            btnOpenChatBot.AutoSize = true;
-            btnOpenChatBot.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
-            btnOpenChatBot.BackColor = System.Drawing.Color.FromArgb(37, 99, 235);
-            btnOpenChatBot.Cursor = System.Windows.Forms.Cursors.Hand;
-            btnOpenChatBot.FlatAppearance.BorderSize = 0;
-            btnOpenChatBot.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(29, 78, 216);
-            btnOpenChatBot.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            btnOpenChatBot.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
-            btnOpenChatBot.ForeColor = System.Drawing.Color.White;
-            btnOpenChatBot.Margin = new System.Windows.Forms.Padding(0, 0, 12, 12);
-            btnOpenChatBot.MinimumSize = new System.Drawing.Size(0, 36);
-            btnOpenChatBot.Name = "btnOpenChatBot";
-            btnOpenChatBot.Padding = new System.Windows.Forms.Padding(10, 2, 10, 2);
-            btnOpenChatBot.TabIndex = 11;
-            btnOpenChatBot.Text = "Mở chat bot";
-            btnOpenChatBot.UseVisualStyleBackColor = false;
-            btnOpenChatBot.Click += new System.EventHandler(this.btnOpenChatBot_Click);
-            //
             // LoginForm
             //
             AcceptButton = btnLogin;
@@ -355,6 +331,5 @@ namespace TruckingSystem.Desktop.GUI_Shared
         private System.Windows.Forms.Button btnLogin;
         private System.Windows.Forms.Label lblStatus;
         private System.Windows.Forms.Button btnClose;
-        private System.Windows.Forms.Button btnOpenChatBot;
     }
 }

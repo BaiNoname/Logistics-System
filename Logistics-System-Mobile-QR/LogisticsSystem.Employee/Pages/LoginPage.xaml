@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui" xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml" x:Class="LogisticsSystem.Employee.Pages.LoginPage" Title="Đăng nhập" NavigationPage.HasNavigationBar="False" Shell.NavBarIsVisible="False">
+    <ScrollView>
+        <VerticalStackLayout Spacing="0">
+            <Border BackgroundColor="{StaticResource PureBlack}" StrokeThickness="0" StrokeShape="Rectangle" Padding="24,12">
+                <Label Text="LOGISTICS / QR" TextColor="{StaticResource OnDark}" FontSize="12" CharacterSpacing="2" HorizontalOptions="Center" />
+            </Border>
+            <VerticalStackLayout Padding="24,48,24,32" Spacing="12" BackgroundColor="{StaticResource Canvas}">
+                <Image Source="qr_mark.svg" HeightRequest="64" WidthRequest="64" Margin="0,0,0,12" SemanticProperties.Description="Biểu tượng quét mã QR" />
+                <Label Text="Mỗi ngày làm việc.&#10;Một lần kết nối." Style="{StaticResource DisplayLg}" HorizontalTextAlignment="Center" />
+                <Label Text="Chấm công bằng QR. Bắt đầu từ đây." TextColor="{StaticResource InkMuted80}" HorizontalTextAlignment="Center" />
+            </VerticalStackLayout>
+            <VerticalStackLayout Padding="24,32" Spacing="20" MaximumWidthRequest="520" HorizontalOptions="Center">
+                <Border>
+                    <VerticalStackLayout Spacing="12">
+                        <Label Text="Đăng nhập" Style="{StaticResource Tagline}" Margin="0,0,0,8" />
+                        <Label Text="Tên đăng nhập" Style="{StaticResource Caption}" />
+                        <Entry x:Name="UserNameEntry" Placeholder="Tài khoản công việc" ReturnType="Next" ClearButtonVisibility="WhileEditing" SemanticProperties.Description="Tên đăng nhập" />
+                        <BoxView HeightRequest="1" />
+                        <Label Text="Mật khẩu" Style="{StaticResource Caption}" />
+                        <Entry x:Name="PasswordEntry" Placeholder="Nhập mật khẩu" IsPassword="True" ReturnType="Done" Completed="OnLoginClicked" SemanticProperties.Description="Mật khẩu" />
+                        <BoxView HeightRequest="1" />
+                        <Label Text="Máy chủ kết nối" Style="{StaticResource Caption}" />
+                        <Entry x:Name="ServerEntry" Placeholder="https://host:port/" Keyboard="Url" SemanticProperties.Description="Địa chỉ máy chủ API" />
+                    </VerticalStackLayout>
+                </Border>
+                <Label x:Name="ErrorLabel" TextColor="{StaticResource Error}" IsVisible="False" SemanticProperties.Description="Lỗi đăng nhập" />
+                <Button x:Name="LoginButton" Text="Đăng nhập" Clicked="OnLoginClicked" />
+                <ActivityIndicator x:Name="Busy" IsVisible="False" IsRunning="False" HorizontalOptions="Center" />
+                <Label Text="Sử dụng tài khoản được công ty cấp để tiếp tục." Style="{StaticResource Caption}" HorizontalTextAlignment="Center" />
+            </VerticalStackLayout>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>
