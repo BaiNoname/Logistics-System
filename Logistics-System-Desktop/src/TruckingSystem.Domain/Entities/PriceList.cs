@@ -4,10 +4,17 @@ namespace TruckingSystem.Domain.Entities;
 
 public class PriceList : BaseEntity
 {
-    public void EnsureEditable()
+    public PriceListStatus StatusOn(DateTime today, int? activeId)
     {
-        if (Status != PriceListStatus.Active)
-            throw new InvalidOperationException("Không thể sửa bảng giá đã ngừng áp dụng.");
+        if (Status is PriceListStatus.Cancelled or PriceListStatus.Inactive) return Status;
+        if (EffectiveDate.Date > today.Date) return PriceListStatus.Pending;
+        return Id == activeId ? PriceListStatus.Active : PriceListStatus.Inactive;
+    }
+
+    public void EnsureEditable(DateTime today)
+    {
+        if (Status is not (PriceListStatus.Active or PriceListStatus.Pending) || EffectiveDate.Date <= today.Date)
+            throw new InvalidOperationException("Chỉ được sửa hoặc hủy bảng giá chưa áp dụng.");
     }
 
     public static void Validate(string? name, DateTime effectiveDate, DateTime today)
@@ -27,4 +34,4 @@ public class PriceList : BaseEntity
     public ICollection<TariffRule> TariffRules { get; set; } = new List<TariffRule>();
 }
 
-public enum PriceListStatus { Active, Inactive }
+public enum PriceListStatus { Active = 0, Inactive = 1, Pending = 3, Cancelled = 4 }

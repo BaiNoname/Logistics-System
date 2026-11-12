@@ -181,7 +181,7 @@ namespace TruckingSystem.Desktop.Common
                 "Đang chạy" or "Đang vận chuyển" or "Đang làm" => Blue,
                 "Đã xác nhận" or "Đã lên kế hoạch" => Teal,
                 "Đang hiệu lực" or "Đang áp dụng" or "Đã công bố" or "Đã xác nhận" or "Đã thanh toán" => Green,
-                "Chưa hiệu lực" or "Thanh toán một phần" => Amber,
+                "Chưa hiệu lực" or "Chưa thanh toán" or "Chưa áp dụng" => Amber,
                 "Hết hạn" or "Quá hạn" => Red,
                 "Đã phát hành" => Blue,
                 "Nháp" or "Bản nháp" or "Đã hủy" or "Ngưng hoạt động" or "Ngưng áp dụng" => Slate,

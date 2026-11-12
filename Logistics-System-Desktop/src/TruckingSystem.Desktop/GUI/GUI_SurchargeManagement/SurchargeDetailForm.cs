@@ -9,7 +9,7 @@ public sealed class SurchargeDetailForm : BaseForm
     private readonly DateTimePicker _date = new() { Format = DateTimePickerFormat.Short };
     private readonly NumberBox _fragile = new() { DecimalPlaces = 2, Increment = 0.1m };
     private readonly NumberBox _hazmat = new() { DecimalPlaces = 2, Increment = 0.1m };
-    private readonly Button _save = Theme.MakePrimaryButton("Lưu và áp dụng", 160);
+    private readonly Button _save = Theme.MakePrimaryButton("Lưu và áp dụng", 200);
     private readonly Label _status = new() { AutoSize = true, ForeColor = Theme.Danger, Margin = new Padding(0, 8, 0, 0) };
     public int SavedId { get; private set; }
 
@@ -50,7 +50,7 @@ public sealed class SurchargeDetailForm : BaseForm
         Field("Hàng nguy hiểm (%)", _hazmat);
         var hint = new Label
         {
-            Text = "Phụ phí tính theo tỷ lệ % trên cước km + cước tấn.\nBảng được khóa sau khi lưu và tính phí từ ngày hiệu lực (từ hôm nay).", AutoSize = true,
+            Text = "Phụ phí tính theo tỷ lệ % trên cước km + cước tấn.\nBảng được khóa sau khi lưu. Nếu ngày hiệu lực ở tương lai, bảng chờ đến ngày mới áp dụng; bảng hiện hành chưa thay đổi.", AutoSize = true,
             MaximumSize = new Size(260, 0),
             Font = Theme.FontSmall, ForeColor = Theme.TextSecondary, Margin = new Padding(0, 2, 0, 4),
         };
@@ -66,6 +66,11 @@ public sealed class SurchargeDetailForm : BaseForm
         FormStyle.EditorFooter(this, close, _save);
         CancelButton = close;
         if (editable) AcceptButton = _save;
+        void UpdateSaveText() => _save.Text = _date.Value.Date > DateTime.UtcNow.AddHours(7).Date
+            ? "💾 Lưu và chờ áp dụng" : "💾 Lưu và áp dụng";
+        _date.ValueChanged += (_, _) => UpdateSaveText();
+        UpdateSaveText();
+        if (item is not null && item.Published) FormStyle.Status(_status, item.Status, StatusKind.Info);
         bool saving = false;
         FormClosing += (_, e) => e.Cancel = saving;
         _save.Click += async (_, _) =>

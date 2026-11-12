@@ -1,0 +1,8 @@
+﻿<maui:MauiWinUIApplication
+    x:Class="LogisticsSystem.Employee.WinUI.App"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:maui="using:Microsoft.Maui"
+    xmlns:local="using:LogisticsSystem.Employee.WinUI">
+
+</maui:MauiWinUIApplication>

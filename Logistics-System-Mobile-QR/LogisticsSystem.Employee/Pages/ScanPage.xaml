@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui" xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml" x:Class="LogisticsSystem.Employee.Pages.ScanPage" Title="Quét QR" BackgroundColor="{StaticResource PureBlack}">
+    <Grid RowDefinitions="*,Auto">
+        <Grid x:Name="CameraHost" BackgroundColor="{StaticResource PureBlack}" />
+        <VerticalStackLayout Padding="24,32" Spacing="8" InputTransparent="True" VerticalOptions="Start">
+            <Label Text="Đưa mã QR vào khung." TextColor="{StaticResource OnDark}" FontSize="21" FontAttributes="Bold" HorizontalTextAlignment="Center" BackgroundColor="{StaticResource CameraOverlay}" Padding="12" />
+        </VerticalStackLayout>
+        <Border WidthRequest="240" HeightRequest="240" Stroke="{StaticResource OnDark}" StrokeThickness="2" StrokeShape="RoundRectangle 18" BackgroundColor="Transparent" Padding="0" HorizontalOptions="Center" VerticalOptions="Center" InputTransparent="True" />
+        <Border Grid.Row="1" BackgroundColor="{StaticResource Parchment}" StrokeThickness="0" StrokeShape="Rectangle" Padding="24,24,24,32">
+            <VerticalStackLayout Spacing="16" MaximumWidthRequest="520" HorizontalOptions="Center">
+                <Label Text="Chấm công bằng QR" Style="{StaticResource Tagline}" HorizontalTextAlignment="Center" />
+                <Label x:Name="StatusLabel" Text="Đang khởi động camera…" Style="{StaticResource Caption}" HorizontalTextAlignment="Center" />
+                <ActivityIndicator x:Name="Busy" IsVisible="False" IsRunning="False" HorizontalOptions="Center" />
+                <Button Text="Hủy quét" Style="{StaticResource SecondaryButton}" Clicked="OnCancelClicked" />
+            </VerticalStackLayout>
+        </Border>
+    </Grid>
+</ContentPage>

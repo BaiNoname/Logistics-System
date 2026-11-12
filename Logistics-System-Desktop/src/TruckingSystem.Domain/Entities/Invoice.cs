@@ -9,8 +9,6 @@ public class Invoice : BaseEntity
 
     public void MarkAsPaid()
     {
-        if (Status == InvoiceStatus.Cancelled)
-            throw new InvalidOperationException("Không thể đánh dấu đã thanh toán cho hóa đơn đã hủy.");
         Status = InvoiceStatus.Paid;
     }
 
@@ -48,7 +46,7 @@ public class Invoice : BaseEntity
     public DateTime IssueDate { get; set; } = DateTime.UtcNow;
     public DateTime? DueDate { get; set; }
     public decimal TotalAmount { get; set; }
-    public InvoiceStatus Status { get; set; } = InvoiceStatus.Draft;
+    public InvoiceStatus Status { get; set; } = InvoiceStatus.Unpaid;
 
     public ICollection<InvoiceLine> Lines { get; set; } = new List<InvoiceLine>();
     public ICollection<Payment> Payments { get; set; } = new List<Payment>();

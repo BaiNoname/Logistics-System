@@ -1,0 +1,63 @@
+# Default deny: only build inputs listed below may be added to Git.
+*
+!*/
+!/.gitignore
+!/Logistics-System-Mobile-QR.slnx
+
+# MAUI project and application entry points.
+!/LogisticsSystem.Employee/LogisticsSystem.Employee.csproj
+!/LogisticsSystem.Employee/App.xaml
+!/LogisticsSystem.Employee/App.xaml.cs
+!/LogisticsSystem.Employee/AppShell.xaml
+!/LogisticsSystem.Employee/AppShell.xaml.cs
+!/LogisticsSystem.Employee/MauiProgram.cs
+
+# Application code and screens.
+!/LogisticsSystem.Employee/Config/**/*.cs
+!/LogisticsSystem.Employee/Models/**/*.cs
+!/LogisticsSystem.Employee/Services/**/*.cs
+!/LogisticsSystem.Employee/Pages/**/*.cs
+!/LogisticsSystem.Employee/Pages/**/*.xaml
+
+# Platform entry points, permissions and packaging metadata.
+!/LogisticsSystem.Employee/Platforms/**/*.cs
+!/LogisticsSystem.Employee/Platforms/**/*.xaml
+!/LogisticsSystem.Employee/Platforms/**/*.xml
+!/LogisticsSystem.Employee/Platforms/**/*.plist
+!/LogisticsSystem.Employee/Platforms/**/*.manifest
+!/LogisticsSystem.Employee/Platforms/**/*.appxmanifest
+!/LogisticsSystem.Employee/Platforms/**/*.xcprivacy
+!/LogisticsSystem.Employee/Properties/launchSettings.json
+
+# Resources consumed by the project.
+!/LogisticsSystem.Employee/Resources/Styles/**/*.xaml
+!/LogisticsSystem.Employee/Resources/AppIcon/*.svg
+!/LogisticsSystem.Employee/Resources/Splash/*.svg
+!/LogisticsSystem.Employee/Resources/Images/*.svg
+!/LogisticsSystem.Employee/Resources/Fonts/*.ttf
+
+# Generated output and local files stay ignored, even inside allowed folders.
+**/bin/
+**/obj/
+**/.vs/
+**/.idea/
+**/.vscode/
+**/TestResults/
+**/artifacts/
+**/publish/
+**/node_modules/
+**/*.user
+**/*.suo
+**/*.log
+**/*.tmp
+**/*.bak
+**/.env
+**/.env.*
+**/*.pfx
+**/*.p12
+**/*.pem
+**/*.key
+**/*.keystore
+**/*.jks
+**/secrets.json
+**/appsettings*.json

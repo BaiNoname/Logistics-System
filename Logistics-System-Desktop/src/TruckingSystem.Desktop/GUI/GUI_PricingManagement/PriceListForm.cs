@@ -10,6 +10,7 @@ public partial class PriceListForm : BaseForm
     private readonly PriceListItem? _item;
     private readonly bool _copy;
     private bool _saving;
+    private bool _detailsLoaded;
     private readonly DataGridView _detailGrid = new() { Dock = DockStyle.Fill, AccessibleName = "Chi tiết giá theo loại xe" };
 
     public int? SavedId { get; private set; }
@@ -42,84 +43,72 @@ public partial class PriceListForm : BaseForm
         Text = copy ? "Tạo mới và sao chép" : item is null ? "Thêm bảng giá" : "Sửa bảng giá";
         _name.Text = copy || item is null ? "Tự sinh khi lưu: BG-[Năm]-[STT]" : item.Name;
         _name.ReadOnly = copy || item is null;
-        _priceListStatusPanel.Visible = !copy && item is not null;
-        if (copy || item is null)
+        _priceListStatusPanel.Visible = false;
+        ClientSize = new Size(760, 680);
+        var detailPanel = new Panel { Height = 350, Dock = DockStyle.Top };
+        Theme.StyleGrid(_detailGrid);
+        _detailGrid.ReadOnly = false;
+        _detailGrid.Columns.Add(new DataGridViewTextBoxColumn { Name = "VehicleType", HeaderText = "Loại xe", ReadOnly = true, FillWeight = 160 });
+        foreach (var column in new[] { ("PricePerKm", "Giá/km (đ)"), ("PricePerTon", "Giá/tấn (đ)") })
+            _detailGrid.Columns.Add(new DataGridViewTextBoxColumn
+            {
+                Name = column.Item1, HeaderText = column.Item2, ValueType = typeof(decimal),
+                DefaultCellStyle = new DataGridViewCellStyle { Format = "N2", Alignment = DataGridViewContentAlignment.MiddleRight }
+            });
+        foreach (var type in TariffRule.DefaultVehicleTypes) _detailGrid.Rows.Add(type, null, null);
+        _detailGrid.DataError += (_, e) =>
         {
-            ClientSize = new Size(680, ClientSize.Height);
-            var toggle = Theme.MakeSecondaryButton("Chi tiết bảng giá", 170);
-            toggle.AutoSize = true;
-            toggle.Margin = _save.Margin;
-            var detailPanel = new Panel { Height = 350, Dock = DockStyle.Top, Visible = false };
-            Theme.StyleGrid(_detailGrid);
-            _detailGrid.ReadOnly = false;
-            _detailGrid.Columns.Add(new DataGridViewTextBoxColumn { Name = "VehicleType", HeaderText = "Loại xe", ReadOnly = true, FillWeight = 160 });
-            foreach (var column in new[] { ("PricePerKm", "Giá/km (đ)"), ("PricePerTon", "Giá/tấn (đ)") })
-                _detailGrid.Columns.Add(new DataGridViewTextBoxColumn
+            e.ThrowException = false;
+            e.Cancel = true;
+            FormStyle.Status(_status, "Đơn giá phải là số hợp lệ, tối đa 2 chữ số thập phân.");
+        };
+        detailPanel.Controls.Add(_detailGrid);
+        _fields.Controls.Add(detailPanel);
+        FormStyle.Status(_status, "Nhập đủ giá/km và giá/tấn cho từng loại xe; nhập 0 nếu không tính.", StatusKind.Info);
+        _detailsLoaded = item is null;
+        if (item is not null)
+        {
+            _save.Enabled = _detailGrid.Enabled = false;
+            Shown += async (_, _) =>
+            {
+                try
                 {
-                    Name = column.Item1, HeaderText = column.Item2, ValueType = typeof(decimal),
-                    DefaultCellStyle = new DataGridViewCellStyle { Format = "N2", Alignment = DataGridViewContentAlignment.MiddleRight }
-                });
-            foreach (var type in TariffRule.DefaultVehicleTypes) _detailGrid.Rows.Add(type, 0m, 0m);
-            _detailGrid.DataError += (_, e) =>
-            {
-                e.ThrowException = false;
-                e.Cancel = true;
-                FormStyle.Status(_status, "Đơn giá phải là số hợp lệ, tối đa 2 chữ số thập phân.");
-            };
-            detailPanel.Controls.Add(_detailGrid);
-            var footerButtons = _cancel.Parent!;
-            footerButtons.Controls.Add(toggle);
-            footerButtons.Controls.SetChildIndex(toggle, footerButtons.Controls.GetChildIndex(_cancel) + 1);
-            _fields.Controls.Add(detailPanel);
-            toggle.Click += (_, _) =>
-            {
-                if (_saving) return;
-                detailPanel.Visible = !detailPanel.Visible;
-                ClientSize = new Size(ClientSize.Width, detailPanel.Visible ? 650 : 400);
-            };
-            FormStyle.Status(_status, $"{TariffRule.DefaultVehicleTypes.Count} loại xe có đơn giá mặc định 0. Chọn Chi tiết bảng giá để nhập giá (đồng).", StatusKind.Info);
-            if (copy)
-            {
-                _save.Enabled = _detailGrid.Enabled = false;
-                Shown += async (_, _) =>
-                {
-                    try
+                    var rules = await api.Pricing.GetTariffRulesAsync(item!.Id);
+                    if (IsDisposed) return;
+                    foreach (var rule in rules)
                     {
-                        var rules = await api.Pricing.GetTariffRulesAsync(item!.Id);
-                        if (IsDisposed) return;
-                        foreach (var rule in rules)
-                        {
-                            var row = _detailGrid.Rows.Cast<DataGridViewRow>().FirstOrDefault(r =>
-                                string.Equals(r.Cells[0].Value?.ToString(), rule.VehicleType.Trim(), StringComparison.OrdinalIgnoreCase));
-                            if (row is null) _detailGrid.Rows.Add(rule.VehicleType, rule.PricePerKm, rule.PricePerTon);
-                            else { row.Cells[1].Value = rule.PricePerKm; row.Cells[2].Value = rule.PricePerTon; }
-                        }
-                        _save.Enabled = _detailGrid.Enabled = true;
+                        var row = _detailGrid.Rows.Cast<DataGridViewRow>().FirstOrDefault(r =>
+                            string.Equals(r.Cells[0].Value?.ToString(), rule.VehicleType.Trim(), StringComparison.OrdinalIgnoreCase));
+                        if (row is null) _detailGrid.Rows.Add(rule.VehicleType, rule.PricePerKm, rule.PricePerTon);
+                        else { row.Cells[1].Value = rule.PricePerKm; row.Cells[2].Value = rule.PricePerTon; }
                     }
-                    catch (Exception ex) { if (!IsDisposed) FormStyle.Status(_status, "Lỗi tải giá nguồn: " + ex.Message); }
-                };
-            }
+                    _detailsLoaded = true;
+                    _save.Enabled = copy || item.Status == "Pending";
+                    _detailGrid.Enabled = true;
+                    _detailGrid.ReadOnly = !copy && item.Status != "Pending";
+                }
+                catch (Exception ex) { if (!IsDisposed) FormStyle.Status(_status, "Lỗi tải chi tiết giá: " + ex.Message); }
+            };
         }
         var today = DateTime.UtcNow.AddHours(7).Date;
-        _date.MinDate = today;
-        _date.Value = !copy && item is not null && item.EffectiveDate.Date >= today ? item.EffectiveDate.Date : today;
-        if (!copy && item is not null && item.EffectiveDate.Date < today)
-            FormStyle.Status(_status, "Ngày hiệu lực cũ đã qua. Khi lưu, bảng giá sẽ dùng ngày hiệu lực mới từ hôm nay trở đi.", StatusKind.Warning);
-        _priceListStatus.SelectedIndex = item?.Status is "Inactive" or "Expired" ? 1 : 0;
+        _date.MinDate = !copy && item is not null && item.EffectiveDate.Date < today ? item.EffectiveDate.Date : today;
+        _date.Value = !copy && item is not null ? item.EffectiveDate.Date : today;
         if (copy)
         {
             _save.Text = "Tạo mới và sao chép";
             _save.Width = 200;
-            _copyInfo.Text = $"Sao chép từ: {item!.Name}\nSao chép toàn bộ chi tiết giá. Bảng mới có hiệu lực từ hôm nay; bảng nguồn chuyển sang ngưng áp dụng khi lưu thành công.";
+            _copyInfo.Text = $"Sao chép từ: {item!.Name}\nChọn ngày hiệu lực và kiểm tra đầy đủ chi tiết giá. Bảng hiện hành chỉ ngưng áp dụng khi bảng mới đến ngày hiệu lực.";
             _copyInfo.Visible = true;
             _nameLabel.Text = "Tên bảng giá mới *:";
-            _datePanel.Visible = false;
             _priceListStatusPanel.Visible = false;
         }
-        if (!copy && item is not null && item.Status != "Active")
+        if (!copy && item is not null && item.Status != "Pending")
         {
-            _fields.Enabled = _save.Enabled = false;
-            FormStyle.Status(_status, "Không thể sửa bảng giá đã ngừng áp dụng. Có thể sao chép để tạo bảng giá mới.", StatusKind.Warning);
+            Text = "Xem bảng giá";
+            _name.ReadOnly = true;
+            _date.Enabled = _save.Enabled = false;
+            _detailGrid.ReadOnly = true;
+            FormStyle.Status(_status, item.StatusText + " · Chỉ xem.", StatusKind.Info);
         }
         // Chân cửa sổ chuẩn: [Đóng] [💾 Lưu / Tạo mới và sao chép].
         FormStyle.SaveButton(_save);
@@ -131,10 +120,10 @@ public partial class PriceListForm : BaseForm
 
     private async Task SaveAsync()
     {
-        if (_saving || !_copy && _item is not null && _item.Status != "Active") return;
+        if (_saving || !_detailsLoaded || !_copy && _item is not null && _item.Status != "Pending") return;
         _errors.Clear();
         var today = DateTime.UtcNow.AddHours(7).Date;
-        var effectiveDate = _copy ? today : _date.Value.Date;
+        var effectiveDate = _date.Value.Date;
         try { PriceList.Validate(_copy || _item is null ? "BG" : _name.Text, effectiveDate, today); }
         catch (ArgumentException ex)
         {
@@ -142,29 +131,25 @@ public partial class PriceListForm : BaseForm
             FieldHint.Show(input, _status, ex.Message);
             return;
         }
-        List<SaveTariffRuleRow>? details = null;
-        if (_copy || _item is null)
+        if (!_detailGrid.EndEdit()) return;
+        var details = new List<SaveTariffRuleRow>();
+        foreach (DataGridViewRow row in _detailGrid.Rows)
         {
-            if (!_detailGrid.EndEdit()) return;
-            details = new();
-            foreach (DataGridViewRow row in _detailGrid.Rows)
+            try
             {
-                try
-                {
-                    if (row.Cells[1].Value is null || row.Cells[2].Value is null)
-                        throw new ArgumentException("Nhập đủ hai đơn giá, hoặc nhập 0 nếu không tính.");
-                    var km = Convert.ToDecimal(row.Cells[1].Value);
-                    var ton = Convert.ToDecimal(row.Cells[2].Value);
-                    var type = row.Cells[0].Value!.ToString()!;
-                    TariffRule.Validate(type, km, ton, 0, 0);
-                    details.Add(new(null, type, km, ton));
-                }
-                catch (Exception ex) when (ex is ArgumentException or FormatException or OverflowException)
-                {
-                    row.ErrorText = ex.Message;
-                    FormStyle.Status(_status, row.Cells[0].Value + ": " + ex.Message);
-                    return;
-                }
+                if (row.Cells[1].Value is null || row.Cells[2].Value is null)
+                    throw new ArgumentException("Nhập đủ hai đơn giá, hoặc nhập 0 nếu không tính.");
+                var km = Convert.ToDecimal(row.Cells[1].Value);
+                var ton = Convert.ToDecimal(row.Cells[2].Value);
+                var type = row.Cells[0].Value!.ToString()!;
+                TariffRule.Validate(type, km, ton, 0, 0);
+                details.Add(new(null, type, km, ton));
+            }
+            catch (Exception ex) when (ex is ArgumentException or FormatException or OverflowException)
+            {
+                row.ErrorText = ex.Message;
+                FormStyle.Status(_status, row.Cells[0].Value + ": " + ex.Message);
+                return;
             }
         }
         _saving = true;
@@ -172,10 +157,10 @@ public partial class PriceListForm : BaseForm
         FormStyle.Status(_status, "Đang lưu...", StatusKind.Info);
         try
         {
-            var status = _priceListStatus.SelectedIndex == 1 ? "Inactive" : "Active";
+            string? status = null;
             if (_copy)
             {
-                var saved = await _api.Pricing.CopyPriceListAsync(_item!.Id, _name.Text.Trim(), details);
+                var saved = await _api.Pricing.CopyPriceListAsync(_item!.Id, _name.Text.Trim(), details, effectiveDate);
                 SavedId = saved?.Id ?? throw new InvalidOperationException("Máy chủ chưa trả về bảng giá mới. Vui lòng làm mới danh sách để kiểm tra.");
             }
             else if (_item is null)
@@ -185,7 +170,7 @@ public partial class PriceListForm : BaseForm
             }
             else
             {
-                await _api.Pricing.UpdatePriceListAsync(_item.Id, _name.Text.Trim(), effectiveDate, status);
+                await _api.Pricing.UpdatePriceListAsync(_item.Id, _name.Text.Trim(), effectiveDate, status, details);
                 SavedId = _item.Id;
             }
             _saving = false;

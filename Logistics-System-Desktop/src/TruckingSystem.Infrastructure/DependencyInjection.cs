@@ -32,27 +32,7 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
-        // NHẬT KÝ HỆ THỐNG tự động: mỗi lần lưu database ghi lại thêm / sửa / xóa + người thao tác.
-        services.AddDataProtection();
-        services.AddScoped<TruckingSystem.Application.FreightChat.IFreightChatContext, FreightChatContext>();
-        services.AddHttpClient<FreightGemini>();
-        services.AddHttpClient<FreightOpenAiChat>();
-        // FreightChat:Provider chọn AI hội thoại (Gemini mặc định / OpenAICompatible); embedding luôn dùng Gemini.
-        if (FreightAi.UsesOpenAiCompatible(configuration))
-            services.AddScoped<TruckingSystem.Application.FreightChat.IFreightChatAi>(sp => sp.GetRequiredService<FreightOpenAiChat>());
-        else
-            services.AddScoped<TruckingSystem.Application.FreightChat.IFreightChatAi>(sp => sp.GetRequiredService<FreightGemini>());
-        services.AddScoped<TruckingSystem.Application.FreightChat.IFreightEmbedding>(sp => sp.GetRequiredService<FreightGemini>());
-        services.AddScoped<TruckingSystem.Application.FreightChat.IFreightVectorStore, FreightVectorStore>();
-        services.AddHostedService<FreightIndexWorker>();
-        services.AddHttpContextAccessor();
-        services.AddScoped<AuditSaveChangesInterceptor>();
-        services.AddDbContext<AppDbContext>((sp, options) =>
-            options.UseNpgsql(configuration.GetConnectionString("DefaultConnection"))
-                   .AddInterceptors(sp.GetRequiredService<AuditSaveChangesInterceptor>()));
-
-        // Đăng ký AppDbContext (lớp cụ thể) là cài đặt cho IApplicationDbContext (interface)
-        services.AddScoped<IApplicationDbContext>(provider => provider.GetRequiredService<AppDbContext>());
+        services.AddInfrastructureCore(configuration);
 
         services.AddIdentity<ApplicationUser, ApplicationRole>(options =>
         {
@@ -111,10 +91,6 @@ public static class DependencyInjection
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IAccountManagementService, AccountManagementService>();
 
-        // AddHttpClient<TInterface, TImplementation> tự quản lý vòng đời
-        // HttpClient đúng chuẩn (tránh lỗi rò rỉ socket khi tự new HttpClient()).
-        services.AddHttpClient<IRouteProvider, VietMapRouteProvider>();
-        services.AddHttpClient<IPlaceSearchProvider, VietMapPlaceProvider>();
         services.AddHttpClient<ICustomerBusinessCardReader, CustomerBusinessCardReader>();
 
         // Singleton vì GoogleCalendarService tự đọc + giữ credential 1 lần khi
@@ -124,6 +100,30 @@ public static class DependencyInjection
         services.AddSingleton<IVideoStorage>(
         new LocalVideoStorage(configuration["VideoStorage:RootPath"]));
 
+        return services;
+    }
+
+    /// <summary>
+    /// Phần lõi dùng chung cho mọi host: DbContext (kèm nhật ký hệ thống), DataProtection, bản đồ/định tuyến VietMap.
+    /// Không có Identity/JWT — host chatbot (gói riêng Logistics-System-ChatBot) chỉ gọi phần này nên không cần giữ khóa ký token.
+    /// </summary>
+    public static IServiceCollection AddInfrastructureCore(this IServiceCollection services, IConfiguration configuration)
+    {
+        // NHẬT KÝ HỆ THỐNG tự động: mỗi lần lưu database ghi lại thêm / sửa / xóa + người thao tác.
+        services.AddDataProtection();
+        services.AddHttpContextAccessor();
+        services.AddScoped<AuditSaveChangesInterceptor>();
+        services.AddDbContext<AppDbContext>((sp, options) =>
+            options.UseNpgsql(configuration.GetConnectionString("DefaultConnection"))
+                   .AddInterceptors(sp.GetRequiredService<AuditSaveChangesInterceptor>()));
+
+        // Đăng ký AppDbContext (lớp cụ thể) là cài đặt cho IApplicationDbContext (interface)
+        services.AddScoped<IApplicationDbContext>(provider => provider.GetRequiredService<AppDbContext>());
+
+        // AddHttpClient<TInterface, TImplementation> tự quản lý vòng đời
+        // HttpClient đúng chuẩn (tránh lỗi rò rỉ socket khi tự new HttpClient()).
+        services.AddHttpClient<IRouteProvider, VietMapRouteProvider>();
+        services.AddHttpClient<IPlaceSearchProvider, VietMapPlaceProvider>();
         return services;
     }
 }

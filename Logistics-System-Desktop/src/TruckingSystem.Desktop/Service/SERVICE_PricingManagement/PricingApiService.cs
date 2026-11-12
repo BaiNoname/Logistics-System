@@ -11,14 +11,14 @@ public class PricingApiService(ApiConnection connection)
     public Task<PriceListItem?> CreatePriceListAsync(string name, DateTime effectiveDate, string? status = null, List<SaveTariffRuleRow>? tariffRules = null)
         => connection.PostAsync<PriceListItem>("/api/price-lists", new { name, effectiveDate, status, tariffRules });
 
-    public Task<PriceListItem?> CopyPriceListAsync(int id, string name, List<SaveTariffRuleRow>? tariffRules = null)
-        => connection.PostAsync<PriceListItem>($"/api/price-lists/{id}/copy", new { name, tariffRules });
+    public Task<PriceListItem?> CopyPriceListAsync(int id, string name, List<SaveTariffRuleRow>? tariffRules = null, DateTime? effectiveDate = null)
+        => connection.PostAsync<PriceListItem>($"/api/price-lists/{id}/copy", new { name, tariffRules, effectiveDate });
 
-    public Task UpdatePriceListAsync(int id, string name, DateTime effectiveDate, string? status = null)
-        => connection.PutAsync<object>($"/api/price-lists/{id}", new { name, effectiveDate, status });
+    public Task UpdatePriceListAsync(int id, string name, DateTime effectiveDate, string? status = null, List<SaveTariffRuleRow>? tariffRules = null)
+        => connection.PutAsync<object>($"/api/price-lists/{id}", new { name, effectiveDate, status, tariffRules });
 
-    public Task DeletePriceListAsync(int id)
-        => connection.DeleteAsync<object>($"/api/price-lists/{id}");
+    public Task CancelPriceListAsync(int id)
+        => connection.PostAsync<object>($"/api/price-lists/{id}/cancel", new { });
 
     public async Task<List<TariffRuleItem>> GetTariffRulesAsync(int priceListId)
         => await connection.GetAsync<List<TariffRuleItem>>($"/api/price-lists/{priceListId}/tariff-rules") ?? new();

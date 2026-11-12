@@ -1,3 +1,4 @@
+using TruckingSystem.Application.Pricing;
 using Microsoft.EntityFrameworkCore;
 using System.Data;
 using TruckingSystem.Application.Common;
@@ -15,12 +16,12 @@ public class ContractAppendixService(IApplicationDbContext db) : IContractAppend
     public async Task<ContractAppendixLookupsDto> GetLookupsAsync() => new(
         await db.Contracts.AsNoTracking().Where(c => c.StartDate <= VnClock.Today && (c.EndDate == null || c.EndDate >= VnClock.Today)).OrderBy(c => c.Code)
             .Select(c => new ContractOptionDto { Id = c.Id, Name = c.Code }).ToListAsync(),
-        await db.TariffRules.AsNoTracking().Where(r => r.PriceList.Status == PriceListStatus.Active)
+        await db.TariffRules.AsNoTracking().Where(r => PriceListLookup.Current(db).Select(p => p.Id).Contains(r.PriceListId))
             .OrderBy(r => r.PriceList.Name).ThenBy(r => r.VehicleType).ThenBy(r => r.Id)
             .Select(r => new AppendixTariffOptionDto(r.Id, r.PriceList.Name, r.VehicleType,
                 r.PricePerKm, r.PricePerTon, r.SurchargeFragile, r.SurchargeHazmat, r.PriceListId)).ToListAsync())
     {
-        PriceLists = await db.PriceLists.AsNoTracking().Where(p => p.Status == PriceListStatus.Active)
+        PriceLists = await PriceListLookup.Current(db)
             .OrderBy(p => p.Name).ThenBy(p => p.Id)
             .Select(p => new ContractOptionDto { Id = p.Id, Name = p.Name }).ToListAsync(),
         ContractDiscounts = await db.Contracts.AsNoTracking()
@@ -111,7 +112,7 @@ public class ContractAppendixService(IApplicationDbContext db) : IContractAppend
         var currentPriceListId = current?.PriceListId;
         if (current is not null && !currentPriceListId.HasValue)
             currentPriceListId = await db.TariffRules.Where(r => r.Id == current.TariffRuleId).Select(r => (int?)r.PriceListId).FirstOrDefaultAsync();
-        if (priceList.Status != PriceListStatus.Active && priceListId != currentPriceListId)
+        if (priceListId != currentPriceListId && !await PriceListLookup.Current(db).AnyAsync(p => p.Id == priceListId))
             throw new ArgumentException("Chỉ được chọn bảng giá đang áp dụng.");
         var discount = request.DiscountPercent ?? (current?.ContractId == contract.Id ? current.DiscountPercent : null) ?? contract.DiscountPercent ?? 0;
         Contract.ValidateDiscount(contract.Type ?? ContractType.LongTerm, discount);

@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Host riêng cho chatbot tra cước công khai. Migration DB vẫn do TruckingSystem.API quản lý,
+         nên không cần EF Design/Tools ở đây. -->
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.1" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\TruckingSystem.ChatBot.Application\TruckingSystem.ChatBot.Application.csproj" />
+    <ProjectReference Include="..\TruckingSystem.ChatBot.Infrastructure\TruckingSystem.ChatBot.Infrastructure.csproj" />
+  </ItemGroup>
+</Project>

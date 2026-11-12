@@ -33,7 +33,7 @@ public partial class PricingControl : BaseUserControl
     private bool HasChanges => VehicleRows.Any(r => r.IsChanged);
     private VehicleRateRow? SelectedVehicle => _rulesGrid.CurrentRow?.DataBoundItem as VehicleRateRow;
     private TariffRuleItem? SelectedRule => SelectedVehicle?.Rule;
-    private bool CanEditRules => _rulesLoaded && CurrentList?.Status == "Active";
+    private bool CanEditRules => _rulesLoaded && CurrentList?.Status == "Pending";
 
     public PricingControl()
     {
@@ -76,7 +76,7 @@ public partial class PricingControl : BaseUserControl
         var copyMenu = menu.Items.Add("📋 Tạo mới và sao chép", null, async (_, _) => await CopyAsync());
         var editMenu = menu.Items.Add("✏️ Sửa bảng giá", null, async (_, _) => await EditAsync(create: false));
         menu.Items.Add(new ToolStripSeparator());
-        var deleteMenu = menu.Items.Add("🗑 Xóa bảng giá", null, async (_, _) => await DeleteAsync());
+        var deleteMenu = menu.Items.Add("Hủy bảng giá", null, async (_, _) => await DeleteAsync());
         menu.Opening += (_, e) =>
         {
             UpdateActions();
@@ -84,10 +84,10 @@ public partial class PricingControl : BaseUserControl
             copyMenu.Enabled = _copy.Enabled;
             editMenu.Enabled = _edit.Enabled;
             deleteMenu.Enabled = _delete.Enabled;
-            editMenu.ToolTipText = editMenu.Enabled ? "Sửa thông tin bảng giá đang áp dụng."
-                : "Bảng giá ngừng áp dụng không được sửa. Có thể sao chép để tạo bảng giá mới.";
-            deleteMenu.ToolTipText = deleteMenu.Enabled ? "Xóa bảng giá và toàn bộ chi tiết giá sau khi xác nhận."
-                : "Không thể xóa bảng giá đang được hợp đồng sử dụng.";
+            editMenu.ToolTipText = editMenu.Enabled ? "Sửa bảng giá chưa áp dụng."
+                : "Chỉ bảng giá chưa áp dụng được sửa.";
+            deleteMenu.ToolTipText = deleteMenu.Enabled ? "Hủy bảng giá đang chờ áp dụng; giữ toàn bộ chi tiết giá."
+                : "Chỉ bảng giá chưa áp dụng được hủy.";
         };
         ModernMenu.Apply(menu);
         _listsGrid.ContextMenuStrip = menu;
@@ -155,8 +155,9 @@ public partial class PricingControl : BaseUserControl
         _edit.Visible = false;
         _delete.Visible = !IsPriceLists;
         _copy.Enabled = !_busy && IsPriceLists && SelectedList is not null;
-        _edit.Enabled = !_busy && (IsPriceLists ? SelectedList?.Status == "Active" : CanEditRules && SelectedRule is not null);
-        _delete.Enabled = !_busy && (IsPriceLists ? SelectedList?.ContractCount == 0 : CanEditRules && SelectedRule is not null);
+        _edit.Enabled = !_busy && (IsPriceLists ? SelectedList?.Status == "Pending" : CanEditRules && SelectedRule is not null);
+        _delete.Enabled = !_busy && (IsPriceLists ? SelectedList?.Status == "Pending"
+            : CanEditRules && SelectedRule is { } rule && !TariffRule.DefaultVehicleTypes.Contains(rule.VehicleType.Trim(), StringComparer.OrdinalIgnoreCase));
         _refresh.Enabled = !_busy;
         _listsGrid.Enabled = _priceList.Enabled = !_busy;
         _filters.Enabled = !_busy;
@@ -182,7 +183,7 @@ public partial class PricingControl : BaseUserControl
     {
         _status.ForeColor = Theme.TextSecondary;
         _status.Text = IsPriceLists
-            ? _lists.Count == 0 ? "Chưa có bảng giá. Chọn Thêm mới để tạo." : $"{_lists.Count} bảng giá · Chuột phải để xem chi tiết. Bảng giá ngừng áp dụng không được sửa; bảng giá đang được hợp đồng sử dụng không thể xóa."
+            ? _lists.Count == 0 ? "Chưa có bảng giá. Chọn Thêm mới để tạo." : $"{_lists.Count} bảng giá · Chuột phải để xem chi tiết. Chỉ bảng giá chưa áp dụng được sửa hoặc hủy."
             : CurrentList is null ? "Tạo bảng giá trước khi thêm chi tiết giá."
             : !_rulesLoaded ? "Chưa tải được chi tiết giá. Chọn Làm mới để thử lại."
             : !CanEditRules ? $"{CurrentList.Name}: {_rules.Count} dòng giá · {CurrentList.StatusText} · Chỉ xem chi tiết giá."
@@ -228,10 +229,10 @@ public partial class PricingControl : BaseUserControl
         {
             _filterLabel.Text = "Bảng giá: " + list.Name;
             _rules = await _api.Pricing.GetTariffRulesAsync(list.Id);
-            var types = await _api.Pricing.GetVehicleTypesAsync();
+            var types = (await _api.Pricing.GetVehicleTypesAsync()).Concat(TariffRule.DefaultVehicleTypes);
             if (IsDisposed) return;
             var rows = _rules.Select(r => new VehicleRateRow(r.VehicleType, r.PricePerKm, r.PricePerTon, r)).ToList();
-            rows.AddRange(types.Select(t => t.Trim()).Where(t => t.Length > 0)
+            if (list.Status == "Pending") rows.AddRange(types.Select(t => t.Trim()).Where(t => t.Length > 0)
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .Where(t => !_rules.Any(r => string.Equals(r.VehicleType.Trim(), t, StringComparison.OrdinalIgnoreCase)))
                 .Select(t => new VehicleRateRow(t, null, null, null)));
@@ -265,7 +266,7 @@ public partial class PricingControl : BaseUserControl
         if (_busy || !CanEditRules || CurrentList is not { } list || !_rulesGrid.EndEdit()) return;
         var changed = VehicleRows.Where(r => r.IsChanged).ToList();
         if (changed.Count == 0) { UpdateStatus(); return; }
-        foreach (var row in changed)
+        foreach (var row in VehicleRows)
         {
             try
             {
@@ -313,7 +314,7 @@ public partial class PricingControl : BaseUserControl
         if (_busy || !IsPriceLists) return;
         try
         {
-            if (!create && SelectedList?.Status != "Active") return;
+            if (!create && SelectedList?.Status != "Pending") return;
             using var form = new PriceListForm(_api, create ? null : SelectedList);
             if (form.ShowDialog(FindForm()) == DialogResult.OK) await LoadAsync(form.SavedId);
         }
@@ -338,17 +339,17 @@ public partial class PricingControl : BaseUserControl
         var isList = IsPriceLists;
         var list = isList ? SelectedList : CurrentList;
         var rule = SelectedRule;
-        if (list is null || isList && list.ContractCount > 0 || !isList && (!CanEditRules || rule is null)) return;
+        if (list is null || isList && list.Status != "Pending" || !isList && (!CanEditRules || rule is null)) return;
         var message = isList
-            ? $"Xóa bảng giá \"{list.Name}\" và toàn bộ {list.RuleCount} dòng giá đi kèm?\nThao tác này không thể hoàn tác."
+            ? $"Hủy bảng giá \"{list.Name}\" đang chờ áp dụng?\nToàn bộ chi tiết giá được giữ lại để xem."
             : $"Xóa giá của loại xe \"{rule!.VehicleType}\" khỏi bảng giá \"{list.Name}\"?\nThao tác này không thể hoàn tác.";
-        if (MessageBox.Show(FindForm(), message, "Xác nhận xóa", MessageBoxButtons.YesNo,
+        if (MessageBox.Show(FindForm(), message, isList ? "Xác nhận hủy" : "Xác nhận xóa", MessageBoxButtons.YesNo,
             MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) != DialogResult.Yes) return;
         _busy = true;
         UpdateActions();
         try
         {
-            if (isList) await _api.Pricing.DeletePriceListAsync(list.Id);
+            if (isList) await _api.Pricing.CancelPriceListAsync(list.Id);
             else await _api.Pricing.DeleteTariffRuleAsync(list.Id, rule!.Id);
         }
         catch (Exception ex) { ShowError(ex); return; }
