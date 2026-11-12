@@ -147,9 +147,42 @@ namespace TruckingSystem.Desktop.Common
             if (grid.DefaultCellStyle.Padding == new Padding(8, 0, 4, 0)) grid.DefaultCellStyle.Padding = new Padding(10, 0, 6, 0);
             if (grid.RowTemplate.Height == 36) grid.RowTemplate.Height = 38;
             HookHeaderAlign(grid);
+            HookKeepScroll(grid);
         }
 
         // ------------------------------------------------------------ tiêu đề cột thẳng hàng với số
+
+        private static readonly ConditionalWeakTable<DataGridView, object> ScrollHooked = new();
+
+        /// <summary>GIỮ VỊ TRÍ CUỘN khi bảng được nạp lại (lọc, Làm mới, sau khi xác nhận / sửa 1 dòng...):
+        /// trước đây gán lại DataSource là bảng nhảy về đầu, dòng ở cuối phải kéo xuống lại.
+        /// Cách làm: mỗi lần bảng VẼ thì nhớ dòng đang ở đầu khung nhìn (lúc nạp lại thì chưa kịp vẽ nên vẫn là
+        /// vị trí người dùng đang xem); nạp xong (DataBindingComplete kiểu Reset) thì cuộn về đúng dòng đó.
+        /// Màn nào sau đó tự chọn 1 dòng ngoài khung (VD mở từ thông báo) thì bảng vẫn cuộn tới dòng đó như cũ.</summary>
+        private static void HookKeepScroll(DataGridView grid)
+        {
+            if (ScrollHooked.TryGetValue(grid, out _)) return;
+            var state = new int[] { -1 };
+            ScrollHooked.Add(grid, state);
+            grid.Paint += (_, _) =>
+            {
+                if (grid.Rows.Count > 0) state[0] = grid.FirstDisplayedScrollingRowIndex;
+            };
+            grid.DataBindingComplete += (_, e) =>
+            {
+                if (e.ListChangedType != System.ComponentModel.ListChangedType.Reset) return;
+                var keep = state[0];
+                if (keep <= 0 || grid.Rows.Count == 0) return;
+                try
+                {
+                    grid.FirstDisplayedScrollingRowIndex = Math.Min(keep, grid.Rows.Count - 1);
+                }
+                catch (InvalidOperationException)
+                {
+                    // Bảng chưa đủ chỗ hiện dòng — bỏ qua, chỉ là giữ vị trí cuộn.
+                }
+            };
+        }
 
         private static readonly ConditionalWeakTable<DataGridView, object> AlignHooked = new();
 

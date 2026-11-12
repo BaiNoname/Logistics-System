@@ -86,7 +86,11 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
 
             // ② 2 ô chọn cách nhập, thay chỗ nút "Nhập TỰ ĐỘNG" ở hàng giữa.
             pendingBar.Controls.Remove(btnAutoTrip);
-            var step2 = new FlowLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, WrapContents = true, Margin = Padding.Empty };
+            // Dock Fill trong cột co giãn (cột 0 = 100%, nút "Tải lại" ở cột 1 vừa đủ chữ): ô chọn biết bề ngang
+            // thật để tự xuống dòng ĐÚNG và hàng tự cao theo — trước đây cột 0 tự co hẹp nên 2 ô bị xếp dọc rồi bị cắt mất.
+            pendingBar.ColumnStyles[0] = new ColumnStyle(SizeType.Percent, 100F);
+            pendingBar.ColumnStyles[1] = new ColumnStyle(SizeType.AutoSize);
+            var step2 = new FlowLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, WrapContents = true, Dock = DockStyle.Fill, Margin = Padding.Empty };
             step2.Controls.Add(new Label { Text = "② Chọn cách nhập:", AutoSize = true, Font = new Font("Segoe UI", 10F, FontStyle.Bold), Margin = new Padding(0, S(14), S(10), 0) });
             BuildOption(_optAuto, "⚡ Tự xếp cả chuyến", "Hệ thống tự chọn kệ phù hợp — nhanh, dùng cho hầu hết trường hợp", false);
             BuildOption(_optManual, "✋ Tự chọn kệ", "Chọn từng kệ + số lượng — khi muốn xếp theo ý mình (nhập nhiều lần để chia nhiều kệ)", true);

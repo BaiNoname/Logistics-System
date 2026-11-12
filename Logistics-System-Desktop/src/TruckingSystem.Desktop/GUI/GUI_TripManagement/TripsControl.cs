@@ -216,7 +216,11 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
         {
             var keepId = _trips.Count > 0 && _focusTripId is int focus ? focus : GetSelectedTripId();
             var keepGroup = keepId is null ? CurrentGroupCode() : null; // đang chọn dòng ĐƠN -> giữ dòng đơn đó
+            var jumpToFocus = _trips.Count > 0 && _focusTripId is not null; // mở từ thông báo -> được phép cuộn tới chuyến đó
             if (_trips.Count > 0) _focusTripId = null;
+            // Giữ nguyên VỊ TRÍ CUỘN khi dựng lại bảng (thu gọn / mở đơn, lọc, tải lại) — không nhảy về đầu danh sách.
+            var keepScroll = grid.Rows.Count > 0 ? grid.FirstDisplayedScrollingRowIndex : -1;
+            var keepHScroll = grid.HorizontalScrollingOffset;
             // "#15" -> đúng chuyến 15 (không lẫn #150, #151...).
             var exactId = System.Text.RegularExpressions.Regex.Match(filterBar.SearchText, @"^#(\d+)$") is { Success: true } m
                 ? int.Parse(m.Groups[1].Value) : (int?)null;
@@ -244,7 +248,23 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
                     if (r.Cells["Id"].Value is int rid && rid == id) { grid.CurrentCell = r.Cells["Chuyến"]; break; }
             }
             else if (keepGroup is not null) SelectGroupRow(keepGroup);
+            if (!jumpToFocus) RestoreScroll(keepScroll, keepHScroll);
             UpdateActionButtons();
+        }
+
+        /// <summary>Đưa bảng về đúng dòng đang ở đầu khung nhìn trước khi dựng lại (nếu dòng đang chọn vẫn nằm trong khung).</summary>
+        private void RestoreScroll(int firstRow, int hOffset)
+        {
+            try
+            {
+                if (firstRow >= 0 && grid.Rows.Count > 0)
+                    grid.FirstDisplayedScrollingRowIndex = Math.Min(firstRow, grid.Rows.Count - 1);
+                if (hOffset > 0) grid.HorizontalScrollingOffset = hOffset;
+            }
+            catch (InvalidOperationException)
+            {
+                // Bảng chưa vẽ xong / không đủ chỗ hiện dòng — bỏ qua, chỉ là giữ vị trí cuộn.
+            }
         }
 
         public TripsControl(ApiServices api) : this()
