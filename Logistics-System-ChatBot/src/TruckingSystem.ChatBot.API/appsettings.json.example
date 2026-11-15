@@ -1,21 +1,27 @@
 {
   "ConnectionStrings": {
-    "DefaultConnection": "Host=localhost;Port=5432;Database=trucking_system;Username=postgres;Password=YOUR_DATABASE_PASSWORD"
+    "DefaultConnection": "Host=localhost;Port=5432;Database=trucking_system;Username=postgres;Password=12345"
+  },
+  "Jwt": {
+    "Issuer": "TruckingSystemApi",
+    "Audience": "TruckingSystemClients",
+    "Key": "DOI_CHUOI_NAY_THANH_KHOA_BI_MAT_DAI_TOI_THIEU_32_KY_TU"
   },
   "VietMap": {
-    "RouteApiKey": "",
-    "MapApiKey": ""
+    "RouteApiKey": "eb432249fb287ca143f8f99689f8b91c297ef5eee9e0f144",
+    "MapApiKey": "0bac9990e8d586f2f23efe71d687f79f4fc28abd6eb0f44c"
+  },
+  "GoogleCalendar": {
+    "ServiceAccountKeyPath": "D:\\tdc\\HK5\\trucking-calendar-sync.json",
+    "ApplicationName": "TruckingSystem"
   },
   "FreightChat": {
     "Provider": "OpenAICompatible"
   },
   "Nvidia": {
     "BaseUrl": "https://integrate.api.nvidia.com/v1/",
-    "ApiKey": "",
+    "ApiKey": "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",
     "Model": "nvidia/nemotron-3.5-lightning-30b-a3b"
-  },
-  "Gemini": {
-    "ApiKey": ""
   },
   "Logging": {
     "LogLevel": {
@@ -23,5 +29,17 @@
       "Microsoft.AspNetCore": "Warning"
     }
   },
-  "AllowedHosts": "*"
+  "AllowedHosts": "*",
+  "Gemini": {
+    "ApiKey": "AQ.Ab8RN6IwtbINM1nSPoveRJsa4cBtjyyoveF4mjmxihdHyBSFyQ",
+    "Model": "gemini-3.5-flash-lite",
+    "ApiUrl": "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
+  },
+  "VideoStorage": {
+    "RootPath": "Storage/TripVideos",
+    "SigningKey": ""
+  },
+  "DocumentStorage": {
+    "RootPath": "Storage/VehicleDocuments"
+  }
 }

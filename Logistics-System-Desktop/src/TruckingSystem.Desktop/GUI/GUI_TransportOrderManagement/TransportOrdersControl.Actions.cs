@@ -311,16 +311,22 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             {
                 "Draft" => ("✅ Xác nhận đơn", (Func<Task>)(() => RunAsync(_actConfirm))),
                 "Confirmed" when o.ActiveTripCount == 0 => ("🚚 Chia xe", (Func<Task>)(() => RunAsync(_actAllocate))),
-                "Confirmed" or "InProgress" => ("🛣️ Mở màn Chuyến xe", (Func<Task>)OpenTripsScreen),
+                "Confirmed" or "InProgress" => ("🛣️ Xem chuyến của đơn", (Func<Task>)(() => OpenTripsScreen(o.Code))),
                 _ => ("📄 Xem chi tiết", (Func<Task>)(() => RunAsync(_actDetail))),
             };
             return info;
         }
 
-        private Task OpenTripsScreen()
+        /// <summary>Sang màn Chuyến xe ĐÃ LỌC ĐÚNG ĐƠN NÀY, chọn sẵn chuyến cần làm tiếp (hoặc dòng đơn).</summary>
+        private Task OpenTripsScreen(string orderCode)
         {
             var main = Application.OpenForms.OfType<TruckingSystem.Desktop.GUI_Shared.MainForm>().FirstOrDefault();
-            if (main is not null && !main.OpenNavByName("Chuyến xe"))
+            if (main is not null && _api is { } api && !main.OpenNavWith("Chuyến xe", () =>
+                {
+                    var c = new TripsControl(api);
+                    c.FocusOrder(orderCode);
+                    return c;
+                }))
                 Toast.Show(this, "Tài khoản của bạn không có quyền vào màn Chuyến xe.", ToastKind.Info);
             return Task.CompletedTask;
         }

@@ -188,6 +188,16 @@
             return true;
         }
 
+        /// <summary>Mở màn theo TÊN mục menu nhưng với màn dựng sẵn (VD màn Chuyến đã lọc đúng 1 đơn);
+        /// false = tài khoản không có mục đó.</summary>
+        internal bool OpenNavWith(string name, Func<Control> build)
+        {
+            var btn = _navButtons.FirstOrDefault(b => string.Equals(NavName(b), name, StringComparison.OrdinalIgnoreCase));
+            if (btn is null) return false;
+            NavigateTo(btn, build);
+            return true;
+        }
+
         /// <summary>Logo khi thu gọn: chỉ hình xe tải trên nền trời theo chế độ.</summary>
         private bool PaintMiniLogo(Graphics g)
         {

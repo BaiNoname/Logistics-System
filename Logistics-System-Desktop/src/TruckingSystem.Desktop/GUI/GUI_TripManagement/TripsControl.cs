@@ -202,6 +202,15 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
 
         private int? _focusTripId;
 
+        /// <summary>Mở từ màn Đơn: chỉ hiện chuyến của đơn này, chọn sẵn chuyến cần làm tiếp (không có thì chọn dòng đơn).</summary>
+        public void FocusOrder(string orderCode)
+        {
+            _focusOrderCode = orderCode;
+            filterBar.ShowOnlySearch(orderCode);
+        }
+
+        private string? _focusOrderCode;
+
         private readonly PendingBanner _pendingBanner = new();
         private bool _pendingOnly;
 
@@ -216,7 +225,9 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
         {
             var keepId = _trips.Count > 0 && _focusTripId is int focus ? focus : GetSelectedTripId();
             var keepGroup = keepId is null ? CurrentGroupCode() : null; // đang chọn dòng ĐƠN -> giữ dòng đơn đó
-            var jumpToFocus = _trips.Count > 0 && _focusTripId is not null; // mở từ thông báo -> được phép cuộn tới chuyến đó
+            var jumpToFocus = _trips.Count > 0 && (_focusTripId is not null || _focusOrderCode is not null); // mở từ thông báo / màn Đơn
+            var focusOrder = _trips.Count > 0 ? _focusOrderCode : null;
+            if (_trips.Count > 0) _focusOrderCode = null;
             if (_trips.Count > 0) _focusTripId = null;
             // Giữ nguyên VỊ TRÍ CUỘN khi dựng lại bảng (thu gọn / mở đơn, lọc, tải lại) — không nhảy về đầu danh sách.
             var keepScroll = grid.Rows.Count > 0 ? grid.FirstDisplayedScrollingRowIndex : -1;
@@ -248,6 +259,16 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
                     if (r.Cells["Id"].Value is int rid && rid == id) { grid.CurrentCell = r.Cells["Chuyến"]; break; }
             }
             else if (keepGroup is not null) SelectGroupRow(keepGroup);
+            else if (focusOrder is not null && _groups.TryGetValue(focusOrder, out var fg))
+            {
+                // Mở từ màn Đơn: chọn chuyến cần làm tiếp của đơn (không có thì chọn dòng đơn để xem cả đơn).
+                if (fg.NextTripId is int nextId)
+                {
+                    foreach (DataGridViewRow r in grid.Rows)
+                        if (r.Cells["Id"].Value is int rid && rid == nextId) { grid.CurrentCell = r.Cells["Chuyến"]; break; }
+                }
+                else SelectGroupRow(focusOrder);
+            }
             if (!jumpToFocus) RestoreScroll(keepScroll, keepHScroll);
             UpdateActionButtons();
         }
