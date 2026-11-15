@@ -1,0 +1,41 @@
+HUONG DAN SAO LUU / KHOI PHUC - TruckingSystem
+=============================================
+
+Sao luu gom:
+  - Co so du lieu PostgreSQL (moi lan 1 file .dump, giu 14 ban gan nhat)
+  - Anh hang hoa, video hanh trinh, giay to xe: C:\TruckingSystem\Storage
+    (chep vao BACKUP_DIR\Storage, moi lan chi chep them file moi)
+  - File cau hinh: appsettings.Production.json, localhost.pfx
+
+------------------------------------------------------------
+CAI DAT (lam 1 lan tren may chu, cmd QUYEN ADMIN)
+------------------------------------------------------------
+1) Chep 2 file db_backup.bat va db_restore.bat vao C:\TruckingSystem\
+
+2) Mo 2 file bang Notepad, sua phan CAU HINH o dau file cho dung (2 file giong nhau):
+     DB_NAME    = ten co so du lieu (phan Database=... trong ConnectionStrings)
+     BACKUP_DIR = noi luu ban sao luu, nen o o dia KHAC o C:  (VD D:\TruckingBackup)
+     PG_BIN     = thu muc bin cua PostgreSQL (mac dinh ban 18)
+
+3) Tao file mat khau C:\TruckingSystem\pgpass.conf, noi dung 1 dong:
+     localhost:5432:*:postgres:MAT_KHAU_POSTGRES
+   (mat khau chi nam tren may chu, khong dua len GitHub)
+
+4) Chay thu:   C:\TruckingSystem\db_backup.bat
+   -> thay chu XONG va trong BACKUP_DIR co thu muc ngay gio + thu muc Storage.
+
+5) Dat lich tu chay moi dem 23:00:
+     schtasks /Create /TN "TruckingSystem Backup" /TR "\"C:\TruckingSystem\db_backup.bat\"" /SC DAILY /ST 23:00 /RU SYSTEM /RL HIGHEST /F
+   Kiem tra:  schtasks /Run /TN "TruckingSystem Backup"   roi xem BACKUP_DIR\backup.log
+
+------------------------------------------------------------
+KHOI PHUC
+------------------------------------------------------------
+  Xem cac ban sao luu:        C:\TruckingSystem\db_restore.bat
+  Khoi phuc THU (an toan):    C:\TruckingSystem\db_restore.bat 20261115-2300
+     -> tao CSDL rieng <DB_NAME>_restore_test, in so don va so chuyen de doi chieu.
+  Khoi phuc THAT:             C:\TruckingSystem\db_restore.bat 20261115-2300 THAT
+     -> hoi xac nhan, tu sao luu du lieu hien tai truoc, dung API, de du lieu,
+        chep lai anh/video, chay lai API.
+
+NEN khoi phuc thu it nhat 1 lan sau khi cai dat de chac ban sao luu dung duoc.

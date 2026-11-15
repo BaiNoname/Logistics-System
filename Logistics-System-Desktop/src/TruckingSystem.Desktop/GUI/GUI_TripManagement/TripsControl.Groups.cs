@@ -56,6 +56,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
         private Dictionary<string, OrderGroup> _groups = new();
         private Action? _cardAction;
         private string? _cardOrder;
+        private Func<Task>? _cardLink; // bấm chữ gạch chân trên thẻ
 
         // 4 MÀU THEO TRẠNG THÁI ĐƠN (thay cho mỗi đơn 1 màu): xám = chưa bắt đầu · vàng = đang thực hiện ·
         // xanh lá = hoàn tất · đỏ = đã hủy. Trễ hạn vẫn báo riêng bằng nhãn đỏ ở cột Hạn.
@@ -124,7 +125,12 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
                 else if (e.KeyCode == Keys.Right && _collapsed.Contains(code)) { e.Handled = true; ToggleGroup(code); }
             };
             _selectedBar.ActionClicked += (_, _) => _cardAction?.Invoke();
-            _selectedBar.LinkClicked += (_, _) => { if (_cardOrder is string c) SelectGroup(c); };
+            _selectedBar.LinkClicked += async (_, _) =>
+            {
+                if (_cardLink is null) return;
+                try { await _cardLink(); }
+                catch (Exception ex) { Toast.Show(this, "Lỗi: " + ex.Message, ToastKind.Warning); }
+            };
         }
 
         // ------------------------------------------------------------ dữ liệu bảng
@@ -331,6 +337,22 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
             grid.Focus();
         }
 
+        /// <summary>Mở cửa sổ Chi tiết đơn (của màn Đơn) cho đơn <paramref name="code"/>; đóng xong tải lại chuyến.</summary>
+        private async Task OpenOrderDetailAsync(string code)
+        {
+            if (_api is null) return;
+            var orders = await _api.TransportOrders.GetTransportOrdersAsync();
+            var order = orders.FirstOrDefault(o => o.Code == code);
+            if (order is null)
+            {
+                Toast.Show(this, $"Không tìm thấy đơn {code}.", ToastKind.Info);
+                return;
+            }
+            using (var f = new TruckingSystem.Desktop.GUI_TransportOrderManagement.OrderDetailForm(_api, order.Id))
+                f.ShowDialog(FindForm());
+            await LoadAsync(); // đơn có thể vừa đổi hạn / hủy -> cập nhật lại chuyến
+        }
+
         // ------------------------------------------------------------ vẽ
 
         private int D(int v) => LogicalToDeviceUnits(v);
@@ -495,6 +517,8 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
                 _ => ("🗺️ Xem lộ trình", (Action)(() => BtnViewRoute_Click(this, EventArgs.Empty))),
             };
             _cardOrder = t.OrderCode;
+            var orderCode = t.OrderCode;
+            _cardLink = () => { SelectGroup(orderCode); return Task.CompletedTask; }; // "thuộc đơn …" -> thẻ cả đơn
             return info;
         }
 
@@ -548,6 +572,9 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
             }
             else _cardAction = null;
             _cardOrder = null;
+            // Mở chi tiết đơn ngay tại đây (hợp đồng, đổi hạn, phí lưu kho...) — không phải quay về màn Đơn tìm lại.
+            info.LinkText = "📄 Mở chi tiết đơn ›";
+            _cardLink = () => OpenOrderDetailAsync(code);
             _selectedBar.ShowCard(info);
         }
     }
