@@ -3,10 +3,10 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using TruckingSystem.Application.FreightChat;
 
-namespace TruckingSystem.ChatBot.API.Controllers;
+namespace TruckingSystem.API.Controllers;
 
 [ApiController, AllowAnonymous, Route("api/public/freight-chat")]
-[EnableRateLimiting(TruckingSystem.ChatBot.Infrastructure.FreightChatRateLimit.PolicyName)]
+[EnableRateLimiting(RateLimiting.FreightChatRateLimit.PolicyName)]
 public class FreightChatController(FreightChatService service, ILogger<FreightChatController> logger) : ControllerBase
 {
     [HttpPost, RequestSizeLimit(120000)]

@@ -5,10 +5,10 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace TruckingSystem.ChatBot.Infrastructure;
+namespace TruckingSystem.API.RateLimiting;
 
 /// <summary>
-/// Giới hạn chatbot công khai 10 lượt/phút/khách cho TruckingSystem.ChatBot.API.
+/// Giới hạn chatbot tra cước công khai (POST api/public/freight-chat) 10 lượt/phút/khách.
 /// Sau Cloudflare Tunnel mọi request tới từ cloudflared (loopback), nên khi đó lấy IP thật trong CF-Connecting-IP;
 /// request không đi qua loopback thì bỏ qua header (khách tự gửi header giả để lách giới hạn).
 /// </summary>

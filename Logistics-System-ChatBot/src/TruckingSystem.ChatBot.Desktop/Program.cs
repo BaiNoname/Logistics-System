@@ -4,10 +4,10 @@ using TruckingSystem.Desktop.GUI.GUI_ChatBot;
 
 namespace TruckingSystem.ChatBot.Desktop;
 
-/// <summary>App chatbot tra cước đóng gói riêng: mở thẳng khung chat, gọi TruckingSystem.ChatBot.API.</summary>
+/// <summary>App chatbot tra cước đóng gói riêng: mở thẳng khung chat, gọi POST api/public/freight-chat của API chính TruckingSystem.API.</summary>
 internal static class Program
 {
-    private const string DefaultServerUrl = "https://localhost:8090";
+    private const string DefaultServerUrl = "https://localhost:8080";
 
     [STAThread]
     static void Main()
@@ -25,7 +25,7 @@ internal static class Program
         Application.Run(new ChatBotForm(new ApiConnection(ReadServerUrl())));
     }
 
-    /// <summary>ServerUrl trong chatbot.settings.json cạnh file exe (domain của ChatBot API, hoặc URL endpoint đầy đủ); thiếu/sai thì dùng mặc định.</summary>
+    /// <summary>ServerUrl trong chatbot.settings.json cạnh file exe (domain API chính TruckingSystem.API, hoặc URL endpoint đầy đủ); thiếu/sai thì dùng mặc định.</summary>
     private static string ReadServerUrl()
     {
         try
@@ -51,7 +51,7 @@ internal static class Program
         {
             var inner = ex is AggregateException agg && agg.InnerException is not null ? agg.InnerException : ex;
             var message = inner is HttpRequestException or TaskCanceledException
-                ? "Không kết nối được máy chủ chatbot (hoặc máy chủ phản hồi quá lâu). Kiểm tra mạng / ChatBot API rồi thử lại.\n\nChi tiết: " + inner.Message
+                ? "Không kết nối được máy chủ chatbot (hoặc máy chủ phản hồi quá lâu). Kiểm tra mạng / ServerUrl trong chatbot.settings.json rồi thử lại.\n\nChi tiết: " + inner.Message
                 : "Đã xảy ra lỗi ngoài dự kiến — thao tác vừa rồi chưa hoàn tất, ứng dụng vẫn chạy tiếp.\n\nChi tiết: " + inner.Message;
             MessageBox.Show(message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }

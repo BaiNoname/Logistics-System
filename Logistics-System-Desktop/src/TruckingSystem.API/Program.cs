@@ -1,5 +1,6 @@
 using TruckingSystem.Application;
 using TruckingSystem.Infrastructure;
+using TruckingSystem.API.RateLimiting;
 
 // ---- Sửa lỗi 500 kinh điển với Npgsql: WinForms DateTimePicker (và nhiều
 // nguồn khác) trả về DateTime với Kind=Unspecified/Local — nhưng Npgsql bản
@@ -24,6 +25,7 @@ builder.Logging.AddConsole();
 //      "composition root" lắp ráp lại, không cần biết chi tiết bên trong. ----
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddFreightChatRateLimiter();
 
 // ---- CORS cho React Web (nếu sau này cần) ----
 builder.Services.AddCors(options => options.AddPolicy("ReactApp", policy =>
@@ -60,7 +62,6 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
-// Chatbot tra cước (api/public/freight-chat) đã tách sang gói riêng ../Logistics-System-ChatBot (host TruckingSystem.ChatBot.API).
 var app = builder.Build();
 
 app.UseMiddleware<TruckingSystem.API.Middleware.DbConflictMiddleware>();
@@ -74,6 +75,7 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseStaticFiles(); // phục vụ wwwroot/track.html cho trang tracking công khai
 app.UseCors("ReactApp");
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

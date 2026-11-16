@@ -11,8 +11,7 @@ public partial class ChatBotForm : Form
     [
         "Xem bảng giá",
         "Công thức tính cước",
-        "Hướng dẫn sử dụng",
-        "Gửi 2 tấn gạo từ Thủ Đức đến Biên Hòa, kho tới lấy"
+        "Hướng dẫn sử dụng"
     ];
     private readonly ChatBotApiService service;
     private readonly List<ChipButton> activeChips = [];
