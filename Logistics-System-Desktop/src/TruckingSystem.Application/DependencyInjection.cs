@@ -59,6 +59,8 @@ public static class DependencyInjection
         services.AddScoped<ITripVideoService, TripVideoService>();
         services.AddScoped<ITripPhotoService, TripPhotoService>();
         services.AddScoped<IResourceOverviewService, ResourceOverviewService>();
+        // Chatbot tra cước công khai (giao diện ở gói riêng ../Logistics-System-ChatBot, gọi POST api/public/freight-chat).
+        services.AddScoped<FreightChat.FreightChatService>();
         return services;
     }
 }

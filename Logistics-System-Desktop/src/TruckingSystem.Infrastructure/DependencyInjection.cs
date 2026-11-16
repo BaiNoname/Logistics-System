@@ -34,6 +34,20 @@ public static class DependencyInjection
     {
         services.AddInfrastructureCore(configuration);
 
+        // Chatbot tra cước công khai: AI hội thoại + vector RAG bảng giá. Chỉ host API đăng ký (giữ key AI, chạy worker index).
+        services.AddDataProtection();
+        services.AddScoped<TruckingSystem.Application.FreightChat.IFreightChatContext, FreightChatContext>();
+        services.AddHttpClient<FreightGemini>();
+        services.AddHttpClient<FreightOpenAiChat>();
+        // FreightChat:Provider chọn AI hội thoại (Gemini mặc định / OpenAICompatible); embedding luôn dùng Gemini.
+        if (FreightAi.UsesOpenAiCompatible(configuration))
+            services.AddScoped<TruckingSystem.Application.FreightChat.IFreightChatAi>(sp => sp.GetRequiredService<FreightOpenAiChat>());
+        else
+            services.AddScoped<TruckingSystem.Application.FreightChat.IFreightChatAi>(sp => sp.GetRequiredService<FreightGemini>());
+        services.AddScoped<TruckingSystem.Application.FreightChat.IFreightEmbedding>(sp => sp.GetRequiredService<FreightGemini>());
+        services.AddScoped<TruckingSystem.Application.FreightChat.IFreightVectorStore, FreightVectorStore>();
+        services.AddHostedService<FreightIndexWorker>();
+
         services.AddIdentity<ApplicationUser, ApplicationRole>(options =>
         {
             options.Password.RequireNonAlphanumeric = false;
