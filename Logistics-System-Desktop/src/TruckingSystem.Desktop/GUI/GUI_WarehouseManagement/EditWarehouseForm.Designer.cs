@@ -149,7 +149,7 @@ partial class EditWarehouseForm
         lblStorageFee.ForeColor = System.Drawing.Color.FromArgb(100, 116, 139);
         lblStorageFee.Margin = new System.Windows.Forms.Padding(0, 8, 0, 4);
         lblStorageFee.Name = "lblStorageFee";
-        lblStorageFee.Text = "💰 Phí lưu kho (đồng / m³ / ngày) — tính cho khách khi KHÁCH xin dời hạn giao trễ hơn; 0 = không tính";
+        lblStorageFee.Text = "💰 Phí lưu kho (đồng / m³ / ngày)";
         //
         // numStorageFee
         //

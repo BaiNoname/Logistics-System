@@ -17,21 +17,11 @@ namespace TruckingSystem.Desktop.SERVICE_TransportOrderManagement
             => _conn.PostAsync<OrderActionResultItem>($"/api/transport-orders/{orderId}/deadline",
                 new { newDeliveryDate = newDate.Date, reason, requestedBy })!;
 
-        /// <summary>Phí lưu kho ước tính nếu đổi hạn giao (requestedBy = Customer / Company).</summary>
-        public Task<StorageFeePreviewItem> PreviewStorageFeeAsync(int orderId, DateTime newDate, string requestedBy)
-            => _conn.GetAsync<StorageFeePreviewItem>(
-                $"/api/transport-orders/{orderId}/storage-fee-preview?newDate={newDate:yyyy-MM-dd}&requestedBy={requestedBy}")!;
-
-        /// <summary>Phí lưu kho của đơn do khách dời hạn giao (từng lần đổi + tổng).</summary>
+        /// <summary>Phí lưu kho của đơn (từng ngày, lịch sử đổi hạn + hạn tính trễ, tổng).</summary>
         public Task<StorageFeeItem> GetStorageFeeAsync(int orderId)
             => _conn.GetAsync<StorageFeeItem>($"/api/transport-orders/{orderId}/storage-fee")!;
 
-        /// <summary>Ghi nhận BỔ SUNG phí lưu kho do khách chậm nhận hàng (không đổi hạn giao; cả đơn đã Hoàn tất / Hủy).</summary>
-        public Task<OrderActionResultItem> RecordStorageFeeAsync(int orderId, DateTime endDate, string reason)
-            => _conn.PostAsync<OrderActionResultItem>($"/api/transport-orders/{orderId}/storage-fee-records",
-                new { endDate = endDate.Date, reason })!;
-
-        /// <summary>Hàng nằm kho quá hạn giao: party = "Customer" (tính phí, bắt buộc lý do) / "Company" (0 đ).</summary>
+        /// <summary>Hàng nằm kho sau hạn tính trễ: party = "Customer" (tính phí, bắt buộc lý do) / "Company" (0 đ).</summary>
         public Task<OrderActionResultItem> SetStorageResponsibilityAsync(int orderId, string party, string? reason)
             => _conn.PostAsync<OrderActionResultItem>($"/api/transport-orders/{orderId}/storage-responsibility", new { party, reason })!;
 

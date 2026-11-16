@@ -36,7 +36,12 @@ public record TransportOrderListItemDto(
     DateTime? CommittedDeliveryDate = null, // hạn giao (giờ VN) — để lọc "quá hạn / sắp tới hạn"
     string? WarehouseName = null,           // kho trung chuyển — để lọc theo kho
     string? ContractCode = null,            // mã hợp đồng (null = đơn không theo hợp đồng)
-    int OverdueStorageDays = 0              // hàng nằm kho quá hạn giao bao nhiêu ngày mà CHƯA chọn do bên nào (0 = không)
+    int OverdueStorageDays = 0,             // hàng nằm kho sau hạn tính trễ bao nhiêu ngày mà CHƯA chọn do bên nào (0 = không)
+    DateTime? LateBasisDate = null,         // HẠN TÍNH TRỄ (DeadlineBasisRules) — khác hạn giao khi công ty đã dời hạn
+    int StorageDay = 0,                     // hàng đang nằm kho: ngày lưu kho thứ mấy (0 = không có hàng trong kho)
+    int FreeDaysLeft = 0,                   // còn mấy ngày miễn phí lưu kho (0 = hết / không có; -1 = kho không tính phí)
+    decimal StorageFeeToDate = 0,           // phí lưu kho tính cho khách tới hôm nay (tạm tính)
+    decimal StockM3 = 0                     // m³ hàng của đơn đang nằm kho
 );
 
 /// <summary>LegType: Pickup / Delivery / Return — cùng 1 lô hàng đi qua nhiều chặng, nên
@@ -52,31 +57,30 @@ public record OrderContractOptionDto(int Id, string Code, DateTime StartDate, Da
 /// <summary>Kết quả của các thao tác đổi trạng thái đơn (Xác nhận/Hủy) — không
 /// trả nguyên TransportOrderDetailDto vì Desktop chỉ cần biết có thành công
 /// không và lý do nếu thất bại, rồi tự gọi lại GetByIdAsync để load lại mới nhất.</summary>
-public record OrderActionResult(bool Success, string? Message);
+public record OrderActionResult(bool Success, string? Message,
+    List<TruckingSystem.Application.Common.FixHint>? Fixes = null); // cách sửa nhanh khi bị chặn (xem FixHint)
 
 /// <summary>Đổi hạn giao cam kết của đơn ĐÃ XÁC NHẬN / ĐANG CHẠY (khách xin dời, thỏa thuận lùi
 /// hạn...) — bắt buộc ghi lý do, hệ thống ghi nhật ký hạn cũ -> hạn mới.</summary>
 public record ChangeDeadlineRequest(DateTime NewDeliveryDate, string Reason,
-    string? RequestedBy = null); // "Customer" | "Company" — BẮT BUỘC chọn (khách dời trễ -> tính phí lưu kho)
+    string? RequestedBy = null); // "Customer" | "Company" — BẮT BUỘC chọn (khách dời -> đổi hạn tính trễ; công ty dời -> giữ hạn tính trễ)
 
-/// <summary>Phí lưu kho ƯỚC TÍNH khi đổi hạn giao (hiện ngay trên hộp đổi hạn để báo khách).</summary>
-public record StorageFeePreviewDto(int DelayDays, decimal VolumeM3, decimal RatePerM3PerDay, decimal EstimatedFee, string Note);
+/// <summary>1 ngày hàng của đơn nằm kho: m³ trong ngày, phí ngày đó, Kind = "Free" (trong số ngày miễn phí) /
+/// "Charged" (tính cho khách) / "AfterBasis" (sau hạn tính trễ — tính hay không tùy bên chịu), Event = nhập / xuất trong ngày.</summary>
+public record StorageFeeDayDto(DateTime Day, decimal VolumeM3, decimal Fee, string Kind, string? Event);
 
-/// <summary>1 lần đổi hạn giao + phí lưu kho của lần đó (tính theo số ngày hàng THỰC SỰ còn trong kho).</summary>
-public record StorageFeeLineDto(DateTime ChangedAt, DateTime? OldDate, DateTime NewDate, string RequestedBy, string Reason,
-    string? ChangedBy, int DelayDays, decimal RatePerM3PerDay, decimal EstimatedFee, int ChargedDays, decimal ChargedM3Days, decimal Fee,
-    bool IsFeeOnly = false, string Formula = "", List<StorageFeeDayDto>? Days = null);
+/// <summary>1 lần đổi hạn giao + HẠN TÍNH TRỄ sau lần đổi đó (khách dời -> theo hạn mới; công ty dời -> giữ nguyên).</summary>
+public record DeadlineChangeDto(DateTime ChangedAt, DateTime? OldDate, DateTime NewDate, string RequestedBy, string Reason,
+    string? ChangedBy, DateTime? LateBasisAfter);
 
-/// <summary>1 ngày trong khoảng khách xin dời: m³ hàng còn trong kho cuối ngày, phí ngày đó, hoặc lý do KHÔNG tính
-/// (hàng không nằm kho / đã tính ở lần trước / chưa tới ngày).</summary>
-public record StorageFeeDayDto(DateTime Day, decimal VolumeM3, decimal Fee, string? NotChargedReason);
-
-/// <summary>Ghi nhận BỔ SUNG phí lưu kho do khách (không đổi hạn giao): hàng nằm kho tới ngày EndDate.</summary>
-public record RecordStorageFeeRequest(DateTime EndDate, string Reason);
-
-/// <summary>PHÍ LƯU KHO của đơn (do khách dời hạn giao) — Total đưa vào hóa đơn (phần hóa đơn).
-/// IsFinal = hàng đã rời kho hết (số đã chốt); false = tạm tính tới hôm nay.</summary>
-public record StorageFeeDto(int TransportOrderId, decimal TotalFee, bool IsFinal, string Note, List<StorageFeeLineDto> Changes);
+/// <summary>PHÍ LƯU KHO của đơn (StorageFeeRules) — TotalFee đưa vào hóa đơn (phần hóa đơn).
+/// IsFinal = số đã chốt (hàng đã rời kho, không còn phần chờ chọn bên chịu); false = tạm tính.</summary>
+public record StorageFeeDto(int TransportOrderId, decimal TotalFee, bool IsFinal, string Note,
+    string WarehouseName, decimal RatePerM3PerDay, int FreeDays,
+    DateTime? ReceivedDate, DateTime? FreeUntil, DateTime? LateBasisDate, DateTime? CommittedDeliveryDate,
+    DateTime? LastIssueDate, bool StillInStock, decimal VolumeNowM3,
+    decimal CompanyBorneFee, decimal PendingFee, int AfterBasisDays, string? AfterBasisDecision, string? AfterBasisReason,
+    List<StorageFeeDayDto> Days, List<DeadlineChangeDto> History);
 
 public record TransportOrderDetailDto(
     int Id, string Code, string CustomerName, string Status, decimal ProgressPercent,
@@ -90,12 +94,15 @@ public record TransportOrderDetailDto(
     string? AllocateBlockReason = null, // đơn chờ Chia xe mà CHƯA chia được (hàng khách chưa mang tới đủ / kho thiếu khu) — Desktop mờ nút + ghi lý do
     string? LateWarning = null,          // chuyến chưa chạy / đang chạy đã KHÔNG KỊP hạn giao — câu giải thích (null = ổn)
     DateTime? SuggestedDeadline = null,  // ngày giao sớm nhất nếu xuất phát ngay — gợi ý khi dời hạn
-    OverdueStorageDto? OverdueStorage = null // hàng nằm kho quá hạn giao (null = không)
+    OverdueStorageDto? OverdueStorage = null, // hàng nằm kho sau hạn tính trễ (null = không)
+    DateTime? LateBasisDate = null,           // HẠN TÍNH TRỄ — khác hạn giao khi công ty đã dời hạn
+    List<TruckingSystem.Application.Common.FixHint>? AllocateFixes = null // cách sửa nhanh cho AllocateBlockReason
 );
 
-/// <summary>Hàng nằm kho sau hạn giao: số ngày, m³ đang nằm kho, đơn giá kho, phí ƯỚC TÍNH, và đã chọn do bên nào
-/// (Decision null = chưa chọn -> mặc định công ty chịu, Desktop báo đỏ; "Customer" / "Company").</summary>
-public record OverdueStorageDto(int Days, decimal VolumeM3, decimal RatePerM3PerDay, decimal EstimatedFee, string? Decision);
+/// <summary>Hàng nằm kho SAU HẠN TÍNH TRỄ (và đã hết ngày miễn phí): số ngày, m³ trung bình, đơn giá kho, phí của những
+/// ngày đó, đã chọn do bên nào (Decision null = chưa chọn -> chưa tính, Desktop báo đỏ; "Customer" / "Company").</summary>
+public record OverdueStorageDto(int Days, decimal VolumeM3, decimal RatePerM3PerDay, decimal EstimatedFee, string? Decision,
+    DateTime? LateBasisDate = null);
 
 /// <summary>Chọn bên chịu phí lưu kho cho phần hàng nằm kho quá hạn: Party = "Customer" | "Company"; Reason bắt buộc khi Customer.</summary>
 public record StorageResponsibilityRequest(string Party, string? Reason);

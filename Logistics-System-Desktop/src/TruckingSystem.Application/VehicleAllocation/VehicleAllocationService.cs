@@ -100,7 +100,9 @@ public class VehicleAllocationService : IVehicleAllocationService
         var zoneError = !isCompanyPickup ? null : await WarehouseZoneRules.MissingReasonAsync(_db, order.WarehouseId,
             cargoLines.Select(c => WarehouseZoneRules.Required(c.IsHazmat, c.IsFragile)));
         if (zoneError is not null)
-            return new AllocateVehiclesResponse(false, totalQtyToShip, 0, new(), zoneError);
+            return new AllocateVehiclesResponse(false, totalQtyToShip, 0, new(), zoneError,
+                Fixes: new List<FixHint> { new("WarehouseLayout", $"🗺️ Mở sơ đồ kho {order.Warehouse.Name} để thêm khu", WarehouseId: order.WarehouseId,
+                    Name: order.Warehouse.Name, Note: "Thêm khu đúng loại hàng (dễ vỡ / nguy hiểm) và vị trí trong khu") });
 
         // Đơn KHÁCH TỰ MANG TỚI KHO: Chia xe KHÔNG tự nhập kho nữa — khách mang hàng tới thì
         // thủ kho nhập (màn Kho → Nhập/Xuất thủ công: tự chọn vị trí hoặc Best-Fit). Phải nhập
@@ -123,7 +125,9 @@ public class VehicleAllocationService : IVehicleAllocationService
             if (missing.Count > 0)
                 return new AllocateVehiclesResponse(false, totalQtyToShip, 0, new(),
                     "Đơn khách tự mang hàng tới kho: hàng CHƯA nhập kho đủ — " + string.Join("; ", missing) +
-                    ". Khi khách mang hàng tới, vào màn Kho → 🙋 Nhận hàng khách mang tới để nhập (tự chọn vị trí hoặc để hệ thống tự xếp) đủ số lượng rồi mới Chia xe.");
+                    ". Khi khách mang hàng tới, vào màn Kho → 🙋 Nhận hàng khách mang tới để nhập (tự chọn vị trí hoặc để hệ thống tự xếp) đủ số lượng rồi mới Chia xe.",
+                    Fixes: new List<FixHint> { new("ManualReceive", "🙋 Nhận hàng khách mang tới", WarehouseId: order.WarehouseId,
+                        Name: order.Warehouse.Name, Note: $"Mở màn nhập hàng ở kho {order.Warehouse.Name}") });
         }
 
         // BỌC TOÀN BỘ phần còn lại trong 1 TRANSACTION DUY NHẤT — Chia xe cho
@@ -197,7 +201,11 @@ public class VehicleAllocationService : IVehicleAllocationService
             .ToList();
 
         if (!availableVehicles.Any())
-            return new AllocateVehiclesResponse(false, totalQtyToShip, 0, new(), $"Không còn xe nào đang rảnh VÀ đang đóng quân đúng kho của đơn này VÀ có ĐỦ giấy tờ (Đăng kiểm, Bảo hiểm, Phù hiệu xe) còn hạn từ {startDay:dd/MM} tới hết ngày {lastTripDay:dd/MM} (thời gian chuyến dự kiến).");
+            return new AllocateVehiclesResponse(false, totalQtyToShip, 0, new(), Fixes: new List<FixHint>
+            {
+                new("VehiclesBlocked", "🚚 Xem xe đang bị chặn vì giấy tờ", Note: "Mở màn Đội xe, lọc sẵn xe thiếu / hết hạn giấy tờ"),
+                new("ChangeStartDate", "🗓️ Chọn ngày xuất phát khác", Note: "Đổi ô Ngày xuất phát rồi Chia xe lại"),
+            }, Message: $"Không còn xe nào đang rảnh VÀ đang đóng quân đúng kho của đơn này VÀ có ĐỦ giấy tờ (Đăng kiểm, Bảo hiểm, Phù hiệu xe) còn hạn từ {startDay:dd/MM} tới hết ngày {lastTripDay:dd/MM} (thời gian chuyến dự kiến).");
 
         // Danh sách tài xế hợp lệ (có DriverProfile thật + đang Active + bằng
         // lái CÒN HẠN) — xoay vòng nếu cần nhiều xe hơn số tài xế rảnh (đơn
@@ -247,6 +255,27 @@ public class VehicleAllocationService : IVehicleAllocationService
             .GroupBy(s => s.DriverEmployeeId)
             .ToDictionary(g => g.Key, g => g.Select(x => x.ShiftDate.Date).ToHashSet());
 
+        // Tài xế CHỈ thiếu ngày làm (mọi điều kiện khác đều đạt) -> lối tắt đăng ký ngày làm cho đúng người, đúng ngày thiếu.
+        var scheduleFixes = new List<FixHint>();
+        var missingByDriver = driverIds
+            .Select(id => (Id: id, Missing: neededDates.Where(d => !(scheduledDateSetByDriver.TryGetValue(id, out var ds) && ds.Contains(d))).ToList()))
+            .Where(x => x.Missing.Count > 0).Take(5).ToList();
+        if (missingByDriver.Count > 0)
+        {
+            var missingIds = missingByDriver.Select(x => x.Id).ToList();
+            var names = await _db.Employees.Where(e => missingIds.Contains(e.Id)).ToDictionaryAsync(e => e.Id, e => e.FullName);
+            foreach (var (id, missing) in missingByDriver)
+            {
+                var name = names.GetValueOrDefault(id) ?? $"#{id}";
+                var from = missing.First();
+                var to = missing.Last();
+                scheduleFixes.Add(new FixHint("DriverWorkDays",
+                    from == to ? $"📅 Đăng ký ngày làm {from:dd/MM} cho tài xế {name}" : $"📅 Đăng ký ngày làm {from:dd/MM} – {to:dd/MM} cho tài xế {name}",
+                    id, name, from, to, Note: $"Tài xế rảnh, đủ giấy tờ — chỉ thiếu {missing.Count} ngày làm"));
+            }
+        }
+        scheduleFixes.Add(new FixHint("ChangeStartDate", "🗓️ Chọn ngày xuất phát khác", Note: "Đổi ô Ngày xuất phát rồi Chia xe lại"));
+
         driverIds = driverIds.Where(id =>
             scheduledDateSetByDriver.TryGetValue(id, out var dates) && neededDates.All(d => dates.Contains(d))
         ).ToList();
@@ -257,7 +286,7 @@ public class VehicleAllocationService : IVehicleAllocationService
                 ? $" từ {neededDates.First():dd/MM} tới {neededDates.Last():dd/MM} (ước tính chuyến kéo dài {estimatedTripDays} ngày do quãng đường xa)"
                 : $" ngày {neededDates.First():dd/MM}";
             return new AllocateVehiclesResponse(false, totalQtyToShip, 0, new(),
-                $"Không có tài xế nào khả dụng (không có chức danh Tài xế / chưa có hồ sơ, bằng lái hoặc giấy khám sức khỏe hết hạn trước khi chuyến xong, đang bận chuyến khác, không đóng quân đúng kho của đơn này, hoặc CHƯA đăng ký ĐỦ ngày làm{dayRangeText} — bắt buộc phải đăng ký ngày làm trước, màn Tài xế → Ngày làm).");
+                $"Không có tài xế nào khả dụng (không có chức danh Tài xế / chưa có hồ sơ, bằng lái hoặc giấy khám sức khỏe hết hạn trước khi chuyến xong, đang bận chuyến khác, không đóng quân đúng kho của đơn này, hoặc CHƯA đăng ký ĐỦ ngày làm{dayRangeText} — bắt buộc phải đăng ký ngày làm trước, màn Tài xế → Ngày làm).", Fixes: scheduleFixes);
         }
 
         // Dùng ĐÚNG kho trung chuyển Dispatcher đã CHỌN khi tạo đơn (order.WarehouseId)
@@ -502,9 +531,12 @@ public class VehicleAllocationService : IVehicleAllocationService
                 : $"chỉ có {availableVehicles.Count} xe rảnh đủ điều kiện";
             if (licenseSkippedPlates.Count > 0)
                 reason += $"; không còn tài xế rảnh có hạng bằng phù hợp cho xe {string.Join(", ", licenseSkippedPlates)}";
+            if (!(usedDriverIds.Count >= driverIds.Count && vehicleIndex < availableVehicles.Count))
+                scheduleFixes.Insert(0, new FixHint("VehiclesBlocked", "🚚 Xem xe đang bị chặn vì giấy tờ", Note: "Mở màn Đội xe, lọc sẵn xe thiếu / hết hạn giấy tờ"));
             return new AllocateVehiclesResponse(false, totalQtyToShip, totalAssigned, new(),
                 $"Không đủ xe/tài xế để chở hết đơn — {reason}, chở được {totalAssigned}/{totalQtyToShip}, còn thiếu {remaining}. " +
-                "Chưa chia xe (không lưu gì). Hãy chờ thêm xe/tài xế rảnh (hoặc đăng ký thêm ngày làm cho tài xế) rồi chia lại.");
+                "Chưa chia xe (không lưu gì). Hãy chờ thêm xe/tài xế rảnh (hoặc đăng ký thêm ngày làm cho tài xế) rồi chia lại.",
+                Fixes: scheduleFixes);
         }
 
         await _db.SaveChangesAsync();

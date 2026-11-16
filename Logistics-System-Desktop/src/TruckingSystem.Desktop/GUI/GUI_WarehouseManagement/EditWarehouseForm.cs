@@ -35,7 +35,11 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             // Vị trí cửa: chọn tường trước, rồi mới nhập được khoảng cách dọc tường.
             WarehouseDoorHelper.FillSideCombo(cboDoorSide);
             cboDoorSide.SelectedIndexChanged += (_, _) => numDoorOffset.Enabled = cboDoorSide.SelectedIndex > 0;
+            // Số ngày lưu kho miễn phí cạnh ô phí lưu kho + dòng ví dụ (thêm bằng code, không sửa Designer).
+            _numFreeDays = WarehouseStorageFields.Setup(inputs, lblStorageFee, numStorageFee);
         }
+
+        private readonly NumberBox _numFreeDays;
 
         public EditWarehouseForm(ApiServices api, WarehouseListItem warehouse) : this()
         {
@@ -53,6 +57,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             SetSafe(numLength, warehouse.LengthMeters ?? 0);
             SetSafe(numWidth, warehouse.WidthMeters ?? 0);
             SetSafe(numStorageFee, warehouse.StorageFeePerM3PerDay);
+            _numFreeDays.Value = Math.Clamp(warehouse.FreeStorageDays, 0, 60);
 
             // Nạp lại vị trí cửa đã khai báo (nếu có)
             cboDoorSide.SelectedIndex = WarehouseDoorHelper.ToIndex(warehouse.DoorSide);
@@ -127,7 +132,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                     numLength.Value == 0 ? null : numLength.Value,
                     numWidth.Value == 0 ? null : numWidth.Value,
                     lat, lng,
-                    doorSide, doorOffset, numStorageFee.Value);
+                    doorSide, doorOffset, numStorageFee.Value, (int)_numFreeDays.Value);
 
                 if (!result.Success)
                 {

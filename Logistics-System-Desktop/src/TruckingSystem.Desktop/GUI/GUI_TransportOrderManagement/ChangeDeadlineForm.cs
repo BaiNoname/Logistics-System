@@ -7,6 +7,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
     /// thuận lùi hạn (kẹt đường, thời tiết...), hoặc BỔ SUNG hạn cho đơn cũ chưa có hạn.
     /// Bắt buộc lý do; server không cho chọn ngày đã qua và ghi nhật ký hạn cũ -> hạn mới.
     /// Gợi ý tham khảo: số ngày chạy ước tính của tuyến (cùng cách tính với Chia xe).
+    /// Bên yêu cầu quyết định HẠN TÍNH TRỄ: khách dời -> hạn mới là mốc tính đúng hạn; công ty dời -> vẫn tính trễ theo hạn cũ.
     /// Giao diện nằm ở ChangeDeadlineForm.Designer.cs.</summary>
     public partial class ChangeDeadlineForm : BaseForm
     {
@@ -21,48 +22,40 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             InitializeComponent();
             TruckingSystem.Desktop.Common.DialogFit.Enable(this, root); // vừa màn hình mọi máy, bảng không bị ép mất chữ
             Anim.FadeIn(this);
-            // Bên yêu cầu BẮT BUỘC chọn (không chọn sẵn): khách xin dời trễ hơn -> khách chịu phí lưu kho.
-            cboRequester.Items.Add(new ComboOption("Customer", "👤 Khách hàng (tính phí lưu kho)"));
-            cboRequester.Items.Add(new ComboOption("Company", "🏢 Công ty (không tính phí)"));
-            _feeTimer.Tick += async (_, _) => { _feeTimer.Stop(); await LoadFeePreviewAsync(); };
-            cboRequester.SelectedIndexChanged += (_, _) => RequestFeePreview();
-            dtNewDate.ValueChanged += (_, _) => RequestFeePreview();
-            FormClosed += (_, _) => _feeTimer.Dispose();
+            // Bên yêu cầu BẮT BUỘC chọn (không chọn sẵn): quyết định HẠN TÍNH TRỄ (mốc xét giao đúng hạn / trễ).
+            cboRequester.Items.Add(new ComboOption("Customer", "👤 Khách hàng (hạn mới là mốc tính đúng hạn)"));
+            cboRequester.Items.Add(new ComboOption("Company", "🏢 Công ty (vẫn tính trễ theo hạn cũ)"));
+            cboRequester.SelectedIndexChanged += (_, _) => UpdateRequesterHint();
+            dtNewDate.ValueChanged += (_, _) => UpdateRequesterHint();
         }
 
-        private readonly System.Windows.Forms.Timer _feeTimer = new() { Interval = 350 };
-        private int _feeVersion;
-
-        private void RequestFeePreview()
+        /// <summary>Dòng nhắc đổi theo bên yêu cầu: khách dời -> hạn mới thành mốc tính đúng hạn; công ty dời -> vẫn
+        /// tính trễ theo hạn cũ. Đổi hạn KHÔNG tính phí riêng (phí lưu kho tự tính theo ngày hàng nằm kho).</summary>
+        private void UpdateRequesterHint()
         {
-            _feeTimer.Stop();
-            _feeTimer.Start();
-        }
-
-        /// <summary>Phí lưu kho ƯỚC TÍNH theo hạn mới + bên yêu cầu (server tính: m³ hàng đang trong kho ×
-        /// số ngày dời × đơn giá kho) — để báo khách ngay trước khi lưu.</summary>
-        private async Task LoadFeePreviewAsync()
-        {
-            if (_api is null || _order is null) return;
-            if (cboRequester.SelectedItem is not ComboOption requester)
+            if (_order is null) return;
+            const string feeNote = "\nℹ️ Đổi hạn giao không tính phí riêng — phí lưu kho tự tính theo số ngày hàng nằm kho (miễn phí vài ngày đầu theo kho).";
+            var newDate = dtNewDate.Value.Date;
+            var basis = (_order.LateBasisDate ?? _order.CommittedDeliveryDate)?.Date;
+            switch ((cboRequester.SelectedItem as ComboOption)?.Value)
             {
-                lblFee.Text = "Chọn bên yêu cầu: khách xin dời trễ hơn hạn cũ thì tính phí lưu kho cho số ngày dời thêm.";
-                lblFee.ForeColor = Theme.TextSecondary;
-                return;
-            }
-            var version = ++_feeVersion;
-            lblFee.Text = "💰 Đang tính phí lưu kho...";
-            lblFee.ForeColor = Theme.TextSecondary;
-            try
-            {
-                var p = await _api.TransportOrders.PreviewStorageFeeAsync(_order.Id, dtNewDate.Value.Date, requester.Value);
-                if (IsDisposed || version != _feeVersion) return;
-                lblFee.Text = (p.EstimatedFee > 0 ? "💰 " : "ℹ️ ") + p.Note;
-                lblFee.ForeColor = p.EstimatedFee > 0 ? Theme.Warning : Theme.TextSecondary;
-            }
-            catch (Exception ex)
-            {
-                if (!IsDisposed && version == _feeVersion) lblFee.Text = "Không tính được phí lưu kho: " + ex.Message;
+                case "Customer":
+                    lblFee.Text = $"👤 Khách dời hạn: hạn tính trễ đổi thành {newDate:dd/MM}. Giao trước hoặc đúng {newDate:dd/MM} là đúng hạn." + feeNote;
+                    lblFee.ForeColor = Theme.Success;
+                    break;
+                case "Company" when basis is DateTime b && newDate > b:
+                    lblFee.Text = $"🏢 Công ty dời hạn: hạn mới chỉ để báo khách. Giao sau {b:dd/MM} vẫn tính là giao trễ " +
+                                  $"(VD giao {b.AddDays(2):dd/MM} = trễ 2 ngày)." + feeNote;
+                    lblFee.ForeColor = Theme.Warning;
+                    break;
+                case "Company":
+                    lblFee.Text = $"🏢 Công ty đổi hạn: giao trước hoặc đúng {newDate:dd/MM} là đúng hạn." + feeNote;
+                    lblFee.ForeColor = Theme.TextSecondary;
+                    break;
+                default:
+                    lblFee.Text = "Chọn bên yêu cầu: khách dời thì hạn mới là mốc tính đúng hạn; công ty dời thì vẫn tính trễ theo hạn cũ.";
+                    lblFee.ForeColor = Theme.TextSecondary;
+                    break;
             }
         }
 
@@ -75,7 +68,10 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                 ? $"Hạn giao hiện tại: {due:dd/MM/yyyy}"
                 : "Hạn giao hiện tại: ⚠️ chưa có (đơn cũ) — chọn hạn giao để bổ sung.";
             dtNewDate.Value = order.CommittedDeliveryDate is { } d && d.Date >= DateTime.Today ? d.Date : DateTime.Today.AddDays(1);
-            Load += async (_, _) => { await LoadEstimateAsync(); await LoadFeePreviewAsync(); };
+            if (order.HasLateBasis)
+                lblCurrent.Text += $"   ·   Hạn tính trễ: {order.LateBasisDate:dd/MM/yyyy} (công ty đã dời hạn)";
+            UpdateRequesterHint();
+            Load += async (_, _) => await LoadEstimateAsync();
         }
 
         /// <summary>Mở sẵn cho việc "báo khách & dời hạn": điền ngày gợi ý, chọn sẵn bên yêu cầu, gợi ý lý do (vẫn sửa được).</summary>
@@ -87,6 +83,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                 dtNewDate.Value = v;
             }
             cboRequester.SelectedItem = cboRequester.Items.Cast<ComboOption>().FirstOrDefault(o => o.Value == requester);
+            UpdateRequesterHint();
             if (!string.IsNullOrWhiteSpace(reason) && string.IsNullOrWhiteSpace(txtReason.Text)) txtReason.Text = reason;
         }
 

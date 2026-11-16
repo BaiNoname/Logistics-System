@@ -15,6 +15,10 @@ namespace TruckingSystem.Desktop.SERVICE_TripManagement
         public Task<List<TripListItem>> GetTripsAsync()
             => _conn.GetAsync<List<TripListItem>>("/api/trips")!;
 
+        /// <summary>Chỉ kiểm tra bắt đầu được không (không bắt đầu) — lý do + cách sửa nhanh.</summary>
+        public Task<TripActionResultItem> StartCheckAsync(int id)
+            => _conn.GetAsync<TripActionResultItem>($"/api/trips/{id}/start-check")!;
+
         /// <summary>Planned -> InProgress.</summary>
         public Task<TripActionResultItem> StartTripAsync(int id)
             => _conn.PostAsync<TripActionResultItem>($"/api/trips/{id}/start", new { })!;

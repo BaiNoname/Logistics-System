@@ -43,6 +43,8 @@ public class TripActionResultItem
 {
     public bool Success { get; set; }
     public string? Message { get; set; }
+    /// <summary>Cách sửa nhanh khi bị chặn (hoặc lối tắt việc tiếp theo khi thành công) — xem QuickFix.</summary>
+    public List<TruckingSystem.Desktop.Common.FixHintItem>? Fixes { get; set; }
 }
 
 /// <summary>1 điểm GPS thật đã ghi nhận — dùng để vẽ đường đi thực tế.</summary>

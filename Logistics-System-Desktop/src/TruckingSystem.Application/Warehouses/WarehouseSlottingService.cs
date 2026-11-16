@@ -345,7 +345,7 @@ public class WarehouseSlottingService : IWarehouseSlottingService
     {
         var list = await _db.Warehouses
             .Select(w => new WarehouseListItemDto(w.Id, w.Name, w.Address, w.CapacityM3, w.LengthMeters, w.WidthMeters, w.Lat, w.Lng,
-                w.DoorSide.HasValue ? w.DoorSide.Value.ToString() : null, w.DoorOffsetMeters, w.StorageFeePerM3PerDay, null))
+                w.DoorSide.HasValue ? w.DoorSide.Value.ToString() : null, w.DoorOffsetMeters, w.StorageFeePerM3PerDay, null, w.FreeStorageDays))
             .ToListAsync();
         // Loại khu đang dùng được (khu có ít nhất 1 vị trí) — cùng điều kiện WarehouseZoneRules.AvailableAsync.
         var zones = (await _db.WarehouseZones
@@ -388,7 +388,7 @@ public class WarehouseSlottingService : IWarehouseSlottingService
         if (shapeError is not null) throw new InvalidOperationException(shapeError);
         var doorError = ValidateDoor(request.DoorSide, request.DoorOffsetMeters, request.LengthMeters, request.WidthMeters, out var doorSide);
         if (doorError is not null) throw new InvalidOperationException(doorError);
-        var feeError = ValidateStorageFee(request.StorageFeePerM3PerDay);
+        var feeError = ValidateStorageFee(request.StorageFeePerM3PerDay) ?? ValidateFreeDays(request.FreeStorageDays);
         if (feeError is not null) throw new InvalidOperationException(feeError);
         var nameError = await DuplicateWarehouseNameErrorAsync(request.Name, excludeId: null);
         if (nameError is not null) throw new InvalidOperationException(nameError);
@@ -405,12 +405,13 @@ public class WarehouseSlottingService : IWarehouseSlottingService
             DoorSide = doorSide,
             DoorOffsetMeters = doorSide.HasValue ? request.DoorOffsetMeters : null,
             StorageFeePerM3PerDay = request.StorageFeePerM3PerDay,
+            FreeStorageDays = request.FreeStorageDays,
         };
         _db.Warehouses.Add(warehouse);
         await _db.SaveChangesAsync();
 
         return new WarehouseListItemDto(warehouse.Id, warehouse.Name, warehouse.Address, warehouse.CapacityM3, warehouse.LengthMeters, warehouse.WidthMeters, warehouse.Lat, warehouse.Lng,
-            warehouse.DoorSide?.ToString(), warehouse.DoorOffsetMeters, warehouse.StorageFeePerM3PerDay);
+            warehouse.DoorSide?.ToString(), warehouse.DoorOffsetMeters, warehouse.StorageFeePerM3PerDay, null, warehouse.FreeStorageDays);
     }
 
     public async Task<WarehouseActionResult> UpdateWarehouseAsync(int warehouseId, UpdateWarehouseRequest request)
@@ -438,7 +439,7 @@ public class WarehouseSlottingService : IWarehouseSlottingService
         // tường mới cũng bị chặn.
         var doorError = ValidateDoor(request.DoorSide, request.DoorOffsetMeters, request.LengthMeters, request.WidthMeters, out var doorSide);
         if (doorError is not null) return new WarehouseActionResult(false, doorError);
-        var feeError = ValidateStorageFee(request.StorageFeePerM3PerDay);
+        var feeError = ValidateStorageFee(request.StorageFeePerM3PerDay) ?? ValidateFreeDays(request.FreeStorageDays);
         if (feeError is not null) return new WarehouseActionResult(false, feeError);
         var nameError = await DuplicateWarehouseNameErrorAsync(request.Name, excludeId: warehouseId);
         if (nameError is not null) return new WarehouseActionResult(false, nameError);
@@ -477,8 +478,9 @@ public class WarehouseSlottingService : IWarehouseSlottingService
         warehouse.Lng = request.Lng;
         warehouse.DoorSide = doorSide;
         warehouse.DoorOffsetMeters = doorSide.HasValue ? request.DoorOffsetMeters : null;
-        // Đổi giá chỉ áp dụng cho các lần dời hạn SAU này (mỗi lần dời đã chốt đơn giá lúc đổi).
+        // Đổi giá / số ngày miễn phí: phí lưu kho của các đơn CHƯA lập hóa đơn tính lại theo giá mới.
         warehouse.StorageFeePerM3PerDay = request.StorageFeePerM3PerDay;
+        warehouse.FreeStorageDays = request.FreeStorageDays;
 
         await _db.SaveChangesAsync();
         return new WarehouseActionResult(true, null);
@@ -1030,6 +1032,9 @@ public class WarehouseSlottingService : IWarehouseSlottingService
             return "Vui lòng nhập Chiều dài và Chiều rộng kho (mét) — dùng để vẽ sơ đồ kho và xếp khu vực.";
         return null;
     }
+
+    private static string? ValidateFreeDays(int days)
+        => days is < 0 or > 60 ? "Số ngày lưu kho miễn phí phải từ 0 đến 60." : null;
 
     private static string? ValidateStorageFee(decimal fee)
     {

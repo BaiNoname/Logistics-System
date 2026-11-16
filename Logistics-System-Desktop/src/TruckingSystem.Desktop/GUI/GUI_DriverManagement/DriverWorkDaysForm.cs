@@ -52,6 +52,17 @@ namespace TruckingSystem.Desktop.GUI_DriverManagement
             UpdateHint();
         }
 
+        private (DateTime From, DateTime To, string? Note)? _preset;
+
+        /// <summary>Mở từ hộp SỬA NHANH (VD chuyến #12 bị chặn vì tài xế thiếu ngày làm): điền sẵn đúng khoảng ngày còn
+        /// thiếu thay cho gợi ý tự động — nhân viên chỉ việc bấm Đăng ký.</summary>
+        public void Preset(DateTime from, DateTime to, string? note = null)
+        {
+            var f = from.Date < DateTime.Today ? DateTime.Today : from.Date;
+            var t = to.Date < f ? f : to.Date;
+            _preset = (f, t, note);
+        }
+
         /// <summary>true nếu đã đăng ký / xóa ít nhất 1 ngày (màn Tài xế tải lại trạng thái).</summary>
         public bool Changed { get; private set; }
 
@@ -128,7 +139,16 @@ namespace TruckingSystem.Desktop.GUI_DriverManagement
             {
                 _days = await _service.GetWorkDaysAsync(_employeeId);
                 BindGrid();
-                SuggestRange(); // gợi ý khoảng ngày tiếp theo hợp lệ (lần mở + sau mỗi lần đăng ký / xóa)
+                if (_preset is { } p)
+                {
+                    // Lần mở đầu từ hộp sửa nhanh: dùng đúng khoảng ngày còn thiếu (chỉ 1 lần, sau đó gợi ý như thường).
+                    _preset = null;
+                    dtFrom.Value = p.From;
+                    dtTo.Value = p.To;
+                    UpdateHint();
+                    if (p.Note is not null) ShowStatus(p.Note, Theme.Primary);
+                }
+                else SuggestRange(); // gợi ý khoảng ngày tiếp theo hợp lệ (lần mở + sau mỗi lần đăng ký / xóa)
             }
             catch (Exception ex)
             {

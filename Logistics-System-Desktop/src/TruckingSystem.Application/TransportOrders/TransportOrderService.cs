@@ -32,11 +32,22 @@ public class TransportOrderService : ITransportOrderService
                 o.ProgressPercent, o.PickupPoint, o.DropoffPoint, o.PublicTrackingToken,
                 o.Trips.Count(t => t.Status != TripStatus.Cancelled),
                 o.CommittedDeliveryDate, o.Warehouse.Name,
-                o.Contract != null ? o.Contract.Code : null, 0))
+                o.Contract != null ? o.Contract.Code : null, 0,
+                null, 0, 0, 0m, 0m))
             .ToListAsync();
-        // Hàng nằm kho quá hạn giao mà chưa ai chọn do bên nào -> Desktop gắn nhãn đỏ + đếm vào số việc chờ.
-        var overdue = await OverdueStorageRules.LoadAsync(_db);
-        return list.Select(o => overdue.TryGetValue(o.Id, out var i) && i.Decision is null ? o with { OverdueStorageDays = i.Days } : o).ToList();
+        // Hạn tính trễ (công ty dời hạn thì khác hạn giao), tình trạng lưu kho (ngày thứ mấy, còn miễn phí, phí tới nay),
+        // hàng nằm kho sau hạn tính trễ mà chưa ai chọn do bên nào -> Desktop gắn nhãn đỏ + đếm vào số việc chờ.
+        var basis = await DeadlineBasisRules.LoadAsync(_db);
+        var storage = await StorageFeeRules.SummariesAsync(_db, basis);
+        var overdue = await OverdueStorageRules.LoadAsync(_db, null, basis);
+        return list.Select(o =>
+        {
+            var r = o with { LateBasisDate = DeadlineBasisRules.Pick(basis, o.Id, o.CommittedDeliveryDate) };
+            if (storage.TryGetValue(o.Id, out var s))
+                r = r with { StorageDay = s.StorageDay, FreeDaysLeft = s.FreeDaysLeft, StorageFeeToDate = s.FeeToDate, StockM3 = s.VolumeNowM3 };
+            if (overdue.TryGetValue(o.Id, out var i) && i.Decision is null) r = r with { OverdueStorageDays = i.Days };
+            return r;
+        }).ToList();
     }
 
     public async Task<TransportOrderDetailDto?> GetByIdAsync(int id)
@@ -57,10 +68,25 @@ public class TransportOrderService : ITransportOrderService
         if (order is null) return null;
 
         var dto = MapToDetail(order);
-        if (order.Status == TransportOrderStatus.Confirmed && order.Trips.All(t => t.Status == TripStatus.Cancelled))
-            dto = dto with { AllocateBlockReason = await AllocateBlockReasonAsync(order) };
+        if (order.Status == TransportOrderStatus.Confirmed && order.Trips.All(t => t.Status == TripStatus.Cancelled)
+            && await AllocateBlockReasonAsync(order) is { } allocateBlock)
+            dto = dto with
+            {
+                AllocateBlockReason = allocateBlock,
+                // Lối tắt sửa: đơn công ty đi lấy -> kho thiếu khu (mở sơ đồ kho); khách tự mang tới -> nhận hàng ở kho.
+                AllocateFixes = order.CargoLines.Count == 0 ? null : new List<FixHint>
+                {
+                    order.PickupMethod == PickupMethod.CompanyPickup
+                        ? new FixHint("WarehouseLayout", $"🗺️ Mở sơ đồ kho {order.Warehouse.Name} để thêm khu", WarehouseId: order.WarehouseId, Name: order.Warehouse.Name)
+                        : new FixHint("ManualReceive", "🙋 Nhận hàng khách mang tới", WarehouseId: order.WarehouseId, Name: order.Warehouse.Name),
+                },
+            };
         var (late, suggested) = LateWarning(order);
-        dto = dto with { LateWarning = late, SuggestedDeadline = suggested, OverdueStorage = await OverdueStorageAsync(order) };
+        dto = dto with
+        {
+            LateWarning = late, SuggestedDeadline = suggested, OverdueStorage = await OverdueStorageAsync(order),
+            LateBasisDate = await DeadlineBasisRules.ForOrderAsync(_db, order.Id, order.CommittedDeliveryDate),
+        };
         return dto;
     }
 
@@ -96,16 +122,15 @@ public class TransportOrderService : ITransportOrderService
         return (null, null);
     }
 
-    /// <summary>Hàng nằm kho sau hạn giao (null = không): số ngày, m³, đơn giá kho, phí ƯỚC TÍNH (m³ hiện tại × ngày × đơn giá),
-    /// và đã chọn do bên nào.</summary>
+    /// <summary>Hàng nằm kho SAU HẠN TÍNH TRỄ (null = không): số ngày, m³ trung bình, đơn giá kho, phí của những ngày đó
+    /// (nếu do khách), và đã chọn do bên nào.</summary>
     private async Task<OverdueStorageDto?> OverdueStorageAsync(TransportOrder order)
     {
         var items = await OverdueStorageRules.LoadAsync(_db, new[] { order.Id });
         if (!items.TryGetValue(order.Id, out var item)) return null;
-        var rate = await _db.Warehouses.Where(w => w.Id == order.WarehouseId).Select(w => w.StorageFeePerM3PerDay).FirstOrDefaultAsync();
-        // m³ trung bình mỗi ngày (hàng có thể đã xuất bớt / hết) — phí = tổng m³·ngày × đơn giá.
+        // m³ trung bình mỗi ngày (hàng có thể đã xuất bớt / hết) — phí = tổng phí từng ngày.
         var avg = item.Days > 0 ? Math.Round(item.M3Days / item.Days, 2) : 0;
-        return new OverdueStorageDto(item.Days, avg, rate, Math.Round(item.M3Days * rate, 0), item.Decision?.ToString());
+        return new OverdueStorageDto(item.Days, avg, item.Rate, item.Fee, item.Decision?.ToString(), item.Due);
     }
 
     /// <summary>Chọn bên chịu phí cho phần hàng nằm kho QUÁ HẠN GIAO hiện tại: "Customer" (bắt buộc lý do — phí tính cho
@@ -114,13 +139,21 @@ public class TransportOrderService : ITransportOrderService
     public async Task<OrderActionResult> SetStorageResponsibilityAsync(int id, StorageResponsibilityRequest request, string? userId, string? userName)
     {
         var error = await OverdueStorageRules.ApplyDecisionAsync(_db, id, request.Party, request.Reason, userId, userName);
-        if (error is not null) return new OrderActionResult(false, error);
+        if (error is not null)
+        {
+            // Kho chưa khai báo phí lưu kho -> lối tắt mở Sửa kho của đúng kho.
+            var wh = await _db.TransportOrders.Where(o => o.Id == id)
+                .Select(o => new { o.WarehouseId, o.Warehouse.Name, o.Warehouse.StorageFeePerM3PerDay }).FirstOrDefaultAsync();
+            return new OrderActionResult(false, error, wh is not null && wh.StorageFeePerM3PerDay <= 0
+                ? new List<FixHint> { new("EditWarehouse", $"🏬 Khai báo phí lưu kho cho kho {wh.Name}", WarehouseId: wh.WarehouseId, Name: wh.Name) }
+                : null);
+        }
         await _db.SaveChangesAsync();
         var code = await _db.TransportOrders.Where(o => o.Id == id).Select(o => o.Code).FirstOrDefaultAsync();
         if (OverdueStorageRules.ParseParty(request.Party) == DeadlineChangeRequester.Company)
-            return new OrderActionResult(true, $"Đã ghi nhận: hàng đơn {code} nằm kho quá hạn do công ty — không tính phí lưu kho cho khách.");
+            return new OrderActionResult(true, $"Đã ghi nhận: hàng đơn {code} nằm kho sau hạn tính trễ do công ty — không tính phí lưu kho cho khách.");
         var fee = await StorageFeeRules.ComputeAsync(_db, id);
-        return new OrderActionResult(true, "Đã ghi nhận do khách hàng: phí lưu kho tính từ ngày sau hạn giao, cộng dồn mỗi ngày tới khi hàng rời kho." +
+        return new OrderActionResult(true, "Đã ghi nhận do khách hàng: các ngày hàng nằm kho sau hạn tính trễ được tính phí, cộng dồn mỗi ngày tới khi hàng rời kho." +
             (fee is null ? "" : $"\nTổng phí lưu kho hiện tại: {fee.TotalFee:N0} đ{(fee.IsFinal ? "" : " (tạm tính)")}."));
     }
 
@@ -360,7 +393,7 @@ public class TransportOrderService : ITransportOrderService
             return new OrderActionResult(false, "Đơn đã Hoàn tất / Đã hủy — không đổi hạn giao được nữa.");
 
         if (ParseRequester(request.RequestedBy) is not DeadlineChangeRequester requester)
-            return new OrderActionResult(false, "Vui lòng chọn Bên yêu cầu đổi hạn (Khách hàng / Công ty) — khách xin dời trễ hơn thì tính phí lưu kho.");
+            return new OrderActionResult(false, "Vui lòng chọn Bên yêu cầu đổi hạn (Khách hàng / Công ty) — khách dời thì hạn mới là mốc tính đúng hạn, công ty dời thì vẫn tính trễ theo hạn cũ.");
 
         var reason = (request.Reason ?? "").Trim();
         if (reason.Length < 5)
@@ -383,9 +416,9 @@ public class TransportOrderService : ITransportOrderService
             if (contractError is not null) return new OrderActionResult(false, contractError);
         }
 
-        // PHÍ LƯU KHO: khách xin dời TRỄ hơn -> ước tính ngay (m³ đang trong kho × số ngày dời × đơn giá kho),
-        // chốt đơn giá + lưu lịch sử; số chính thức tính theo ngày hàng thực sự còn nằm kho (StorageFeeRules).
-        var preview = await BuildStorageFeePreviewAsync(order, newDate, requester);
+        // Đổi hạn KHÔNG tính phí riêng (phí lưu kho tự tính theo ngày hàng nằm kho — StorageFeeRules). Chỉ lưu lịch sử:
+        // bên yêu cầu quyết định HẠN TÍNH TRỄ (DeadlineBasisRules). Các cột phí cũ của bảng giữ 0 cho dòng mới.
+        var basisBefore = await DeadlineBasisRules.ForOrderAsync(_db, order.Id, order.CommittedDeliveryDate);
         _db.DeliveryDeadlineChanges.Add(new DeliveryDeadlineChange
         {
             TransportOrderId = order.Id,
@@ -394,11 +427,10 @@ public class TransportOrderService : ITransportOrderService
             RequestedBy = requester,
             Reason = reason,
             ChangedByUserName = userName,
-            DelayDays = preview.DelayDays,
-            StorageFeePerM3PerDay = preview.RatePerM3PerDay,
-            VolumeM3AtChange = preview.VolumeM3,
-            EstimatedFee = preview.EstimatedFee,
+            DelayDays = oldDate is DateTime od0 && newDate > od0 ? (newDate - od0).Days : 0,
         });
+        var basisAfter = basisBefore is null || requester == DeadlineChangeRequester.Customer ? newDate
+            : newDate < basisBefore.Value ? newDate : basisBefore.Value;
 
         order.CommittedDeliveryDate = newDate;
         order.UpdatedAt = DateTime.UtcNow; // kích hoạt kiểm tra cập nhật đồng thời (xmin)
@@ -409,12 +441,14 @@ public class TransportOrderService : ITransportOrderService
             EntityName = nameof(TransportOrder),
             EntityId = order.Id,
             Detail = $"Đổi hạn giao đơn {order.Code}: {(oldDate is { } o ? o.ToString("dd/MM/yyyy") : "(chưa có hạn)")} -> {newDate:dd/MM/yyyy}. " +
-                     $"Bên yêu cầu: {StorageFeeRules.RequesterText(requester)}. Lý do: {reason}. Người đổi: {userName ?? "(không rõ)"}." +
-                     (preview.EstimatedFee > 0 ? $" Phí lưu kho ước tính: {preview.EstimatedFee:N0} đ." : ""),
+                     $"Bên yêu cầu: {StorageFeeRules.RequesterText(requester)}. Hạn tính trễ: {basisAfter:dd/MM/yyyy}. " +
+                     $"Lý do: {reason}. Người đổi: {userName ?? "(không rõ)"}.",
         });
         await _db.SaveChangesAsync();
 
-        var feeText = preview.EstimatedFee > 0 ? $"\n💰 {preview.Note}" : "";
+        var feeText = requester == DeadlineChangeRequester.Company && basisAfter != newDate
+            ? $"\n⏰ Công ty dời hạn: vẫn tính trễ theo hạn {basisAfter:dd/MM/yyyy} — giao sau ngày này là giao trễ."
+            : "";
 
         // Hạn MỚI sớm hơn mà các chuyến đã chia không còn kịp -> báo ngay (không chặn: Vận hành có
         // thể đã thỏa thuận, sẽ đổi xe / cho chạy sớm hơn). Cùng quy tắc với cột "Tình trạng hạn".
@@ -433,107 +467,10 @@ public class TransportOrderService : ITransportOrderService
             : $"Đã đổi hạn giao từ {oldDate:dd/MM/yyyy} sang {newDate:dd/MM/yyyy} (đã ghi nhật ký).") + feeText);
     }
 
-    /// <summary>GHI NHẬN BỔ SUNG PHÍ LƯU KHO do khách (khách chậm nhận hàng mà nhân viên quên "Đổi hạn giao"),
-    /// dùng được cả khi đơn đã Hoàn tất / Đã hủy. KHÔNG đổi hạn giao của đơn (tỉ lệ giao đúng hạn giữ nguyên):
-    /// chỉ ghi 1 dòng lịch sử "khoảng từ ngày sau hạn giao tới EndDate là do khách" — phí tính như mọi lần
-    /// khác: mỗi ngày hàng THỰC SỰ còn trong kho × m³ × đơn giá kho (chốt lúc ghi nhận), không tính trùng ngày.</summary>
-    public async Task<OrderActionResult> RecordStorageFeeAsync(int id, RecordStorageFeeRequest request, string? userId, string? userName)
-    {
-        var order = await _db.TransportOrders.FirstOrDefaultAsync(o => o.Id == id);
-        if (order is null) return new OrderActionResult(false, "Không tìm thấy đơn.");
-        if (order.Status == TransportOrderStatus.Draft)
-            return new OrderActionResult(false, "Đơn còn Nháp — hàng chưa vào kho, không có phí lưu kho.");
-        if (order.CommittedDeliveryDate is not DateTime deadline)
-            return new OrderActionResult(false, "Đơn chưa có hạn giao — không xác định được từ ngày nào bắt đầu tính phí lưu kho.");
-
-        var reason = (request.Reason ?? "").Trim();
-        if (reason.Length < 5)
-            return new OrderActionResult(false, "Phải ghi lý do (ít nhất 5 ký tự) — VD \"Khách hẹn lại ngày nhận hàng, quên đổi hạn\".");
-        if (reason.Length > 500) reason = reason[..500];
-
-        var endDate = VnClock.ToVnWallClock(request.EndDate)!.Value.Date;
-        deadline = deadline.Date;
-        if (endDate <= deadline)
-            return new OrderActionResult(false, $"Ngày hàng nằm kho tới phải SAU hạn giao ({deadline:dd/MM/yyyy}) — trong hạn thì không tính phí lưu kho.");
-        if (endDate > VnClock.Today.AddDays(90))
-            return new OrderActionResult(false, "Ngày kết thúc quá xa (tối đa 90 ngày tới).");
-
-        var rate = await _db.Warehouses.Where(w => w.Id == order.WarehouseId).Select(w => w.StorageFeePerM3PerDay).FirstOrDefaultAsync();
-        if (rate <= 0)
-            return new OrderActionResult(false, "Kho của đơn chưa khai báo phí lưu kho (Sửa kho → Phí lưu kho) — chưa tính được.");
-        var volume = await StorageFeeRules.CurrentVolumeM3Async(_db, order.Id, order.WarehouseId);
-
-        _db.DeliveryDeadlineChanges.Add(new DeliveryDeadlineChange
-        {
-            TransportOrderId = order.Id,
-            OldDate = deadline,
-            NewDate = endDate,
-            RequestedBy = DeadlineChangeRequester.Customer,
-            Reason = reason,
-            ChangedByUserName = userName,
-            DelayDays = (endDate - deadline).Days,
-            StorageFeePerM3PerDay = rate,
-            VolumeM3AtChange = volume,
-            EstimatedFee = 0,
-            IsFeeOnly = true,
-        });
-        _db.AuditLogs.Add(new AuditLog
-        {
-            UserId = userId,
-            Action = "RecordStorageFee",
-            EntityName = nameof(TransportOrder),
-            EntityId = order.Id,
-            Detail = $"Ghi nhận bổ sung phí lưu kho đơn {order.Code} (không đổi hạn giao): khách chậm nhận hàng " +
-                     $"{deadline.AddDays(1):dd/MM/yyyy} → {endDate:dd/MM/yyyy}, đơn giá {rate:N0} đ/m³/ngày. Lý do: {reason}. " +
-                     $"Người ghi: {userName ?? "(không rõ)"}.",
-        });
-        await _db.SaveChangesAsync();
-
-        var fee = await StorageFeeRules.ComputeAsync(_db, order.Id);
-        var line = fee?.Changes.LastOrDefault();
-        return new OrderActionResult(true,
-            $"Đã ghi nhận phí lưu kho do khách cho các ngày {deadline.AddDays(1):dd/MM/yyyy} → {endDate:dd/MM/yyyy} (hạn giao giữ nguyên)." +
-            (line is null ? "" : $"\n💰 Lần này: {(string.IsNullOrEmpty(line.Formula) ? $"{line.Fee:N0} đ" : line.Formula)}") +
-            (fee is null ? "" : $"\nTổng phí lưu kho của đơn: {fee.TotalFee:N0} đ{(fee.IsFinal ? "" : " (tạm tính)")}."));
-    }
-
     private static DeadlineChangeRequester? ParseRequester(string? value)
         => Enum.TryParse<DeadlineChangeRequester>(value, true, out var r) && Enum.IsDefined(r) ? r : null;
 
-    /// <summary>Phí lưu kho ƯỚC TÍNH nếu đổi hạn giao sang <paramref name="newDate"/> — cho hộp đổi hạn
-    /// hiện ngay trước khi lưu. requestedBy chưa chọn thì coi như Khách hàng (để báo trước số tiền).</summary>
-    public async Task<StorageFeePreviewDto?> PreviewStorageFeeAsync(int id, DateTime newDate, string? requestedBy)
-    {
-        var order = await _db.TransportOrders.FirstOrDefaultAsync(o => o.Id == id);
-        if (order is null) return null;
-        var requester = ParseRequester(requestedBy) ?? DeadlineChangeRequester.Customer;
-        return await BuildStorageFeePreviewAsync(order, VnClock.ToVnWallClock(newDate)!.Value.Date, requester);
-    }
-
     public Task<StorageFeeDto?> GetStorageFeeAsync(int id) => StorageFeeRules.ComputeAsync(_db, id);
-
-    private async Task<StorageFeePreviewDto> BuildStorageFeePreviewAsync(TransportOrder order, DateTime newDate, DeadlineChangeRequester requester)
-    {
-        var oldDate = order.CommittedDeliveryDate?.Date;
-        var delayDays = oldDate is DateTime od && newDate.Date > od ? (newDate.Date - od).Days : 0;
-        var rate = await _db.Warehouses.Where(w => w.Id == order.WarehouseId).Select(w => w.StorageFeePerM3PerDay).FirstOrDefaultAsync();
-        var volume = await StorageFeeRules.CurrentVolumeM3Async(_db, order.Id, order.WarehouseId);
-
-        if (requester == DeadlineChangeRequester.Company)
-            return new StorageFeePreviewDto(delayDays, volume, rate, 0, "Công ty yêu cầu đổi hạn — KHÔNG tính phí lưu kho cho khách.");
-        if (oldDate is null)
-            return new StorageFeePreviewDto(0, volume, rate, 0, "Đơn chưa có hạn giao trước đó (bổ sung hạn) — không tính phí lưu kho.");
-        if (delayDays == 0)
-            return new StorageFeePreviewDto(0, volume, rate, 0, "Hạn mới không trễ hơn hạn cũ — không tính phí lưu kho.");
-        if (rate <= 0)
-            return new StorageFeePreviewDto(delayDays, volume, 0, 0, "Kho chưa khai báo phí lưu kho (Sửa kho → Phí lưu kho) — chưa tính phí.");
-        if (volume <= 0)
-            return new StorageFeePreviewDto(delayDays, 0, rate, 0,
-                $"Khách dời thêm {delayDays} ngày — hiện hàng của đơn CHƯA nằm trong kho nên chưa phát sinh phí; phí tính theo ngày hàng thực sự nằm kho.");
-        var fee = Math.Round(delayDays * volume * rate, 0);
-        return new StorageFeePreviewDto(delayDays, volume, rate, fee,
-            $"Phí lưu kho ước tính (khách chịu): {delayDays} ngày × {volume:0.##} m³ × {rate:N0} đ = {fee:N0} đ. Số chốt theo ngày hàng thực sự còn trong kho.");
-    }
 
     /// <summary>Hủy đơn — xử lý theo 3 mức tùy tình trạng hàng hóa thật tại
     /// thời điểm hủy (KHÔNG hủy lẻ từng Trip, chỉ hủy qua Đơn):

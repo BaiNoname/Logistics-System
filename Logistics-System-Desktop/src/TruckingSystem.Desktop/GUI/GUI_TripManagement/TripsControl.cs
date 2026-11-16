@@ -194,10 +194,26 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
 
         /// <summary>Đổ lưới theo bộ lọc, giữ dòng đang chọn.</summary>
         /// <summary>Mở từ thông báo: chỉ hiện + chọn sẵn chuyến #id (gõ "#15" vào ô tìm cũng lọc ĐÚNG #15).</summary>
-        public void FocusTrip(int tripId)
+        public void FocusTrip(int tripId, bool checkStart = false)
         {
             _focusTripId = tripId;
+            _checkStartTripId = checkStart ? tripId : null;
             filterBar.ShowOnlySearch($"#{tripId}");
+        }
+
+        /// <summary>Mở từ thông báo "chuyến không xuất phát được": tải xong thì kiểm tra ngay và hiện hộp sửa nhanh.</summary>
+        private int? _checkStartTripId;
+
+        private async Task CheckStartAfterLoadAsync()
+        {
+            if (_checkStartTripId is not int id || _api is null || IsDisposed) return;
+            _checkStartTripId = null;
+            try
+            {
+                var check = await _api.Trips.StartCheckAsync(id);
+                if (!check.Success && check.Fixes is { Count: > 0 }) await ShowStartBlockedAsync(id, check);
+            }
+            catch { /* chỉ là lối tắt — lỗi thì người dùng vẫn bấm Bắt đầu như thường */ }
         }
 
         private int? _focusTripId;
@@ -300,25 +316,49 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
             if (_busy) return;
             var tripId = GetSelectedTripId();
             if (tripId is null) { ShowNoSelection(); return; }
+            await StartTripAsync(tripId.Value);
+        }
 
+        /// <summary>Bắt đầu chuyến. Bị chặn (tài xế thiếu ngày làm, giấy tờ xe hết hạn, chờ nhập kho…) -> hộp SỬA NHANH:
+        /// nút mở thẳng chỗ sửa (điền sẵn), sửa xong hỏi "▶️ Bắt đầu chuyến ngay" và chạy lại hàm này.</summary>
+        private async Task StartTripAsync(int tripId)
+        {
+            if (_busy) return;
+            TruckingSystem.Desktop.DTO_TripManagement.TripActionResultItem? blocked = null;
             SetBusy(true);
             try
             {
-                var result = await _api!.Trips.StartTripAsync(tripId.Value);
+                var result = await _api!.Trips.StartTripAsync(tripId);
                 if (!result.Success)
                 {
-                    Ask.Fail(this, result.Message ?? "Không thể bắt đầu chuyến.");
                     await LoadAsync(); // trạng thái có thể vừa bị người khác đổi -> tải lại, không để dữ liệu cũ
-                    return;
+                    blocked = result;
                 }
-                await LoadAsync();
-                Toast.Show(this, $"▶️ Đã bắt đầu chuyến #{tripId.Value} — tài xế đã được báo trên app.");
+                else
+                {
+                    await LoadAsync();
+                    Toast.Show(this, $"▶️ Đã bắt đầu chuyến #{tripId} — tài xế đã được báo trên app.");
+                }
             }
             catch (Exception ex)
             {
                 Ask.Fail(this, "Lỗi: " + ex.Message);
             }
             finally { SetBusy(false); }
+
+            if (blocked is not null) await ShowStartBlockedAsync(tripId, blocked);
+        }
+
+        private async Task ShowStartBlockedAsync(int tripId, TruckingSystem.Desktop.DTO_TripManagement.TripActionResultItem blocked)
+        {
+            await TruckingSystem.Desktop.GUI_Shared.QuickFix.ShowAsync(this, _api, $"Chưa bắt đầu được chuyến #{tripId}",
+                blocked.Message ?? "Không thể bắt đầu chuyến.", blocked.Fixes,
+                $"▶️ Bắt đầu chuyến #{tripId} ngay", async () =>
+                {
+                    await LoadAsync();
+                    await StartTripAsync(tripId);
+                });
+            if (!IsDisposed) await LoadAsync(); // vừa đổi xe / tài xế, nhập kho… -> bảng cập nhật
         }
 
         /// <summary>Khóa / mở các nút thao tác trong lúc chờ server.</summary>
@@ -337,6 +377,20 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
 
         /// <summary>Thông báo của server khi thao tác THÀNH CÔNG (VD duyệt chuyến Lấy hàng: hàng
         /// chuyển sang Chờ nhập kho) — hiện cho Vận hành biết bước tiếp theo.</summary>
+        /// <summary>Hoàn tất / duyệt xong: chuyến LẤY HÀNG -> hỏi luôn "📦 Nhập kho ngay" (mở thẳng Nhập hàng từ chuyến của
+        /// đúng kho) thay vì chỉ báo chữ; chuyến khác báo nhẹ như cũ.</summary>
+        private async Task AfterFinishAsync(int tripId, TruckingSystem.Desktop.DTO_TripManagement.TripActionResultItem result)
+        {
+            if (result.Fixes is { Count: > 0 })
+            {
+                await TruckingSystem.Desktop.GUI_Shared.QuickFix.OfferAsync(this, _api, $"✅ Chuyến #{tripId} đã xong — nhập kho luôn?",
+                    "Hàng đã về kho, đang chờ nhập kho. Nhập xong (và kho xuất hàng) thì chặng Giao mới bắt đầu được.", result.Fixes);
+                if (!IsDisposed) await LoadAsync();
+                return;
+            }
+            ShowSuccessNote(result.Message);
+        }
+
         private void ShowSuccessNote(string? message)
         {
             // Thông báo nhẹ góc dưới, tự tắt (bấm để tắt ngay) — không bắt bấm OK.
@@ -366,7 +420,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
                     return;
                 }
                 await LoadAsync();
-                ShowSuccessNote(result.Message);
+                await AfterFinishAsync(tripId.Value, result);
             }
             catch (Exception ex)
             {
@@ -465,7 +519,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
                     return;
                 }
                 await LoadAsync();
-                ShowSuccessNote(result.Message);
+                await AfterFinishAsync(tripId.Value, result);
             }
             catch (Exception ex)
             {
@@ -717,6 +771,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
                 lblStatus.ForeColor = Theme.Danger;
             }
             finally { _overlay.Loading = false; }
+            if (_checkStartTripId is not null && _trips.Count > 0) BeginInvoke(new Action(async () => await CheckStartAfterLoadAsync()));
         }
 
         private const string WaitingPickupText = "⏳ Chờ lấy hàng xong";

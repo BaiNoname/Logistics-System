@@ -324,6 +324,7 @@ public sealed class AuditSaveChangesInterceptor : SaveChangesInterceptor
         ["FuelTankCapacityLiters"] = "Dung tích bình (L)",
         ["FuelLevelLiters"] = "Mức nhiên liệu (L)",
         ["StorageFeePerM3PerDay"] = "Phí lưu kho (đ/m³/ngày)",
+        ["FreeStorageDays"] = "Số ngày lưu kho miễn phí",
         ["QtyReceived"] = "SL nhập",
         ["QtyIssued"] = "SL xuất",
         ["QtyTotal"] = "Số lượng",

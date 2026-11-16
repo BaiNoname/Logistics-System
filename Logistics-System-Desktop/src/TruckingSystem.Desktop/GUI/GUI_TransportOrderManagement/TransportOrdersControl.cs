@@ -186,13 +186,24 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
         private const string DeadlineLater = "Còn hơn 3 ngày";
         private const string DeadlineNone = "Chưa có hạn";
 
-        /// <summary>Nhóm hạn giao của đơn (đơn đã xong / hủy thì không còn "quá hạn").</summary>
+        /// <summary>Nhóm hạn giao của đơn (đơn đã xong / hủy thì không còn "quá hạn"). "Quá hạn" xét theo HẠN TÍNH TRỄ:
+        /// công ty đã dời hạn thì qua hạn cũ vẫn là quá hạn (không bị che thành "còn hạn").</summary>
         private static string DeadlineGroup(TransportOrderListItem o)
         {
             if (o.CommittedDeliveryDate is not DateTime due) return DeadlineNone;
+            var lateBy = (o.LateBasisDate ?? due).Date;
+            if (lateBy < DateTime.Today) return o.Status is "Done" or "Cancelled" ? DeadlineLater : DeadlineOverdue;
             var days = (due.Date - DateTime.Today).Days;
-            if (days < 0) return o.Status is "Done" or "Cancelled" ? DeadlineLater : DeadlineOverdue;
             return days <= 3 ? DeadlineSoon : DeadlineLater;
+        }
+
+        /// <summary>Chữ cột Hạn giao: công ty đã dời hạn thì ghi "16/11 · trễ theo 12/11"; còn lại như cũ ("01/11 · còn 2 ngày").</summary>
+        private static string DeadlineText(TransportOrderListItem o)
+        {
+            var done = o.Status is "Done" or "Cancelled";
+            if (!done && o.HasLateBasis && o.CommittedDeliveryDate is DateTime due && o.LateBasisDate is DateTime basis)
+                return $"{due:dd/MM} · trễ theo {basis:dd/MM}";
+            return ScreenKit.Deadline(o.CommittedDeliveryDate, done);
         }
 
         /// <summary>Đổ lưới theo bộ lọc (không gọi lại API).</summary>
@@ -236,8 +247,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                 Trạng_thái = StatusWithProgress(o),
                 Việc_cần_làm = TodoText(o), // bước tiếp theo, ghi ngắn (chi tiết + nút ở thẻ phía trên)
                 // Ghi luôn số ngày: "01/11 · trễ 1 ngày" / "mai" / "còn 7 ngày" (đơn đã xong / hủy chỉ ghi ngày).
-                Hạn_giao = ScreenKit.Deadline(o.CommittedDeliveryDate, done: o.Status is "Done" or "Cancelled")
-                           + (o.OverdueStorageDays > 0 ? " · 📦 nằm kho quá hạn — chưa rõ do ai" : ""),
+                Hạn_giao = DeadlineText(o) + (o.OverdueStorageDays > 0 ? " · 📦 nằm kho sau hạn — chưa rõ do ai" : ""),
             }).ToList();
             filterBar.SetCount(rows.Count, _orders.Count);
             var drafts = _orders.Count(o => o.Status == "Draft");
@@ -245,11 +255,18 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             var overdue = _orders.Count(o => o.OverdueStorageDays > 0);
             _pendingBanner.Update(string.Join(" · ", new[] { drafts > 0 ? $"{drafts} đơn nháp chờ xác nhận" : null,
                 waitAlloc > 0 ? $"{waitAlloc} đơn chờ chia xe" : null,
-                overdue > 0 ? $"{overdue} đơn hàng nằm kho quá hạn, chưa xác định do ai" : null }.Where(x => x is not null)),
+                overdue > 0 ? $"{overdue} đơn hàng nằm kho sau hạn tính trễ, chưa xác định do ai" : null }.Where(x => x is not null)),
                 drafts + waitAlloc + overdue, _pendingOnly);
             if (keepId is int id)
                 foreach (DataGridViewRow r in grid.Rows)
                     if (r.Cells["Id"].Value is int rid && rid == id) { grid.CurrentCell = r.Cells["Mã_đơn"]; break; }
+        }
+
+        /// <summary>Chọn lại đúng đơn (sau khi tải lại / sửa nhanh) — đơn bị bộ lọc ẩn thì giữ nguyên dòng đang chọn.</summary>
+        private void SelectOrder(int orderId)
+        {
+            foreach (DataGridViewRow r in grid.Rows)
+                if (r.Cells["Id"].Value is int rid && rid == orderId) { grid.CurrentCell = r.Cells["Mã_đơn"]; return; }
         }
 
         private async Task OpenDetailAsync()
@@ -285,8 +302,13 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
 
                 if (!result.Trips.Any())
                 {
-                    Ask.Fail(this, result.Message ?? "Không có xe nào rảnh để chia.");
                     await LoadAsync(); // VD người khác vừa chia xe đơn này -> danh sách + nút cập nhật
+                    // Hộp SỬA NHANH: đăng ký ngày làm cho đúng tài xế còn thiếu, xem xe bị chặn vì giấy tờ, nhập hàng…
+                    // Ngày xuất phát khác chọn ở Chi tiết đơn -> mở Chi tiết đơn.
+                    _ = BeginInvoke(new Action(async () => await TruckingSystem.Desktop.GUI_Shared.QuickFix.ShowAsync(this, _api,
+                        $"Chưa chia xe được đơn {orderCode}", result.Message ?? "Không có xe nào rảnh để chia.", result.Fixes,
+                        $"🚚 Chia xe lại đơn {orderCode} ngay", async () => { SelectOrder(orderId); await AllocateSelectedAsync(); },
+                        fix => { SelectOrder(orderId); _ = RunAsync(_actDetail); })));
                     return;
                 }
 
@@ -335,13 +357,16 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
         /// <summary>Bước tiếp theo của đơn — ghi NGẮN cho cột "Việc cần làm".</summary>
         private string TodoText(TransportOrderListItem o)
         {
-            if (o.OverdueStorageDays > 0) return "📦 Xử lý hàng nằm kho quá hạn";
+            if (o.OverdueStorageDays > 0) return "📦 Xử lý hàng nằm kho sau hạn";
+            var overdue = DeadlineGroup(o) == DeadlineOverdue;
+            // Nhắc SỚM sắp hết ngày miễn phí lưu kho (còn 1–2 ngày) để kịp cho xe đi giao, tránh phát sinh phí cho khách.
+            var freeSoon = o.FreeDaysLeft is 1 or 2 ? $"📦 Còn {o.FreeDaysLeft} ngày miễn phí lưu kho" : null;
             return o.Status switch
             {
                 "Draft" => "✅ Xác nhận đơn",
                 "Confirmed" when o.ActiveTripCount == 0 => "🚚 Chia xe",
-                "Confirmed" => DeadlineGroup(o) == DeadlineOverdue ? "⏰ Quá hạn — chờ xe chạy" : "⏳ Chờ xe xuất phát",
-                "InProgress" => DeadlineGroup(o) == DeadlineOverdue ? "⏰ Quá hạn — theo dõi gấp" : "🛣️ Theo dõi chuyến",
+                "Confirmed" => overdue ? "⏰ Quá hạn — chờ xe chạy" : freeSoon ?? "⏳ Chờ xe xuất phát",
+                "InProgress" => overdue ? "⏰ Quá hạn — theo dõi gấp" : freeSoon ?? "🛣️ Theo dõi chuyến",
                 _ => "—",
             };
         }

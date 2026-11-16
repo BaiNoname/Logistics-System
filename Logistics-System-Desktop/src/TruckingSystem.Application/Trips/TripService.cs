@@ -85,6 +85,8 @@ public class TripService : ITripService
         // Tình trạng HẠN GIAO của từng chuyến (cùng quy tắc Thông báo / Chia xe).
         var todayVn = VnClock.Today;
         var tripsByOrder = trips.GroupBy(t => t.TransportOrderId).ToDictionary(g => g.Key, g => g.ToList());
+        // Đúng hạn / trễ xét theo HẠN TÍNH TRỄ: công ty dời hạn thì vẫn tính trễ theo hạn cũ.
+        var lateBasis = await TruckingSystem.Application.TransportOrders.DeadlineBasisRules.LoadAsync(_db);
 
         // Tính ĐÚNG tọa độ đầu-cuối theo từng chặng — dùng tọa độ KHO làm điểm
         // giữa thay vì vẽ thẳng Khách gửi → Khách nhận (sai với đơn đi qua kho):
@@ -117,7 +119,8 @@ public class TripService : ITripService
                 toLng = t.TransportOrder.DropoffLocation?.Lng;
             }
 
-            var deadline = DeliveryDeadlineRules.Evaluate(t, tripsByOrder[t.TransportOrderId], t.TransportOrder.CommittedDeliveryDate, todayVn);
+            var deadline = DeliveryDeadlineRules.Evaluate(t, tripsByOrder[t.TransportOrderId],
+                TruckingSystem.Application.TransportOrders.DeadlineBasisRules.Pick(lateBasis, t.TransportOrderId, t.TransportOrder.CommittedDeliveryDate), todayVn);
             var route = TripRouteText.For(t.LegType, t.Warehouse?.Name,
                 t.TransportOrder.PickupLocation?.Name, t.TransportOrder.PickupPoint,
                 t.TransportOrder.DropoffLocation?.Name, t.TransportOrder.DropoffPoint);
@@ -149,8 +152,9 @@ public class TripService : ITripService
         // Chặng GIAO chỉ được chạy khi TẤT CẢ chặng LẤY HÀNG của đơn đã Hoàn tất
         // VÀ hàng đã được NHẬP KHO đủ (màn Hàng chờ nhập) — áp dụng CHUNG cho
         // Desktop bấm Bắt đầu lẫn app tài xế tự bắt đầu qua GPS (xem PingAsync).
-        var blockReason = await GetStartBlockReasonAsync(trip);
-        if (blockReason is not null) return new TripActionResult(false, blockReason);
+        var fixes = new List<FixHint>();
+        var blockReason = await GetStartBlockReasonAsync(trip, fixes);
+        if (blockReason is not null) return new TripActionResult(false, blockReason, fixes);
 
         // Bọc transaction: chuyến có NHIỀU dòng hàng, nếu dòng 1 xuất kho xong mà
         // dòng 2 lỗi (thiếu tồn) thì trước đây dòng 1 ĐÃ BỊ TRỪ KHO vĩnh viễn dù
@@ -175,7 +179,8 @@ public class TripService : ITripService
         // nữa (xuất kho là việc của nhân viên kho). Kiểm tra LẠI sau khi đã giành dòng chuyến: đúng lúc
         // đó kho vừa bấm "Hoàn tác xuất" (cũng khóa dòng chuyến) thì dừng, không chạy khi xe rỗng.
         if (trip.LegType == TripLegType.Delivery && trip.WarehouseId.HasValue && await NotIssuedTextAsync(trip.Id) is { } notIssued)
-            return new TripActionResult(false, $"Kho chưa xác nhận xuất đủ hàng cho chuyến #{trip.Id} ({notIssued}) — chưa thể bắt đầu.");
+            return new TripActionResult(false, $"Kho chưa xác nhận xuất đủ hàng cho chuyến #{trip.Id} ({notIssued}) — chưa thể bắt đầu.",
+                await WarehouseFixesAsync("TripIssue", "📤 Xuất kho cho chuyến #" + trip.Id, trip.WarehouseId));
 
         trip.Status = TripStatus.InProgress;
         trip.StartTime = DateTime.UtcNow;
@@ -246,20 +251,19 @@ public class TripService : ITripService
         var overdue = await TruckingSystem.Application.TransportOrders.OverdueStorageRules.LoadAsync(_db, new[] { trip.TransportOrderId });
         if (!overdue.TryGetValue(trip.TransportOrderId, out var item))
             return new FinishCheckDto(last, trip.Code, null, 0, 0, null, null);
-        var rate = await _db.Warehouses.Where(w => w.Id == trip.WarehouseId).Select(w => w.StorageFeePerM3PerDay).FirstOrDefaultAsync();
         string? reason = null;
         if (item.Decision is not null)
             reason = (await _db.DeliveryDeadlineChanges.Where(c => c.TransportOrderId == trip.TransportOrderId && c.IsFeeOnly && c.OldDate != null)
                     .OrderByDescending(c => c.Id).Select(c => new { c.OldDate, c.Reason }).ToListAsync())
                 .FirstOrDefault(c => c.OldDate!.Value.Date == item.Due)?.Reason;
-        return new FinishCheckDto(last, trip.Code, item.Due, item.Days, Math.Round(item.M3Days * rate, 0), item.Decision?.ToString(), reason);
+        return new FinishCheckDto(last, trip.Code, item.Due, item.Days, item.Fee, item.Decision?.ToString(), reason);
     }
 
     private async Task<TripActionResult> FinalizeTripAsync(Trip trip, TripStatus expectedStatus,
         FinishTripRequest? request = null, string? userId = null, string? userName = null)
     {
         // CHỐT PHÍ LƯU KHO trước khi đơn Hoàn tất: chuyến GIAO cuối cùng (không còn chặng giao nào khác chưa xong) mà hàng
-        // của đơn từng nằm kho quá hạn giao CHƯA chọn do ai -> bắt chọn (Desktop hỏi ngay trong hộp duyệt). Tài xế (app) và
+        // của đơn từng nằm kho sau hạn tính trễ CHƯA chọn do ai -> bắt chọn (Desktop hỏi ngay trong hộp duyệt). Tài xế (app) và
         // kho không bị chặn — chỉ bước duyệt / hoàn tất của Vận hành.
         string? storageError = null;
         var needsStorageDecision = false;
@@ -273,7 +277,7 @@ public class TripService : ITripService
                 needsStorageDecision = true;
                 if (string.IsNullOrWhiteSpace(request?.StorageParty))
                     return new TripActionResult(false,
-                        $"Hàng của đơn đã nằm kho {item.Days} ngày sau hạn giao ({item.Due:dd/MM/yyyy}) mà chưa xác định do ai — " +
+                        $"Hàng của đơn đã nằm kho {item.Days} ngày sau hạn tính trễ ({item.Due:dd/MM/yyyy}) mà chưa xác định do ai — " +
                         "chọn \"Do công ty\" hoặc \"Do khách hàng\" (ghi lý do) trong hộp duyệt rồi duyệt lại.");
             }
         }
@@ -323,7 +327,9 @@ public class TripService : ITripService
         return new TripActionResult(true, trip.LegType == TripLegType.Pickup
             ? $"Chuyến lấy hàng #{trip.Id} đã hoàn tất — hàng đã về kho, đang CHỜ NHẬP KHO. " +
               "Vào màn Kho → 📦 Nhập hàng từ chuyến để nhập (tự chọn vị trí hoặc để hệ thống tự xếp); nhập xong thì xuất kho ở 📤 Xuất kho theo chuyến, chặng Giao mới bắt đầu được."
-            : null);
+            : null,
+            // Lối tắt: Desktop hỏi "📦 Nhập kho ngay" (mở thẳng Nhập hàng từ chuyến của đúng kho).
+            trip.LegType == TripLegType.Pickup ? await WarehouseFixesAsync("PendingReceipt", "📦 Nhập kho ngay", trip.WarehouseId) : null);
     }
 
     /// <summary>Vận hành TỪ CHỐI xác nhận của tài xế (VD bấm nhầm) — đẩy
@@ -717,7 +723,7 @@ WHERE ""Id"" = {tripId}");
     /// <summary>CHUYẾN ĐẦU TIÊN của đơn (chưa chuyến nào của đơn xuất phát) chỉ chạy khi hợp đồng của đơn còn hiệu lực
     /// hôm nay — hóa đơn tính giá theo ngày này, ngoài thời hạn hợp đồng sẽ không lập được hóa đơn. Các chuyến sau
     /// (VD chặng giao, trả hàng) không chặn để hàng không kẹt giữa đường. Đơn khách lẻ (không hợp đồng) không xét.</summary>
-    private async Task<string?> GetContractBlockReasonAsync(Trip trip)
+    private async Task<string?> GetContractBlockReasonAsync(Trip trip, List<FixHint>? fixes = null)
     {
         if (trip.LegType == TripLegType.Return) return null;
         var contract = await _db.TransportOrders.Where(o => o.Id == trip.TransportOrderId && o.Contract != null)
@@ -725,7 +731,13 @@ WHERE ""Id"" = {tripId}");
         if (contract is null) return null;
         if (await _db.Trips.AnyAsync(t => t.TransportOrderId == trip.TransportOrderId && t.Id != trip.Id && t.StartTime != null))
             return null;
-        return Contract.GetStatus(contract.StartDate, contract.EndDate, VnClock.Today) switch
+        var status = Contract.GetStatus(contract.StartDate, contract.EndDate, VnClock.Today);
+        if (status is ContractStatus.Expired or ContractStatus.Upcoming)
+        {
+            fixes?.Add(new FixHint("Contracts", $"📄 Mở hợp đồng {contract.Code}", Name: contract.Code,
+                Note: "Màn Hợp đồng (bộ phận kinh doanh gia hạn / chỉnh ngày hiệu lực)"));
+        }
+        return status switch
         {
             ContractStatus.Expired => $"Hợp đồng {contract.Code} của đơn đã hết hạn {contract.EndDate:dd/MM/yyyy} — chưa thể bắt đầu chuyến " +
                                       $"đầu tiên của đơn (sẽ không lập được hóa đơn). Nhờ bộ phận kinh doanh gia hạn hợp đồng rồi thử lại.",
@@ -734,16 +746,36 @@ WHERE ""Id"" = {tripId}");
         };
     }
 
-    private async Task<string?> GetStartBlockReasonAsync(Trip trip)
+    /// <summary>Bắt đầu chuyến có bị chặn không (KHÔNG bắt đầu) — Desktop gọi khi mở chuyến từ thông báo "chuyến không
+    /// xuất phát được" để hiện ngay hộp sửa nhanh. Success = true: bắt đầu được.</summary>
+    public async Task<TripActionResult> GetStartCheckAsync(int id)
+    {
+        var trip = await _db.Trips.Include(t => t.TransportOrder).Include(t => t.TripLines).FirstOrDefaultAsync(t => t.Id == id);
+        if (trip is null) return new TripActionResult(false, "Không tìm thấy chuyến.");
+        if (trip.Status != TripStatus.Planned) return new TripActionResult(false, "Chuyến này không còn ở trạng thái chờ xuất phát.");
+        var fixes = new List<FixHint>();
+        var reason = await GetStartBlockReasonAsync(trip, fixes);
+        return new TripActionResult(reason is null, reason, fixes);
+    }
+
+    /// <summary>Lối tắt tới 1 màn của kho (Nhập hàng từ chuyến / Xuất kho theo chuyến…) — cần tên kho để Desktop mở đúng kho.</summary>
+    private async Task<List<FixHint>?> WarehouseFixesAsync(string kind, string text, int? warehouseId)
+    {
+        if (warehouseId is not int wid) return null;
+        var name = await _db.Warehouses.Where(w => w.Id == wid).Select(w => w.Name).FirstOrDefaultAsync();
+        return new List<FixHint> { new(kind, text, WarehouseId: wid, Name: name) };
+    }
+
+    private async Task<string?> GetStartBlockReasonAsync(Trip trip, List<FixHint>? fixes = null)
     {
         // Kiểm tra LẠI xe + tài xế lúc xuất phát — Chia xe có thể đã từ nhiều
         // ngày trước, trong thời gian chờ: xe bị chuyển Bảo trì/Ngưng hoạt động,
         // Đăng kiểm hoặc bằng lái hết hạn, tài xế nghỉ việc... (trước đây chỉ
         // kiểm tra 1 lần lúc Chia xe, chuyến vẫn bắt đầu được).
-        var resourceReason = await GetVehicleDriverBlockReasonAsync(trip);
+        var resourceReason = await GetVehicleDriverBlockReasonAsync(trip, fixes);
         if (resourceReason is not null) return resourceReason;
 
-        var contractReason = await GetContractBlockReasonAsync(trip);
+        var contractReason = await GetContractBlockReasonAsync(trip, fixes);
         if (contractReason is not null) return contractReason;
 
         // Chặng TRẢ HÀNG: hàng chỉ trừ kho lúc chuyến hoàn tất — nhưng phải CÒN ĐỦ hàng trong kho
@@ -778,6 +810,8 @@ WHERE ""Id"" = {tripId}");
             if (!trip.WarehouseId.HasValue) return null;
             // Đủ hàng trong kho nhưng KHO CHƯA XÁC NHẬN XUẤT cho chuyến này (soạn hàng + bốc lên xe).
             var notIssued = await NotIssuedTextAsync(trip.Id);
+            if (notIssued is not null && fixes is not null && await WarehouseFixesAsync("TripIssue", $"📤 Xuất kho cho chuyến #{trip.Id}", trip.WarehouseId) is { } issueFix)
+                fixes.AddRange(issueFix);
             return notIssued is null ? null
                 : $"Kho chưa xác nhận XUẤT KHO cho chuyến giao #{trip.Id} ({notIssued}). Vận hành vào màn Kho → 📤 Xuất kho theo chuyến, " +
                   "soạn hàng lên xe rồi bấm Xác nhận xuất — xong mới bắt đầu chuyến được.";
@@ -787,6 +821,8 @@ WHERE ""Id"" = {tripId}");
         // Vận hành) -> báo rõ thay vì câu chung "kho không đủ hàng".
         var orderId = trip.TransportOrderId;
         var waitingReceipt = await PendingReceiptRules.LoadAsync(_db, l => l.Trip.TransportOrderId == orderId);
+        if (waitingReceipt.Count > 0 && fixes is not null && await WarehouseFixesAsync("PendingReceipt", "📦 Nhập hàng từ chuyến lấy hàng", trip.WarehouseId) is { } receiptFix)
+            fixes.AddRange(receiptFix);
         if (waitingReceipt.Count > 0)
             return "Chưa thể bắt đầu chuyến giao hàng — hàng của chuyến lấy " + PendingReceiptRules.Describe(waitingReceipt) +
                    " đã về kho nhưng CHƯA NHẬP KHO. Vận hành nhập kho trước (màn Kho → 📦 Nhập hàng từ chuyến: tự chọn vị trí hoặc để hệ thống tự xếp) rồi mới xuất kho đi giao.";
@@ -835,7 +871,7 @@ WHERE ""Id"" = {tripId}");
         return null;
     }
 
-    private async Task<string?> GetVehicleDriverBlockReasonAsync(Trip trip)
+    private async Task<string?> GetVehicleDriverBlockReasonAsync(Trip trip, List<FixHint>? fixes = null)
     {
         // So theo NGÀY Việt Nam, CÙNG quy tắc với Chia xe (VehicleDocumentRules) — trước
         // đây lúc xuất phát chỉ xét Đăng kiểm, bỏ sót Bảo hiểm / Giấy phép vận tải và
@@ -848,39 +884,54 @@ WHERE ""Id"" = {tripId}");
         var lastDay = today.AddDays(tripDays - 1);
         var daysText = tripDays > 1 ? $" tới hết ngày {lastDay:dd/MM/yyyy} (chặng dự kiến {tripDays} ngày)" : "";
 
+        // CÁCH SỬA NHANH (Desktop hiện thành nút): đổi xe / tài xế luôn là 1 lựa chọn khi xe hoặc tài xế bị chặn.
+        var reassign = new FixHint("Reassign", $"🔄 Đổi xe / tài xế cho chuyến #{trip.Id}", trip.Id, $"#{trip.Id}",
+            Note: "Mở Đổi xe / tài xế — chỉ chọn được xe, tài xế đủ điều kiện");
+        string Block(string reason, params FixHint[] hints)
+        {
+            if (fixes is not null) { fixes.AddRange(hints); fixes.Add(reassign); }
+            return reason;
+        }
+
         var vehicle = await _db.Vehicles
             .Where(v => v.Id == trip.VehicleId)
             .Select(v => new { v.PlateNumber, v.Status, v.CapacityKg, v.VehicleType })
             .FirstOrDefaultAsync();
         if (vehicle is null) return "Không tìm thấy xe của chuyến này.";
+        var vehicleScreen = new FixHint("Vehicle", $"🚚 Mở xe {vehicle.PlateNumber} ở màn Đội xe", trip.VehicleId, vehicle.PlateNumber,
+            Note: "Đổi trạng thái xe khi đã sửa xong");
         if (vehicle.Status == VehicleStatus.UnderMaintenance)
-            return $"Xe {vehicle.PlateNumber} đang Bảo trì — chưa thể xuất phát.";
+            return Block($"Xe {vehicle.PlateNumber} đang Bảo trì — chưa thể xuất phát.", vehicleScreen);
         if (vehicle.Status == VehicleStatus.OutOfService)
-            return $"Xe {vehicle.PlateNumber} đang Ngưng hoạt động — chưa thể xuất phát.";
+            return Block($"Xe {vehicle.PlateNumber} đang Ngưng hoạt động — chưa thể xuất phát.", vehicleScreen);
 
         var docs = await VehicleDocumentRules.GetLatestAsync(_db, trip.VehicleId);
         var docReason = VehicleDocumentRules.BlockReason(docs, vehicle.PlateNumber, lastDay);
         if (docReason is not null)
-            return VehicleDocumentRules.BlockReason(docs, vehicle.PlateNumber, today) // đã hết hạn ngay hôm nay
-                   ?? $"Giấy tờ xe {vehicle.PlateNumber} hết hạn TRƯỚC KHI chặng này chạy xong{daysText}: {docReason}";
+            return Block(VehicleDocumentRules.BlockReason(docs, vehicle.PlateNumber, today) // đã hết hạn ngay hôm nay
+                   ?? $"Giấy tờ xe {vehicle.PlateNumber} hết hạn TRƯỚC KHI chặng này chạy xong{daysText}: {docReason}",
+                new FixHint("VehicleDocs", $"📄 Gia hạn giấy tờ xe {vehicle.PlateNumber}", trip.VehicleId, vehicle.PlateNumber,
+                    Note: "Mở Giấy tờ xe, thêm bản gia hạn mới"));
 
         var driver = await _db.DriverProfiles
             .Where(dp => dp.EmployeeId == trip.DriverEmployeeId)
             .Select(dp => new { dp.LicenseExpiryDate, dp.LicenseClass, dp.HealthCertExpiryDate, EmpStatus = dp.Employee.Status, dp.Employee.FullName,
-                                PositionName = dp.Employee.Position != null ? dp.Employee.Position.Name : null })
+                                dp.Employee.Code, PositionName = dp.Employee.Position != null ? dp.Employee.Position.Name : null })
             .FirstOrDefaultAsync();
-        if (driver is null) return "Tài xế của chuyến này chưa có hồ sơ tài xế.";
+        if (driver is null) return Block("Tài xế của chuyến này chưa có hồ sơ tài xế.");
+        var profile = new FixHint("DriverProfile", $"🪪 Cập nhật hồ sơ tài xế {driver.FullName}", trip.DriverEmployeeId, driver.FullName,
+            Note: "Mở hồ sơ tài xế (hạng bằng, ngày hết hạn bằng lái / giấy khám)");
         if (driver.EmpStatus != EmployeeStatus.Active)
-            return $"Tài xế {driver.FullName} hiện không ở trạng thái Đang làm việc — chưa thể xuất phát.";
+            return Block($"Tài xế {driver.FullName} hiện không ở trạng thái Đang làm việc — chưa thể xuất phát.");
         if (!DriverPositionRules.IsDriverPosition(driver.PositionName))
-            return $"Tài xế {driver.FullName} hiện có chức danh \"{driver.PositionName ?? "(trống)"}\" — không phải Tài xế, chưa thể xuất phát. Đổi tài xế khác cho chuyến (nút Đổi xe/tài xế).";
+            return Block($"Tài xế {driver.FullName} hiện có chức danh \"{driver.PositionName ?? "(trống)"}\" — không phải Tài xế, chưa thể xuất phát. Đổi tài xế khác cho chuyến (nút Đổi xe/tài xế).");
         var licenseBlock = DriverLicenseRules.BlockReason(driver.LicenseClass, vehicle.CapacityKg, vehicle.VehicleType);
         if (licenseBlock is not null)
-            return $"Tài xế {driver.FullName} không lái được xe {vehicle.PlateNumber}: {licenseBlock} — đổi tài xế / xe trước khi xuất phát.";
+            return Block($"Tài xế {driver.FullName} không lái được xe {vehicle.PlateNumber}: {licenseBlock} — đổi tài xế / xe trước khi xuất phát.", profile);
         if (driver.LicenseExpiryDate.Date < lastDay)
-            return $"Bằng lái của tài xế {driver.FullName} hết hạn ({driver.LicenseExpiryDate:dd/MM/yyyy}) trước khi chặng này xong{daysText} — chưa thể xuất phát.";
+            return Block($"Bằng lái của tài xế {driver.FullName} hết hạn ({driver.LicenseExpiryDate:dd/MM/yyyy}) trước khi chặng này xong{daysText} — chưa thể xuất phát.", profile);
         if (driver.HealthCertExpiryDate is DateTime healthCert && healthCert.Date < lastDay)
-            return $"Giấy khám sức khỏe của tài xế {driver.FullName} hết hạn ({healthCert:dd/MM/yyyy}) trước khi chặng này xong{daysText} — chưa thể xuất phát.";
+            return Block($"Giấy khám sức khỏe của tài xế {driver.FullName} hết hạn ({healthCert:dd/MM/yyyy}) trước khi chặng này xong{daysText} — chưa thể xuất phát.", profile);
 
         // Tài xế phải ĐĂNG KÝ NGÀY LÀM đủ mọi ngày chặng chạy (giống điều kiện Chia xe).
         var afterLastDay = lastDay.AddDays(1);
@@ -891,8 +942,17 @@ WHERE ""Id"" = {tripId}");
             .Select(d => d.Date).ToHashSet();
         var missingDays = Enumerable.Range(0, tripDays).Select(i => today.AddDays(i)).Where(d => !workDays.Contains(d)).ToList();
         if (missingDays.Count > 0)
-            return $"Tài xế {driver.FullName} chưa đăng ký ngày làm {string.Join(", ", missingDays.Select(d => d.ToString("dd/MM/yyyy")))}" +
-                   $"{(tripDays > 1 ? $" (chặng dự kiến {tripDays} ngày)" : "")} — đăng ký trong màn Tài xế trước khi xuất phát.";
+        {
+            var from = missingDays.First();
+            var to = missingDays.Last();
+            return Block($"Tài xế {driver.FullName} chưa đăng ký ngày làm {string.Join(", ", missingDays.Select(d => d.ToString("dd/MM/yyyy")))}" +
+                   $"{(tripDays > 1 ? $" (chặng dự kiến {tripDays} ngày)" : "")} — đăng ký trong màn Tài xế trước khi xuất phát.",
+                new FixHint("DriverWorkDays",
+                    from == to ? $"📅 Đăng ký ngày làm {from:dd/MM} cho tài xế {driver.FullName}"
+                               : $"📅 Đăng ký ngày làm {from:dd/MM} – {to:dd/MM} cho tài xế {driver.FullName}",
+                    trip.DriverEmployeeId, driver.FullName, from, to,
+                    Note: $"Mở Ngày làm việc, điền sẵn {missingDays.Count} ngày còn thiếu"));
+        }
 
         return null;
     }

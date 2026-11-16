@@ -239,6 +239,32 @@ namespace TruckingSystem.Desktop.GUI_DriverManagement
         /// form riêng của màn Tài xế, không dùng form lịch ca bên màn Nhân viên.</summary>
         private void BtnSchedule_Click(object? sender, EventArgs e) => _ = OpenWorkDaysAsync();
 
+        /// <summary>Mở từ thông báo "Tài xế … chưa đăng ký ngày làm dd/MM": tải xong thì mở THẲNG Ngày làm việc của
+        /// đúng tài xế (mã), điền sẵn ngày còn thiếu — không phải tìm rồi bấm nút nữa.</summary>
+        public void OpenWorkDaysOnLoad(string code, DateTime? day)
+        {
+            FocusOn(code);
+            _pendingWorkDays = (code, day);
+        }
+
+        private (string Code, DateTime? Day)? _pendingWorkDays;
+
+        private async Task OpenPendingWorkDaysAsync()
+        {
+            if (_pendingWorkDays is not { } p || _api is null || IsDisposed) return;
+            _pendingWorkDays = null;
+            var d = _drivers.FirstOrDefault(x => string.Equals(x.Code, p.Code, StringComparison.OrdinalIgnoreCase));
+            if (d is null || !d.HasProfile) return;
+            bool changed;
+            using (var f = new DriverWorkDaysForm(_api, d.EmployeeId, d.FullName))
+            {
+                if (p.Day is DateTime day) f.Preset(day, day, $"📌 Mở từ thông báo: điền sẵn ngày {day:dd/MM} — bấm Đăng ký là xong.");
+                f.ShowDialog(FindForm());
+                changed = f.Changed;
+            }
+            if (changed) await LoadAsync(d.EmployeeId);
+        }
+
         private async Task OpenWorkDaysAsync(IWin32Window? owner = null)
         {
             if (_api is null) return;
@@ -300,6 +326,7 @@ namespace TruckingSystem.Desktop.GUI_DriverManagement
                 lblStatus.ForeColor = Theme.Danger;
             }
             finally { _overlay.Loading = false; }
+            if (_pendingWorkDays is not null && _drivers.Count > 0) BeginInvoke(new Action(async () => await OpenPendingWorkDaysAsync()));
         }
 
         private void Grid_CellFormatting(object? sender, DataGridViewCellFormattingEventArgs e)

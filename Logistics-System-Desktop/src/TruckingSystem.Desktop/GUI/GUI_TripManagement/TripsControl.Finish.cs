@@ -4,7 +4,7 @@ using TruckingSystem.Desktop.DTO_TripManagement;
 namespace TruckingSystem.Desktop.GUI_TripManagement
 {
     /// <summary>HỘP HOÀN TẤT / DUYỆT CHUYẾN có chốt phí lưu kho (mẫu duyet_luu_kho đã duyệt):
-    ///  • Chuyến GIAO cuối làm đơn Hoàn tất mà hàng từng nằm kho quá hạn giao CHƯA chọn do ai -> trong hộp có khung vàng
+    ///  • Chuyến GIAO cuối làm đơn Hoàn tất mà hàng từng nằm kho sau hạn tính trễ CHƯA chọn do ai -> trong hộp có khung vàng
     ///    (số ngày, phí ước tính) + 2 lựa chọn: 🏢 Do công ty (chọn sẵn) / 🧾 Do khách hàng (hiện ô lý do, ≥ 5 ký tự mới bấm được).
     ///  • Đã chọn từ trước -> chỉ ghi lại 1 dòng xanh. Không có hàng nằm kho quá hạn -> như hộp hỏi lại thường.
     /// Máy chủ cũng kiểm tra (thiếu lựa chọn thì từ chối) — đây chỉ là chỗ hỏi cho tiện, 1 lần bấm là xong.</summary>
@@ -15,7 +15,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
             var check = _api is null ? null : await _api.Trips.GetFinishCheckAsync(tripId);
             var needChoice = check is { IsLastDelivery: true, OverdueDays: > 0, Decision: null };
             if (check is { IsLastDelivery: true } c && c.OverdueDays > 0 && c.Decision is not null)
-                body += $"\n\n📦 Phí lưu kho (hàng nằm kho {c.OverdueDays} ngày sau hạn giao) đã xác nhận " +
+                body += $"\n\n📦 Phí lưu kho (hàng nằm kho {c.OverdueDays} ngày sau hạn tính trễ) đã xác nhận " +
                         (c.Decision == "Customer" ? $"DO KHÁCH HÀNG: {c.EstimatedFee:N0} đ" : "DO CÔNG TY (khách 0 đ)") +
                         (string.IsNullOrWhiteSpace(c.DecisionReason) ? "." : $" — {c.DecisionReason}.");
             if (check is { IsLastDelivery: true }) title = title.TrimEnd('?') + $" — đơn {check.OrderCode} sẽ HOÀN TẤT?";
@@ -54,7 +54,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
                 MinimumSize = new Size(S(500), 0),
             };
             var amber = Color.FromArgb(120, 53, 15);
-            box.Controls.Add(L($"📦 Hàng đã nằm kho {check.OverdueDays} ngày sau hạn giao ({check.Due:dd/MM/yyyy})",
+            box.Controls.Add(L($"📦 Hàng đã nằm kho {check.OverdueDays} ngày sau hạn tính trễ ({check.Due:dd/MM/yyyy})",
                 new Font("Segoe UI", 10F, FontStyle.Bold), amber, 2));
             box.Controls.Add(L($"Phí lưu kho ước tính: {check.EstimatedFee:N0} đ — chọn bên chịu trước khi duyệt:", new Font("Segoe UI", 9.5F), amber));
             var byCompany = new RadioButton { Text = "🏢 Do công ty — khách 0 đ, công ty chịu phần phí này", AutoSize = true, Checked = true, UseMnemonic = false };

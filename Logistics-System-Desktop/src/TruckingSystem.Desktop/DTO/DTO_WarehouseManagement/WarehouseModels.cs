@@ -11,8 +11,10 @@
         /// <summary>"Top" / "Bottom" / "Left" / "Right" — null = kho chưa khai báo cửa.</summary>
         public string? DoorSide { get; set; }
         public decimal? DoorOffsetMeters { get; set; }
-        /// <summary>Phí lưu kho (đ/m³/ngày) khi khách dời hạn giao; 0 = không tính.</summary>
+        /// <summary>Phí lưu kho (đ/m³/ngày) khi hàng nằm kho quá số ngày miễn phí; 0 = không tính.</summary>
         public decimal StorageFeePerM3PerDay { get; set; }
+        /// <summary>Số ngày lưu kho miễn phí kể từ ngày nhập kho (mặc định 5).</summary>
+        public int FreeStorageDays { get; set; } = 5;
         public double? Lat { get; set; }
         public double? Lng { get; set; }
         /// <summary>Loại khu kho đang có (khu có vị trí): "Normal" / "Fragile" / "Hazmat". null = API cũ chưa trả về.</summary>
@@ -27,7 +29,7 @@
         public int DraftOrders { get; set; }
         public int OrdersWaitAllocation { get; set; }
         public int TripsWaitApproval { get; set; }
-        /// <summary>Đơn có hàng nằm kho quá hạn giao, chưa chọn do bên nào.</summary>
+        /// <summary>Đơn có hàng nằm kho sau hạn tính trễ, chưa chọn do bên nào.</summary>
         public int OrdersOverdueStorage { get; set; }
         public List<WarehouseWorkCountItem> Warehouses { get; set; } = new();
     }
@@ -109,6 +111,8 @@
         public bool Success { get; set; }
         public string? Message { get; set; }
         public List<string> BinCodesUsed { get; set; } = new();
+        /// <summary>Cách sửa nhanh khi nhập không được — xem QuickFix.</summary>
+        public List<TruckingSystem.Desktop.Common.FixHintItem>? Fixes { get; set; }
     }
 
     public class CargoLineOptionItem

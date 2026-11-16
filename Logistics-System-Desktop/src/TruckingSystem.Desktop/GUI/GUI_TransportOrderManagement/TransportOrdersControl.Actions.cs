@@ -140,8 +140,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             AddItem(items, _actDeadline);
             items.Add(new ToolStripSeparator());
             AddItem(items, _actFee);
-            // "➕ Ghi nhận phí lưu kho bổ sung" bỏ khỏi menu — đã có nút cùng tên trong cửa sổ "Xem phí lưu kho"
-            // (xem phí rồi mới ghi bổ sung, đỡ trùng 2 chỗ mở cùng 1 cửa sổ).
+            // Phần "Ghi nhận phí lưu kho bổ sung" đã bỏ hẳn: phí lưu kho tự tính từ nhập / xuất kho (miễn phí N ngày đầu).
         }
 
         private void AddToolItems(ToolStripItemCollection items)
@@ -285,8 +284,8 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             };
             info.Pills.Add((status, status == "Đã hủy" ? GridDecor.Red : GridDecor.StatusTone(status) ?? GridDecor.Slate));
             if (!done && o.CommittedDeliveryDate is not null && DeadlineGroup(o) is DeadlineOverdue or DeadlineSoon)
-                info.Pills.Add(("Hạn " + ScreenKit.Deadline(o.CommittedDeliveryDate), DeadlineGroup(o) == DeadlineOverdue ? GridDecor.Red : GridDecor.Amber));
-            if (o.OverdueStorageDays > 0) info.Pills.Add(("📦 Nằm kho quá hạn", GridDecor.Red));
+                info.Pills.Add(("Hạn " + DeadlineText(o), DeadlineGroup(o) == DeadlineOverdue ? GridDecor.Red : GridDecor.Amber));
+            if (o.OverdueStorageDays > 0) info.Pills.Add(("📦 Nằm kho sau hạn", GridDecor.Red));
 
             info.Boxes.Add(("Khách và hợp đồng", new List<(string, string)>
             {
@@ -296,15 +295,28 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             info.Boxes.Add(("Thời gian", new List<(string, string)>
             {
                 ("Hạn giao", o.CommittedDeliveryDate is DateTime due ? $"{due:dd/MM/yyyy}" : "Chưa có"),
-                ("Tình trạng", o.CommittedDeliveryDate is null ? "—" : ScreenKit.Deadline(o.CommittedDeliveryDate, done)),
+                o.HasLateBasis && !done
+                    ? ("Hạn tính trễ", $"{o.LateBasisDate:dd/MM/yyyy}" + (o.LateBasisDate!.Value.Date < DateTime.Today
+                        ? $" · trễ {(DateTime.Today - o.LateBasisDate.Value.Date).Days} ngày" : ""))
+                    : ("Tình trạng", o.CommittedDeliveryDate is null ? "—" : ScreenKit.Deadline(o.CommittedDeliveryDate, done)),
             }));
             var goods = new List<(string, string)>
             {
                 ("Chuyến", o.ActiveTripCount > 0 ? $"🚚 {o.ActiveTripCount} chuyến" : "Chưa chia xe"),
                 ("Đã giao", $"{o.ProgressPercent:0.##}%"),
             };
-            if (o.QtyOnHand > 0) goods.Add(("Đang nằm kho", $"📦 {o.QtyOnHand:#,##0.##}"));
+            if (o.QtyOnHand > 0 && o.StorageDay == 0) goods.Add(("Đang nằm kho", $"📦 {o.QtyOnHand:#,##0.##}"));
             info.Boxes.Add(("Hàng và chuyến", goods));
+            // Lưu kho: đang ở ngày thứ mấy (còn miễn phí / đang tính phí) + phí tạm tính tới hôm nay.
+            if (o.StorageDay > 0)
+                info.Boxes.Add(("Hàng và kho", new List<(string, string)>
+                {
+                    ("Đang nằm kho", $"📦 {o.StockM3:0.##} m³"),
+                    ("Lưu kho", o.FreeDaysLeft < 0 ? $"ngày {o.StorageDay} · kho không tính phí"
+                        : o.FreeDaysLeft > 0 ? $"ngày {o.StorageDay} · còn {o.FreeDaysLeft} ngày miễn phí"
+                        : $"ngày {o.StorageDay} · đang tính phí"),
+                    ("Phí tới nay", $"{o.StorageFeeToDate:N0} đ"),
+                }));
 
             // Nút chính cạnh "việc cần làm" — cùng xử lý với nút / menu sẵn có.
             (info.ActionText, _cardAction) = o.Status switch

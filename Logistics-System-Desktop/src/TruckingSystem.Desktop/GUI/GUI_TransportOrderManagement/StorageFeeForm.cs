@@ -3,20 +3,44 @@ using TruckingSystem.Desktop.DTO_TransportOrderManagement;
 
 namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
 {
-    /// <summary>💰 PHÍ LƯU KHO của 1 đơn — do KHÁCH dời hạn giao trễ hơn / chậm nhận hàng. Thẻ tổng quan (tổng
-    /// phí, số lần, số ngày tính phí, đơn giá) + bảng từng lần (cả lần Công ty yêu cầu để đối chiếu, phí = 0)
-    /// với cột "Cách tính" + ô CHI TIẾT TỪNG NGÀY (m³ còn trong kho × đơn giá = tiền; ngày nào không tính và
-    /// vì sao). "➕ Ghi nhận phí lưu kho bổ sung": khi nhân viên quên đổi hạn — kể cả đơn đã Hoàn tất / Hủy.
-    /// "Sao chép diễn giải" sao chép đúng phần chi tiết để gửi khách / kế toán.
-    /// Giao diện nằm ở StorageFeeForm.Designer.cs.</summary>
+    /// <summary>💰 PHÍ LƯU KHO của 1 đơn (cách tính mới): miễn phí N ngày kể từ ngày nhập kho đầu tiên, sau đó mỗi ngày hàng còn
+    /// nằm kho = m³ × đơn giá kho. Ngày SAU HẠN TÍNH TRỄ thì chọn bên chịu (do khách / do công ty).
+    /// Bố cục (mẫu đã chốt): dòng phụ đề (kho · miễn phí · đơn giá) → 4 mốc ngày + thanh thời gian 3 màu → bảng từng ngày
+    /// (ngày miễn phí gộp 1 dòng) → khung chọn bên chịu cho ngày sau hạn tính trễ → dòng tổng. Bỏ hẳn "Ghi nhận phí bổ sung".
+    /// Phần thêm đều đặt bằng code; Designer chỉ còn các control cũ (thẻ KPI cũ và ô chi tiết chữ được ẩn).</summary>
     public partial class StorageFeeForm : BaseForm
     {
         private readonly ApiServices? _api;
         private readonly TransportOrderDetailItem? _order;
 
-        /// <summary>true nếu đã ghi nhận thêm phí trong lúc mở form — màn Chi tiết đơn tải lại dòng phí.</summary>
+        /// <summary>true nếu đã chọn bên chịu trong lúc mở form — màn gọi tải lại.</summary>
         public bool ChangedAny { get; private set; }
         private StorageFeeItem? _fee;
+
+        private readonly StorageTimelineBar _timeline = new() { Dock = DockStyle.Fill, Margin = new Padding(0, 0, 0, 10) };
+        private readonly Label _summary = new()
+        {
+            AutoSize = true,
+            Anchor = AnchorStyles.Left | AnchorStyles.Right,
+            Font = new Font("Segoe UI", 9.5F),
+            ForeColor = Theme.TextSecondary,
+            Margin = new Padding(0, 0, 0, 8),
+        };
+        private readonly Label _decisionBox = new()
+        {
+            AutoSize = true,
+            Anchor = AnchorStyles.Left | AnchorStyles.Right,
+            Font = new Font("Segoe UI", 10F),
+            Padding = new Padding(12, 8, 12, 8),
+            Margin = new Padding(0, 0, 0, 4),
+            Visible = false,
+        };
+        private readonly FlowLayoutPanel _decisionButtons = new()
+        {
+            AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, WrapContents = true, Margin = new Padding(0, 0, 0, 8), Visible = false,
+        };
+        private readonly Button _btnCustomer = new() { AutoSize = true };
+        private readonly Button _btnCompany = new() { AutoSize = true };
 
         /// <summary>Dùng cho trình thiết kế (Designer) của Visual Studio.</summary>
         public StorageFeeForm()
@@ -25,216 +49,215 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             TruckingSystem.Desktop.Common.DialogFit.Enable(this, root); // vừa màn hình mọi máy, bảng không bị ép mất chữ
             Anim.FadeIn(this);
 
-            // 4 thẻ theo câu hỏi của người dùng: ĐÃ phát sinh bao nhiêu · nếu hàng còn nằm kho tới hết hạn mới thì
-            // DỰ KIẾN bao nhiêu · đã tính được mấy ngày / khách xin dời mấy ngày · đơn giá.
-            kpi.AddCard("total", "💰", "Phí đã phát sinh (đ)", Theme.Warning);
-            kpi.AddCard("projected", "📈", "Dự kiến nếu hàng nằm kho hết hạn mới (đ)", Theme.Primary);
-            kpi.AddCard("days", "📅", "Ngày đã tính phí", GridDecor.AccentViolet);
-            kpi.AddCard("rate", "🏬", "Đơn giá kho (đ/m³/ngày)", GridDecor.AccentTeal);
+            // Thẻ KPI cũ và ô chi tiết chữ (Designer) không dùng nữa: ẩn + thu hàng về AutoSize để bảng từng ngày chiếm chỗ.
+            kpi.Visible = false;
+            txtDetail.Visible = false;
+            root.RowStyles[root.GetRow(txtDetail)] = new RowStyle(SizeType.AutoSize);
+            root.RowStyles[root.GetRow(grid)] = new RowStyle(SizeType.Percent, 100F);
 
-            // Câu tóm tắt NGAY DƯỚI các thẻ: giải thích bằng lời vì sao ra con số này (thêm bằng code, không sửa Designer).
-            KpiStrip.InsertRow(root, _summary, root.GetRow(grid));
-            // Label tự xuống dòng theo bề ngang form (AutoSize + MaximumSize).
-            void FitSummary() => _summary.MaximumSize = new Size(Math.Max(200, root.ClientSize.Width - root.Padding.Horizontal), 0);
-            root.SizeChanged += (_, _) => FitSummary();
-            FitSummary();
+            // Thêm bằng code (không sửa Designer): phụ đề → thanh thời gian → [bảng] → khung chọn bên chịu.
+            KpiStrip.InsertRow(root, _summary, root.GetRow(kpi));
+            KpiStrip.InsertRow(root, _timeline, root.GetRow(kpi));
+            KpiStrip.InsertRow(root, _decisionBox, root.GetRow(grid) + 1);
+            KpiStrip.InsertRow(root, _decisionButtons, root.GetRow(_decisionBox) + 1);
+            _decisionBox.UseMnemonic = false;
+            void FitText()
+            {
+                var w = Math.Max(200, root.ClientSize.Width - root.Padding.Horizontal);
+                _summary.MaximumSize = new Size(w, 0);
+                _decisionBox.MaximumSize = new Size(w, 0);
+            }
+            root.SizeChanged += (_, _) => FitText();
+            FitText();
+
+            ButtonStyles.Primary(_btnCustomer);
+            ButtonStyles.Secondary(_btnCompany);
+            _btnCustomer.Margin = new Padding(0, 0, LogicalToDeviceUnits(8), 0);
+            _decisionButtons.Controls.Add(_btnCustomer);
+            _decisionButtons.Controls.Add(_btnCompany);
+            _btnCustomer.Click += async (_, _) => await DecideAsync("Customer");
+            _btnCompany.Click += async (_, _) => await DecideAsync("Company");
 
             Theme.StyleGrid(grid);
             GridLayout.FitColumns(grid);
             GridDecor.HoverRows(grid);
-            GridDecor.Pills(grid, "Bên_yêu_cầu", (text, _) => text == "Khách hàng" ? GridDecor.Amber : GridDecor.Slate);
-            GridDecor.Pills(grid, "Tình_trạng", (text, _) => text.StartsWith("✅") ? GridDecor.Green
-                : text.StartsWith("⏳") ? GridDecor.Blue : GridDecor.Slate);
+            GridDecor.Pills(grid, "Tính_phí", (text, _) => text.StartsWith("Miễn phí") ? GridDecor.Green
+                : text.StartsWith("Tính phí") ? GridDecor.Blue
+                : text.Contains("công ty") ? GridDecor.Slate : GridDecor.Amber);
         }
-
-        private readonly Label _summary = new()
-        {
-            AutoSize = true,
-            Anchor = AnchorStyles.Left | AnchorStyles.Right,
-            Font = new Font("Segoe UI", 10.5F),
-            ForeColor = Theme.TextPrimary,
-            BackColor = Color.FromArgb(239, 246, 255),
-            Padding = new Padding(12, 10, 12, 10),
-            Margin = new Padding(0, 4, 0, 10),
-        };
 
         public StorageFeeForm(ApiServices api, TransportOrderDetailItem order) : this()
         {
             _api = api;
             _order = order;
             Text = $"Phí lưu kho — đơn {order.Code}";
-            lblTitle.Text = $"💰 Phí lưu kho do khách dời hạn giao — đơn {order.Code} ({order.CustomerName})";
-            btnRecord.Enabled = order.Status != "Draft" && order.CommittedDeliveryDate.HasValue;
+            lblTitle.Text = $"💰 Phí lưu kho của đơn {order.Code} ({order.CustomerName})";
             Load += async (_, _) => await LoadAsync();
-        }
-
-        private static bool IsFuture(StorageFeeDayItem d) => d.NotChargedReason?.StartsWith("chưa tới ngày") == true;
-
-        /// <summary>Phí 1 ngày ước tính lúc đổi hạn (m³ lúc đổi × đơn giá) — dùng cho các ngày CHƯA TỚI.</summary>
-        private static decimal PerDayEstimate(StorageFeeLineItem c)
-            => c.DelayDays > 0 && c.EstimatedFee > 0 ? Math.Round(c.EstimatedFee / c.DelayDays, 0) : 0;
-
-        /// <summary>Dự kiến của 1 lần dời = đã tính + (số ngày chưa tới × phí 1 ngày ước tính).</summary>
-        private static decimal Projected(StorageFeeLineItem c) => c.Fee + c.Days.Count(IsFuture) * PerDayEstimate(c);
-
-        private static string Status(StorageFeeLineItem c)
-        {
-            if (c.RequestedBy != "Khách hàng") return "Không tính (công ty yêu cầu)";
-            var future = c.Days.Count(IsFuture);
-            var total = c.Days.Count;
-            if (future == 0) return "✅ Đã chốt";
-            if (future == total) return $"⏳ Chưa tới ngày ({total} ngày phía trước)";
-            return $"⏳ Đang tính ({total - future}/{total} ngày)";
         }
 
         private async Task LoadAsync()
         {
             if (_api is null || _order is null) return;
-            kpi.Busy = true;
             try
             {
                 var fee = await _api.TransportOrders.GetStorageFeeAsync(_order.Id);
                 if (IsDisposed) return;
                 _fee = fee;
-                // Bảng GỌN: mỗi lần dời 1 dòng với Phí đã tính / Phí dự kiến / Tình trạng — chi tiết từng ngày ở ô dưới.
-                grid.DataSource = fee.Changes.Select(c => new
-                {
-                    Thời_điểm = c.ChangedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm"),
-                    Bên_yêu_cầu = c.RequestedBy,
-                    Dời_hạn = c.IsFeeOnly
-                        ? $"Ghi nhận bổ sung: nằm kho sau {c.OldDate:dd/MM} tới {c.NewDate:dd/MM}"
-                        : $"{(c.OldDate is { } o ? o.ToString("dd/MM") : "(chưa có)")} → {c.NewDate:dd/MM}" + (c.DelayDays > 0 ? $" ({c.DelayDays} ngày)" : ""),
-                    Phí_đã_tính = $"{c.Fee:N0} đ",
-                    Phí_dự_kiến = c.RequestedBy == "Khách hàng" ? $"{Projected(c):N0} đ" : "—",
-                    Tình_trạng = Status(c),
-                    Lý_do = c.Reason,
-                    Người_ghi = c.ChangedBy ?? "—",
-                }).ToList();
-                txtDetail.Text = BuildDetailText(fee);
 
-                var customer = fee.Changes.Where(c => c.RequestedBy == "Khách hàng").ToList();
-                var projected = customer.Sum(Projected);
-                var chargedDays = customer.Sum(c => c.ChargedDays);
-                var allDays = customer.Sum(c => c.Days.Count);
-                kpi.SetValue("total", (int)Math.Min(int.MaxValue, Math.Round(fee.TotalFee)), fee.IsFinal ? "✅ đã chốt" : "⏳ tính tới hôm nay");
-                kpi.SetValue("projected", (int)Math.Min(int.MaxValue, Math.Round(projected)),
-                    fee.IsFinal ? "= phí đã chốt" : "nếu hàng còn nằm kho tới hết các ngày khách xin dời");
-                kpi.SetValue("days", chargedDays, $"trên {allDays} ngày khách xin dời · {customer.Sum(c => c.ChargedM3Days):0.##} m³·ngày");
-                var rate = customer.LastOrDefault()?.RatePerM3PerDay ?? 0;
-                kpi.SetValue("rate", (int)Math.Round(rate), rate > 0 ? "chốt lúc khách dời hạn" : "kho chưa khai giá / không áp dụng");
+                _summary.Text = fee.RatePerM3PerDay <= 0
+                    ? $"{fee.WarehouseName} · kho không tính phí lưu kho"
+                    : $"{fee.WarehouseName} · miễn phí {fee.FreeDays} ngày kể từ ngày nhập kho · {fee.RatePerM3PerDay:N0} đ/m³/ngày · đơn giá hiện tại của kho";
+                _timeline.SetData(fee);
+                grid.DataSource = BuildRows(fee);
+                UpdateDecision(fee);
 
-                _summary.Text = SummaryText(fee, customer, projected);
-                _summary.BackColor = fee.IsFinal ? Color.FromArgb(240, 253, 244) : Color.FromArgb(239, 246, 255);
-                lblNote.Text = "Cách tính: mỗi ngày trong khoảng khách xin dời mà hàng có nằm kho (kể cả ngày xuất kho) = số m³ nằm kho trong ngày × đơn giá. " +
-                               "Lần dời do công ty yêu cầu không tính phí cho khách.";
-                lblNote.ForeColor = Theme.TextSecondary;
-                btnCopy.Enabled = customer.Count > 0;
+                var parts = new List<string> { $"Phí tính cho khách: {fee.TotalFee:N0} đ{(fee.IsFinal ? " (đã chốt)" : " (tạm tính)")}" };
+                if (fee.CompanyBorneFee > 0) parts.Add($"Công ty chịu {fee.CompanyBorneFee:N0} đ");
+                if (fee.PendingFee > 0) parts.Add($"Chờ chọn bên chịu {fee.PendingFee:N0} đ");
+                lblNote.Text = string.Join("   ·   ", parts) + "\n" + fee.Note;
+                lblNote.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+                lblNote.ForeColor = fee.PendingFee > 0 ? Theme.Warning : fee.IsFinal ? Theme.Success : Theme.TextPrimary;
+                btnCopy.Enabled = fee.Days.Count > 0;
             }
             catch (Exception ex)
             {
                 if (!IsDisposed) { lblNote.Text = "Không tải được phí lưu kho: " + ex.Message; lblNote.ForeColor = Theme.Danger; }
             }
-            finally
+        }
+
+        /// <summary>Bảng từng ngày: các ngày miễn phí gộp 1 dòng; mỗi ngày tính phí 1 dòng (m³, tiền); ngày sau hạn tính trễ
+        /// ghi rõ đang chờ chọn / do khách / do công ty.</summary>
+        private sealed record FeeRow(string Ngày, string m3_nằm_kho, string Tính_phí, string Tiền);
+
+        private static List<FeeRow> BuildRows(StorageFeeItem fee)
+        {
+            var rows = new List<FeeRow>();
+            var free = fee.Days.Where(d => d.Kind == "Free").ToList();
+            if (free.Count > 0)
             {
-                if (!IsDisposed) kpi.Busy = false;
+                var range = free.Count == 1 ? $"{free[0].Day:dd/MM}" : $"{free[0].Day:dd/MM} → {free[^1].Day:dd/MM}";
+                var events = string.Join(", ", free.Where(d => d.Event is not null).Select(d => $"{d.Day:dd/MM} {d.Event}"));
+                rows.Add(new FeeRow(range + (events.Length > 0 ? $"  ({events})" : ""),
+                    free.Max(d => d.VolumeM3).ToString("0.##"), $"Miễn phí (ngày 1–{free.Count})", "0"));
+            }
+            foreach (var d in fee.Days.Where(d => d.Kind != "Free"))
+            {
+                var after = d.Kind == "AfterBasis";
+                rows.Add(new FeeRow(
+                    $"{d.Day:dd/MM}" + (d.Event is null ? "" : $"  ({d.Event})"),
+                    d.VolumeM3.ToString("0.##"),
+                    !after ? "Tính phí"
+                        : fee.AfterBasisDecision switch
+                        {
+                            "Customer" => "Sau hạn tính trễ · do khách",
+                            "Company" => "Sau hạn tính trễ · do công ty",
+                            _ => "Sau hạn tính trễ · chờ chọn",
+                        },
+                    !after || fee.AfterBasisDecision == "Customer" ? d.Fee.ToString("N0")
+                        : fee.AfterBasisDecision == "Company" ? $"0 (công ty chịu {d.Fee:N0})" : $"{d.Fee:N0} ?"));
+            }
+            if (rows.Count == 0)
+                rows.Add(new FeeRow("—", "", fee.ReceivedDate is null ? "Hàng chưa nhập kho" : "Không có ngày nào", "0"));
+            return rows;
+        }
+
+        /// <summary>Khung chọn bên chịu cho các ngày sau hạn tính trễ (cùng cơ chế với Chi tiết đơn / hộp duyệt chuyến).</summary>
+        private void UpdateDecision(StorageFeeItem fee)
+        {
+            var show = fee.AfterBasisDays > 0;
+            _decisionBox.Visible = _decisionButtons.Visible = show;
+            if (!show) return;
+            var after = fee.Days.Where(d => d.Kind == "AfterBasis").ToList();
+            var range = after.Count == 1 ? $"{after[0].Day:dd/MM}" : $"{after[0].Day:dd/MM}–{after[^1].Day:dd/MM}";
+            var amount = after.Sum(d => d.Fee);
+            var head = $"Hàng nằm kho {fee.AfterBasisDays} ngày SAU hạn tính trễ {fee.LateBasisDate:dd/MM} ({range}).";
+            switch (fee.AfterBasisDecision)
+            {
+                case "Customer":
+                    _decisionBox.BackColor = Color.FromArgb(239, 246, 255);
+                    _decisionBox.ForeColor = Color.FromArgb(30, 64, 175);
+                    _decisionBox.Text = $"🧾 {head} Đã chọn DO KHÁCH → tính {amount:N0} đ." +
+                                        (string.IsNullOrWhiteSpace(fee.AfterBasisReason) ? "" : $" Lý do: {fee.AfterBasisReason}");
+                    _btnCustomer.Visible = false;
+                    _btnCompany.Visible = true;
+                    _btnCompany.Text = "↩️ Đổi thành do công ty (0 đ)";
+                    break;
+                case "Company":
+                    _decisionBox.BackColor = Color.FromArgb(240, 253, 244);
+                    _decisionBox.ForeColor = Color.FromArgb(22, 101, 52);
+                    _decisionBox.Text = $"🏢 {head} Đã chọn DO CÔNG TY → khách 0 đ (công ty chịu {amount:N0} đ).";
+                    _btnCompany.Visible = false;
+                    _btnCustomer.Visible = true;
+                    _btnCustomer.Text = $"↩️ Đổi thành do khách → tính {amount:N0} đ";
+                    break;
+                default:
+                    _decisionBox.BackColor = Color.FromArgb(255, 251, 235);
+                    _decisionBox.ForeColor = Color.FromArgb(120, 53, 15);
+                    _decisionBox.Text = fee.IsFinal
+                        ? $"⚠️ {head} Chưa chọn bên chịu — đơn đã đóng nên đang mặc định công ty chịu (khách 0 đ). Có thể chọn lại:"
+                        : $"⚠️ {head} Chọn bên chịu phí những ngày này (chưa chọn thì chưa chốt được phí / hóa đơn):";
+                    _btnCustomer.Visible = _btnCompany.Visible = true;
+                    _btnCustomer.Text = $"🧾 Do khách (khách hẹn nhận trễ…) → tính {amount:N0} đ";
+                    _btnCompany.Text = "🏢 Do công ty (thiếu xe, giao trễ…) → 0 đ";
+                    break;
             }
         }
 
-        /// <summary>1–2 câu bằng lời thường: phí hiện tại vì sao như vậy, và sẽ thành bao nhiêu.</summary>
-        private static string SummaryText(StorageFeeItem fee, List<StorageFeeLineItem> customer, decimal projected)
+        private async Task DecideAsync(string party)
         {
-            if (fee.Changes.Count == 0) return "Đơn chưa đổi hạn giao lần nào → không có phí lưu kho.";
-            if (customer.Count == 0) return "Các lần đổi hạn đều do công ty yêu cầu → không tính phí lưu kho cho khách.";
-            if (fee.IsFinal)
-                return $"✅ Đã chốt: khách phải trả {fee.TotalFee:N0} đ phí lưu kho — tính theo {customer.Sum(c => c.ChargedDays)} ngày hàng thực sự nằm kho trong các ngày khách xin dời.";
-
-            var futureDays = customer.SelectMany(c => c.Days.Where(IsFuture)).Select(d => d.Day).OrderBy(d => d).ToList();
-            var perDay = customer.Where(c => c.Days.Any(IsFuture)).Select(PerDayEstimate).LastOrDefault();
-            var text = fee.TotalFee == 0
-                ? "⏳ Hiện tại 0 đ vì các ngày khách xin dời chưa tới."
-                : $"⏳ Đến hôm nay đã phát sinh {fee.TotalFee:N0} đ.";
-            if (futureDays.Count > 0)
-                text += $" Còn {futureDays.Count} ngày ({futureDays[0]:dd/MM}" + (futureDays.Count > 1 ? $"–{futureDays[^1]:dd/MM}" : "") + ")" +
-                        (perDay > 0 ? $": mỗi ngày hàng còn nằm kho cộng thêm khoảng {perDay:N0} đ" : "") +
-                        $" → nếu hàng nằm kho tới hết hạn mới, tổng khoảng {projected:N0} đ. Hàng xuất kho sớm thì thôi tính từ hôm sau.";
-            return text;
+            if (_api is null || _order is null) return;
+            var reason = StorageDecision.AskReason(this, party);
+            if (reason is null) return;
+            try
+            {
+                var result = await _api.TransportOrders.SetStorageResponsibilityAsync(_order.Id, party, party == "Customer" ? reason : null);
+                if (!result.Success)
+                {
+                    // VD kho chưa khai báo phí lưu kho -> nút mở Sửa kho của đúng kho, xong chọn lại.
+                    await TruckingSystem.Desktop.GUI_Shared.QuickFix.ShowAsync(this, _api, "Chưa ghi nhận được bên chịu phí", result.Message, result.Fixes,
+                        "🧾 Chọn lại bên chịu phí", () => DecideAsync(party));
+                    return;
+                }
+                ChangedAny = true;
+                Toast.Show(this, "✅ " + result.Message);
+                await LoadAsync();
+            }
+            catch (Exception ex) { Ask.Fail(this, "Lỗi: " + ex.Message); }
         }
 
-        /// <summary>CHI TIẾT TỪNG NGÀY — gom các ngày liên tiếp cùng tình trạng cho dễ đọc. VD:
-        ///   27/10 – 28/10   5 m³/ngày × 10.000 đ = 100.000 đ
-        ///   01/11 – 05/11   chưa tới ngày — mỗi ngày còn nằm kho sẽ cộng ~190.000 đ</summary>
+        /// <summary>Diễn giải chữ để gửi khách / kế toán (cùng số với bảng).</summary>
         private string BuildDetailText(StorageFeeItem fee)
         {
             var sb = new System.Text.StringBuilder();
-            var orderText = _order is null ? "" : $"đơn {_order.Code} ({_order.CustomerName})";
-            sb.AppendLine($"PHÍ LƯU KHO DO KHÁCH DỜI HẠN — {orderText}");
-            var customer = fee.Changes.Where(c => c.RequestedBy == "Khách hàng" && c.Days.Count > 0).ToList();
-            if (customer.Count == 0)
+            sb.AppendLine($"PHÍ LƯU KHO — đơn {_order?.Code} ({_order?.CustomerName})");
+            sb.AppendLine($"{fee.WarehouseName}: miễn phí {fee.FreeDays} ngày kể từ ngày nhập kho, sau đó {fee.RatePerM3PerDay:N0} đ/m³/ngày.");
+            sb.AppendLine($"Nhập kho: {fee.ReceivedDate:dd/MM/yyyy} · Hết miễn phí: {fee.FreeUntil:dd/MM/yyyy} · Hạn tính trễ: " +
+                          (fee.LateBasisDate is { } b ? b.ToString("dd/MM/yyyy") : "—") +
+                          " · Xuất hết: " + (fee.LastIssueDate is { } li ? li.ToString("dd/MM/yyyy") : fee.StillInStock ? "còn hàng trong kho" : "—"));
+            sb.AppendLine();
+            foreach (var d in fee.Days.Where(d => d.Kind != "Free"))
             {
-                sb.AppendLine("Chưa có lần khách dời hạn / ghi nhận bổ sung nào → không có phí lưu kho.");
-                return sb.ToString().Replace("\r\n", "\n").Replace("\n", "\r\n");
-            }
-            var no = 0;
-            foreach (var c in customer)
-            {
-                no++;
-                sb.AppendLine();
-                sb.AppendLine(c.IsFeeOnly
-                    ? $"{no}. Ghi nhận bổ sung ({c.ChangedAt.ToLocalTime():dd/MM/yyyy HH:mm}): khách chậm nhận hàng sau hạn {c.OldDate:dd/MM/yyyy}, hàng nằm kho tới {c.NewDate:dd/MM/yyyy}"
-                    : $"{no}. Khách dời hạn ({c.ChangedAt.ToLocalTime():dd/MM/yyyy HH:mm}): {(c.OldDate is { } o ? o.ToString("dd/MM/yyyy") : "?")} → {c.NewDate:dd/MM/yyyy}, dời {c.DelayDays} ngày");
-                sb.AppendLine($"   Đơn giá: {c.RatePerM3PerDay:N0} đ/m³/ngày · Lý do: {c.Reason}{(c.ChangedBy is null ? "" : $" · Người ghi: {c.ChangedBy}")}");
-                var perDay = PerDayEstimate(c);
-                // Gom ngày liên tiếp cùng tình trạng (cùng m³ nếu có tính / cùng lý do nếu không tính).
-                var groups = new List<(DateTime From, DateTime To, StorageFeeDayItem Sample, int Count, decimal Fee)>();
-                foreach (var d in c.Days)
+                var after = d.Kind == "AfterBasis";
+                var tail = !after ? "" : fee.AfterBasisDecision switch
                 {
-                    if (groups.Count > 0 && groups[^1].To.AddDays(1) == d.Day
-                        && groups[^1].Sample.NotChargedReason == d.NotChargedReason && groups[^1].Sample.VolumeM3 == d.VolumeM3)
-                        groups[^1] = (groups[^1].From, d.Day, groups[^1].Sample, groups[^1].Count + 1, groups[^1].Fee + d.Fee);
-                    else groups.Add((d.Day, d.Day, d, 1, d.Fee));
-                }
-                foreach (var g in groups)
-                {
-                    var range = g.Count == 1 ? $"{g.From:dd/MM}        " : $"{g.From:dd/MM} – {g.To:dd/MM}";
-                    sb.AppendLine(g.Sample.NotChargedReason is null
-                        ? $"   ✔ {range}   {g.Count} ngày × {g.Sample.VolumeM3:0.##} m³ × {c.RatePerM3PerDay:N0} đ = {g.Fee:N0} đ"
-                        : IsFuture(g.Sample)
-                            ? $"   ⏳ {range}   chưa tới ngày" + (perDay > 0 ? $" — mỗi ngày hàng còn nằm kho sẽ cộng khoảng {perDay:N0} đ" : "")
-                            : $"   ✖ {range}   không tính: {g.Sample.NotChargedReason}");
-                }
-                sb.AppendLine($"   → Đã tính: {c.ChargedDays} ngày = {c.Fee:N0} đ" +
-                              (c.Days.Any(IsFuture) ? $"   ·   Dự kiến nếu nằm kho tới hết hạn mới: {Projected(c):N0} đ" : ""));
+                    "Customer" => "  (sau hạn tính trễ, do khách)",
+                    "Company" => "  (sau hạn tính trễ, công ty chịu — không tính)",
+                    _ => "  (sau hạn tính trễ, chưa chọn bên chịu — chưa tính)",
+                };
+                sb.AppendLine($"  {d.Day:dd/MM}   {d.VolumeM3:0.##} m³ × {fee.RatePerM3PerDay:N0} đ = {d.Fee:N0} đ{tail}");
             }
             sb.AppendLine();
-            sb.AppendLine(fee.IsFinal
-                ? $"TỔNG PHÍ LƯU KHO (ĐÃ CHỐT): {fee.TotalFee:N0} đ"
-                : $"TỔNG ĐẾN HÔM NAY: {fee.TotalFee:N0} đ   ·   DỰ KIẾN TỐI ĐA: {customer.Sum(Projected):N0} đ");
+            sb.AppendLine($"TỔNG PHÍ LƯU KHO TÍNH CHO KHÁCH{(fee.IsFinal ? " (ĐÃ CHỐT)" : " (TẠM TÍNH)")}: {fee.TotalFee:N0} đ");
             return sb.ToString().Replace("\r\n", "\n").Replace("\n", "\r\n");
         }
 
-        /// <summary>Sao chép đúng phần chi tiết đang hiện — dán vào email / tin nhắn gửi khách hoặc kế toán.</summary>
+        /// <summary>Sao chép diễn giải — dán vào email / tin nhắn gửi khách hoặc kế toán.</summary>
         private void BtnCopy_Click(object? sender, EventArgs e)
         {
-            if (string.IsNullOrWhiteSpace(txtDetail.Text)) return;
-            Clipboard.SetText(txtDetail.Text);
-            lblNote.Text = "📋 Đã sao chép phần chi tiết phí lưu kho — dán vào email / tin nhắn gửi khách hoặc kế toán.";
-            lblNote.ForeColor = Theme.Success;
-        }
-
-        /// <summary>➕ Ghi nhận BỔ SUNG phí lưu kho do khách (nhân viên quên đổi hạn) — kể cả đơn đã Hoàn tất / Hủy.
-        /// Không đổi hạn giao; ghi xong tải lại bảng + chi tiết.</summary>
-        private async void BtnRecord_Click(object? sender, EventArgs e)
-        {
-            if (_api is null || _order is null) return;
-            using var f = new RecordStorageFeeForm(_api, _order);
-            if (f.ShowDialog(this) != DialogResult.OK) return;
-            ChangedAny = true;
-            await LoadAsync();
-            if (!IsDisposed && f.ResultMessage is { } msg)
-            {
-                lblNote.Text = "✅ " + msg.Replace("\n", "  ");
-                lblNote.ForeColor = Theme.Success;
-            }
+            if (_fee is null) return;
+            try { Clipboard.SetText(BuildDetailText(_fee)); }
+            catch { return; }
+            Toast.Show(this, "📋 Đã sao chép diễn giải phí lưu kho — dán vào email / tin nhắn gửi khách hoặc kế toán.", ToastKind.Info);
         }
     }
 }

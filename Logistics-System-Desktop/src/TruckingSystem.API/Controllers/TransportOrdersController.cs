@@ -85,15 +85,7 @@ public class TransportOrdersController : ControllerBase
         return result.Success ? Ok(result) : BadRequest(result);
     }
 
-    /// <summary>Phí lưu kho ƯỚC TÍNH nếu đổi hạn giao sang newDate (requestedBy = Customer / Company).</summary>
-    [HttpGet("{id:int}/storage-fee-preview")]
-    public async Task<ActionResult<StorageFeePreviewDto>> PreviewStorageFee(int id, [FromQuery] DateTime newDate, [FromQuery] string? requestedBy)
-    {
-        var result = await _service.PreviewStorageFeeAsync(id, newDate, requestedBy);
-        return result is null ? NotFound() : Ok(result);
-    }
-
-    /// <summary>PHÍ LƯU KHO của đơn do khách dời hạn giao — từng lần đổi hạn + tổng (phần hóa đơn dùng số này).</summary>
+    /// <summary>PHÍ LƯU KHO của đơn (miễn phí N ngày từ ngày nhập kho) — từng ngày + lịch sử đổi hạn / hạn tính trễ + tổng (hóa đơn dùng số này).</summary>
     [HttpGet("{id:int}/storage-fee")]
     public async Task<ActionResult<StorageFeeDto>> GetStorageFee(int id)
     {
@@ -101,17 +93,7 @@ public class TransportOrdersController : ControllerBase
         return result is null ? NotFound() : Ok(result);
     }
 
-    /// <summary>Ghi nhận BỔ SUNG phí lưu kho do khách chậm nhận hàng (không đổi hạn giao) — dùng được cả khi
-    /// đơn đã Hoàn tất / Đã hủy (nhân viên quên "Đổi hạn giao" lúc khách dời ngày).</summary>
-    [HttpPost("{id:int}/storage-fee-records")]
-    public async Task<ActionResult<OrderActionResult>> RecordStorageFee(int id, RecordStorageFeeRequest request)
-    {
-        var result = await _service.RecordStorageFeeAsync(id, request,
-            User.FindFirstValue(ClaimTypes.NameIdentifier), User.FindFirstValue(ClaimTypes.Name));
-        return result.Success ? Ok(result) : BadRequest(result);
-    }
-
-    /// <summary>Hàng nằm kho QUÁ HẠN GIAO: chọn do khách hàng (tính phí lưu kho) hay do công ty (0 đ).</summary>
+    /// <summary>Hàng nằm kho SAU HẠN TÍNH TRỄ: chọn do khách hàng (tính phí lưu kho) hay do công ty (0 đ).</summary>
     [HttpPost("{id:int}/storage-responsibility")]
     public async Task<ActionResult<OrderActionResult>> SetStorageResponsibility(int id, StorageResponsibilityRequest request)
     {

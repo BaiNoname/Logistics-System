@@ -2,6 +2,7 @@
 using TruckingSystem.Desktop.DTO_TransportOrderManagement;
 using TruckingSystem.Desktop.DTO_TripManagement;
 using TruckingSystem.Desktop.GUI_RouteManagement;
+using TruckingSystem.Desktop.GUI_Shared;
 
 namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
 {
@@ -22,10 +23,9 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             // Chữ cho NHÂN VIÊN (không nêu tên thuật toán) — đặt bằng code, không sửa Designer.
             btnAllocate.Text = "🚚  Chia xe tự động";
             // Đổi hạn giao / Phí lưu kho đã có ở màn danh sách (nút "📅 Hạn giao và phí lưu kho ▾" + chuột phải) -> ẩn ở
-            // đây cho gọn, màn chi tiết chủ yếu để XEM. Tổng phí lưu kho vẫn hiện ở dòng thông tin (rê chuột xem từng lần dời hạn).
-            // Ẩn bằng code, không sửa Designer; actionBar là FlowLayoutPanel nên các nút còn lại tự dồn lại.
+            // đây cho gọn, màn chi tiết chủ yếu để XEM. Phí lưu kho hiện ở dòng thông tin (rê chuột xem chi tiết) + bảng
+            // lịch sử đổi hạn (có cột Hạn tính trễ). actionBar là FlowLayoutPanel nên các nút còn lại tự dồn lại.
             btnChangeDeadline.Visible = false;
-            btnStorageFee.Visible = false;
             Anim.FadeIn(this);
             Theme.StyleGrid(gridCargo);
             Theme.StyleGrid(gridTrips);
@@ -40,6 +40,8 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
         }
 
         // ================= Bố cục nút theo quy tắc UX (1 nút chính, nguy hiểm tách riêng, việc tiếp theo) =================
+        private readonly Button _btnFixAllocate = new() { AutoSize = true, Visible = false, Margin = new Padding(0, 0, 0, 6) };
+        private FixHintItem? _fixAllocate;
         private readonly Label _nextStep = ButtonStyles.NextStep();
         private readonly Label _why = new() { AutoSize = true, ForeColor = Color.FromArgb(148, 163, 184), Font = new Font("Segoe UI", 8.5F), Margin = new Padding(0, 0, 0, 6) };
         private readonly FlowLayoutPanel _primaryBox = new() { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, WrapContents = false, Margin = Padding.Empty };
@@ -52,6 +54,13 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
         {
             KpiStrip.InsertRow(root, _nextStep, root.GetRow(lblTrackingLink));
             actionBar.Controls.Add(_why);
+            ButtonStyles.Secondary(_btnFixAllocate);
+            actionBar.Controls.Add(_btnFixAllocate);
+            _btnFixAllocate.Click += async (_, _) =>
+            {
+                if (_api is null || _fixAllocate is null) return;
+                if (await QuickFix.RunAsync(this, _api, _fixAllocate)) await LoadAsync(); // sửa xong -> nút Chia xe tự bật lại nếu đủ điều kiện
+            };
             actionBar.SetFlowBreak(btnViewRoute, true);
 
             // Nút nguy hiểm -> chữ đỏ góc trái chân cửa sổ.
@@ -86,6 +95,10 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             _why.Text = draft ? "🚚 Chia xe: cần xác nhận đơn trước"
                 : blocked is not null ? "🚚 Chia xe chưa được: " + blocked : "";
             _why.Visible = _why.Text.Length > 0;
+            // Lối tắt sửa ngay cạnh lý do (mở sơ đồ kho để thêm khu / nhận hàng khách mang tới).
+            _fixAllocate = blocked is not null ? order.AllocateFixes?.FirstOrDefault() : null;
+            _btnFixAllocate.Text = _fixAllocate?.Text ?? "";
+            _btnFixAllocate.Visible = _fixAllocate is not null;
             _nextStep.Text = "👉 Việc tiếp theo: " + order.Status switch
             {
                 "Draft" when order.CargoLines.Count == 0 => "đơn chưa có dòng hàng — bấm Sửa đơn để thêm hàng rồi mới xác nhận được.",
@@ -129,7 +142,8 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                                  (string.IsNullOrWhiteSpace(order.ContractCode) ? "   ·   ⚠️ Chưa có hợp đồng" : $"   ·   Hợp đồng {order.ContractCode}");
                 lblInfo.Text = $"Trạng thái: {TruckingSystem.Desktop.GUI_Shared.ReportFormat.OrderStatus(order.Status)}   |   Tiến độ: {order.ProgressPercent}%   |   " +
                                $"{order.PickupPoint} → {order.DropoffPoint}   |   Hạn giao: " +
-                               (order.CommittedDeliveryDate is { } due ? due.ToString("dd/MM/yyyy") : "⚠️ chưa có hạn");
+                               (order.CommittedDeliveryDate is { } due ? due.ToString("dd/MM/yyyy") : "⚠️ chưa có hạn") +
+                               (order.HasLateBasis ? $"   |   Hạn tính trễ: {order.LateBasisDate:dd/MM/yyyy} (công ty đã dời hạn)" : "");
 
                 _ = LoadStorageFeeAsync(order);
 
@@ -188,33 +202,33 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
 
         private readonly ToolTip _feeTip = new() { AutoPopDelay = 20000, InitialDelay = 200 };
 
-        /// <summary>💰 Phí lưu kho: bảng từng lần đổi hạn giao (bên yêu cầu, số ngày tính phí, m³, đơn giá) + tổng.</summary>
-        private async void BtnStorageFee_Click(object? sender, EventArgs e)
-        {
-            if (_api is null || _currentOrder is null) return;
-            using var f = new StorageFeeForm(_api, _currentOrder);
-            f.ShowDialog(FindForm());
-            if (f.ChangedAny) await LoadAsync(); // vừa ghi nhận phí bổ sung -> cập nhật dòng "💰 Phí lưu kho"
-        }
-
-        /// <summary>PHÍ LƯU KHO do khách dời hạn giao — hiện ngay dòng thông tin đơn (rê chuột để xem từng lần
-        /// đổi hạn). Không có lần dời nào do khách thì không hiện gì.</summary>
+        /// <summary>PHÍ LƯU KHO (miễn phí N ngày từ ngày nhập kho) — hiện ngay dòng thông tin đơn (rê chuột xem chi tiết) +
+        /// bảng LỊCH SỬ ĐỔI HẠN có cột "Hạn tính trễ" (lần nào làm đổi mốc, lần nào không).</summary>
         private async Task LoadStorageFeeAsync(TransportOrderDetailItem order)
         {
             if (_api is null) return;
             try
             {
                 var fee = await _api.TransportOrders.GetStorageFeeAsync(order.Id);
-                if (IsDisposed || _currentOrder?.Id != order.Id || fee.Changes.Count == 0) return;
-                var lines = fee.Changes.Select(c =>
-                    $"• {c.ChangedAt.ToLocalTime():dd/MM HH:mm} — {c.RequestedBy} yêu cầu: " +
-                    $"{(c.OldDate is { } o ? o.ToString("dd/MM") : "(chưa có)")} → {c.NewDate:dd/MM}" +
-                    (c.Fee > 0 ? $" — {c.ChargedDays} ngày, {c.ChargedM3Days:0.##} m³·ngày × {c.RatePerM3PerDay:N0} đ = {c.Fee:N0} đ"
-                               : c.RequestedBy == "Khách hàng" && c.DelayDays > 0 ? " — chưa phát sinh (hàng chưa nằm kho trong các ngày dời)" : " — không tính phí") +
-                    $"\n   Lý do: {c.Reason}");
-                _feeTip.SetToolTip(lblInfo, $"PHÍ LƯU KHO DO KHÁCH DỜI HẠN GIAO\n{string.Join("\n", lines)}\n\n{fee.Note}");
-                if (fee.TotalFee > 0 || fee.Changes.Any(c => c.RequestedBy == "Khách hàng"))
-                    lblInfo.Text += $"   |   💰 Phí lưu kho (khách dời hạn): {fee.TotalFee:N0} đ{(fee.IsFinal ? "" : " (tạm tính)")} — rê chuột xem chi tiết";
+                if (IsDisposed || _currentOrder?.Id != order.Id) return;
+                ShowDeadlineHistory(fee.History);
+                if (fee.ReceivedDate is not DateTime received || fee.RatePerM3PerDay <= 0) { _fit?.Invoke(); return; }
+
+                var today = DateTime.Today;
+                var stage = fee.StillInStock
+                    ? $"ngày thứ {(today - received.Date).Days + 1}" + (fee.FreeUntil is DateTime fu && today <= fu.Date ? $", miễn phí tới {fu:dd/MM}" : "")
+                    : fee.LastIssueDate is DateTime li ? $"đã xuất hết {li:dd/MM}" : "hàng không còn trong kho";
+                lblInfo.Text += $"   |   💰 Phí lưu kho: {stage}, {(fee.IsFinal ? "đã chốt" : "tạm tính")} {fee.TotalFee:N0} đ" +
+                                (fee.PendingFee > 0 ? " (còn ngày chờ chọn bên chịu)" : "");
+                var charged = fee.Days.Count(d => d.Kind == "Charged");
+                _feeTip.SetToolTip(lblInfo,
+                    $"PHÍ LƯU KHO — {fee.WarehouseName}: miễn phí {fee.FreeDays} ngày từ ngày nhập kho, {fee.RatePerM3PerDay:N0} đ/m³/ngày\n" +
+                    $"Nhập kho {received:dd/MM} · hết miễn phí {fee.FreeUntil:dd/MM} · hạn tính trễ " +
+                    (fee.LateBasisDate is DateTime b ? b.ToString("dd/MM") : "—") + "\n" +
+                    $"{charged} ngày tính phí" + (fee.AfterBasisDays > 0 ? $" · {fee.AfterBasisDays} ngày sau hạn tính trễ" : "") +
+                    $" · khách: {fee.TotalFee:N0} đ" + (fee.CompanyBorneFee > 0 ? $" · công ty chịu: {fee.CompanyBorneFee:N0} đ" : "") +
+                    $"\n\n{fee.Note}\nXem từng ngày: màn Đơn → 📅 Hạn giao và phí lưu kho → Xem phí lưu kho.");
+                _fit?.Invoke();
             }
             catch
             {
@@ -396,6 +410,11 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                     lblResult.Text = "⚠️ " + (result.Message ?? "Không thể chia xe.");
                     lblResult.ForeColor = Theme.Warning;
                     await LoadAsync(); // VD người khác vừa chia xe xong -> nút Chia xe tự tắt
+                    // Hộp SỬA NHANH: đăng ký ngày làm cho tài xế còn thiếu / xem xe bị chặn / nhập hàng / sơ đồ kho;
+                    // "Chọn ngày xuất phát khác" thì nhảy tới ô ngày ngay trên cửa sổ này.
+                    await QuickFix.ShowAsync(this, _api, "Chưa chia xe được đơn này", result.Message, result.Fixes,
+                        "🚚 Chia xe lại ngay", async () => { await LoadAsync(); if (btnAllocate.Enabled) BtnAllocate_Click(this, EventArgs.Empty); },
+                        _ => { dtPlannedStart.Focus(); lblResult.Text = "🗓️ Chọn ngày xuất phát khác rồi bấm 🚚 Chia xe tự động."; lblResult.ForeColor = Theme.Primary; });
                 }
             }
             catch (Exception ex)

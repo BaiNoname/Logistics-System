@@ -71,7 +71,7 @@ namespace TruckingSystem.Desktop.GUI_Shared
                     {
                         counts["Đơn vận chuyển"] = wc.DraftOrders + wc.OrdersWaitAllocation + wc.OrdersOverdueStorage;
                         details["Đơn vận chuyển"] = Join((wc.DraftOrders, "đơn nháp chờ xác nhận"), (wc.OrdersWaitAllocation, "đơn chờ chia xe"),
-                            (wc.OrdersOverdueStorage, "đơn hàng nằm kho quá hạn, chưa xác định do ai"));
+                            (wc.OrdersOverdueStorage, "đơn hàng nằm kho sau hạn tính trễ, chưa xác định do ai"));
                         counts["Chuyến xe"] = wc.TripsWaitApproval;
                         details["Chuyến xe"] = Join((wc.TripsWaitApproval, "chuyến tài xế báo xong, chờ duyệt"));
                     }
