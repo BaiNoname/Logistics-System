@@ -1,4 +1,4 @@
-using TruckingSystem.Domain.Enums;
+﻿using TruckingSystem.Domain.Enums;
 using TruckingSystem.Domain.Common;
 
 namespace TruckingSystem.Domain.Entities;
@@ -34,9 +34,13 @@ public class Warehouse : BaseEntity
     /// (theo chiều rộng).</summary>
     public decimal? DoorOffsetMeters { get; set; }
 
-    /// <summary>PHÍ LƯU KHO (đồng / m³ / ngày) — tính cho khách khi KHÁCH yêu cầu dời hạn giao trễ hơn
-    /// (hàng phải nằm kho thêm). 0 = kho không tính phí lưu kho.</summary>
+    /// <summary>PHÍ LƯU KHO (đồng / m³ / ngày). Tính từ ngày (nhập kho lần đầu + FreeStorageDays):
+    /// mỗi ngày = số m³ hàng của đơn còn nằm kho hôm đó × đơn giá. Ngày sau "hạn tính trễ" thì
+    /// phải chọn do khách hay do công ty chịu. 0 = kho không tính phí lưu kho.</summary>
     public decimal StorageFeePerM3PerDay { get; set; }
+
+    /// <summary>Số ngày lưu kho MIỄN PHÍ kể từ ngày nhập kho đầu tiên của đơn (mặc định 5).</summary>
+    public int FreeStorageDays { get; set; } = 5;
 
     /// <summary>Kho cũng là ĐỊA ĐIỂM CHẤM CÔNG bằng QR: điện thoại phải nằm trong bán kính này
     /// (mét, tính từ Lat/Lng của kho) thì lượt quét mới hợp lệ.</summary>

@@ -8,6 +8,8 @@ public interface ITripService
     /// <summary>Planned -> InProgress. Thao tác THỦ CÔNG do Dispatcher xác nhận
     /// (chưa tích hợp GPS thật để tự động chuyển).</summary>
     Task<TripActionResult> StartAsync(int id);
+    /// <summary>Bắt đầu chuyến có bị chặn không (không bắt đầu) — kèm cách sửa nhanh.</summary>
+    Task<TripActionResult> GetStartCheckAsync(int id);
 
     /// <summary>InProgress -> Completed TRỰC TIẾP (Dispatcher tự bấm trên
     /// Desktop = tự họ đã duyệt luôn, KHÔNG qua bước Chờ xác nhận — bước đó

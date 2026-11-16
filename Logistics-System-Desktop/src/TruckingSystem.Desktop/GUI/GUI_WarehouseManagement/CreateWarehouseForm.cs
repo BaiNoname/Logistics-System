@@ -30,7 +30,11 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             // Vị trí cửa: chọn tường trước, rồi mới nhập được khoảng cách dọc tường.
             WarehouseDoorHelper.FillSideCombo(cboDoorSide);
             cboDoorSide.SelectedIndexChanged += (_, _) => numDoorOffset.Enabled = cboDoorSide.SelectedIndex > 0;
+            // Số ngày lưu kho miễn phí (mặc định 5) cạnh ô phí lưu kho + dòng ví dụ (thêm bằng code, không sửa Designer).
+            _numFreeDays = WarehouseStorageFields.Setup(inputs, lblStorageFee, numStorageFee);
         }
+
+        private readonly NumberBox _numFreeDays;
 
         public CreateWarehouseForm(ApiServices api) : this()
         {
@@ -86,7 +90,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                     numLength.Value,
                     numWidth.Value,
                     _selectedAddress.Lat, _selectedAddress.Lng,
-                    doorSide, doorOffset, numStorageFee.Value);
+                    doorSide, doorOffset, numStorageFee.Value, (int)_numFreeDays.Value);
 
                 DialogResult = DialogResult.OK;
                 Close();

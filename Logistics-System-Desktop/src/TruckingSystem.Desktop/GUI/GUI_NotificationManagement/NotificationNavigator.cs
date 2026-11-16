@@ -17,7 +17,7 @@ namespace TruckingSystem.Desktop.GUI_NotificationManagement
             NotificationTargetKind.Trip => ("Chuyến xe", () => // khớp tên mục menu trái (MainForm)
             {
                 var c = new TripsControl(api);
-                if (target.TripId is int id) c.FocusTrip(id);
+                if (target.TripId is int id) c.FocusTrip(id, checkStart: target.OpenFix);
                 return c;
             }),
             NotificationTargetKind.Order => ("Đơn vận chuyển", () =>
@@ -29,13 +29,15 @@ namespace TruckingSystem.Desktop.GUI_NotificationManagement
             NotificationTargetKind.Vehicle => ("Đội xe", () =>
             {
                 var c = new VehiclesControl(api);
-                c.FocusOn(target.Key);
+                if (target.OpenFix) c.OpenDocumentsOnLoad(target.Key); // giấy tờ xe -> mở thẳng cửa sổ Giấy tờ xe
+                else c.FocusOn(target.Key);
                 return c;
             }),
             NotificationTargetKind.Driver => ("Tài xế", () =>
             {
                 var c = new DriversControl(api);
-                c.FocusOn(target.Key);
+                if (target.OpenFix) c.OpenWorkDaysOnLoad(target.Key, target.Day); // chưa đăng ký ngày làm -> mở thẳng Ngày làm việc
+                else c.FocusOn(target.Key);
                 return c;
             }),
             NotificationTargetKind.TripIssue => ("Kho trung chuyển", () =>

@@ -98,8 +98,19 @@ public class PendingReceiptService : IPendingReceiptService
                 performer.EmployeeId, tripId, chosenBinId: null, performedByUserName: performer.UserName);
             // 1 dòng không xếp được -> KHÔNG nhập dở dang: chưa Commit -> Rollback cả chuyến.
             if (!result.Success)
+            {
+                // Lối tắt: mở sơ đồ ĐÚNG kho này để thêm vị trí rồi nhập lại.
+                var whName = await _db.Warehouses.Where(w => w.Id == warehouseId).Select(w => w.Name).FirstOrDefaultAsync();
                 return Fail($"Không nhập tự động được \"{cargoNames[line.CargoLineId]}\" ({line.QtyPending:0.##}) — {result.Message} " +
-                            "Chưa nhập dòng nào của chuyến này. Có thể thêm vị trí kho rồi thử lại, hoặc nhập thủ công từng phần.");
+                            "Chưa nhập dòng nào của chuyến này. Có thể thêm vị trí kho rồi thử lại, hoặc nhập thủ công từng phần.") with
+                {
+                    Fixes = new List<TruckingSystem.Application.Common.FixHint>
+                    {
+                        new("WarehouseLayout", $"🗺️ Mở sơ đồ kho {whName} để thêm vị trí", WarehouseId: warehouseId, Name: whName,
+                            Note: "Thêm vị trí / khu còn thiếu rồi nhập lại chuyến này"),
+                    },
+                };
+            }
             lines.Add($"• {cargoNames[line.CargoLineId]}: {line.QtyPending:0.##} → {string.Join(", ", result.BinCodesUsed)}");
             allBins.AddRange(result.BinCodesUsed);
         }

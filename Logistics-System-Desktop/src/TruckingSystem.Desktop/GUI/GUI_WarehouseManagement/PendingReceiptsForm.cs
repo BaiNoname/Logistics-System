@@ -335,6 +335,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                     "\n\nHệ thống tự chọn kệ phù hợp (có thể chia nhiều kệ). Nếu 1 dòng không xếp được thì không nhập dòng nào.",
                     $"📥 Nhập cả chuyến #{line.TripId}")) return;
 
+            TruckingSystem.Desktop.DTO_WarehouseManagement.ReceiveGoodsResultItem? blocked = null;
             SetBusy(true);
             try
             {
@@ -343,6 +344,37 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                 if (result.Success) ReceivedAny = true;
                 await LoadPendingAsync(result.Success ? null : Key(line)); // lỗi hay không cũng tải lại: số liệu có thể vừa đổi
                 // Hiện kết quả SAU khi tải lại (tải lại có thể ghi đè dòng trạng thái) — để biết hàng nằm ở vị trí nào.
+                if (!IsDisposed)
+                    ShowStatus((result.Success ? "✅ " : "⚠️ ") + (result.Message ?? (result.Success ? "Đã nhập kho." : "Không nhập được.")),
+                        result.Success ? Theme.Success : Theme.Warning);
+                if (!result.Success && result.Fixes is { Count: > 0 }) blocked = result;
+            }
+            catch (Exception ex)
+            {
+                if (!IsDisposed) ShowStatus("Lỗi: " + ex.Message, Theme.Danger);
+            }
+            finally
+            {
+                if (!IsDisposed) SetBusy(false);
+            }
+
+            // Kho thiếu chỗ -> hộp SỬA NHANH: mở sơ đồ đúng kho để thêm vị trí, xong hỏi "📥 Nhập lại cả chuyến".
+            if (blocked is not null && !IsDisposed)
+                await TruckingSystem.Desktop.GUI_Shared.QuickFix.ShowAsync(this, _api, $"Chưa nhập kho được chuyến #{line.TripId}",
+                    blocked.Message, blocked.Fixes, $"📥 Nhập lại cả chuyến #{line.TripId}", () => RetryAutoAsync(line));
+        }
+
+        /// <summary>Nhập lại cả chuyến (sau khi đã thêm vị trí từ hộp sửa nhanh) — không hỏi xác nhận lần nữa.</summary>
+        private async Task RetryAutoAsync(PendingReceiptLineItem line)
+        {
+            if (_service is null || IsDisposed) return;
+            SetBusy(true);
+            try
+            {
+                var result = await _service.ReceiveAutoAsync(_warehouseId, line.TripId);
+                if (IsDisposed) return;
+                if (result.Success) ReceivedAny = true;
+                await LoadPendingAsync(result.Success ? null : Key(line));
                 if (!IsDisposed)
                     ShowStatus((result.Success ? "✅ " : "⚠️ ") + (result.Message ?? (result.Success ? "Đã nhập kho." : "Không nhập được.")),
                         result.Success ? Theme.Success : Theme.Warning);

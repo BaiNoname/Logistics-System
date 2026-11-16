@@ -19,14 +19,15 @@ public record BinContentItemDto(string OrderCode, string CustomerName, string Ca
 
 public record StorageBinDto(int Id, string Code, decimal CapacityM3, decimal CurrentUsedM3, decimal MaxWeightKg, decimal PosX, decimal PosY, decimal WidthMeters, decimal HeightMeters, decimal DistanceFromDoorMeters, List<BinContentItemDto> Contents);
 public record WarehouseListItemDto(int Id, string Name, string? Address, decimal? CapacityM3, decimal? LengthMeters, decimal? WidthMeters, double? Lat, double? Lng, string? DoorSide = null, decimal? DoorOffsetMeters = null,
-    decimal StorageFeePerM3PerDay = 0, // phí lưu kho (đ/m³/ngày) khi khách dời hạn giao
-    List<string>? ZoneTypes = null); // loại khu kho đang có (khu có vị trí): "Normal" / "Fragile" / "Hazmat" — màn Tạo đơn báo trước kho thiếu khu
+    decimal StorageFeePerM3PerDay = 0, // phí lưu kho (đ/m³/ngày), tính sau số ngày miễn phí
+    List<string>? ZoneTypes = null,
+    int FreeStorageDays = 5); // loại khu kho đang có (khu có vị trí): "Normal" / "Fragile" / "Hazmat" — màn Tạo đơn báo trước kho thiếu khu
 
 /// <summary>SỐ VIỆC CHỜ cho menu trái — 1 lần gọi, chỉ đếm (thay cho tải nguyên danh sách đơn, chuyến
 /// và 2 lần gọi cho MỖI kho như trước -> đăng nhập xong phải chờ lâu mới thấy số).
 /// Phần đơn / chuyến = -1 khi tài khoản không có quyền xem (Nhân viên kho).</summary>
 public record WorkCountsDto(int DraftOrders, int OrdersWaitAllocation, int TripsWaitApproval, List<WarehouseWorkCountDto> Warehouses,
-    int OrdersOverdueStorage = 0); // đơn có hàng nằm kho quá hạn giao, chưa chọn do bên nào
+    int OrdersOverdueStorage = 0); // đơn có hàng nằm kho sau hạn tính trễ, chưa chọn do bên nào
 /// <summary>UrgentOut: chuyến chờ xuất có mốc "phải xuất phát trước" là hôm nay hoặc đã qua.</summary>
 public record WarehouseWorkCountDto(int WarehouseId, string Name, int InTrips, int OutTrips, int UrgentOut = 0);
 
@@ -35,11 +36,11 @@ public record WarehouseWorkCountDto(int WarehouseId, string Name, int InTrips, i
 /// đúng sơ đồ tổng quan. Lat/Lng BẮT BUỘC có (lấy từ VietMap Autocomplete) để
 /// tính lộ trình đúng qua kho — không phải chỉ để hiển thị.</summary>
 public record CreateWarehouseRequest(string Name, string? Address, decimal? CapacityM3, decimal? LengthMeters, decimal? WidthMeters, double? Lat, double? Lng, string? DoorSide = null, decimal? DoorOffsetMeters = null,
-    decimal StorageFeePerM3PerDay = 0);
+    decimal StorageFeePerM3PerDay = 0, int FreeStorageDays = 5);
 
 /// <summary>Sửa thông tin kho — cùng cấu trúc CreateWarehouseRequest.</summary>
 public record UpdateWarehouseRequest(string Name, string? Address, decimal? CapacityM3, decimal? LengthMeters, decimal? WidthMeters, double? Lat, double? Lng, string? DoorSide = null, decimal? DoorOffsetMeters = null,
-    decimal StorageFeePerM3PerDay = 0);
+    decimal StorageFeePerM3PerDay = 0, int FreeStorageDays = 5);
 
 /// <summary>Tạo khu vực (Zone) mới trong 1 kho — có tọa độ/kích thước thật để
 /// vẽ đúng vị trí trong sơ đồ tổng quan.</summary>
@@ -74,7 +75,8 @@ public record WarehouseActionResult(bool Success, string? Message);
 /// hoàn tất, xe thật sự chở hàng về).</summary>
 /// <summary>BinCodesUsed liệt kê TẤT CẢ vị trí đã dùng để xếp — có thể nhiều
 /// hơn 1 nếu số lượng phải chia ra nhiều vị trí/khu vực.</summary>
-public record ReceiveGoodsResult(bool Success, string? Message, List<string> BinCodesUsed);
+public record ReceiveGoodsResult(bool Success, string? Message, List<string> BinCodesUsed,
+    List<TruckingSystem.Application.Common.FixHint>? Fixes = null); // cách sửa nhanh khi nhập không được (xem FixHint)
 
 /// <summary>Kết quả xuất kho — dùng bởi TripService khi chặng Delivery bắt đầu chạy.</summary>
 public record IssueGoodsResult(bool Success, string? Message);

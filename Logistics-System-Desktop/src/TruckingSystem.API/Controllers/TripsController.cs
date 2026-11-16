@@ -32,6 +32,11 @@ public class TripsController : ControllerBase
         return Ok(result); // luôn 200 OK — Desktop tự đọc result.Success/Message, tránh PostAsync throw exception khi 400 làm mất thông báo rõ ràng
     }
 
+    /// <summary>Chỉ KIỂM TRA bắt đầu được không (không bắt đầu) — lý do + cách sửa nhanh (mở từ thông báo "chuyến bị chặn").</summary>
+    [HttpGet("{id:int}/start-check")]
+    public async Task<ActionResult<TripActionResult>> StartCheck(int id)
+        => Ok(await _tripService.GetStartCheckAsync(id));
+
     [HttpPost("{id:int}/complete")]
     public async Task<ActionResult<TripActionResult>> Complete(int id, [FromBody] FinishTripRequest? request)
     {

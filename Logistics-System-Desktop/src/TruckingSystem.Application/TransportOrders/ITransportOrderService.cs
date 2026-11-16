@@ -26,14 +26,9 @@ public interface ITransportOrderService
     /// Sửa đơn). Bắt buộc lý do, không chọn ngày đã qua, ghi nhật ký người đổi.</summary>
     Task<OrderActionResult> ChangeDeadlineAsync(int id, ChangeDeadlineRequest request, string? userId, string? userName);
 
-    /// <summary>Phí lưu kho ước tính nếu đổi hạn giao (hiện trên hộp Đổi hạn giao trước khi lưu).</summary>
-    Task<StorageFeePreviewDto?> PreviewStorageFeeAsync(int id, DateTime newDate, string? requestedBy);
-
-    /// <summary>Phí lưu kho của đơn do KHÁCH dời hạn giao (từng lần đổi + tổng) — đưa vào hóa đơn.</summary>
+    /// <summary>Phí lưu kho của đơn (miễn phí N ngày từ ngày nhập kho, từng ngày, lịch sử đổi hạn + hạn tính trễ) — đưa vào hóa đơn.</summary>
     Task<StorageFeeDto?> GetStorageFeeAsync(int id);
 
-    /// <summary>Ghi nhận BỔ SUNG phí lưu kho do khách (không đổi hạn giao) — cả đơn đã Hoàn tất / Hủy.</summary>
-    Task<OrderActionResult> RecordStorageFeeAsync(int id, RecordStorageFeeRequest request, string? userId, string? userName);
-    /// <summary>Hàng nằm kho quá hạn giao: chọn do khách (tính phí) hay do công ty (0 đ).</summary>
+    /// <summary>Hàng nằm kho sau hạn tính trễ: chọn do khách (tính phí) hay do công ty (0 đ).</summary>
     Task<OrderActionResult> SetStorageResponsibilityAsync(int id, StorageResponsibilityRequest request, string? userId, string? userName);
 }

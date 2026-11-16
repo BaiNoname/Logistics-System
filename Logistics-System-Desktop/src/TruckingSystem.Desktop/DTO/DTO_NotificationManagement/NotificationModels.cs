@@ -53,8 +53,24 @@ namespace TruckingSystem.Desktop.DTO_NotificationManagement
     /// <summary>Việc mà 1 thông báo nói tới — suy ra từ tiêu đề (tiêu đề do hệ thống sinh theo
     /// mẫu cố định, xem NotificationService/TripService phía server).
     /// Key: số chuyến / mã đơn / biển số / mã tài xế / tên kho (có thể rỗng với thông báo cũ).</summary>
-    public record NotificationTarget(NotificationTargetKind Kind, string Key, int? TripId = null)
+    /// <param name="OpenFix">true = mở THẲNG cửa sổ sửa (Ngày làm của tài xế / Giấy tờ xe / hộp sửa nhanh của chuyến bị chặn).</param>
+    /// <param name="Day">Ngày nhắc tới trong tiêu đề (VD ngày tài xế chưa đăng ký) — để điền sẵn.</param>
+    public record NotificationTarget(NotificationTargetKind Kind, string Key, int? TripId = null, bool OpenFix = false, DateTime? Day = null)
     {
+        private static readonly Regex DayInTitle = new(@"(\d{2})/(\d{2})(?:/(\d{4}))?\s*$", RegexOptions.Compiled);
+
+        private static DateTime? ParseDay(string title)
+        {
+            var m = DayInTitle.Match(title);
+            if (!m.Success) return null;
+            var day = int.Parse(m.Groups[1].Value);
+            var month = int.Parse(m.Groups[2].Value);
+            var year = m.Groups[3].Success ? int.Parse(m.Groups[3].Value) : DateTime.Today.Year;
+            // Tiêu đề chỉ có ngày/tháng: tháng 1 mà đang cuối năm -> năm sau.
+            if (!m.Groups[3].Success && month < DateTime.Today.Month - 6) year++;
+            try { return new DateTime(year, month, day); } catch { return null; }
+        }
+
         private static readonly Regex TripNo = new(@"[Cc]huyến #(\d+)", RegexOptions.Compiled);
         private static readonly Regex OrderCode = new(@"Đơn (\S+)", RegexOptions.Compiled);
         private static readonly Regex Plate = new(@" xe (.+?) (ĐÃ HẾT HẠN|sắp hết hạn)\s*$", RegexOptions.Compiled);
@@ -90,13 +106,15 @@ namespace TruckingSystem.Desktop.DTO_NotificationManagement
             if (title.StartsWith("🔴") || title.StartsWith("🟡"))
             {
                 m = Plate.Match(title);
-                return m.Success ? new NotificationTarget(NotificationTargetKind.Vehicle, m.Groups[1].Value.Trim()) : null;
+                return m.Success ? new NotificationTarget(NotificationTargetKind.Vehicle, m.Groups[1].Value.Trim(), OpenFix: true) : null;
             }
 
             if (title.StartsWith("🪪") || title.StartsWith("📅"))
             {
                 m = DriverCode.Match(title);
-                return m.Success ? new NotificationTarget(NotificationTargetKind.Driver, m.Groups[1].Value.Trim()) : null;
+                // 📅 chưa đăng ký ngày làm -> mở thẳng Ngày làm việc (điền sẵn ngày); 🪪 giấy tờ tài xế -> chỉ lọc màn Tài xế.
+                return m.Success ? new NotificationTarget(NotificationTargetKind.Driver, m.Groups[1].Value.Trim(),
+                    OpenFix: title.StartsWith("📅"), Day: title.StartsWith("📅") ? ParseDay(title) : null) : null;
             }
 
             // 🚫 chờ kho xuất hàng -> màn Kho (việc của kho, nhân viên kho không vào được màn Chuyến).
@@ -109,7 +127,8 @@ namespace TruckingSystem.Desktop.DTO_NotificationManagement
 
             // 🟢 chờ duyệt, 🚫 bị chặn, ⏰ hạn giao theo chuyến -> màn Chuyến; ⏰ theo đơn -> màn Đơn.
             m = TripNo.Match(title);
-            if (m.Success) return new NotificationTarget(NotificationTargetKind.Trip, m.Groups[1].Value, int.Parse(m.Groups[1].Value));
+            if (m.Success) return new NotificationTarget(NotificationTargetKind.Trip, m.Groups[1].Value, int.Parse(m.Groups[1].Value),
+                OpenFix: title.StartsWith("🚫")); // chuyến bị chặn -> kiểm tra ngay + hộp sửa nhanh
 
             m = OrderCode.Match(title);
             if (m.Success) return new NotificationTarget(NotificationTargetKind.Order, m.Groups[1].Value.Trim());

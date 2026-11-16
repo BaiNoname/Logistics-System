@@ -32,8 +32,22 @@ public class TransportOrderListItem
     public bool IsHomeWarehouse { get; set; } = true;
     /// <summary>Còn dòng hàng chưa nhập đủ số khai báo (mặc định true khi API cũ chưa trả về).</summary>
     public bool HasQtyToReceive { get; set; } = true;
-    /// <summary>Hàng nằm kho quá hạn giao bao nhiêu ngày mà CHƯA chọn do bên nào (0 = không / API cũ).</summary>
+    /// <summary>Hàng nằm kho sau hạn tính trễ bao nhiêu ngày mà CHƯA chọn do bên nào (0 = không / API cũ).</summary>
     public int OverdueStorageDays { get; set; }
+
+    /// <summary>HẠN TÍNH TRỄ — khác hạn giao khi công ty đã dời hạn (null = API cũ / không có hạn).</summary>
+    public DateTime? LateBasisDate { get; set; }
+    /// <summary>Hàng đang nằm kho: ngày lưu kho thứ mấy (0 = không có hàng trong kho).</summary>
+    public int StorageDay { get; set; }
+    /// <summary>Còn mấy ngày miễn phí lưu kho (0 = hết / không có; -1 = kho không tính phí).</summary>
+    public int FreeDaysLeft { get; set; }
+    /// <summary>Phí lưu kho tính cho khách tới hôm nay (tạm tính).</summary>
+    public decimal StorageFeeToDate { get; set; }
+    /// <summary>m³ hàng của đơn đang nằm kho.</summary>
+    public decimal StockM3 { get; set; }
+
+    /// <summary>Công ty đã dời hạn: hạn tính trễ sớm hơn hạn giao hiện tại.</summary>
+    public bool HasLateBasis => LateBasisDate is DateTime b && CommittedDeliveryDate is DateTime d && b.Date != d.Date;
 
     /// <summary>Chữ hiện ở ô chọn đơn của màn Xuất hàng tồn: nói rõ đơn nào xuất tay được, đơn
     /// nào đang chờ xuất theo chuyến giao.</summary>
@@ -135,11 +149,17 @@ public class TransportOrderDetailItem
     public string? LateWarning { get; set; }
     /// <summary>Ngày giao sớm nhất nếu xuất phát ngay — gợi ý khi dời hạn.</summary>
     public DateTime? SuggestedDeadline { get; set; }
-    /// <summary>Hàng nằm kho sau hạn giao (null = không).</summary>
+    /// <summary>Hàng nằm kho sau hạn tính trễ (null = không).</summary>
     public OverdueStorageItem? OverdueStorage { get; set; }
+    /// <summary>HẠN TÍNH TRỄ — khác hạn giao khi công ty đã dời hạn.</summary>
+    public DateTime? LateBasisDate { get; set; }
+    /// <summary>Lối tắt sửa cho AllocateBlockReason (mở sơ đồ kho / nhận hàng khách mang tới).</summary>
+    public List<TruckingSystem.Desktop.Common.FixHintItem>? AllocateFixes { get; set; }
+
+    public bool HasLateBasis => LateBasisDate is DateTime b && CommittedDeliveryDate is DateTime d && b.Date != d.Date;
 }
 
-/// <summary>Hàng nằm kho quá hạn giao — Decision null = chưa chọn (mặc định công ty chịu), "Customer" / "Company".</summary>
+/// <summary>Hàng nằm kho sau hạn tính trễ — Decision null = chưa chọn (chưa tính), "Customer" / "Company".</summary>
 public class OverdueStorageItem
 {
     public int Days { get; set; }
@@ -147,6 +167,7 @@ public class OverdueStorageItem
     public decimal RatePerM3PerDay { get; set; }
     public decimal EstimatedFee { get; set; }
     public string? Decision { get; set; }
+    public DateTime? LateBasisDate { get; set; }
 }
 
 /// <summary>Kết quả thao tác Xác nhận/Hủy đơn.</summary>
@@ -154,6 +175,8 @@ public class OrderActionResultItem
 {
     public bool Success { get; set; }
     public string? Message { get; set; }
+    /// <summary>Cách sửa nhanh khi bị chặn — xem QuickFix.</summary>
+    public List<TruckingSystem.Desktop.Common.FixHintItem>? Fixes { get; set; }
 }
 
 public class AllocationResultItemDto
@@ -173,20 +196,23 @@ public class AllocateVehiclesResult
     public int EstimatedTripDays { get; set; } = 1;
     /// <summary>Chưa chia vì không kịp hạn giao — hỏi người dùng rồi gọi lại với acceptLate.</summary>
     public bool NeedsLateConfirmation { get; set; }
+    /// <summary>Cách sửa nhanh khi chưa chia được — xem QuickFix.</summary>
+    public List<TruckingSystem.Desktop.Common.FixHintItem>? Fixes { get; set; }
 }
 
-/// <summary>Phí lưu kho ước tính khi đổi hạn giao.</summary>
-public class StorageFeePreviewItem
+/// <summary>1 ngày hàng của đơn nằm kho. Kind: "Free" / "Charged" / "AfterBasis" (sau hạn tính trễ).</summary>
+public class StorageFeeDayItem
 {
-    public int DelayDays { get; set; }
+    public DateTime Day { get; set; }
     public decimal VolumeM3 { get; set; }
-    public decimal RatePerM3PerDay { get; set; }
-    public decimal EstimatedFee { get; set; }
-    public string Note { get; set; } = "";
+    public decimal Fee { get; set; }
+    public string Kind { get; set; } = "";
+    /// <summary>Nhập / xuất trong ngày, mốc hạn tính trễ — VD "xuất 6 m³".</summary>
+    public string? Event { get; set; }
 }
 
-/// <summary>1 lần đổi hạn giao + phí lưu kho của lần đó.</summary>
-public class StorageFeeLineItem
+/// <summary>1 lần đổi hạn giao + hạn tính trễ sau lần đổi đó.</summary>
+public class DeadlineChangeItem
 {
     public DateTime ChangedAt { get; set; }
     public DateTime? OldDate { get; set; }
@@ -194,38 +220,32 @@ public class StorageFeeLineItem
     public string RequestedBy { get; set; } = "";
     public string Reason { get; set; } = "";
     public string? ChangedBy { get; set; }
-    public int DelayDays { get; set; }
-    public decimal RatePerM3PerDay { get; set; }
-    public decimal EstimatedFee { get; set; }
-    public int ChargedDays { get; set; }
-    public decimal ChargedM3Days { get; set; }
-    public decimal Fee { get; set; }
-
-    /// <summary>true = ghi nhận BỔ SUNG phí lưu kho (không đổi hạn giao).</summary>
-    public bool IsFeeOnly { get; set; }
-
-    /// <summary>Diễn giải ngắn, VD "28/10–29/10: 2 ngày × 5 m³ = 10 m³·ngày → 10 m³·ngày × 500.000 đ = 5.000.000 đ".</summary>
-    public string Formula { get; set; } = "";
-
-    /// <summary>Từng ngày trong khoảng khách xin dời (m³ còn trong kho, tiền ngày đó, hoặc lý do không tính).</summary>
-    public List<StorageFeeDayItem> Days { get; set; } = new();
+    public DateTime? LateBasisAfter { get; set; }
 }
 
-/// <summary>1 ngày trong khoảng khách xin dời.</summary>
-public class StorageFeeDayItem
-{
-    public DateTime Day { get; set; }
-    public decimal VolumeM3 { get; set; }
-    public decimal Fee { get; set; }
-    public string? NotChargedReason { get; set; }
-}
-
-/// <summary>Phí lưu kho của đơn do khách dời hạn giao.</summary>
+/// <summary>Phí lưu kho của đơn: miễn phí N ngày từ ngày nhập kho, sau đó mỗi ngày m³ × đơn giá kho.</summary>
 public class StorageFeeItem
 {
     public int TransportOrderId { get; set; }
     public decimal TotalFee { get; set; }
     public bool IsFinal { get; set; }
     public string Note { get; set; } = "";
-    public List<StorageFeeLineItem> Changes { get; set; } = new();
+    public string WarehouseName { get; set; } = "";
+    public decimal RatePerM3PerDay { get; set; }
+    public int FreeDays { get; set; }
+    public DateTime? ReceivedDate { get; set; }
+    public DateTime? FreeUntil { get; set; }
+    public DateTime? LateBasisDate { get; set; }
+    public DateTime? CommittedDeliveryDate { get; set; }
+    public DateTime? LastIssueDate { get; set; }
+    public bool StillInStock { get; set; }
+    public decimal VolumeNowM3 { get; set; }
+    public decimal CompanyBorneFee { get; set; }
+    public decimal PendingFee { get; set; }
+    public int AfterBasisDays { get; set; }
+    /// <summary>Bên chịu các ngày sau hạn tính trễ: null = chưa chọn, "Customer" / "Company".</summary>
+    public string? AfterBasisDecision { get; set; }
+    public string? AfterBasisReason { get; set; }
+    public List<StorageFeeDayItem> Days { get; set; } = new();
+    public List<DeadlineChangeItem> History { get; set; } = new();
 }

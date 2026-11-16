@@ -31,7 +31,8 @@ public record TripListItemDto(
     int? EstimatedDurationMinutes = null
 );
 
-public record TripActionResult(bool Success, string? Message);
+/// <summary>Fixes: cách sửa nhanh khi thao tác bị chặn (Desktop hiện nút dẫn tới đúng chỗ sửa) — xem FixHint.</summary>
+public record TripActionResult(bool Success, string? Message, List<TruckingSystem.Application.Common.FixHint>? Fixes = null);
 
 /// <summary>Ghi nhận 1 lần đổ xăng thực tế cho 1 chuyến cụ thể.</summary>
 /// <summary>AutoPrice = true: KHÔNG cần nhập tiền — server tự lấy đơn giá mới
@@ -126,11 +127,11 @@ public record ReassignOptionsDto(int TripId, List<int> AffectedTripIds, int Curr
 
 public record ReassignTripRequest(int VehicleId, int DriverEmployeeId);
 
-/// <summary>Hoàn tất / Duyệt chuyến: chuyến GIAO cuối làm đơn Hoàn tất mà hàng từng nằm kho quá hạn giao CHƯA chọn do ai
+/// <summary>Hoàn tất / Duyệt chuyến: chuyến GIAO cuối làm đơn Hoàn tất mà hàng từng nằm kho sau hạn tính trễ CHƯA chọn do ai
 /// -> phải gửi kèm StorageParty ("Customer" | "Company") + StorageReason (bắt buộc khi Customer). Không có thì bỏ trống.</summary>
 public record FinishTripRequest(string? StorageParty = null, string? StorageReason = null);
 
 /// <summary>Kiểm tra TRƯỚC khi Hoàn tất / Duyệt chuyến (Desktop dựng hộp duyệt): chuyến này có làm đơn Hoàn tất không, và hàng
-/// của đơn có nằm kho quá hạn giao không (bao nhiêu ngày, phí ước tính, đã chọn do ai — null = chưa chọn).</summary>
+/// của đơn có nằm kho sau hạn tính trễ không (bao nhiêu ngày, phí ước tính, đã chọn do ai — null = chưa chọn).</summary>
 public record FinishCheckDto(bool IsLastDelivery, string OrderCode, DateTime? Due, int OverdueDays, decimal EstimatedFee,
     string? Decision, string? DecisionReason);

@@ -152,6 +152,22 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
         /// <summary>Mở từ thông báo (nhấp đúp): bỏ các bộ lọc khác, lọc sẵn theo biển số.</summary>
         public void FocusOn(string search) => filterBar.ShowOnlySearch(search);
 
+        /// <summary>Mở từ thông báo "Giấy tờ xe … sắp / đã hết hạn": tải xong thì mở THẲNG cửa sổ Giấy tờ xe của đúng xe.</summary>
+        public void OpenDocumentsOnLoad(string plate)
+        {
+            FocusOn(plate);
+            _pendingDocsPlate = plate;
+        }
+
+        private string? _pendingDocsPlate;
+
+        /// <summary>Mở từ hộp sửa nhanh (Chia xe thiếu xe): chỉ hiện xe thiếu / hết hạn giấy tờ.</summary>
+        public void ShowDocsBlocked()
+        {
+            FilterMemory.Cancel(filterBar);
+            filterBar.SetOnly("docs", DocsBlocked);
+        }
+
         private void BindGrid()
         {
             var keepId = grid.CurrentRow?.Cells["Id"].Value as int?;
@@ -323,6 +339,11 @@ namespace TruckingSystem.Desktop.GUI_VehicleManagement
                 lblStatus.ForeColor = Theme.Danger;
             }
             finally { _overlay.Loading = false; }
+            if (_pendingDocsPlate is { } plate && _vehicles.FirstOrDefault(x => x.PlateNumber == plate) is { } target)
+            {
+                _pendingDocsPlate = null;
+                BeginInvoke(new Action(async () => { if (!IsDisposed) await DocumentsAsync(target, FindForm()); }));
+            }
         }
 
         private static string TranslateStatus(string s) => s switch

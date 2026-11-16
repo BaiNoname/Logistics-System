@@ -32,6 +32,8 @@ public class ReportService : IReportService
             .Select(o => new { o.Id, o.Code, CustomerName = o.Customer.Name, o.Status, o.CreatedAt, o.CommittedDeliveryDate })
             .ToListAsync();
         var orderIds = orders.Select(o => o.Id).ToList();
+        // Đúng hạn / trễ theo HẠN TÍNH TRỄ (công ty dời hạn không xóa việc trễ).
+        var lateBasis = await TruckingSystem.Application.TransportOrders.DeadlineBasisRules.LoadAsync(_db, orderIds);
 
         // GIAO ĐÚNG HẠN (cùng quy tắc DeliveryDeadlineRules): đơn hoàn tất — ngày xong chặng Giao
         // CUỐI CÙNG (giờ VN) so với hạn giao cam kết.
@@ -68,7 +70,7 @@ public class ReportService : IReportService
             var incident = lines.Where(x => x.Kind == CostKind.Incident).Sum(x => x.Amount);
             var hasInvoice = revenueByOrder.TryGetValue(o.Id, out var revenue);
             var total = fuel + expense + incident;
-            var late = LateDays(o.Id, o.Status, o.CommittedDeliveryDate);
+            var late = LateDays(o.Id, o.Status, TruckingSystem.Application.TransportOrders.DeadlineBasisRules.Pick(lateBasis, o.Id, o.CommittedDeliveryDate));
             return new OrderProfitDto(o.Id, o.Code, o.CustomerName, o.Status.ToString(), o.CreatedAt + VnOffset,
                 hasInvoice, revenue, fuel, expense, incident, total, revenue - total,
                 late is null ? null : late <= 0 ? "Đúng hạn" : $"Trễ {late} ngày");

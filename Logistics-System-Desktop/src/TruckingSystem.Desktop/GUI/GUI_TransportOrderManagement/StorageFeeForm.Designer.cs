@@ -25,7 +25,6 @@
             lblNote = new System.Windows.Forms.Label();
             bottomBar = new System.Windows.Forms.TableLayoutPanel();
             btnCopy = new System.Windows.Forms.Button();
-            btnRecord = new System.Windows.Forms.Button();
             btnClose = new System.Windows.Forms.Button();
             root.SuspendLayout();
             bottomBar.SuspendLayout();
@@ -65,7 +64,7 @@
             lblTitle.Margin = new System.Windows.Forms.Padding(0, 0, 0, 6);
             lblTitle.Name = "lblTitle";
             lblTitle.TabIndex = 0;
-            lblTitle.Text = "💰 Phí lưu kho do khách dời hạn giao";
+            lblTitle.Text = "💰 Phí lưu kho của đơn";
             //
             // kpi — hàng thẻ số liệu (thẻ thêm trong StorageFeeForm.cs)
             //
@@ -115,7 +114,6 @@
             bottomBar.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
             bottomBar.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.AutoSize));
             bottomBar.Controls.Add(btnCopy, 0, 0);
-            bottomBar.Controls.Add(btnRecord, 1, 0);
             bottomBar.Controls.Add(btnClose, 2, 0);
             bottomBar.Dock = System.Windows.Forms.DockStyle.Fill;
             bottomBar.Margin = new System.Windows.Forms.Padding(0);
@@ -145,26 +143,6 @@
             btnCopy.UseVisualStyleBackColor = false;
             btnCopy.Enabled = false;
             btnCopy.Click += new System.EventHandler(this.BtnCopy_Click);
-            //
-            // btnRecord — ghi nhận BỔ SUNG phí lưu kho do khách (quên đổi hạn, kể cả đơn đã Hoàn tất / Hủy)
-            //
-            btnRecord.Anchor = System.Windows.Forms.AnchorStyles.Left;
-            btnRecord.AutoSize = true;
-            btnRecord.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
-            btnRecord.BackColor = System.Drawing.Color.White;
-            btnRecord.Cursor = System.Windows.Forms.Cursors.Hand;
-            btnRecord.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(217, 119, 6);
-            btnRecord.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            btnRecord.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
-            btnRecord.ForeColor = System.Drawing.Color.FromArgb(180, 83, 9);
-            btnRecord.Margin = new System.Windows.Forms.Padding(0, 0, 8, 0);
-            btnRecord.MinimumSize = new System.Drawing.Size(0, 38);
-            btnRecord.Name = "btnRecord";
-            btnRecord.Padding = new System.Windows.Forms.Padding(10, 4, 10, 4);
-            btnRecord.TabIndex = 1;
-            btnRecord.Text = "➕ Ghi nhận phí lưu kho bổ sung";
-            btnRecord.UseVisualStyleBackColor = false;
-            btnRecord.Click += new System.EventHandler(this.BtnRecord_Click);
             //
             // btnClose
             //
@@ -217,7 +195,6 @@
         private System.Windows.Forms.Label lblNote;
         private System.Windows.Forms.TableLayoutPanel bottomBar;
         private System.Windows.Forms.Button btnCopy;
-        private System.Windows.Forms.Button btnRecord;
         private System.Windows.Forms.Button btnClose;
     }
 }
