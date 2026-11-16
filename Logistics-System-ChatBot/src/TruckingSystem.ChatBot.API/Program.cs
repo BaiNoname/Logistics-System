@@ -1,5 +1,3 @@
-using System.Threading.RateLimiting;
-using Microsoft.AspNetCore.RateLimiting;
 using TruckingSystem.ChatBot.Application;
 using TruckingSystem.ChatBot.Infrastructure;
 using TruckingSystem.Infrastructure;
@@ -23,13 +21,7 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-builder.Services.AddRateLimiter(options =>
-{
-    options.RejectionStatusCode = 429;
-    options.AddPolicy("freight-chat", context => RateLimitPartition.GetFixedWindowLimiter(
-        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-        _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
-});
+builder.Services.AddFreightChatRateLimiter();
 
 var app = builder.Build();
 

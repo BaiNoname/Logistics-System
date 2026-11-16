@@ -6,7 +6,7 @@ using TruckingSystem.Application.FreightChat;
 namespace TruckingSystem.ChatBot.API.Controllers;
 
 [ApiController, AllowAnonymous, Route("api/public/freight-chat")]
-[EnableRateLimiting("freight-chat")]
+[EnableRateLimiting(TruckingSystem.ChatBot.Infrastructure.FreightChatRateLimit.PolicyName)]
 public class FreightChatController(FreightChatService service, ILogger<FreightChatController> logger) : ControllerBase
 {
     [HttpPost, RequestSizeLimit(120000)]

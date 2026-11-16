@@ -25,7 +25,7 @@ internal static class Program
         Application.Run(new ChatBotForm(new ApiConnection(ReadServerUrl())));
     }
 
-    /// <summary>Địa chỉ ChatBot API lấy từ chatbot.settings.json cạnh file exe; thiếu/sai thì dùng mặc định.</summary>
+    /// <summary>ServerUrl trong chatbot.settings.json cạnh file exe (domain của ChatBot API, hoặc URL endpoint đầy đủ); thiếu/sai thì dùng mặc định.</summary>
     private static string ReadServerUrl()
     {
         try

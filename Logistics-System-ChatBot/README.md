@@ -7,8 +7,8 @@ Toàn bộ tính năng chatbot tra cước công khai, tách khỏi hệ thống
 | `src/TruckingSystem.ChatBot.Domain` | Quy tắc tính cước báo giá theo chặng (`FreightQuotePricing`) |
 | `src/TruckingSystem.ChatBot.Application` | Use case hội thoại `FreightChatService`, guard câu trả lời, tài liệu index, interface AI/vector store; `AddFreightChat()` |
 | `src/TruckingSystem.ChatBot.Infrastructure` | Gemini / OpenAI-compatible, vector store pgvector (`FreightVectors`), worker index bảng giá, context bảo vệ bằng DataProtection; `AddFreightChatInfrastructure()` |
-| `src/TruckingSystem.ChatBot.API` | Host `POST /api/public/freight-chat` (ẩn danh, 10 lần/phút/IP), mặc định `https://localhost:8090` |
-| `src/TruckingSystem.ChatBot.Desktop` | App khung chat `TruckingChatBot.exe`, đọc `ServerUrl` trong `chatbot.settings.json` cạnh exe |
+| `src/TruckingSystem.ChatBot.API` | Host `POST /api/public/freight-chat` (ẩn danh, 10 lần/phút/khách; sau Cloudflare Tunnel lấy IP thật từ `CF-Connecting-IP`), mặc định `https://localhost:8090` |
+| `src/TruckingSystem.ChatBot.Desktop` | App khung chat `TruckingChatBot.exe`, đọc `ServerUrl` trong `chatbot.settings.json` cạnh exe: chỉ ghi domain (vd. `https://localhost:8090`) thì gọi `/api/public/freight-chat` trên đó; ghi URL có đường dẫn thì gọi đúng nguyên URL |
 
 ## Phụ thuộc vào hệ thống (Logistics-System-Desktop)
 
@@ -45,4 +45,4 @@ dotnet publish src/TruckingSystem.ChatBot.Desktop -c Release -r win-x64 --self-c
 dotnet publish src/TruckingSystem.ChatBot.API -c Release -o publish/ChatBotApi
 ```
 
-Sửa `publish/ChatBot/chatbot.settings.json` để trỏ tới máy chủ ChatBot API thật; đặt `appsettings.json` cạnh `publish/ChatBotApi`. Thư mục publish có thể mang theo `appsettings.json` cục bộ chứa key — không phát tán.
+Sửa `ServerUrl` trong `publish/ChatBot/chatbot.settings.json` thành địa chỉ ChatBot API trên máy chủ thật (domain, hoặc URL endpoint đầy đủ); đặt `appsettings.json` cạnh `publish/ChatBotApi`. Thư mục publish có thể mang theo `appsettings.json` cục bộ chứa key — không phát tán.
