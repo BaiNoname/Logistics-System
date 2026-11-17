@@ -9,7 +9,6 @@ public partial class ChatBotForm : Form
     private const int MaxColumn = 760;
     private static readonly string[] Examples =
     [
-        "Xem bảng giá",
         "Công thức tính cước",
         "Hướng dẫn sử dụng"
     ];

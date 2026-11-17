@@ -74,7 +74,13 @@ public class PayrollController(IPayrollService service) : ControllerBase
 
     [HttpGet("periods")]
     [Authorize(Roles = "Admin,Accountant,Dispatcher")]
-    public async Task<ActionResult<List<PayrollPeriodDto>>> GetPeriods() => Ok(await service.GetPeriodsAsync());
+    public async Task<ActionResult<List<PayrollPeriodDto>>> GetPeriods()
+    {
+        var periods = await service.GetPeriodsAsync();
+        if (!User.IsInRole("Admin") && !User.IsInRole("Accountant"))
+            return Ok(periods.Select(p => p with { AutomaticCalculationError = null }).ToList());
+        return Ok(periods);
+    }
 
     [HttpGet("periods/{periodId:int}/slips")]
     [Authorize(Roles = "Admin,Accountant")]

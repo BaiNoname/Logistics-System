@@ -29,7 +29,8 @@ public class ContractAppendicesControl : BaseUserControl
             new DataGridViewTextBoxColumn { DataPropertyName = "IssueDate", HeaderText = "Ngày lập", DefaultCellStyle = new() { Format = "dd/MM/yyyy" } },
             new DataGridViewTextBoxColumn { DataPropertyName = "EffectiveDate", HeaderText = "Ngày có hiệu lực", DefaultCellStyle = new() { Format = "dd/MM/yyyy" } },
             new DataGridViewTextBoxColumn { DataPropertyName = "TariffName", HeaderText = "Bảng giá", FillWeight = 200 },
-            new DataGridViewTextBoxColumn { DataPropertyName = "DiscountPercent", HeaderText = "Ưu đãi (%)", DefaultCellStyle = new() { Format = "0.##", NullValue = "—" } });
+            new DataGridViewTextBoxColumn { DataPropertyName = "DiscountPercent", HeaderText = "Ưu đãi (%)", DefaultCellStyle = new() { Format = "0.##", NullValue = "—" } },
+            new DataGridViewTextBoxColumn { DataPropertyName = nameof(ContractAppendixItem.LateDeliveryDiscountPercent), HeaderText = "Giảm do giao trễ (%)", DefaultCellStyle = new() { Format = "0.##", NullValue = "Theo hợp đồng" } });
         var toolbar = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, WrapContents = true };
         toolbar.Controls.Add(new Label { Text = "Phụ lục hợp đồng", Font = Theme.FontTitle, ForeColor = Theme.TextPrimary, AutoSize = true, Margin = new Padding(0, 0, 24, 12) });
         toolbar.Controls.AddRange(new Control[] { _create, _refresh });

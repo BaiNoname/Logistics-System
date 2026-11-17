@@ -14,12 +14,14 @@ public class ContractAppendixForm : BaseForm
     private readonly DateTimePicker _effective = new() { Format = DateTimePickerFormat.Custom, CustomFormat = "dd/MM/yyyy", AccessibleName = "Ngày có hiệu lực" };
     private readonly ComboBox _priceList = new() { DropDownStyle = ComboBoxStyle.DropDownList, AccessibleName = "Bảng giá" };
     private readonly NumberBox _discount = new() { DecimalPlaces = 2, Maximum = 100, AccessibleName = "% ưu đãi của hợp đồng" };
+    private readonly NumberBox _lateDeliveryDiscount = new() { DecimalPlaces = 2, Maximum = 100, Enabled = false, AccessibleName = "Giảm giá khi giao trễ (%)" };
     private readonly Label _status = new() { AutoSize = true, MaximumSize = new Size(650, 0), ForeColor = Theme.Danger };
     private readonly Button _save = Theme.MakePrimaryButton("Lưu", 100);
-    private readonly TableLayoutPanel _fields = new() { Dock = DockStyle.Fill, AutoScroll = true, ColumnCount = 1, RowCount = 7, Padding = new Padding(20, 16, 20, 16) };
+    private readonly TableLayoutPanel _fields = new() { Dock = DockStyle.Fill, AutoScroll = true, ColumnCount = 1, RowCount = 8, Padding = new Padding(20, 16, 20, 16) };
     private bool _saving;
     private List<AppendixContractOption> _contracts = new();
     private int _maxDiscount;
+    private decimal _defaultLateDeliveryDiscount;
 
     public int? SavedId { get; private set; }
 
@@ -35,7 +37,7 @@ public class ContractAppendixForm : BaseForm
         MaximizeBox = MinimizeBox = false;
         StartPosition = FormStartPosition.CenterParent;
         _fields.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        for (var row = 0; row < 7; row++) _fields.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        for (var row = 0; row < _fields.RowCount; row++) _fields.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         void Field(string label, Control input)
         {
             var block = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, ColumnCount = 1, Margin = new Padding(0, 0, 0, 8) };
@@ -59,6 +61,7 @@ public class ContractAppendixForm : BaseForm
         Field("Ngày có hiệu lực *:", _effective);
         Field("Bảng giá *:", _priceList);
         Field("% ưu đãi của hợp đồng *:", _discount);
+        Field("Giảm giá khi giao trễ (%):", _lateDeliveryDiscount);
         _fields.Controls.Add(_status);
         _priceList.SelectedIndexChanged += (_, _) => UpdateSaveEnabled();
         _contract.SelectedIndexChanged += (_, _) =>
@@ -69,6 +72,8 @@ public class ContractAppendixForm : BaseForm
             _discount.Value = Math.Clamp(selected?.DiscountPercent ?? 0, 0, 100);
             _discount.Enabled = selected is not null && selected.Type != "OneTime";
             if (selected?.Type == "OneTime") _discount.Value = 0;
+            if (_item is { LateDeliveryDiscountPercent: null })
+                _lateDeliveryDiscount.Value = InitialLateDeliveryDiscount;
             UpdateSaveEnabled();
         };
         var cancel = Theme.MakeSecondaryButton("Đóng", 100);
@@ -104,6 +109,7 @@ public class ContractAppendixForm : BaseForm
     {
         _contracts = lookups.ContractDiscounts;
         _maxDiscount = lookups.MaxDiscountPercent;
+        _defaultLateDeliveryDiscount = lookups.LateDeliveryDiscountPercent;
         _contract.DisplayMember = nameof(ContractOption.Name);
         _contract.ValueMember = nameof(ContractOption.Id);
         var contracts = lookups.Contracts.ToList();
@@ -130,6 +136,8 @@ public class ContractAppendixForm : BaseForm
             if (savedPriceListId.HasValue) _priceList.SelectedValue = savedPriceListId.Value;
             _discount.Value = Math.Clamp(_item.DiscountPercent ?? SelectedContract?.DiscountPercent ?? 0, 0, 100);
         }
+        _lateDeliveryDiscount.Value = InitialLateDeliveryDiscount;
+        _lateDeliveryDiscount.Enabled = _api.Connection.IsInRole("Admin");
         _status.Text = "";
         _fields.Enabled = true;
         UpdateSaveEnabled();
@@ -142,6 +150,8 @@ public class ContractAppendixForm : BaseForm
     }
 
     private AppendixContractOption? SelectedContract => _contract.SelectedValue is int id ? _contracts.FirstOrDefault(c => c.Id == id) : null;
+    private decimal InitialLateDeliveryDiscount => _item is null ? _defaultLateDeliveryDiscount
+        : _item.LateDeliveryDiscountPercent ?? SelectedContract?.LateDeliveryDiscountPercent ?? 0;
 
     private void UpdateSaveEnabled()
         => _save.Enabled = !_saving && SelectedContract is not null && _priceList.SelectedValue is int id && id > 0;
@@ -171,6 +181,10 @@ public class ContractAppendixForm : BaseForm
             FieldHint.Show(field, _status, ex.Message);
             return;
         }
+        decimal? lateDiscount = _lateDeliveryDiscount.Enabled && _lateDeliveryDiscount.Value != InitialLateDeliveryDiscount
+            ? _lateDeliveryDiscount.Value : null;
+        try { if (lateDiscount is decimal percent) TruckingSystem.Domain.Entities.Contract.ValidateLateDeliveryDiscount(percent); }
+        catch (ArgumentException ex) { FieldHint.Show(_lateDeliveryDiscount, _status, ex.Message); return; }
         _saving = true;
         _fields.Enabled = _save.Enabled = false;
         FormStyle.Status(_status, "Đang lưu...", StatusKind.Info);
@@ -178,12 +192,12 @@ public class ContractAppendixForm : BaseForm
         {
             if (_item is null)
             {
-                var saved = await _api.ContractAppendices.CreateAppendixAsync("", contractId, _issue.Value.Date, _effective.Value.Date, tariffRuleId, _discount.Value, priceListId);
+                var saved = await _api.ContractAppendices.CreateAppendixAsync("", contractId, _issue.Value.Date, _effective.Value.Date, tariffRuleId, _discount.Value, priceListId, lateDiscount);
                 SavedId = saved?.Id;
             }
             else
             {
-                await _api.ContractAppendices.UpdateAppendixAsync(_item.Id, _code.Text.Trim(), contractId, _issue.Value.Date, _effective.Value.Date, tariffRuleId, _discount.Value, priceListId);
+                await _api.ContractAppendices.UpdateAppendixAsync(_item.Id, _code.Text.Trim(), contractId, _issue.Value.Date, _effective.Value.Date, tariffRuleId, _discount.Value, priceListId, lateDiscount);
                 SavedId = _item.Id;
             }
             _saving = false;

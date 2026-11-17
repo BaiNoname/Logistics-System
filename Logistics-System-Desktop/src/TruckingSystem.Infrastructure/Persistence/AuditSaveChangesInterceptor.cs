@@ -39,6 +39,7 @@ public sealed class AuditSaveChangesInterceptor : SaveChangesInterceptor
     {
         "Id", "CreatedAt", "UpdatedAt", "Version", "PasswordHash",
         "CurrentUsedM3", "EstimatedDistanceKm", "EstimatedDurationMinutes", "ActualFuelCost", "ConfirmRejectedAt",
+        nameof(PayrollPeriod.LastAutomaticCalculationAt), nameof(PayrollPeriod.AutomaticCalculationError),
     };
 
     private readonly IHttpContextAccessor _http;
@@ -277,7 +278,7 @@ public sealed class AuditSaveChangesInterceptor : SaveChangesInterceptor
         ["ContractAppendix"] = "phụ lục hợp đồng",
         ["DriverKpiRate"] = "hệ số KPI tài xế",
         ["EmployeeSalary"] = "lương nhân viên",
-        ["MaxDiscountPercent"] = "mức ưu đãi tối đa",
+        ["MaxDiscountPercent"] = "hạn mức hợp đồng",
         ["MonthlyAttendance"] = "chấm công tháng",
         ["PayrollItem"] = "khoản lương",
         ["PayrollKpiPolicy"] = "chính sách KPI lương",
@@ -305,6 +306,7 @@ public sealed class AuditSaveChangesInterceptor : SaveChangesInterceptor
         ["PickupMethod"] = "Cách lấy hàng",
         ["CustomerId"] = "Khách hàng #",
         ["ContractId"] = "Hợp đồng #",
+        ["LateDeliveryDiscountPercent"] = "Giảm giá khi giao trễ (%)",
         ["WarehouseId"] = "Kho #",
         ["TransportOrderId"] = "Đơn #",
         ["VehicleId"] = "Xe #",

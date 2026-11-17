@@ -27,6 +27,7 @@ public class ContractAppendix : BaseEntity
     public DateTime IssueDate { get; set; }
     public DateTime EffectiveDate { get; set; }
     public decimal? DiscountPercent { get; set; }
+    public decimal? LateDeliveryDiscountPercent { get; set; }
     public int? PriceListId { get; set; }
     public PriceList? PriceList { get; set; }
     public int? TariffRuleId { get; set; }

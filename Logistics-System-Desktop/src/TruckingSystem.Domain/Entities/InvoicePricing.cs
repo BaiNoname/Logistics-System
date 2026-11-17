@@ -28,7 +28,8 @@ public static class InvoicePricing
     }
 
     public static List<InvoiceLine> CalculateLines(TransportOrder order, TariffRule tariff, decimal? distanceKm,
-        string source, SurchargePolicy? policy = null, decimal otherCosts = 0, decimal storageFee = 0)
+        string source, SurchargePolicy? policy = null, decimal otherCosts = 0, decimal storageFee = 0,
+        decimal lateDeliveryDiscountPercent = 0)
     {
         if (order.Status != TransportOrderStatus.Done)
             throw new InvalidOperationException("Chỉ được lập hóa đơn cho đơn hàng đã hoàn thành.");
@@ -38,6 +39,7 @@ public static class InvoicePricing
             throw new InvalidOperationException("Chưa đủ GPS cho tất cả chuyến đã chạy (mỗi chuyến cần ít nhất 2 điểm). Không thể tính cước theo km.");
         if (order.CargoLines.Count == 0 || order.CargoLines.Any(c => c.WeightKg <= 0))
             throw new InvalidOperationException("Đơn hàng chưa có khối lượng hàng hợp lệ để tính cước.");
+        Contract.ValidateLateDeliveryDiscount(lateDeliveryDiscountPercent);
 
         var lines = new List<InvoiceLine>();
         try
@@ -53,13 +55,18 @@ public static class InvoicePricing
             Add("Chi phí khác của các chuyến xe", 1, otherCosts);
             Add("Phí lưu kho", 1, storageFee);
 
+            var subtotal = lines.Sum(l => l.Amount);
+            _ = Invoice.Create(order, subtotal);
+            if (lateDeliveryDiscountPercent > 0)
+                Add($"Giảm giá giao trễ ({lateDeliveryDiscountPercent:0.##}%)", 1,
+                    -SurchargePolicy.Charge(subtotal, lateDeliveryDiscountPercent));
+
             void AddFee(string name, decimal? rate, decimal legacy)
             {
                 if (rate is decimal percent)
                     Add($"{name} ({percent:0.##}% × {basis:N2} đ)", 1, SurchargePolicy.Charge(basis, percent), source);
                 else Add(name, 1, legacy, source);
             }
-            _ = Invoice.Create(order, lines.Sum(l => l.Amount));
         }
         catch (OverflowException)
         {

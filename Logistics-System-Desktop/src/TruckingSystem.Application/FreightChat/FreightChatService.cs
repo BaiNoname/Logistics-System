@@ -59,6 +59,7 @@ public class FreightChatService(IApplicationDbContext db, IFreightChatAi ai,
         var state = string.IsNullOrEmpty(request.Context) ? new ChatState() : contexts.Unprotect(request.Context);
         var selection = string.IsNullOrEmpty(request.Selection) ? null : request.Selection;
         var asks = new List<string>();
+        string? vehicleAnswer = null; // trả lời "xe nào phù hợp" do server viết, không phụ thuộc AI
         if (selection is null)
         {
             if (string.IsNullOrWhiteSpace(request.Message)) throw new ArgumentException("Vui lòng nhập câu hỏi.");
@@ -105,6 +106,15 @@ public class FreightChatService(IApplicationDbContext db, IFreightChatAi ai,
             return Reply(d.Weight is null && tables.Count > 0 ? "Bạn muốn gửi hàng gì, khoảng bao nhiêu kg hoặc tấn?" : "Bạn muốn gửi hàng gì?", slot: "cargo");
         if (d.Weight is null || string.IsNullOrWhiteSpace(d.Unit)) return Reply("Hàng nặng khoảng bao nhiêu kg hoặc tấn?", slot: "weight");
         var kg = FreightQuotePricing.ToKilograms(d.Weight.Value, d.Unit);
+        var weightLabel = $"{d.Weight.Value.ToString("0.###", CultureInfo.GetCultureInfo("vi-VN"))} {d.Unit}";
+        var ranked = VehicleSuggestion.Rank(rules, kg);
+        // Có khối lượng là gợi ý được xe; AI dùng dữ kiện này để trả lời "xe nào phù hợp" trước bước chọn xe.
+        facts.Add($"Xe phù hợp khối lượng {weightLabel}: {ranked[0].VehicleType}"
+                  + (VehicleSuggestion.Fits(ranked[0], kg) == true ? " (xe nhỏ nhất đủ tải)." : " (không xe nào ghi tải trọng đủ chở, cần nhân viên xác nhận)."));
+        if (selection is null && tariff is null && VehicleSuggestion.IsVehicleQuestion(request.Message))
+            vehicleAnswer = VehicleSuggestion.Fits(ranked[0], kg) == true
+                ? $"Với {weightLabel}, xe phù hợp là {ranked[0].VehicleType} (xe nhỏ nhất đủ tải); bạn sẽ chọn xe sau khi cho biết nơi lấy và giao hàng."
+                : $"Với {weightLabel}, mình đề xuất {ranked[0].VehicleType}; nhân viên sẽ xác nhận tải trọng khi nhận đơn.";
         if (d.IsFragile is null || d.IsHazmat is null)
             return Reply("Hàng có dễ vỡ hoặc nguy hiểm (dễ cháy, hóa chất…) không?",
                 [new("cargo:normal", "Hàng thường"), new("cargo:fragile", "Dễ vỡ"), new("cargo:hazmat", "Nguy hiểm")], slot: "cargoType");
@@ -117,21 +127,35 @@ public class FreightChatService(IApplicationDbContext db, IFreightChatAi ai,
         if (tariff is null)
         {
             state.AwaitingConfirmation = false;
-            var weightLabel = $"{d.Weight.Value.ToString("0.###", CultureInfo.GetCultureInfo("vi-VN"))} {d.Unit}";
             List<TariffRule> offered = [];
             if (!string.IsNullOrWhiteSpace(d.Vehicle))
             {
                 var matches = await vectors.SearchAsync(list.Id, d.Vehicle, ct);
                 offered = matches.Select(m => rules.FirstOrDefault(r => r.Id == m.Id && FreightDocuments.Create(r, list).Hash == m.Hash))
-                    .Where(r => r != null).Cast<TariffRule>().Take(VehicleSuggestion.MaxChoices).ToList();
+                    .Where(r => r != null).Cast<TariffRule>().DistinctBy(r => r.Id).Take(VehicleSuggestion.MaxChoices).ToList();
             }
-            var suggested = offered.Count == 0;
-            if (suggested) offered = VehicleSuggestion.Rank(rules, kg);
+            string prompt;
+            if (offered.Count == 0)
+            {
+                offered = ranked;
+                prompt = $"Mình gợi ý {offered[0].VehicleType} cho {weightLabel}. Bấm để chọn hoặc đổi loại xe:";
+            }
+            else if (offered.All(r => VehicleSuggestion.Fits(r, kg) == false))
+            {
+                // Xe khách nêu chở không đủ: đưa xe vừa tải lên đầu, vẫn giữ xe khách nêu để khách tự quyết.
+                prompt = $"{offered[0].VehicleType} chưa đủ tải cho {weightLabel}. Mình gợi ý {ranked[0].VehicleType}. Bấm để chọn hoặc đổi loại xe:";
+                offered = ranked.Take(1).Concat(offered).DistinctBy(r => r.Id).Take(VehicleSuggestion.MaxChoices).ToList();
+            }
+            else
+            {
+                // Xe đủ tải lên trước, nhỏ trước; xe không ghi tải sau xe đủ tải; xe thiếu tải cuối.
+                offered = offered.OrderBy(r => VehicleSuggestion.Fits(r, kg) switch { true => 0, null => 1, false => 2 })
+                    .ThenBy(r => VehicleSuggestion.CapacityTons(r.VehicleType) ?? 0).ToList();
+                prompt = $"Vui lòng chọn loại xe phù hợp cho {weightLabel}:";
+            }
             state.TariffChoices = offered.Select(r => r.Id).ToList();
-            return Reply(suggested
-                    ? $"Mình gợi ý {offered[0].VehicleType} cho {weightLabel}. Bấm để chọn hoặc đổi loại xe:"
-                    : "Vui lòng chọn loại xe phù hợp trong bảng giá:",
-                offered.Select(r => new ChatOption($"vehicle:{r.Id}", r.VehicleType)).ToList(), slot: "vehicle");
+            return Reply(prompt, offered.Select(r => new ChatOption($"vehicle:{r.Id}",
+                VehicleSuggestion.Fits(r, kg) == false ? $"{r.VehicleType} (chưa đủ tải)" : r.VehicleType)).ToList(), slot: "vehicle");
         }
         state.TariffHash = FreightDocuments.Create(tariff, list).Hash;
         facts.Add($"Xe đã chọn: {tariff.VehicleType}.");
@@ -208,13 +232,30 @@ public class FreightChatService(IApplicationDbContext db, IFreightChatAi ai,
 
         async Task<(ChatState, Turn)> PlaceStep(string address, string label, string slot)
         {
-            var suggestions = await places.SearchAsync(address);
-            state.PlaceChoices = suggestions.Where(p => WarehouseLocator.Valid(p.Lat, p.Lng))
-                .Take(5).Select(p => new ConfirmedPlace(p.Address, p.Lat, p.Lng)).ToList();
+            string? estimate = null;
+            state.PlaceChoices = await Search(address);
+            // Không thấy đúng địa chỉ (không có kết quả, hoặc bản đồ chỉ đoán gần đúng tên đường) thì tra khu vực rộng hơn
+            // (phường → quận → tỉnh/thành); khách vẫn bấm xác nhận. Không có khu vực nào thì giữ gợi ý gần đúng ban đầu.
+            var exact = state.PlaceChoices.Count > 0 && AddressFallback.MatchesTyped(address, state.PlaceChoices.Select(p => p.Address));
+            foreach (var broader in exact ? [] : AddressFallback.Broader(address))
+            {
+                var area = await Search(broader);
+                if (area.Count > 0) { state.PlaceChoices = area; estimate = broader; break; }
+            }
             if (state.PlaceChoices.Count == 0)
-                return Reply($"Chưa tra được địa điểm “{address}”. Vui lòng nhập địa chỉ cụ thể hơn hoặc thử lại sau.", slot: slot);
-            return Reply($"Xác nhận {label} “{address}”:",
-                state.PlaceChoices.Select((p, i) => new ChatOption($"place:{i}", p.Address)).ToList(), slot: "place");
+                return Reply($"Mình chưa tra được {label} “{address}”. Bạn cho mình xin lại {label}, chỉ cần quận/huyện và tỉnh/thành phố cũng được.", slot: slot);
+            var options = state.PlaceChoices.Select((p, i) => new ChatOption($"place:{i}", p.Address)).ToList();
+            if (estimate is null) return Reply($"Xác nhận {label} “{address}”:", options, slot: "place");
+            facts.Add($"Không tìm thấy chính xác {label} “{address}”; đang đề xuất địa chỉ ước tính theo khu vực “{estimate}”, cước tính theo khu vực này.");
+            return Reply($"Mình chưa tìm thấy chính xác “{address}”, tạm ước tính theo khu vực “{estimate}”. "
+                         + $"Bấm để xác nhận {label}, hoặc gõ lại địa chỉ cụ thể hơn:", options, slot: "place");
+        }
+
+        async Task<List<ConfirmedPlace>> Search(string query)
+        {
+            var suggestions = await places.SearchAsync(query);
+            return suggestions.Where(p => WarehouseLocator.Valid(p.Lat, p.Lng))
+                .Take(5).Select(p => new ConfirmedPlace(p.Address, p.Lat, p.Lng)).ToList();
         }
 
         (ChatState, Turn) Reply(string message, List<ChatOption>? options = null, FreightQuote? quote = null,
@@ -222,7 +263,7 @@ public class FreightChatService(IApplicationDbContext db, IFreightChatAi ai,
         {
             if (tables.Count > 0)
                 facts.Add("Bảng đang hiển thị cho khách lượt này: " + string.Join(", ", tables.Select(t => t.Title)) + ".");
-            return (state, new Turn(message, options ?? [], quote, appended, facts, tables,
+            return (state, new Turn(message, options ?? [], quote, appended ?? vehicleAnswer, facts, tables,
                 slot is null ? null : new PendingQuestion(slot, message)));
         }
     }

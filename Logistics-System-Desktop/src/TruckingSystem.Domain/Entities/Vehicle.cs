@@ -5,6 +5,14 @@ namespace TruckingSystem.Domain.Entities;
 
 public class Vehicle : BaseEntity
 {
+    /// <summary>8 loại xe chuẩn của công ty (cùng danh mục dropdown Loại xe trên Desktop);
+    /// cấu hình KPI tài xế chỉ nhận hệ số H cho đúng các loại này.</summary>
+    public static IReadOnlyList<string> StandardTypes { get; } = Array.AsReadOnly(new[]
+    {
+        "Xe van 1 tấn", "Xe tải 1,5 tấn", "Xe tải 2,5 tấn", "Xe tải 5 tấn",
+        "Xe tải 8 tấn", "Xe tải 15 tấn", "Đầu kéo container 20 feet", "Đầu kéo container 40 feet"
+    });
+
     public string PlateNumber { get; set; } = string.Empty;
     public string VehicleType { get; set; } = string.Empty;
     public decimal CapacityQty { get; set; }

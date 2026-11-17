@@ -16,6 +16,7 @@ using TruckingSystem.Application.TripVideos;
 using TruckingSystem.Domain.Identity;
 using TruckingSystem.Infrastructure.Auth;
 using TruckingSystem.Infrastructure.ExternalServices;
+using TruckingSystem.Infrastructure.Hosting;
 using TruckingSystem.Infrastructure.Persistence;
 using TruckingSystem.Infrastructure.Storage;
 
@@ -33,6 +34,8 @@ public static class DependencyInjection
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddInfrastructureCore(configuration);
+        if (configuration.GetValue("Payroll:AutomaticCalculationEnabled", true))
+            services.AddHostedService<PayrollCalculationWorker>();
 
         // Chatbot tra cước công khai: AI hội thoại + vector RAG bảng giá. Chỉ host API đăng ký (giữ key AI, chạy worker index).
         services.AddDataProtection();

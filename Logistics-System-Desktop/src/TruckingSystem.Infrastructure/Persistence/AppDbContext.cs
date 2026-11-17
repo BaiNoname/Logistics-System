@@ -105,7 +105,11 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
 
         builder.Entity<MaxDiscountPercent>(e =>
         {
-            e.ToTable("MaxDiscountPercent", t => t.HasCheckConstraint("CK_MaxDiscountPercent_Value", "\"Id\" = 1 AND \"Value\" BETWEEN 0 AND 100"));
+            e.ToTable("MaxDiscountPercent", t =>
+            {
+                t.HasCheckConstraint("CK_MaxDiscountPercent_Value", "\"Id\" = 1 AND \"Value\" BETWEEN 0 AND 100");
+                t.HasCheckConstraint("CK_MaxDiscountPercent_LateDeliveryDiscountPercent", "\"LateDeliveryDiscountPercent\" BETWEEN 0 AND 100");
+            });
             e.Property(p => p.Id).ValueGeneratedNever();
             e.HasData(new MaxDiscountPercent { Id = 1, Value = 20, UpdatedAt = new DateTime(2026, 11, 5, 0, 0, 0, DateTimeKind.Utc) });
         });
@@ -254,6 +258,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
             .OnDelete(DeleteBehavior.Restrict);
         builder.Entity<ContractAppendix>(e =>
         {
+            e.ToTable(t => t.HasCheckConstraint("CK_ContractAppendices_LateDeliveryDiscountPercent",
+                "\"LateDeliveryDiscountPercent\" BETWEEN 0 AND 100"));
             e.Property(a => a.Code).HasMaxLength(100);
             e.HasIndex(a => a.Code).IsUnique();
             e.HasIndex(a => a.ContractId).IsUnique().HasFilter("\"Status\" = 0");
@@ -347,6 +353,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
         builder.Entity<StorageBin>().ToTable(t => t.HasCheckConstraint("CK_StorageBin_CurrentUsedM3_NonNegative", "\"CurrentUsedM3\" >= 0"));
         builder.Entity<FuelLog>().ToTable(t => t.HasCheckConstraint("CK_FuelLog_Positive", "\"Liters\" > 0 AND \"Cost\" >= 0"));
         builder.Entity<FuelPriceHistory>().ToTable(t => t.HasCheckConstraint("CK_FuelPrice_Positive", "\"Price\" > 0"));
+        builder.Entity<Contract>().ToTable(t => t.HasCheckConstraint("CK_Contracts_LateDeliveryDiscountPercent",
+            "\"LateDeliveryDiscountPercent\" BETWEEN 0 AND 100"));
 
         // ===== 4. Chống 2 người sửa CÙNG LÚC (optimistic concurrency) =====
         // Dùng cột hệ thống "xmin" của PostgreSQL (không thêm cột mới vào bảng).

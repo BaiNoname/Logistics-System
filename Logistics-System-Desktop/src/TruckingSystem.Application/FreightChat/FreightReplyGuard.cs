@@ -45,8 +45,9 @@ public static partial class FreightReplyGuard
             // Câu lộ lời dặn nội bộ (AI chép lại hướng dẫn thay vì nói với khách).
             if (normalized.Contains("lời mở đầu") || normalized.Contains("chép lại") || normalized.Contains("khung chat")) continue;
             // AI hay chép "bảng … đang hiển thị dưới đây" từ lượt trước dù lượt này không kèm bảng.
+            // Cũng bỏ câu mời "xem bảng giá", "đã liệt kê bảng giá", "bảng giá đã cập nhật" khi không có bảng.
             if (!brief.TableShown && normalized.Contains("bảng")
-                && (normalized.Contains("hiển thị") || normalized.Contains("dưới đây") || normalized.Contains("giới thiệu"))) continue;
+                && TableClaims.Any(normalized.Contains)) continue;
             if (options.Contains(normalized) || server.Any(s => normalized.Contains(s) || (normalized.Length >= 12 && s.Contains(normalized)))) continue;
             kept.Add(sentence.Length > 0 ? char.ToUpper(sentence[0]) + sentence[1..] : sentence);
             if (kept.Count == MaxSentences) break;
@@ -54,6 +55,9 @@ public static partial class FreightReplyGuard
         var text = string.Join(" ", kept).Trim();
         return text.Length == 0 ? null : text;
     }
+
+    private static readonly string[] TableClaims =
+        ["hiển thị", "dưới đây", "bên dưới", "giới thiệu", "liệt kê", "xem", "cập nhật", "đã gửi", "tham khảo bảng"];
 
     private static string Normalize(string text) => text.Trim().TrimEnd('.', '!', ':', '…', ' ').ToLowerInvariant();
 

@@ -14,6 +14,7 @@ public class ContractListItem
     public int Id { get; set; }
     public string? Type { get; set; }
     public decimal? DiscountPercent { get; set; }
+    public decimal LateDeliveryDiscountPercent { get; set; }
     public string TypeText => Type switch
     {
         "OneTime" => "Hợp đồng vận chuyển một lần",
@@ -38,10 +39,13 @@ public class ContractListItem
 public class ContractLookups
 {
     public int MaxDiscountPercent { get; set; } = 20;
+    public decimal LateDeliveryDiscountPercent { get; set; }
     public List<ContractOption> Customers { get; set; } = new();
     public List<ContractOption> PriceLists { get; set; } = new();
     public List<TruckingSystem.Desktop.DTO_PricingManagement.TariffRuleItem> TariffRules { get; set; } = new();
 }
+
+public record ContractDiscountLimits(int MaxDiscountPercent, decimal LateDeliveryDiscountPercent);
 
 public class ContractOption
 {

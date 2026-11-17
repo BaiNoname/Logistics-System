@@ -17,6 +17,10 @@ public static partial class VehicleSuggestion
             CultureInfo.InvariantCulture, out var tons) && tons > 0 ? tons : null;
     }
 
+    /// <summary>Xe chở đủ khối lượng không; null khi tên xe không ghi tải trọng.</summary>
+    public static bool? Fits(TariffRule rule, decimal weightKg)
+        => CapacityTons(rule.VehicleType) is decimal tons ? tons * 1000m >= weightKg : null;
+
     /// <summary>
     /// Xếp hạng xe cho khối lượng: xe đủ tải nhỏ nhất trước, rồi xe không rõ tải (container), cuối cùng xe thiếu tải
     /// (lớn trước). Phần tử đầu là xe gợi ý; tối đa <see cref="MaxChoices"/> xe.
@@ -29,6 +33,16 @@ public static partial class VehicleSuggestion
             .ThenBy(x => x.Tons is decimal t ? (t >= tons ? t : -t) : 0)
             .ThenBy(x => x.Rule.Id)
             .Select(x => x.Rule).Take(MaxChoices).ToList();
+    }
+
+    private static readonly string[] AskPhrases =
+        ["xe nao", "loai xe nao", "xe gi", "loai xe gi", "xe phu hop", "nen di xe", "nen dung xe", "dung xe nao", "can xe nao", "can xe gi", "di xe nao"];
+
+    /// <summary>Khách hỏi nên dùng xe nào (từ khóa không dấu).</summary>
+    public static bool IsVehicleQuestion(string? message)
+    {
+        var text = FreightText.Fold(message);
+        return AskPhrases.Any(p => FreightText.Has(text, p));
     }
 
     [GeneratedRegex(@"(\d+(?:[.,]\d+)?)\s*tấn", RegexOptions.IgnoreCase)]

@@ -10,18 +10,23 @@ namespace TruckingSystem.Application.Contracts;
 
 public class ContractService(IApplicationDbContext db) : IContractService
 {
-    public async Task<ContractLookupDto> GetLookupsAsync() => new()
+    public async Task<ContractLookupDto> GetLookupsAsync()
     {
-        MaxDiscountPercent = await GetMaxDiscountPercentAsync(),
-        Customers = await db.Customers.AsNoTracking().OrderBy(c => c.Name)
-            .Select(c => new ContractOptionDto { Id = c.Id, Name = c.Name }).ToListAsync(),
-        PriceLists = await PriceListLookup.Current(db).OrderBy(p => p.Name)
-            .Select(p => new ContractOptionDto { Id = p.Id, Name = p.Name }).ToListAsync(),
-        TariffRules = await db.TariffRules.AsNoTracking().Where(r => PriceListLookup.Current(db).Select(p => p.Id).Contains(r.PriceListId))
-            .OrderBy(r => r.VehicleType).ThenBy(r => r.Id)
-            .Select(r => new TariffRuleDto(r.Id, r.PriceListId, r.VehicleType, r.PricePerKm,
-                r.PricePerTon, r.SurchargeFragile, r.SurchargeHazmat)).ToListAsync(),
-    };
+        var limits = await GetDiscountLimitsAsync();
+        return new()
+        {
+            MaxDiscountPercent = limits.MaxDiscountPercent,
+            LateDeliveryDiscountPercent = limits.LateDeliveryDiscountPercent,
+            Customers = await db.Customers.AsNoTracking().OrderBy(c => c.Name)
+                .Select(c => new ContractOptionDto { Id = c.Id, Name = c.Name }).ToListAsync(),
+            PriceLists = await PriceListLookup.Current(db).OrderBy(p => p.Name)
+                .Select(p => new ContractOptionDto { Id = p.Id, Name = p.Name }).ToListAsync(),
+            TariffRules = await db.TariffRules.AsNoTracking().Where(r => PriceListLookup.Current(db).Select(p => p.Id).Contains(r.PriceListId))
+                .OrderBy(r => r.VehicleType).ThenBy(r => r.Id)
+                .Select(r => new TariffRuleDto(r.Id, r.PriceListId, r.VehicleType, r.PricePerKm,
+                    r.PricePerTon, r.SurchargeFragile, r.SurchargeHazmat)).ToListAsync(),
+        };
+    }
 
     public async Task<ContractListItemDto> CreateAsync(SaveContractRequest request, bool isAdmin = false)
     {
@@ -32,7 +37,9 @@ public class ContractService(IApplicationDbContext db) : IContractService
             .Where(c => c.Code.StartsWith(prefix)).Select(c => c.Code).ToListAsync());
         Validate(request);
         Contract.ValidatePeriod(request.StartDate, request.EndDate, ValidateType(request.Type, request.DiscountPercent), VnClock.Today);
-        await ValidateDiscountLimitAsync(request.DiscountPercent, isAdmin);
+        var limits = await GetDiscountLimitsAsync();
+        ValidateDiscountLimit(request.DiscountPercent, isAdmin, limits.MaxDiscountPercent);
+        ContractDiscountRules.ValidateLateDeliveryOverride(request.LateDeliveryDiscountPercent, limits.LateDeliveryDiscountPercent, isAdmin);
         if (!await db.Customers.AnyAsync(c => c.Id == request.CustomerId))
             throw new ArgumentException("Khách hàng không tồn tại.");
         if (!request.PriceListId.HasValue) throw new ArgumentException("Vui lòng chọn bảng giá đang áp dụng.");
@@ -41,7 +48,7 @@ public class ContractService(IApplicationDbContext db) : IContractService
         if (await db.Contracts.AnyAsync(c => c.Code == request.Code.Trim()))
             throw new ArgumentException("Mã hợp đồng đã tồn tại.");
 
-        var contract = new TruckingSystem.Domain.Entities.Contract();
+        var contract = new Contract { LateDeliveryDiscountPercent = request.LateDeliveryDiscountPercent ?? limits.LateDeliveryDiscountPercent };
         Apply(contract, request, request.TariffRuleId);
         db.Contracts.Add(contract);
         await db.SaveChangesAsync();
@@ -58,7 +65,8 @@ public class ContractService(IApplicationDbContext db) : IContractService
             ? ValidateType(request.Type ?? contract.Type?.ToString(), request.DiscountPercent) : contract.Type;
         Contract.ValidatePeriod(request.StartDate, request.EndDate, type);
         if (request.DiscountPercent != contract.DiscountPercent)
-            await ValidateDiscountLimitAsync(request.DiscountPercent, isAdmin);
+            ValidateDiscountLimit(request.DiscountPercent, isAdmin, await GetMaxDiscountPercentAsync());
+        ContractDiscountRules.ValidateLateDeliveryOverride(request.LateDeliveryDiscountPercent, contract.LateDeliveryDiscountPercent, isAdmin);
         if (!await db.Customers.AnyAsync(c => c.Id == request.CustomerId))
             throw new ArgumentException("Khách hàng không tồn tại.");
         await ValidatePriceListAsync(request.PriceListId, contract.PriceListId);
@@ -70,26 +78,33 @@ public class ContractService(IApplicationDbContext db) : IContractService
             throw new ArgumentException("Không thể đổi khách hàng của hợp đồng đã được đơn hàng sử dụng.");
 
         Apply(contract, request, tariffRuleId);
+        if (request.LateDeliveryDiscountPercent is decimal lateDiscount)
+            contract.LateDeliveryDiscountPercent = lateDiscount;
         contract.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync();
         return true;
     }
 
     public async Task<int> GetMaxDiscountPercentAsync()
-        => (await db.MaxDiscountPercents.AsNoTracking().SingleAsync(p => p.Id == 1)).Value;
+        => (await GetDiscountLimitsAsync()).MaxDiscountPercent;
 
-    public async Task SaveMaxDiscountPercentAsync(int value)
+    public Task<ContractDiscountLimits> GetDiscountLimitsAsync() => ContractDiscountRules.LoadLimitsAsync(db);
+
+    public async Task SaveMaxDiscountPercentAsync(int value, decimal? lateDeliveryDiscountPercent = null)
     {
         MaxDiscountPercent.Validate(value);
+        if (lateDeliveryDiscountPercent is decimal lateDiscount)
+            Contract.ValidateLateDeliveryDiscount(lateDiscount);
         var setting = await db.MaxDiscountPercents.SingleAsync(p => p.Id == 1);
         setting.Value = value;
+        if (lateDeliveryDiscountPercent.HasValue)
+            setting.LateDeliveryDiscountPercent = lateDeliveryDiscountPercent.Value;
         setting.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync();
     }
 
-    private async Task ValidateDiscountLimitAsync(decimal? discount, bool isAdmin)
+    private static void ValidateDiscountLimit(decimal? discount, bool isAdmin, int limit)
     {
-        var limit = await GetMaxDiscountPercentAsync();
         if (!isAdmin && discount > limit)
             throw new ArgumentException($"Chỉ Admin được áp dụng ưu đãi vượt quá {limit}%.");
     }
@@ -188,6 +203,7 @@ public class ContractService(IApplicationDbContext db) : IContractService
                 Code = c.Code,
                 Type = c.Type == null ? null : c.Type.ToString(),
                 DiscountPercent = c.DiscountPercent,
+                LateDeliveryDiscountPercent = c.LateDeliveryDiscountPercent,
                 CustomerName = c.Customer.Name,
                 StartDate = c.StartDate,
                 EndDate = c.EndDate,

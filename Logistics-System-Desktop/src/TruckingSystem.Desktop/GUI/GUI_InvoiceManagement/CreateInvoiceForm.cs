@@ -83,7 +83,7 @@ public partial class CreateInvoiceForm : BaseForm
             var quote = await _api.Invoices.GetQuoteAsync(order.Id)
                 ?? throw new InvalidOperationException("Chưa nhận được bảng tính hóa đơn.");
             if (IsDisposed || version != _quoteVersion) return;
-            if (quote.TransportOrderId != order.Id || quote.TotalAmount <= 0 || quote.TotalAmount > numAmount.Maximum)
+            if (quote.TransportOrderId != order.Id || quote.TotalAmount < numAmount.Minimum || quote.TotalAmount > numAmount.Maximum)
                 throw new InvalidOperationException("Bảng tính hóa đơn không hợp lệ. Vui lòng tính lại.");
             _quote = quote.StorageFeePending ? null : quote;
             lblPricing.Text = $"Hợp đồng: {quote.ContractCode}"

@@ -34,8 +34,15 @@ public class Contract : BaseEntity
             throw new ArgumentException("Ưu đãi phải từ 0 đến 100%, tối đa 2 chữ số thập phân.");
     }
 
+    public static void ValidateLateDeliveryDiscount(decimal percent)
+    {
+        if (percent is < 0 or > 100 || decimal.Round(percent, 2) != percent)
+            throw new ArgumentException("Giảm giá khi giao trễ phải từ 0 đến 100%, tối đa 2 chữ số thập phân.");
+    }
+
     public ContractType? Type { get; set; }
     public decimal? DiscountPercent { get; set; }
+    public decimal LateDeliveryDiscountPercent { get; set; }
     public int CustomerId { get; set; }
     public Customer Customer { get; set; } = null!;
 

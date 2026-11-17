@@ -21,6 +21,8 @@ public class PayrollPeriod : BaseEntity
     public string CreatedBy { get; set; } = "";
     public string? ApprovedBy { get; set; }
     public DateTime? ApprovedAt { get; set; }
+    public DateTime? LastAutomaticCalculationAt { get; set; }
+    public string? AutomaticCalculationError { get; set; }
 }
 
 public class MonthlyAttendance : BaseEntity
