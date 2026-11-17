@@ -21,6 +21,8 @@ public partial class PayrollService
                 || f.VehicleType.Length > 100 || f.Factor <= 0 || f.Factor > 1000 || !PayrollRules.ValidQuantity(f.Factor)))
             return Fail("Cấu hình hiệu lực từ ngày 1; K và điểm chuẩn phải dương, tối đa 1.000.000; H dương, tối đa 1.000; tối đa 2 số lẻ.");
         if (r.Factors.Select(f => f.VehicleType).Distinct().Count() != r.Factors.Count) return Fail("Loại xe bị trùng.");
+        if (r.Factors.Count != Vehicle.StandardTypes.Count || r.Factors.Any(f => !Vehicle.StandardTypes.Contains(f.VehicleType)))
+            return Fail($"Cấu hình KPI phải có hệ số H cho đúng {Vehicle.StandardTypes.Count} loại xe chuẩn: {string.Join(", ", Vehicle.StandardTypes)}.");
         var policy = await db.PayrollKpiPolicies.SingleOrDefaultAsync(p => p.EffectiveFrom == r.EffectiveFrom.Date);
         if (policy is null) { policy = new PayrollKpiPolicy { EffectiveFrom = r.EffectiveFrom.Date }; db.PayrollKpiPolicies.Add(policy); }
         policy.KmPerPoint = r.KmPerPoint;

@@ -51,12 +51,8 @@ public partial class PayrollControl : BaseUserControl
         };
         _detailsMenu.Click += async (_, _) => await RunAsync(DetailsAsync);
         _salaryMenu.Click += async (_, _) => await RunAsync(SalaryAsync);
-        BindButton(_generateButton, async () =>
-        {
-            if (!Confirm("Tạo/tính lại toàn bộ bảng lương tháng? Các khoản cộng/trừ theo tháng được giữ nguyên. Thiếu dữ liệu thì không cập nhật ai.")) return;
-            await CheckAsync(_api.Payroll.GenerateMonthAsync(new(_month.Value.Year, _month.Value.Month, _period?.Revision ?? 0)));
-            await LoadAsync();
-        });
+        BindButton(_refreshButton, LoadAsync);
+        _calculationErrorButton.Click += (_, _) => ShowCalculationError();
         BindButton(_approveButton, async () =>
         {
             if (_period is null || !Confirm($"Chốt {_slips.Count} phiếu, tổng {_slips.Sum(s => s.NetPay):N0} đ? Sau khi chốt không tính lại.")) return;
@@ -64,8 +60,7 @@ public partial class PayrollControl : BaseUserControl
         });
         BindButton(_kpiButton, async () =>
         {
-            using var form = new PayrollKpiPolicyForm(await _api.Payroll.PoliciesAsync(),
-                (await _api.Payroll.KpiRatesAsync()).Select(r => r.VehicleType).ToList(), _api.Payroll.SavePolicyAsync);
+            using var form = new PayrollKpiPolicyForm(await _api.Payroll.PoliciesAsync(), _api.Payroll.SavePolicyAsync);
             form.ShowDialog(this);
         });
         _adjustmentsMenu.Click += async (_, _) => await RunAsync(async () =>
@@ -118,13 +113,54 @@ public partial class PayrollControl : BaseUserControl
                 new PayrollEmployeeDto(s.EmployeeId, s.EmployeeCode, s.EmployeeName, s.DepartmentName, s.PositionName,
                     s.WorkFrom ?? s.SalaryEffectiveFrom, null, s.IsDriver)));
             BindSlips(selected);
-            _status.ForeColor = _period?.ApprovedAt is not null ? Theme.Success : Theme.TextSecondary;
-            _status.Text = _period?.ApprovedAt is not null ? "Đã chốt — số liệu được giữ nguyên."
-                : "Bản nháp — bấm Tạo / tính lại bảng lương để lấy công, chuyến và khoản cộng/trừ mới nhất.";
+            ShowCalculationStatus();
             _totals.Text = $"Tháng {_month.Value:MM/yyyy} · {_slips.Count}/{_employees.Count} phiếu · Thực lĩnh {_slips.Sum(s => s.NetPay):N0} đ · Đã trả {_slips.Sum(s => s.PaidAmount):N0} đ";
         }
         catch { _period = null; _slips.Clear(); _employees.Clear(); _slipGrid.DataSource = null; _filters.SetCount(0, 0); _status.Text = "Không tải được dữ liệu; chọn lại tháng để thử lại."; throw; }
         finally { _loading = false; UpdateButtons(); }
+    }
+
+    private void ShowCalculationStatus()
+    {
+        _status.ForeColor = Theme.TextSecondary;
+        if (_period?.ApprovedAt is not null)
+        {
+            _status.ForeColor = Theme.Success;
+            _status.Text = "Đã chốt lương.";
+        }
+        else if (_period?.LastAutomaticCalculationAt is { } attemptedAt)
+        {
+            var time = attemptedAt.AddHours(7).ToString("dd/MM/yyyy HH:mm");
+            _status.Text = _period.AutomaticCalculationError is null
+                ? $"Bảng nháp · Lần tính tự động gần nhất {time}"
+                : $"Chưa cập nhật được bảng lương lúc {time}. Xem lỗi để bổ sung dữ liệu trước lần tính tiếp theo.";
+        }
+        else
+        {
+            _status.Text = _slips.Count > 0 ? "Bảng nháp · Chờ lần tính tự động kế tiếp."
+                : "Chưa có phiếu lương. Hệ thống tính tự động hằng ngày.";
+        }
+    }
+
+    private void ShowCalculationError()
+    {
+        if (_period?.AutomaticCalculationError is not { } error) return;
+        using var dialog = new BaseForm
+        {
+            Text = $"Lỗi tính lương tháng {_month.Value:MM/yyyy}",
+            StartPosition = FormStartPosition.CenterParent,
+            ClientSize = new Size(620, 300),
+            MinimizeBox = false,
+            AccessibleName = "Lỗi tính lương"
+        };
+        dialog.Controls.Add(new TextBox
+        {
+            Dock = DockStyle.Fill, Multiline = true, ReadOnly = true, ScrollBars = ScrollBars.Vertical,
+            Text = error.ReplaceLineEndings(), AccessibleName = "Danh sách lỗi tính lương"
+        });
+        ButtonStyles.Footer(dialog, null, FormStyle.NewCloseButton(dialog));
+        DialogKeys.Enable(dialog);
+        dialog.ShowDialog(this);
     }
 
     private static string PaymentStatusText(string status) => status switch
@@ -156,7 +192,7 @@ public partial class PayrollControl : BaseUserControl
         _filters.Enabled = !_loading;
         var canPay = _api is not null && _api.Connection.IsInRole("Admin", "Accountant");
         var canApprove = canPay && _api!.Connection.IsInRole("Admin") && _period is { ApprovedAt: null } && _slips.Count > 0;
-        _generateButton.Enabled = canPay && _period?.ApprovedAt is null;
+        _calculationErrorButton.Visible = canPay && _period is { ApprovedAt: null, AutomaticCalculationError: not null };
         _approveButton.Enabled = canApprove;
         _payButton.Enabled = canPay && _period?.ApprovedAt is not null && Slip is not null;
         _exportButton.Enabled = canPay && Slip is not null;
@@ -167,11 +203,10 @@ public partial class PayrollControl : BaseUserControl
         _salaryMenu.Enabled = _adjustmentsMenu.Enabled = canPay && Employee is not null;
         _kpiButton.Visible = _api is not null && _api.Connection.IsInRole("Admin");
         _deleteDraftButton.Visible = canPay && _period is { ApprovedAt: null } && Slip is { CalculationVersion: 0 };
-        ButtonStyles.Secondary(_generateButton);
         ButtonStyles.Secondary(_approveButton);
         ButtonStyles.Secondary(_payButton);
-        ButtonStyles.Primary(_period?.ApprovedAt is not null ? _payButton
-            : canApprove ? _approveButton : _generateButton);
+        if (_period?.ApprovedAt is not null) ButtonStyles.Primary(_payButton);
+        else if (canApprove) ButtonStyles.Primary(_approveButton);
     }
 
     private async Task SalaryAsync()
@@ -230,7 +265,8 @@ public partial class PayrollControl : BaseUserControl
         form.DetailPeriod.Visible = s.WorkFrom.HasValue && s.WorkTo.HasValue;
         if (s.WorkFrom.HasValue && s.WorkTo.HasValue)
             form.DetailPeriod.Text = $"{(s.IsDriver ? "Tài xế — lịch đăng ký" : "Nhân viên — công tổng hợp")}: {s.WorkFrom:dd/MM/yyyy}–{s.WorkTo:dd/MM/yyyy}";
-        form.DetailSummary.Text = $"{s.EmployeeCode} — {s.EmployeeName}\r\n{s.DepartmentName} · {s.PositionName}\r\nLương tháng: {s.MonthlySalary:N0} đ; hiệu lực {s.SalaryEffectiveFrom:dd/MM/yyyy}\r\nCông chuẩn: {s.StandardDays}; làm: {s.WorkedDays}; nghỉ hưởng: {s.PaidLeaveDays}; lễ: {s.HolidayDays}; không lương: {s.UnpaidLeaveDays}\r\nTăng ca thường/nghỉ/lễ: {s.WeekdayOvertimeHours}/{s.RestDayOvertimeHours}/{s.HolidayOvertimeHours} giờ\r\nThực lĩnh duyệt gốc: {s.ApprovedNetPay:N0} đ; hiện tại: {s.NetPay:N0} đ; đã trả: {s.PaidAmount:N0} đ; còn: {s.RemainingAmount:N0} đ\r\nXác nhận công: {s.AttendanceConfirmedBy} · {s.AttendanceConfirmedAt.AddHours(7):dd/MM/yyyy HH:mm} (VN)\r\n{s.AttendanceNote}";
+        var calculationLabel = s.CalculationVersion == 2 ? "Lập phiếu" : "Xác nhận công";
+        form.DetailSummary.Text = $"{s.EmployeeCode} — {s.EmployeeName}\r\n{s.DepartmentName} · {s.PositionName}\r\nLương tháng: {s.MonthlySalary:N0} đ; hiệu lực {s.SalaryEffectiveFrom:dd/MM/yyyy}\r\nCông chuẩn: {s.StandardDays}; làm: {s.WorkedDays}; nghỉ hưởng: {s.PaidLeaveDays}; lễ: {s.HolidayDays}; không lương: {s.UnpaidLeaveDays}\r\nTăng ca thường/nghỉ/lễ: {s.WeekdayOvertimeHours}/{s.RestDayOvertimeHours}/{s.HolidayOvertimeHours} giờ\r\nThực lĩnh duyệt gốc: {s.ApprovedNetPay:N0} đ; hiện tại: {s.NetPay:N0} đ; đã trả: {s.PaidAmount:N0} đ; còn: {s.RemainingAmount:N0} đ\r\n{calculationLabel}: {s.AttendanceConfirmedBy} · {s.AttendanceConfirmedAt.AddHours(7):dd/MM/yyyy HH:mm} (VN)\r\n{s.AttendanceNote}";
         if (s.CalculationVersion == 2 && s.IsDriver)
             form.DetailSummary.Text = $"{s.EmployeeCode} — {s.EmployeeName}\r\nLCB: {s.MonthlySalary:N0} đ\r\nP: {s.KpiPoints:0.######}; điểm chuẩn: {s.KpiTarget}; KPI: {(s.KpiTarget > 0 ? s.KpiPoints / s.KpiTarget : 0):P2}\r\nLương theo KPI: {s.EarnedSalary:N0} đ\r\nThực lĩnh: {s.NetPay:N0} đ\r\n{s.AttendanceNote}";
         form.DetailItems.DataSource = s.Items.Select(i => new { Kind = i.Kind switch { "Allowance" => "Phụ cấp", "Bonus" => "Thưởng", "Overtime" => "Tăng ca", _ => "Khấu trừ" },

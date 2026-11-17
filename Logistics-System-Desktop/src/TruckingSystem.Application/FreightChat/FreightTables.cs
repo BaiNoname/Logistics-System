@@ -42,7 +42,7 @@ public static class FreightTables
 
     public static ChatTable Formula(SurchargePolicy? policy)
     {
-        const string byVehicle = "Theo loại xe — xem Bảng giá";
+        const string byVehicle = "Theo loại xe đã chọn";
         var feeRule = policy is null ? "Phí cố định theo loại xe, tính một lần cho cả lô" : "Phần trăm × (cước km + cước tấn), tính một lần";
         return new(FormulaKind, "Công thức tính cước", "Cước tham khảo theo bảng giá đang áp dụng",
             ["Khoản", "Cách tính", "Đơn giá áp dụng"], [],

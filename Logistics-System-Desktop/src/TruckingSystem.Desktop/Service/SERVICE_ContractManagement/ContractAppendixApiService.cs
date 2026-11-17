@@ -12,11 +12,13 @@ public class ContractAppendixApiService(ApiConnection connection)
         => await connection.GetAsync<ContractAppendixLookups>("/api/contract-appendices/lookups")
             ?? throw new InvalidOperationException("Không tải được hợp đồng và ưu đãi.");
 
-    public Task<ContractAppendixItem?> CreateAppendixAsync(string code, int contractId, DateTime issueDate, DateTime effectiveDate, int? tariffRuleId, decimal? discountPercent = null, int? priceListId = null)
-        => connection.PostAsync<ContractAppendixItem>("/api/contract-appendices", new { code, contractId, issueDate, effectiveDate, tariffRuleId, discountPercent, priceListId });
+    public Task<ContractAppendixItem?> CreateAppendixAsync(string code, int contractId, DateTime issueDate, DateTime effectiveDate, int? tariffRuleId, decimal? discountPercent = null, int? priceListId = null,
+        decimal? lateDeliveryDiscountPercent = null)
+        => connection.PostAsync<ContractAppendixItem>("/api/contract-appendices", new { code, contractId, issueDate, effectiveDate, tariffRuleId, discountPercent, priceListId, lateDeliveryDiscountPercent });
 
-    public Task UpdateAppendixAsync(int id, string code, int contractId, DateTime issueDate, DateTime effectiveDate, int? tariffRuleId, decimal? discountPercent = null, int? priceListId = null)
-        => connection.PutAsync<object>($"/api/contract-appendices/{id}", new { code, contractId, issueDate, effectiveDate, tariffRuleId, discountPercent, priceListId });
+    public Task UpdateAppendixAsync(int id, string code, int contractId, DateTime issueDate, DateTime effectiveDate, int? tariffRuleId, decimal? discountPercent = null, int? priceListId = null,
+        decimal? lateDeliveryDiscountPercent = null)
+        => connection.PutAsync<object>($"/api/contract-appendices/{id}", new { code, contractId, issueDate, effectiveDate, tariffRuleId, discountPercent, priceListId, lateDeliveryDiscountPercent });
 
     public Task DeleteAppendixAsync(int id)
         => connection.DeleteAsync<object>($"/api/contract-appendices/{id}");

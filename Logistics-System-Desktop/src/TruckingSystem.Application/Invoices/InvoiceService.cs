@@ -1,6 +1,7 @@
 using System.Data;
 using TruckingSystem.Application.Pricing;
 using TruckingSystem.Application.TransportOrders;
+using TruckingSystem.Application.Trips;
 using Microsoft.EntityFrameworkCore;
 using TruckingSystem.Application.Common;
 using TruckingSystem.Application.Common.Interfaces;
@@ -85,8 +86,9 @@ public class InvoiceService : IInvoiceService
         if (contract.CustomerId != order.CustomerId)
             throw new InvalidOperationException("Hợp đồng không thuộc khách hàng của đơn.");
 
-        var trips = await _db.Trips.AsNoTracking().Include(t => t.Vehicle)
-            .Where(t => t.TransportOrderId == orderId && t.StartTime != null).ToListAsync();
+        var orderTrips = await _db.Trips.AsNoTracking().Include(t => t.Vehicle)
+            .Where(t => t.TransportOrderId == orderId).ToListAsync();
+        var trips = orderTrips.Where(t => t.StartTime != null).ToList();
         if (trips.Count == 0)
             throw new InvalidOperationException("Đơn hàng chưa có thời điểm bắt đầu vận chuyển.");
         var pricingDate = trips.Min(t => t.StartTime!.Value).AddHours(7).Date;
@@ -126,7 +128,12 @@ public class InvoiceService : IInvoiceService
             .SumAsync(e => (decimal?)e.Amount) ?? 0m;
         var storageFee = await StorageFeeRules.ComputeAsync(_db, orderId)
             ?? throw new KeyNotFoundException("Không tìm thấy đơn hàng.");
-        var lines = InvoicePricing.CalculateLines(order, tariff, distance, source, policy, otherCosts, storageFee.TotalFee);
+        var lateDiscount = appendix?.LateDeliveryDiscountPercent ?? contract.LateDeliveryDiscountPercent;
+        var lateDeliveryDiscountPercent = lateDiscount > 0
+            && DeliveryDeadlineRules.IsOrderOnTime(storageFee.LateBasisDate, orderTrips) == false
+            ? lateDiscount : 0m;
+        var lines = InvoicePricing.CalculateLines(order, tariff, distance, source, policy, otherCosts,
+            storageFee.TotalFee, lateDeliveryDiscountPercent);
         return new InvoiceQuoteDto(orderId, contract.Code, appendix?.Code, pricingDate, tariff.VehicleType,
             distance, order.CargoLines.Sum(c => c.WeightKg) / 1000m, liters, otherCosts,
             lines.Sum(l => l.Amount),
@@ -152,13 +159,12 @@ public class InvoiceService : IInvoiceService
         if (await _db.Invoices.AnyAsync(i => i.TransportOrderId == order.Id))
             throw new InvalidOperationException("Đơn hàng này đã có hóa đơn.");
 
-        var invoice = Invoice.Create(order, request.Amount);
         var quote = await GetQuoteAsync(order.Id);
         if (quote.StorageFeePending)
             throw new InvalidOperationException(quote.Note);
         if (request.Amount != quote.TotalAmount)
             throw new InvalidOperationException("Tổng tiền hóa đơn đã thay đổi. Vui lòng tính lại trước khi lưu.");
-        invoice.TotalAmount = quote.TotalAmount;
+        var invoice = Invoice.Create(order, quote.TotalAmount, allowZero: true);
         invoice.Lines = quote.Lines.Select(l => new InvoiceLine
         {
             Description = l.Description, Quantity = l.Quantity, UnitPrice = l.UnitPrice, Amount = l.Amount

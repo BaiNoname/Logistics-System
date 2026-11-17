@@ -12,11 +12,11 @@ public class Invoice : BaseEntity
         Status = InvoiceStatus.Paid;
     }
 
-    public static Invoice Create(TransportOrder order, decimal amount)
+    public static Invoice Create(TransportOrder order, decimal amount, bool allowZero = false)
     {
         if (order.Status != TransportOrderStatus.Done)
             throw new InvalidOperationException("Chỉ được lập hóa đơn cho đơn hàng đã hoàn thành.");
-        if (amount <= 0 || amount > MaximumAmount || decimal.Round(amount, 2) != amount)
+        if (amount < 0 || (amount == 0 && !allowZero) || amount > MaximumAmount || decimal.Round(amount, 2) != amount)
             throw new ArgumentException("Cước phí phải lớn hơn 0, không vượt 9.999.999.999.999.999,99 và có tối đa 2 chữ số thập phân.");
 
         return new Invoice

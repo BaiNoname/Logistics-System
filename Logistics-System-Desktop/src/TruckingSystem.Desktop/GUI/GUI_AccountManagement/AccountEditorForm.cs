@@ -1,6 +1,7 @@
 using System.Drawing;
 using System.Windows.Forms;
 using TruckingSystem.Desktop.Common;
+using TruckingSystem.Desktop.DTO_AuditLogManagement;
 using TruckingSystem.Desktop.SERVICE_Auth;
 
 namespace TruckingSystem.Desktop.GUI_AccountManagement;
@@ -14,17 +15,22 @@ public class AccountEditorForm : BaseForm
     private readonly CheckedListBox _roles = new() { CheckOnClick = true, BorderStyle = BorderStyle.FixedSingle };
     private readonly CheckBox _active = new() { Text = "Tài khoản hoạt động", AutoSize = true, Checked = true };
     private bool _saving;
+    /// <summary>Vai trò không cho chọn trên form (CustomerPortal chưa dùng cho đăng nhập Desktop).</summary>
+    private static readonly HashSet<string> HiddenRoles = new(StringComparer.OrdinalIgnoreCase) { "CustomerPortal" };
+    /// <summary>Vai trò ẩn mà tài khoản đang có — gửi lại nguyên khi lưu để không mất quyền cũ.</summary>
+    private readonly string[] _keptRoles;
 
     public string Username => _username.Text.Trim();
     public string? Email => string.IsNullOrWhiteSpace(_email.Text) ? null : _email.Text.Trim();
     public string Password => _password.Text;
     public bool IsActive => _active.Checked;
-    public string[] Roles => _roles.CheckedItems.Cast<string>().ToArray();
+    public string[] Roles => _roles.CheckedItems.Cast<RoleOption>().Select(r => r.Code).Concat(_keptRoles).ToArray();
     public int? EmployeeId => _employee.SelectedItem is AccountEmployeeOption { Id: > 0 } employee ? employee.Id : null;
 
     public AccountEditorForm(List<string> roles, AccountItem? account, List<AccountEmployeeOption>? employees = null,
         Func<AccountEditorForm, Task>? saveAccount = null)
     {
+        _keptRoles = account?.Roles.Where(HiddenRoles.Contains).ToArray() ?? Array.Empty<string>();
         Text = account is null ? "Thêm tài khoản" : "Sửa tài khoản và phân quyền";
         ClientSize = new Size(520, account is null ? 700 : 630);
         MinimumSize = new Size(440, 400);
@@ -73,8 +79,8 @@ public class AccountEditorForm : BaseForm
         Section("② Quyền truy cập");
         _roles.Height = 150;
         Field("Vai trò *:", _roles);
-        foreach (var role in roles)
-            _roles.Items.Add(role, account?.Roles.Contains(role, StringComparer.OrdinalIgnoreCase) == true);
+        foreach (var role in roles.Where(r => !HiddenRoles.Contains(r)))
+            _roles.Items.Add(new RoleOption(role), account?.Roles.Contains(role, StringComparer.OrdinalIgnoreCase) == true);
         _active.TabIndex = fields.Controls.Count;
         if (account is not null) fields.Controls.Add(_active);
         var status = new Label { AutoSize = true, Dock = DockStyle.Fill, ForeColor = Theme.Danger };
@@ -123,4 +129,10 @@ public class AccountEditorForm : BaseForm
         AcceptButton = save;
     }
 
+
+    /// <summary>Hiển thị tên vai trò tiếng Việt; mã gửi API vẫn là mã tiếng Anh (Admin, Driver...).</summary>
+    private sealed record RoleOption(string Code)
+    {
+        public override string ToString() => AuditLabels.Role(Code);
+    }
 }

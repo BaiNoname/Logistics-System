@@ -58,7 +58,8 @@ public partial class PayrollService(IApplicationDbContext db) : IPayrollService
     //lấy danh sách kỳ lương
     public Task<List<PayrollPeriodDto>> GetPeriodsAsync() => db.PayrollPeriods.AsNoTracking()
         .OrderByDescending(p => p.Year).ThenByDescending(p => p.Month)
-        .Select(p => new PayrollPeriodDto(p.Id, p.Year, p.Month, p.Revision, p.CreatedBy, p.ApprovedAt, p.ApprovedBy)).ToListAsync();
+        .Select(p => new PayrollPeriodDto(p.Id, p.Year, p.Month, p.Revision, p.CreatedBy, p.ApprovedAt, p.ApprovedBy,
+            p.LastAutomaticCalculationAt, p.AutomaticCalculationError)).ToListAsync();
     //lấy danh sách phiếu lương
     public async Task<List<PayrollSlipDto>> GetSlipsAsync(int periodId)
     {
@@ -68,7 +69,7 @@ public partial class PayrollService(IApplicationDbContext db) : IPayrollService
     }
     //tạo phiếu lương nháp
     public Task<PayrollResult> GenerateSlipAsync(int periodId, int employeeId, RevisionRequest request, string actor)
-        => Task.FromResult(Fail("Chức năng lập từng phiếu đã được thay bằng Tạo / tính lại toàn bộ bảng lương tháng."));
+        => Task.FromResult(Fail("Hệ thống tự tính toàn bộ bảng lương tháng hằng ngày."));
     //xóa phiếu lương nháp
     public Task<PayrollResult> DeleteDraftSlipAsync(int slipId, RevisionRequest request, string actor) => WriteAsync(async () =>
     {
@@ -152,7 +153,7 @@ public partial class PayrollService(IApplicationDbContext db) : IPayrollService
             var current = await CalculateMonthAsync(period, actor);
             if (current.Errors.Count > 0) return Fail(string.Join(Environment.NewLine, current.Errors));
             if (slips.Any(s => s.CalculationVersion != 2 || current.Slips.SingleOrDefault(c => c.EmployeeId == s.EmployeeId)?.SourceSnapshot != s.SourceSnapshot))
-                return Fail("Công, chuyến, mức lương, cấu hình hoặc khoản cộng/trừ đã thay đổi. Tính lại toàn bộ tháng trước khi chốt.");
+                return Fail("Công, chuyến, mức lương, cấu hình hoặc khoản cộng/trừ đã thay đổi. Tải lại bảng lương sau lần tính tự động tiếp theo rồi đối soát và chốt.");
             period.ApprovedAt = DateTime.UtcNow;
             period.ApprovedBy = actor;
             foreach (var s in slips) s.ApprovedNetPay = s.NetPay;
@@ -160,7 +161,7 @@ public partial class PayrollService(IApplicationDbContext db) : IPayrollService
             Audit(actor, "Approve", "PayrollPeriod", periodId, new { Count = slips.Count, NetPay = slips.Sum(s => s.NetPay) });
             return new(true);
         }
-        return Fail("Bảng nháp còn theo cơ chế cũ. Đối chiếu, chuyển khoản tay vào danh sách cộng/trừ tháng, xóa nháp cũ rồi tạo lại toàn bộ tháng trước khi chốt.");
+        return Fail("Bảng nháp còn theo cơ chế cũ. Đối chiếu, chuyển khoản tay vào danh sách cộng/trừ tháng rồi xóa nháp cũ để hệ thống tự tính lại.");
     });
     //chi trả phiếu lương
     public Task<PayrollResult> PayAsync(int slipId, PaymentRequest request, string actor) => WriteAsync(async () =>
@@ -226,18 +227,18 @@ public partial class PayrollService(IApplicationDbContext db) : IPayrollService
         slip.NetPay = slip.GrossIncome - slip.Deductions;
         slip.UpdatedAt = DateTime.UtcNow;
     }
-    private void Audit(string actor, string action, string entity, int? id, object detail) => db.AuditLogs.Add(new AuditLog
+    private void Audit(string? actor, string action, string entity, int? id, object detail) => db.AuditLogs.Add(new AuditLog
     { UserId = actor, Action = action, EntityName = entity, EntityId = id, Detail = JsonSerializer.Serialize(detail) });
-    private async Task<PayrollResult> WriteAsync(Func<Task<PayrollResult>> action)
+    private async Task<PayrollResult> WriteAsync(Func<Task<PayrollResult>> action, CancellationToken cancellationToken = default)
     {
         // Serialize read/check/write so concurrent approval, attendance, rates and payments cannot diverge.
         await using var transaction = db.Database.IsRelational()
-            ? await db.Database.BeginTransactionAsync(IsolationLevel.Serializable)
-            : await db.Database.BeginTransactionAsync();
+            ? await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken)
+            : await db.Database.BeginTransactionAsync(cancellationToken);
         var result = await action();
         if (!result.Success) return result;
-        await db.SaveChangesAsync();
-        await transaction.CommitAsync();
+        await db.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
         return result;
     }
     private static PayrollSlipDto ToDto(PayrollSlip s) => new(s.Id, s.EmployeeId, s.PayrollPeriodId,

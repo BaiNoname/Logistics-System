@@ -4,6 +4,7 @@ public class MaxDiscountPercent
 {
     public int Id { get; set; } = 1;
     public int Value { get; set; } = 20;
+    public decimal LateDeliveryDiscountPercent { get; set; }
     public DateTime UpdatedAt { get; set; }
 
     public static void Validate(int value)

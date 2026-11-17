@@ -3,6 +3,8 @@ namespace TruckingSystem.Application.Payroll;
 public interface IPayrollService
 {
     Task<PayrollResult> GenerateMonthAsync(GenerateMonthRequest request, string actor);
+    Task<List<(int Year, int Month)>> GetOpenMonthsBeforeAsync(int year, int month, CancellationToken cancellationToken);
+    Task RunAutomaticCalculationAsync(int year, int month, DateTime scheduledAtUtc, CancellationToken cancellationToken);
     Task<List<KpiPolicyDto>> GetKpiPoliciesAsync();
     Task<PayrollResult> SaveKpiPolicyAsync(SaveKpiPolicyRequest request, string actor);
     Task<List<MonthlyAdjustmentDto>> GetMonthlyAdjustmentsAsync(int year, int month);

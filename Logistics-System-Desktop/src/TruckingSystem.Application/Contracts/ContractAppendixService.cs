@@ -13,21 +13,27 @@ public class ContractAppendixService(IApplicationDbContext db) : IContractAppend
     public Task<List<ContractAppendixDto>> GetAllAsync()
         => Project(db.ContractAppendices.AsNoTracking().OrderByDescending(a => a.IssueDate).ThenByDescending(a => a.Id)).ToListAsync();
 
-    public async Task<ContractAppendixLookupsDto> GetLookupsAsync() => new(
-        await db.Contracts.AsNoTracking().Where(c => c.StartDate <= VnClock.Today && (c.EndDate == null || c.EndDate >= VnClock.Today)).OrderBy(c => c.Code)
-            .Select(c => new ContractOptionDto { Id = c.Id, Name = c.Code }).ToListAsync(),
-        await db.TariffRules.AsNoTracking().Where(r => PriceListLookup.Current(db).Select(p => p.Id).Contains(r.PriceListId))
-            .OrderBy(r => r.PriceList.Name).ThenBy(r => r.VehicleType).ThenBy(r => r.Id)
-            .Select(r => new AppendixTariffOptionDto(r.Id, r.PriceList.Name, r.VehicleType,
-                r.PricePerKm, r.PricePerTon, r.SurchargeFragile, r.SurchargeHazmat, r.PriceListId)).ToListAsync())
+    public async Task<ContractAppendixLookupsDto> GetLookupsAsync()
     {
-        PriceLists = await PriceListLookup.Current(db)
-            .OrderBy(p => p.Name).ThenBy(p => p.Id)
-            .Select(p => new ContractOptionDto { Id = p.Id, Name = p.Name }).ToListAsync(),
-        ContractDiscounts = await db.Contracts.AsNoTracking()
-            .Select(c => new AppendixContractOptionDto(c.Id, c.Type == null ? null : c.Type.ToString(), c.DiscountPercent)).ToListAsync(),
-        MaxDiscountPercent = await db.MaxDiscountPercents.AsNoTracking().Where(p => p.Id == 1).Select(p => p.Value).SingleAsync(),
-    };
+        var limits = await ContractDiscountRules.LoadLimitsAsync(db);
+        return new(
+            await db.Contracts.AsNoTracking().Where(c => c.StartDate <= VnClock.Today && (c.EndDate == null || c.EndDate >= VnClock.Today)).OrderBy(c => c.Code)
+                .Select(c => new ContractOptionDto { Id = c.Id, Name = c.Code }).ToListAsync(),
+            await db.TariffRules.AsNoTracking().Where(r => PriceListLookup.Current(db).Select(p => p.Id).Contains(r.PriceListId))
+                .OrderBy(r => r.PriceList.Name).ThenBy(r => r.VehicleType).ThenBy(r => r.Id)
+                .Select(r => new AppendixTariffOptionDto(r.Id, r.PriceList.Name, r.VehicleType,
+                    r.PricePerKm, r.PricePerTon, r.SurchargeFragile, r.SurchargeHazmat, r.PriceListId)).ToListAsync())
+        {
+            PriceLists = await PriceListLookup.Current(db)
+                .OrderBy(p => p.Name).ThenBy(p => p.Id)
+                .Select(p => new ContractOptionDto { Id = p.Id, Name = p.Name }).ToListAsync(),
+            ContractDiscounts = await db.Contracts.AsNoTracking()
+                .Select(c => new AppendixContractOptionDto(c.Id, c.Type == null ? null : c.Type.ToString(),
+                    c.DiscountPercent, c.LateDeliveryDiscountPercent)).ToListAsync(),
+            MaxDiscountPercent = limits.MaxDiscountPercent,
+            LateDeliveryDiscountPercent = limits.LateDeliveryDiscountPercent,
+        };
+    }
 
     public async Task<ContractAppendixDto> CreateAsync(SaveContractAppendixRequest request, bool isAdmin = false)
     {
@@ -116,12 +122,17 @@ public class ContractAppendixService(IApplicationDbContext db) : IContractAppend
             throw new ArgumentException("Chỉ được chọn bảng giá đang áp dụng.");
         var discount = request.DiscountPercent ?? (current?.ContractId == contract.Id ? current.DiscountPercent : null) ?? contract.DiscountPercent ?? 0;
         Contract.ValidateDiscount(contract.Type ?? ContractType.LongTerm, discount);
-        var limit = await db.MaxDiscountPercents.AsNoTracking().Where(p => p.Id == 1).Select(p => p.Value).SingleAsync();
-        if (!isAdmin && discount > limit) throw new ArgumentException($"Ưu đãi không được vượt quá {limit}%.");
+        var limits = await ContractDiscountRules.LoadLimitsAsync(db);
+        if (!isAdmin && discount > limits.MaxDiscountPercent)
+            throw new ArgumentException($"Ưu đãi không được vượt quá {limits.MaxDiscountPercent}%.");
+        var lateDiscount = current is null ? limits.LateDeliveryDiscountPercent : current.LateDeliveryDiscountPercent;
+        ContractDiscountRules.ValidateLateDeliveryOverride(request.LateDeliveryDiscountPercent,
+            lateDiscount ?? contract.LateDeliveryDiscountPercent, isAdmin);
+        if (isAdmin) lateDiscount = request.LateDeliveryDiscountPercent ?? lateDiscount;
         var currentId = current?.Id;
         if (await db.ContractAppendices.AnyAsync(a => a.Id != currentId && a.Code == request.Code.Trim()))
             throw new ArgumentException("Mã phụ lục đã tồn tại.");
-        return request with { DiscountPercent = discount, PriceListId = priceListId };
+        return request with { DiscountPercent = discount, PriceListId = priceListId, LateDeliveryDiscountPercent = lateDiscount };
     }
 
     private static void Apply(ContractAppendix appendix, SaveContractAppendixRequest request)
@@ -133,6 +144,7 @@ public class ContractAppendixService(IApplicationDbContext db) : IContractAppend
         appendix.TariffRuleId = request.TariffRuleId;
         appendix.PriceListId = request.PriceListId;
         appendix.DiscountPercent = request.DiscountPercent;
+        appendix.LateDeliveryDiscountPercent = request.LateDeliveryDiscountPercent;
     }
 
     private static IQueryable<ContractAppendixDto> Project(IQueryable<ContractAppendix> appendices)
@@ -143,5 +155,8 @@ public class ContractAppendixService(IApplicationDbContext db) : IContractAppend
                 a.DiscountPercent, a.PriceListId ?? (a.TariffRule == null ? null : (int?)a.TariffRule.PriceListId),
                 a.PriceList == null ? (a.TariffRule == null ? null : a.TariffRule.PriceList.Name) : a.PriceList.Name,
                 a.Status.ToString(), VnClock.Today < a.Contract.StartDate ? "Upcoming"
-                    : a.Contract.EndDate.HasValue && VnClock.Today > a.Contract.EndDate.Value ? "Expired" : "Active"));
+                    : a.Contract.EndDate.HasValue && VnClock.Today > a.Contract.EndDate.Value ? "Expired" : "Active")
+        {
+            LateDeliveryDiscountPercent = a.LateDeliveryDiscountPercent
+        });
 }

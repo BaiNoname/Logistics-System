@@ -8,7 +8,8 @@ public record SalaryDto(int Id, DateTime EffectiveFrom, DateTime? EffectiveTo, d
 public record SalaryRequest(DateTime EffectiveFrom, decimal MonthlySalary, string Reason);
 public record RevisionRequest(int Revision);
 public record PayrollPeriodDto(int Id, int Year, int Month, int Revision, string CreatedBy,
-    DateTime? ApprovedAt, string? ApprovedBy);
+    DateTime? ApprovedAt, string? ApprovedBy, DateTime? LastAutomaticCalculationAt = null,
+    string? AutomaticCalculationError = null);
 public record PayrollItemRequest(int Revision, string Kind, decimal Amount, bool ProrateByAttendance, string Reason);
 public record PaymentRequest(int Revision, decimal Amount, DateTime PaidOn, string Method, string Reference);
 public record PayrollItemDto(int Id, string Kind, decimal Amount, bool ProrateByAttendance,

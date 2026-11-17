@@ -10,7 +10,7 @@ public partial class ContractsControl : BaseUserControl
     private List<ContractListItem> _contracts = new();
     private bool _busy;
     private readonly FilterBar _filters = new() { Dock = DockStyle.Fill, SearchPlaceholder = "Mã hợp đồng, khách hàng, mã bảng giá" };
-    private readonly Button _discountSettings = Theme.MakeSecondaryButton("Quản lý ưu đãi", 170);
+    private readonly Button _discountSettings = Theme.MakeSecondaryButton("Quản lý hạn mức", 170);
     private readonly ToolStripMenuItem _details = new("📄 Xem chi tiết");
     private readonly ToolStripMenuItem _edit = new("✏️ Sửa hợp đồng");
     private readonly ToolStripMenuItem _appendix = new("➕ Thêm phụ lục");
@@ -204,6 +204,7 @@ public partial class ContractsControl : BaseUserControl
             Ngày_kết_thúc = c.EndDate?.ToString("dd/MM/yyyy") ?? "Không thời hạn",
             Loại_hợp_đồng = c.TypeText,
             Ưu_đãi = c.DiscountPercent.HasValue ? $"{c.DiscountPercent:0.##}%" : "—",
+            Giảm_do_giao_trễ = $"{c.LateDeliveryDiscountPercent:0.##}%",
             Bảng_giá = c.PriceListName ?? "—",
             Phụ_lục = c.AppendixText,
         }).ToList();

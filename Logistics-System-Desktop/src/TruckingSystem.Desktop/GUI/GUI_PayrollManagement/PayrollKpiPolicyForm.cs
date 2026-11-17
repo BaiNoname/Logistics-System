@@ -6,7 +6,7 @@ namespace TruckingSystem.Desktop.GUI_PayrollManagement;
 
 public sealed class PayrollKpiPolicyForm : BaseForm
 {
-    public PayrollKpiPolicyForm(List<KpiPolicyDto> history, List<string> types, Func<SaveKpiPolicyRequest, Task<PayrollResult>> save)
+    public PayrollKpiPolicyForm(List<KpiPolicyDto> history, Func<SaveKpiPolicyRequest, Task<PayrollResult>> save)
     {
         Text = "Cấu hình KPI cho tài xế"; Size = new Size(920, 650); StartPosition = FormStartPosition.CenterParent;
         BackColor = Theme.CardBg;
@@ -15,7 +15,7 @@ public sealed class PayrollKpiPolicyForm : BaseForm
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        var hint = new Label { AutoSize = true, Dock = DockStyle.Fill, Text = "Lương tài xế = LCB × (tổng điểm / điểm chuẩn), không giới hạn 100%.\nĐiểm chuyến = (0,5 + km/K) × H. Không chia LCB theo số ngày làm.\nkm: Số km chạy được trong tháng.\nK: Số km để được 1 điểm.\nH: Số điểm cộng theo loại xe.\nCấu hình có hiệu lực từ đầu tháng. Lưu cùng ngày hiệu lực sẽ cập nhật cấu hình; phiếu đã chốt giữ nguyên." };
+        var hint = new Label { AutoSize = true, Dock = DockStyle.Fill, Text = "Lương tài xế = LCB × (tổng điểm / điểm chuẩn), không giới hạn 100%.\nĐiểm chuyến = (km/K) × H. Không chia LCB theo số ngày làm.\nkm: Số km chạy được trong tháng.\nK: Số km để được 1 điểm.\nH: Số điểm cộng theo loại xe.\nCấu hình có hiệu lực từ đầu tháng. Lưu cùng ngày hiệu lực sẽ cập nhật cấu hình; phiếu đã chốt giữ nguyên." };
         layout.SizeChanged += (_, _) => hint.MaximumSize = new Size(Math.Max(1, layout.ClientSize.Width - layout.Padding.Horizontal - hint.Margin.Horizontal), 0);
         var fields = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, Padding = new Padding(0, 12, 0, 12) };
         var historyBox = new ComboBox { Width = 130, DropDownStyle = ComboBoxStyle.DropDownList, DataSource = history,
@@ -44,7 +44,8 @@ public sealed class PayrollKpiPolicyForm : BaseForm
         void ShowPolicy(KpiPolicyDto? policy)
         {
             if (policy is not null) { date.Value = policy.EffectiveFrom; km.Value = policy.KmPerPoint; target.Value = policy.TargetPoints; }
-            grid.DataSource = TariffRule.DefaultVehicleTypes.Concat(types).Concat(policy?.Factors.Select(f => f.VehicleType) ?? Enumerable.Empty<string>()).Distinct()
+            // Chỉ 8 loại xe chuẩn; hệ số của loại cũ ngoài danh mục (nếu có) sẽ bỏ khi lưu.
+            grid.DataSource = Vehicle.StandardTypes
                 .Select(type => new KpiFactorDto { VehicleType = type, Factor = policy?.Factors.SingleOrDefault(f => f.VehicleType == type)?.Factor ?? 0 }).ToList();
         }
         historyBox.SelectedIndexChanged += (_, _) => ShowPolicy(historyBox.SelectedItem as KpiPolicyDto);

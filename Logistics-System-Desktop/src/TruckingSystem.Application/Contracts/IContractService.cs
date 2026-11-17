@@ -8,6 +8,7 @@ public interface IContractService
     Task<ContractListItemDto> CreateAsync(SaveContractRequest request, bool isAdmin = false);
     Task<bool> UpdateAsync(int id, SaveContractRequest request, bool isAdmin = false);
     Task<int> GetMaxDiscountPercentAsync();
-    Task SaveMaxDiscountPercentAsync(int value);
+    Task<ContractDiscountLimits> GetDiscountLimitsAsync();
+    Task SaveMaxDiscountPercentAsync(int value, decimal? lateDeliveryDiscountPercent = null);
     Task<bool> DeleteAsync(int id);
 }

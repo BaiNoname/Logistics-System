@@ -31,6 +31,22 @@ public class ContractsController(IContractService service) : ControllerBase
         catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
     }
 
+    [HttpGet("discount-limits")]
+    public async Task<ActionResult<ContractDiscountLimits>> GetDiscountLimits()
+        => Ok(await service.GetDiscountLimitsAsync());
+
+    [HttpPut("discount-limits")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> SaveDiscountLimits(ContractDiscountLimits request)
+    {
+        try
+        {
+            await service.SaveMaxDiscountPercentAsync(request.MaxDiscountPercent, request.LateDeliveryDiscountPercent);
+            return NoContent();
+        }
+        catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
+    }
+
     [HttpGet("{id:int}")]
     public async Task<ActionResult<ContractListItemDto>> GetById(int id)
     {

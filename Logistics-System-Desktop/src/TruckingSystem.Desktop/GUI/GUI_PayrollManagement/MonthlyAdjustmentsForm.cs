@@ -28,7 +28,7 @@ public sealed class MonthlyAdjustmentsForm : BaseForm
         bar.Controls.AddRange(new Control[] { new Label { Text = $"{employee.Code} · {employee.FullName}", AutoSize = true, Margin = new Padding(0, 8, 16, 0) }, add });
         var hint = new Label { Dock = DockStyle.Bottom, AutoSize = true, Padding = new Padding(10), Text = locked
             ? "Tháng đã chốt. Nếu cần điều chỉnh, ghi vào tháng chưa chốt và nêu rõ căn cứ tháng gốc."
-            : "Các khoản được giữ khi tính lại. Sau khi sửa, quay về và bấm Tạo / tính lại bảng lương trước khi chốt." };
+            : "Hệ thống đưa các thay đổi vào bản nháp trong lần tính tự động tiếp theo. Tải lại bảng lương để đối soát trước khi chốt." };
         Controls.Add(grid); Controls.Add(bar); Controls.Add(hint);
         SizeChanged += (_, _) => hint.MaximumSize = new Size(Math.Max(1, ClientSize.Width), 0);
         hint.Font = Theme.FontSmall;

@@ -12,6 +12,7 @@ public class ContractForm : BaseForm
     private readonly bool _readOnly;
     private bool _saving;
     private int _maxDiscount = 20;
+    private decimal _defaultLateDeliveryDiscount;
     private readonly Label _discountLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly TextBox _code = new();
     private readonly ComboBox _customer = new() { DropDownStyle = ComboBoxStyle.DropDownList };
@@ -20,6 +21,7 @@ public class ContractForm : BaseForm
     private readonly DateTimePicker _end = new() { Format = DateTimePickerFormat.Short, Enabled = false };
     private readonly ComboBox _type = new() { DropDownStyle = ComboBoxStyle.DropDownList };
     private readonly NumberBox _discount = new() { Enabled = false, DecimalPlaces = 2, Maximum = 100 };
+    private readonly NumberBox _lateDeliveryDiscount = new() { DecimalPlaces = 2, Maximum = 100, Enabled = false };
     private readonly ComboBox _priceList = new() { DropDownStyle = ComboBoxStyle.DropDownList };
     private readonly Label _status = new() { Dock = DockStyle.Fill, ForeColor = Theme.Danger };
     private readonly Button _save = Theme.MakePrimaryButton("Lưu hợp đồng", 150);
@@ -45,12 +47,12 @@ public class ContractForm : BaseForm
 
         var layout = new TableLayoutPanel
         {
-            Dock = DockStyle.Fill, Padding = new Padding(20, 16, 20, 16), ColumnCount = 2, RowCount = 10,
+            Dock = DockStyle.Fill, Padding = new Padding(20, 16, 20, 16), ColumnCount = 2, RowCount = 11,
             AutoScroll = true,
         };
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 36));
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 64));
-        for (var i = 0; i < 10; i++) layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        for (var i = 0; i < layout.RowCount; i++) layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         void Section(int row, string text)
         {
             var title = new Label { Text = text, AutoSize = true, Margin = new Padding(0, 10, 0, 6) };
@@ -86,7 +88,8 @@ public class ContractForm : BaseForm
         layout.GetControlFromPosition(0, 7)!.Dispose();
         _discountLabel.Text = "% ưu đãi của hợp đồng:";
         layout.Controls.Add(_discountLabel, 0, 7);
-        AddRow(layout, 8, "Bảng giá áp dụng *:", _priceList);
+        AddRow(layout, 8, "Giảm giá khi giao trễ (%)", _lateDeliveryDiscount);
+        AddRow(layout, 9, "Bảng giá áp dụng *:", _priceList);
 
         _save.Click += async (_, _) => await SaveAsync();
         var cancel = Theme.MakeSecondaryButton("Đóng", 100);
@@ -94,7 +97,7 @@ public class ContractForm : BaseForm
         FormStyle.SaveButton(_save); // chân [Đóng] [💾 Lưu hợp đồng]
         _status.AutoSize = true;
         layout.SetColumnSpan(_status, 2);
-        layout.Controls.Add(_status, 0, 9);
+        layout.Controls.Add(_status, 0, 10);
         Controls.Add(layout);
         FormStyle.EditorFooter(this, cancel, _save);
         DialogKeys.Enable(this);
@@ -160,6 +163,7 @@ public class ContractForm : BaseForm
             var lookups = await _api.Contracts.GetLookupsAsync();
             if (IsDisposed) return;
             _maxDiscount = lookups.MaxDiscountPercent;
+            _defaultLateDeliveryDiscount = lookups.LateDeliveryDiscountPercent;
             _discountLabel.Text = $"% ưu đãi của hợp đồng:\n(0–{_maxDiscount}%)";
             _customer.DisplayMember = nameof(ContractOption.Name);
             _customer.ValueMember = nameof(ContractOption.Id);
@@ -176,7 +180,9 @@ public class ContractForm : BaseForm
             else
             {
                 _priceList.SelectedIndex = lookups.PriceLists.Count > 0 ? 0 : -1;
+                _lateDeliveryDiscount.Value = _defaultLateDeliveryDiscount;
             }
+            _lateDeliveryDiscount.Enabled = _api.Connection.IsInRole("Admin");
             _save.Enabled = lookups.Customers.Count > 0 && (_contract is not null || lookups.PriceLists.Count > 0);
             if (lookups.Customers.Count == 0) FormStyle.Status(_status, "Vui lòng tạo khách hàng trước khi lập hợp đồng.", StatusKind.Warning);
             else if (_contract is null && lookups.PriceLists.Count == 0)
@@ -194,6 +200,7 @@ public class ContractForm : BaseForm
         _type.SelectedIndex = _contract.Type switch { "OneTime" => 0, "LongTerm" => 1, _ => -1 };
         _type.Text = _contract.Type is null ? "" : _contract.TypeText;
         _discount.Value = _contract.Type == "LongTerm" ? Math.Clamp(_contract.DiscountPercent ?? 0, 0, 100) : 0;
+        _lateDeliveryDiscount.Value = _contract.LateDeliveryDiscountPercent;
         if (_contract.Type is null) FormStyle.Status(_status, "Hợp đồng cũ chưa phân loại. Có thể giữ nguyên hoặc chọn loại hợp đồng.", StatusKind.Warning);
         _code.Text = _contract.Code;
         _customer.SelectedValue = _contract.CustomerId;
@@ -233,6 +240,11 @@ public class ContractForm : BaseForm
         if (!_api.Connection.IsInRole("Admin") && discountPercent > _maxDiscount
             && (_contract is null || discountPercent != _contract.DiscountPercent))
         { ShowValidation(_discount, $"Chỉ Admin được áp dụng ưu đãi vượt quá {_maxDiscount}%."); return; }
+        decimal? lateDiscount = _lateDeliveryDiscount.Enabled
+            && _lateDeliveryDiscount.Value != (_contract?.LateDeliveryDiscountPercent ?? _defaultLateDeliveryDiscount)
+            ? _lateDeliveryDiscount.Value : null;
+        try { if (lateDiscount is decimal percent) Contract.ValidateLateDeliveryDiscount(percent); }
+        catch (ArgumentException ex) { ShowValidation(_lateDeliveryDiscount, ex.Message); return; }
         var priceListId = SelectedPriceListId;
         if (_contract is null && !priceListId.HasValue)
         { ShowValidation(_priceList, "Vui lòng chọn bảng giá đang áp dụng."); return; }
@@ -243,9 +255,9 @@ public class ContractForm : BaseForm
         try
         {
             if (_contract is null)
-                await _api.Contracts.CreateContractAsync(customerId, _code.Text.Trim(), _start.Value.Date, endDate, null, priceListId, null, type, discountPercent);
+                await _api.Contracts.CreateContractAsync(customerId, _code.Text.Trim(), _start.Value.Date, endDate, null, priceListId, null, type, discountPercent, lateDiscount);
             else
-                await _api.Contracts.UpdateContractAsync(_contract.Id, customerId, _code.Text.Trim(), _start.Value.Date, endDate, _contract.Terms, priceListId, null, type, discountPercent);
+                await _api.Contracts.UpdateContractAsync(_contract.Id, customerId, _code.Text.Trim(), _start.Value.Date, endDate, _contract.Terms, priceListId, null, type, discountPercent, lateDiscount);
             _saving = false;
             DialogResult = DialogResult.OK;
             Close();

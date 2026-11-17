@@ -1,6 +1,7 @@
 using System.Drawing;
 using System.Windows.Forms;
 using TruckingSystem.Desktop.Common;
+using TruckingSystem.Desktop.DTO_AuditLogManagement;
 using TruckingSystem.Desktop.SERVICE_Auth;
 
 namespace TruckingSystem.Desktop.GUI_AccountManagement;
@@ -94,7 +95,7 @@ public class AccountsControl : BaseUserControl
                 Tên_đăng_nhập = a.Username,
                 Email = a.Email ?? "",
                 Nhân_viên = a.EmployeeName ?? "Chưa gán",
-                Vai_trò = string.Join(", ", a.Roles),
+                Vai_trò = string.Join(", ", a.Roles.Select(AuditLabels.Role)),
                 Trạng_thái = a.IsActive ? "Hoạt động" : "Đã khóa",
             }).ToList();
             if (_grid.Columns["Id"] is not null) _grid.Columns["Id"]!.Visible = false;

@@ -7,7 +7,7 @@ partial class PayrollControl
     private FilterBar _filters = null!;
     private Label _status = null!, _totals = null!;
     private DataGridView _slipGrid = null!;
-    private Button _generateButton = null!, _approveButton = null!, _payButton = null!,
+    private Button _refreshButton = null!, _calculationErrorButton = null!, _approveButton = null!, _payButton = null!,
         _exportButton = null!, _deleteDraftButton = null!, _kpiButton = null!;
 
     private void InitializeComponent()
@@ -25,10 +25,12 @@ partial class PayrollControl
         var title = new Label { Text = "Bảng lương tháng", Font = Theme.FontTitle, AutoSize = true };
         var toolbar = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, WrapContents = true };
         _month = new DateTimePicker { Format = DateTimePickerFormat.Custom, CustomFormat = "MM/yyyy", ShowUpDown = true, Width = 110, AccessibleName = "Tháng lương" };
-        _generateButton = Theme.MakePrimaryButton("Tạo / tính lại bảng lương", 235);
+        _refreshButton = Theme.MakeSecondaryButton("Tải lại", 110);
+        _calculationErrorButton = Theme.MakeSecondaryButton("Xem lỗi tính lương", 165);
+        _calculationErrorButton.Visible = false;
         _approveButton = Theme.MakePrimaryButton("Chốt lương", 130);
         _kpiButton = Theme.MakeSecondaryButton("Cấu hình KPI cho tài xế", 225);
-        toolbar.Controls.AddRange(new Control[] { _month, _generateButton, _kpiButton, _approveButton });
+        toolbar.Controls.AddRange(new Control[] { _month, _refreshButton, _kpiButton, _approveButton, _calculationErrorButton });
         _status = new Label { AutoSize = true, Dock = DockStyle.Fill, Padding = new Padding(0, 8, 0, 8) };
         _filters = new FilterBar { Dock = DockStyle.Fill, SearchPlaceholder = "Mã, tên nhân viên..." };
         _slipGrid = new DataGridView { Dock = DockStyle.Fill, AutoGenerateColumns = false };

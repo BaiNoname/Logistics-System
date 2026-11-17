@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace TruckingSystem.Application.Contracts;
 
 public class ContractListItemDto
@@ -8,6 +10,7 @@ public class ContractListItemDto
     public int Id { get; set; }
     public string? Type { get; set; }
     public decimal? DiscountPercent { get; set; }
+    public decimal LateDeliveryDiscountPercent { get; set; }
     public int CustomerId { get; set; }
     public string Code { get; set; } = string.Empty;
     public string CustomerName { get; set; } = string.Empty;
@@ -25,10 +28,14 @@ public class ContractListItemDto
 public class ContractLookupDto
 {
     public int MaxDiscountPercent { get; set; } = 20;
+    public decimal LateDeliveryDiscountPercent { get; set; }
     public List<ContractOptionDto> Customers { get; set; } = new();
     public List<ContractOptionDto> PriceLists { get; set; } = new();
     public List<TruckingSystem.Application.Pricing.TariffRuleDto> TariffRules { get; set; } = new();
 }
+
+public record ContractDiscountLimits([property: JsonRequired] int MaxDiscountPercent,
+    [property: JsonRequired] decimal LateDeliveryDiscountPercent);
 
 public class ContractOptionDto
 {
@@ -40,6 +47,7 @@ public class SaveContractRequest
 {
     public string? Type { get; set; }
     public decimal? DiscountPercent { get; set; }
+    public decimal? LateDeliveryDiscountPercent { get; set; }
     public int CustomerId { get; set; }
     public string Code { get; set; } = string.Empty;
     public DateTime StartDate { get; set; }

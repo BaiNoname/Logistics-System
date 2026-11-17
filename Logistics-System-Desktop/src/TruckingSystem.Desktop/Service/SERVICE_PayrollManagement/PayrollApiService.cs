@@ -7,7 +7,6 @@ public class PayrollApiService(ApiConnection connection)
 {
     public async Task<List<DriverKpiRateDto>> KpiRatesAsync()
         => await connection.GetAsync<List<DriverKpiRateDto>>($"{Root}/kpi-rates") ?? new();
-    public Task<PayrollResult> GenerateMonthAsync(GenerateMonthRequest request) => PostAsync("months/generate", request);
     public async Task<List<KpiPolicyDto>> PoliciesAsync() => await connection.GetAsync<List<KpiPolicyDto>>($"{Root}/kpi-policies") ?? new();
     public async Task<PayrollResult> SavePolicyAsync(SaveKpiPolicyRequest request)
         => await connection.PutAsync<PayrollResult>($"{Root}/kpi-policies", request) ?? new(false, "Không nhận được kết quả.");

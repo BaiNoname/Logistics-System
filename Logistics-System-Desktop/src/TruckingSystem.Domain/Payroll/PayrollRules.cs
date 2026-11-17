@@ -28,7 +28,7 @@ public static class PayrollRules
     {
         if (distanceKm <= 0 || vehicleFactor <= 0 || kmPerPoint <= 0)
             throw new ArgumentOutOfRangeException(nameof(distanceKm), "Km và hệ số KPI phải dương.");
-        return (0.5m + distanceKm / kmPerPoint) * vehicleFactor;
+        return distanceKm / kmPerPoint * vehicleFactor;
     }
 
     public static string SalaryStatus(DateTime effectiveFrom, DateTime? effectiveTo, DateTime today)

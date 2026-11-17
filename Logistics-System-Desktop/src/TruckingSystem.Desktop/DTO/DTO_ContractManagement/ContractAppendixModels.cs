@@ -5,6 +5,7 @@ public record ContractAppendixItem(int Id, string Code, int ContractId, string C
     decimal? DiscountPercent = null, int? PriceListId = null, string? PriceListName = null,
     string Status = "Active", string ContractStatus = "Active")
 {
+    public decimal? LateDeliveryDiscountPercent { get; init; }
     public string TariffName => PriceListName ?? TariffRule?.PriceListName ?? "—";
     public string StatusText => Status == "Active" ? "Đang áp dụng" : "Ngừng áp dụng";
     public string ContractStatusText => new ContractListItem { Status = ContractStatus }.StatusText;
@@ -22,6 +23,7 @@ public record ContractAppendixLookups(List<ContractOption> Contracts, List<Appen
     public List<ContractOption> PriceLists { get; init; } = new();
     public List<AppendixContractOption> ContractDiscounts { get; init; } = new();
     public int MaxDiscountPercent { get; init; }
+    public decimal LateDeliveryDiscountPercent { get; init; }
 }
 
-public record AppendixContractOption(int Id, string? Type, decimal? DiscountPercent);
+public record AppendixContractOption(int Id, string? Type, decimal? DiscountPercent, decimal LateDeliveryDiscountPercent = 0);

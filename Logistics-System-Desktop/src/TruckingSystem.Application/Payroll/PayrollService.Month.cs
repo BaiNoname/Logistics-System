@@ -17,23 +17,67 @@ public partial class PayrollService
         if (period?.ApprovedAt is not null) return Fail("Bảng lương đã chốt, không tính lại.");
         if ((period?.Revision ?? 0) != request.Revision) return Fail("Bảng lương đã thay đổi; chọn lại tháng để tải dữ liệu mới.");
         period ??= new PayrollPeriod { Year = request.Year, Month = request.Month, CreatedBy = actor };
+        var result = await SaveMonthDraftAsync(period, actor, automatic: false, CancellationToken.None);
+        if (result.Success) period.AutomaticCalculationError = null;
+        return result;
+    });
+
+    public async Task<List<(int Year, int Month)>> GetOpenMonthsBeforeAsync(int year, int month, CancellationToken cancellationToken)
+    {
+        var months = await db.PayrollPeriods.AsNoTracking()
+            .Where(p => p.ApprovedAt == null && (p.Year < year || p.Year == year && p.Month < month))
+            .OrderByDescending(p => p.Year).ThenByDescending(p => p.Month)
+            .Select(p => new { p.Year, p.Month }).ToListAsync(cancellationToken);
+        return months.Select(p => (p.Year, p.Month)).ToList();
+    }
+
+    public Task RunAutomaticCalculationAsync(int year, int month, DateTime scheduledAtUtc, CancellationToken cancellationToken)
+        => WriteAsync(async () =>
+    {
+        var period = await db.PayrollPeriods.SingleOrDefaultAsync(p => p.Year == year && p.Month == month, cancellationToken);
+        if (period?.ApprovedAt is not null || period?.LastAutomaticCalculationAt >= scheduledAtUtc)
+            return new(true);
+
+        const string actor = "Hệ thống";
+        var startedAt = DateTime.UtcNow;
+        period ??= new PayrollPeriod { Year = year, Month = month, CreatedBy = actor };
+        var result = await SaveMonthDraftAsync(period, actor, automatic: true, cancellationToken);
+        if (period.Id == 0) db.PayrollPeriods.Add(period);
+        period.LastAutomaticCalculationAt = startedAt;
+        period.AutomaticCalculationError = result.Success ? null : result.Message;
+        return new(true);
+    }, cancellationToken);
+
+    private async Task<PayrollResult> SaveMonthDraftAsync(PayrollPeriod period, string actor, bool automatic,
+        CancellationToken cancellationToken)
+    {
         var old = period.Id == 0 ? new List<PayrollSlip>() : await db.PayrollSlips.Include(s => s.Items).Include(s => s.Payments)
-            .Where(s => s.PayrollPeriodId == period.Id).ToListAsync();
+            .Where(s => s.PayrollPeriodId == period.Id).ToListAsync(cancellationToken);
         if (old.Any(s => s.Payments.Count != 0)) return Fail("Phiếu đã có chi trả, không thay thế.");
-        if (old.Any(s => s.CalculationVersion != 2)) return Fail("Tháng còn phiếu nháp theo cơ chế cũ. Xuất đối chiếu, chuyển khoản cộng/trừ sang danh sách tháng rồi xóa nháp cũ trước khi tính lại.");
-        var calculated = await CalculateMonthAsync(period, actor);
+        if (old.Any(s => s.CalculationVersion != 2)) return Fail("Tháng còn phiếu nháp theo cơ chế cũ. Xuất đối chiếu, chuyển khoản cộng/trừ sang danh sách tháng rồi xóa nháp cũ để hệ thống tự tính lại.");
+        var calculated = await CalculateMonthAsync(period, actor, cancellationToken);
         if (calculated.Errors.Count > 0) return Fail(string.Join(Environment.NewLine, calculated.Errors));
+        if (automatic && old.Count == calculated.Slips.Count)
+        {
+            var existing = old.ToDictionary(s => s.EmployeeId);
+            if (calculated.Slips.All(s => existing.TryGetValue(s.EmployeeId, out var draft)
+                && draft.SourceSnapshot == s.SourceSnapshot && draft.EarnedSalary == s.EarnedSalary && draft.NetPay == s.NetPay))
+                return new(true);
+        }
+
         if (period.Id == 0) db.PayrollPeriods.Add(period);
         foreach (var slip in old) { db.PayrollItems.RemoveRange(slip.Items); db.PayrollSlips.Remove(slip); }
         // Delete old unique (period, employee) rows before inserting replacements; one transaction keeps the month atomic.
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(cancellationToken);
         foreach (var slip in calculated.Slips) { slip.PayrollPeriod = period; db.PayrollSlips.Add(slip); }
         Touch(period);
-        Audit(actor, "GenerateMonth", "PayrollPeriod", period.Id, new { request.Year, request.Month, Count = calculated.Slips.Count });
+        Audit(automatic ? null : actor, "GenerateMonth", "PayrollPeriod", period.Id,
+            new { period.Year, period.Month, Count = calculated.Slips.Count });
         return new(true, $"Đã tạo/tính lại {calculated.Slips.Count} phiếu lương. Chưa chốt.");
-    });
+    }
 
-    private async Task<(List<PayrollSlip> Slips, List<string> Errors)> CalculateMonthAsync(PayrollPeriod period, string actor)
+    private async Task<(List<PayrollSlip> Slips, List<string> Errors)> CalculateMonthAsync(PayrollPeriod period, string actor,
+        CancellationToken cancellationToken = default)
     {
         var slips = new List<PayrollSlip>();
         var errors = new List<string>();
@@ -41,13 +85,14 @@ public partial class PayrollService
         if (employees.Count == 0) errors.Add("Không có nhân viên thuộc tháng này.");
         var (from, to) = PayrollRules.PeriodRange(period.Year, period.Month);
         var policy = await db.PayrollKpiPolicies.AsNoTracking().Where(p => p.EffectiveFrom <= from)
-            .OrderByDescending(p => p.EffectiveFrom).FirstOrDefaultAsync();
+            .OrderByDescending(p => p.EffectiveFrom).FirstOrDefaultAsync(cancellationToken);
         var adjustments = await db.PayrollMonthlyAdjustments.AsNoTracking().Where(a => a.Year == period.Year && a.Month == period.Month)
-            .OrderBy(a => a.Id).ToListAsync();
+            .OrderBy(a => a.Id).ToListAsync(cancellationToken);
         foreach (var adjustment in adjustments.Where(a => !employees.Any(e => e.Id == a.EmployeeId)))
             errors.Add($"Khoản #{adjustment.Id}: nhân viên #{adjustment.EmployeeId} không thuộc tháng.");
         foreach (var row in employees)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var employee = (await EmployeeAsync(row.Id))!;
             if (employee.Status == EmployeeStatus.Terminated && !employee.TerminationDate.HasValue)
             { errors.Add($"{row.Code}: thiếu ngày nghỉ việc."); continue; }
@@ -84,7 +129,7 @@ public partial class PayrollService
                 slip.AttendanceNote = FormattableString.Invariant($"LCB × (P / điểm chuẩn); N={trips.Count}; D={trips.Sum(t => t.EstimatedDistanceKm ?? 0)} km; K={policy.KmPerPoint}; P={slip.KpiPoints:0.######}; điểm chuẩn={policy.TargetPoints}; KPI={slip.KpiPoints / policy.TargetPoints:P2}. Không chia theo ngày làm.");
                 slip.AttendanceNote += Environment.NewLine + string.Join(Environment.NewLine, trips.Select(t =>
                     FormattableString.Invariant($"Chuyến #{t.Id}: {t.Vehicle.VehicleType}, {t.EstimatedDistanceKm} km, H={factors.Single(f => f.VehicleType == t.Vehicle.VehicleType).Factor}")));
-                source = new { policy.EffectiveFrom, policy.KmPerPoint, policy.TargetPoints, Factors = factors,
+                source = new { Formula = "(km / K) * H", policy.EffectiveFrom, policy.KmPerPoint, policy.TargetPoints, Factors = factors,
                     Trips = trips.Select(t => new { t.Id, t.Vehicle.VehicleType, t.EstimatedDistanceKm, t.StartTime, t.EndTime }).ToList() };
             }
             else
