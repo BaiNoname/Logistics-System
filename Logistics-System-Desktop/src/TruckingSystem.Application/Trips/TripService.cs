@@ -1171,9 +1171,10 @@ WHERE ""Id"" = {tripId}");
         // báo cáo — không đọc cột tổng Trip.ActualFuelCost (có thể lệch nếu lần cập nhật tổng lỗi).
         var actualCost = await _db.FuelLogs.Where(f => f.TripId == tripId).SumAsync(f => (decimal?)f.Cost) ?? 0m;
 
-        if (waypoints.Count < 2)
+        // Có GPS = có ít nhất 1 điểm (xe đứng yên một chỗ vẫn tính, ra ≈ 0 km — dễ thử nghiệm / demo).
+        if (waypoints.Count == 0)
             return new FuelEstimateDto(actualDistanceKm, null, null, actualCost, null,
-                "Chưa đủ dữ liệu GPS để tính khoảng cách (cần ít nhất 2 điểm ping) — chưa ước tính được.");
+                "Chưa có điểm GPS nào của chuyến (app tài xế chưa bật GPS) — chưa ước tính được.");
 
         // Số liệu CHỐT lúc xuất phát (chuyến cũ chưa có thì lấy theo xe hiện tại).
         var fuelType = trip.FuelTypeAtStart ?? trip.Vehicle.FuelType;

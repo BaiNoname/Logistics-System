@@ -245,8 +245,9 @@ public class ReportService : IReportService
             // có km GPS dở dang, so với km kế hoạch luôn "thiếu" -> cờ đỏ oan.
             // Chỉ so KM (chạy vòng / sai tuyến / mất sóng). Tiền đổ xăng KHÔNG so theo chuyến — quyết toán theo xe.
             // Quãng ngắn: lệch vài trăm mét đã thành hàng trăm % -> phải lệch QUÁ 15% VÀ từ 2 km trở lên mới gắn cờ.
+            // Xe ĐỨNG YÊN (km GPS < GpsMinKm, VD chạy thử / demo) không gắn cờ — có GPS nhưng không có quãng đường để so.
             Status == TripStatus.Completed && Math.Abs(KmDeviationPct ?? 0) > FuelDeviationThresholdPct
-                && PlannedKm.HasValue && GpsKm.HasValue && Math.Abs(GpsKm.Value - PlannedKm.Value) >= FuelDeviationMinKm,
+                && PlannedKm.HasValue && GpsKm is decimal gk && gk >= GpsMinKm && Math.Abs(gk - PlannedKm.Value) >= FuelDeviationMinKm,
             Note);
     }
 
@@ -257,7 +258,8 @@ public class ReportService : IReportService
     /// <summary>Lệch tối thiểu (km) mới gắn cờ chuyến — tránh cờ đỏ oan ở chuyến quãng ngắn.</summary>
     private const decimal FuelDeviationMinKm = 2m;
 
-    /// <summary>Km GPS dưới mức này coi như CHƯA ĐỦ dữ liệu GPS (các điểm trùng một chỗ, xe chưa thật sự chạy).</summary>
+    /// <summary>Km GPS dưới mức này = xe ĐỨNG YÊN (có GPS nhưng các điểm trùng một chỗ): vẫn tính là có GPS (0 km),
+    /// chỉ không so lệch km với tuyến dự kiến.</summary>
     private const decimal GpsMinKm = 0.1m;
 
     /// <summary>Bảng xăng theo xe: định mức dưới mức này (lít) thì quá ít để so % (đổ 2 L / định mức 0,04 L = +4000%).</summary>
@@ -335,8 +337,9 @@ public class ReportService : IReportService
                 if (unitPrice is null) note = $"Chưa có giá \"{fuelType}\" tới ngày chạy";
             }
             if (note is null && gpsKm is null) note = t.EstimatedDistanceKm is > 0
-                ? "Chưa đủ dữ liệu GPS (xe chưa di chuyển / dưới 2 điểm) — tạm tính theo km dự kiến"
-                : "Chưa đủ dữ liệu GPS (xe chưa di chuyển / dưới 2 điểm)";
+                ? "Chưa có điểm GPS nào (app tài xế chưa bật GPS) — tạm tính theo km dự kiến"
+                : "Chưa có điểm GPS nào (app tài xế chưa bật GPS)";
+            else if (note is null && gpsKm < GpsMinKm) note = "Có GPS — xe đứng yên một chỗ (≈ 0 km), không so lệch km";
 
             decimal? Cost(decimal? km) => km.HasValue && unitPrice.HasValue && t.FuelConsumptionPer100Km is > 0
                 ? km.Value / 100m * t.FuelConsumptionPer100Km.Value * unitPrice.Value : null;
@@ -373,12 +376,13 @@ public class ReportService : IReportService
             foreach (var id in needIds)
             {
                 decimal? km = null;
-                if (byTrip.TryGetValue(id, out var pts) && pts.Count >= 2)
+                // CÓ GPS = có ít nhất 1 điểm GPS hợp lệ (máy tài xế đã bật GPS trong lúc chuyến chạy) — kể cả xe đứng yên
+                // một chỗ (km ≈ 0, dễ thử nghiệm / demo). Xe đứng yên (< GpsMinKm) không bị so lệch km (xem Flagged).
+                if (byTrip.TryGetValue(id, out var pts) && pts.Count >= 1)
                 {
                     double sum = 0;
                     for (var i = 1; i < pts.Count; i++) sum += HaversineKm(pts[i - 1].Lat, pts[i - 1].Lng, pts[i].Lat, pts[i].Lng);
                     km = Math.Round((decimal)sum, 1);
-                    if (km < GpsMinKm) km = null; // điểm GPS trùng một chỗ -> coi như chưa đủ dữ liệu GPS
                 }
                 if (km is not null) gpsKmByTrip[id] = km;
                 if (closed.Contains(id)) GpsKmCache[id] = km;
