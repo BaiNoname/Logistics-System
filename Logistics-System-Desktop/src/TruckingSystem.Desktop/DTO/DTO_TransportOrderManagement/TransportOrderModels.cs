@@ -45,6 +45,8 @@ public class TransportOrderListItem
     public decimal StorageFeeToDate { get; set; }
     /// <summary>m³ hàng của đơn đang nằm kho.</summary>
     public decimal StockM3 { get; set; }
+    /// <summary>Đơn đã hủy còn chuyến Trả hàng chưa xong: số chuyến đó (0 = không).</summary>
+    public int OpenReturnTripId { get; set; }
 
     /// <summary>Công ty đã dời hạn: hạn tính trễ sớm hơn hạn giao hiện tại.</summary>
     public bool HasLateBasis => LateBasisDate is DateTime b && CommittedDeliveryDate is DateTime d && b.Date != d.Date;
@@ -82,6 +84,10 @@ public class TripSummaryItem
     /// <summary>Điểm đi -> điểm đến của chặng.</summary>
     public string? FromName { get; set; }
     public string? ToName { get; set; }
+    /// <summary>Ngày chạy: đã xuất phát = ngày bắt đầu thật, chưa = ngày dự kiến.</summary>
+    public DateTime? RunDate { get; set; }
+    /// <summary>Km GPS thật (null = chưa có GPS).</summary>
+    public decimal? GpsKm { get; set; }
 }
 
 /// <summary>Hợp đồng chọn được cho đơn (của đúng khách, đang hiệu lực).</summary>
@@ -176,6 +182,27 @@ public class OrderActionResultItem
     public bool Success { get; set; }
     public string? Message { get; set; }
     /// <summary>Cách sửa nhanh khi bị chặn — xem QuickFix.</summary>
+    public List<TruckingSystem.Desktop.Common.FixHintItem>? Fixes { get; set; }
+    /// <summary>HỦY ĐƠN: đã làm những gì (chuyến Trả hàng, chuyến bị hủy, hàng trả tại kho...) — xem CancelOrderFlow.</summary>
+    public List<CancelEffectItem>? Effects { get; set; }
+}
+
+/// <summary>1 dòng "sẽ / đã xảy ra gì" khi hủy đơn. Kind: Return (chuyến Trả hàng — TripId = chuyến mới), CancelTrip,
+/// OnRoad (chuyến lấy hàng đang chạy), ReturnAtWarehouse, Fee, Info.</summary>
+public class CancelEffectItem
+{
+    public string Kind { get; set; } = "";
+    public string Text { get; set; } = "";
+    public int? TripId { get; set; }
+}
+
+/// <summary>Xem trước khi hủy đơn (GET cancel-preview).</summary>
+public class CancelPreviewItem
+{
+    public bool CanCancel { get; set; }
+    public string OrderCode { get; set; } = "";
+    public List<CancelEffectItem> Effects { get; set; } = new();
+    public string? BlockMessage { get; set; }
     public List<TruckingSystem.Desktop.Common.FixHintItem>? Fixes { get; set; }
 }
 

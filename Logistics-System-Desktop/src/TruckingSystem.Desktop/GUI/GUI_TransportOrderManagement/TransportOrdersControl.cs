@@ -367,6 +367,8 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                 "Confirmed" when o.ActiveTripCount == 0 => "🚚 Chia xe",
                 "Confirmed" => overdue ? "⏰ Quá hạn — chờ xe chạy" : freeSoon ?? "⏳ Chờ xe xuất phát",
                 "InProgress" => overdue ? "⏰ Quá hạn — theo dõi gấp" : freeSoon ?? "🛣️ Theo dõi chuyến",
+                // Đơn đã hủy nhưng chuyến Trả hàng chưa xong -> vẫn còn việc (không ghi "—").
+                "Cancelled" when o.OpenReturnTripId > 0 => $"🚚 Còn chuyến Trả hàng #{o.OpenReturnTripId}",
                 _ => "—",
             };
         }

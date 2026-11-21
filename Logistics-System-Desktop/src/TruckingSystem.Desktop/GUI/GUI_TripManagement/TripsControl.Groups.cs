@@ -240,7 +240,9 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
             else if ((pick = live.FirstOrDefault(IsWaitingForReceipt)) is not null)
                 (g.Next, g.Blocked, g.NextTripId) = ("Nhập kho hàng lấy về (màn Kho → 📦 Nhập hàng từ chuyến)", true, pick.Id);
             else if ((pick = live.FirstOrDefault(IsWaitingForIssue)) is not null)
-                (g.Next, g.Blocked, g.NextTripId) = ($"Kho xuất hàng cho chuyến #{pick.Id} (màn Kho → 📤 Xuất kho theo chuyến)", true, pick.Id);
+                (g.Next, g.Blocked, g.NextTripId) = (pick.LegType == "Return"
+                    ? $"Kho XUẤT TRẢ hàng cho chuyến trả hàng #{pick.Id} (màn Kho → 📤 Xuất kho theo chuyến)"
+                    : $"Kho xuất hàng cho chuyến #{pick.Id} (màn Kho → 📤 Xuất kho theo chuyến)", true, pick.Id);
             else if ((pick = live.FirstOrDefault(t => t.Status == "InProgress")) is not null)
                 (g.Next, g.NextTripId) = ($"Chuyến #{pick.Id} đang chạy — chờ xe tới nơi", pick.Id);
             else if ((pick = live.Where(t => t.Status == "Planned" && !IsWaitingForPickup(t))
@@ -268,6 +270,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
             return g.Trips.Any(t =>
                 t.Status is "PendingConfirmation" or "InProgress"
                 || IsWaitingForReceipt(t) || IsWaitingForIssue(t)
+                || t.LegType == "Return" && t.Status == "Planned" // đơn đã hủy còn chuyến trả hàng chưa chạy
                 || t.Status == "Planned" && (t.PlannedStartDate is DateTime d && d.Date <= today
                                              || t.DeadlineLevel is "Late" or "Warning"));
         }

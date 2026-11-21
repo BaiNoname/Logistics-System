@@ -29,5 +29,7 @@
         public DateTime? LatestStart { get; set; }
         public DateTime? Deadline { get; set; }
         public string? DeadlineText { get; set; }
+        /// <summary>"Return" = chuyến TRẢ HÀNG của đơn đã hủy (kho XUẤT TRẢ về khách); "Delivery" = chuyến giao.</summary>
+        public string LegType { get; set; } = "Delivery";
     }
 }
