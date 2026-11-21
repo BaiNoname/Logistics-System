@@ -12,6 +12,7 @@
 ///  • ManualReceive — nhận hàng khách mang tới ở kho WarehouseId
 ///  • Vehicle / Driver — mở màn Đội xe / Tài xế lọc đúng Name (biển số / mã tài xế)
 ///  • VehiclesBlocked — màn Đội xe lọc sẵn xe thiếu / hết hạn giấy tờ
-///  • Contracts — mở màn Hợp đồng</summary>
+///  • Contracts — mở màn Hợp đồng
+///  • Trip — mở màn Chuyến xe, chọn sẵn chuyến Id (VD duyệt chuyến lấy hàng trước khi hủy đơn)</summary>
 public record FixHint(string Kind, string Text, int? Id = null, string? Name = null,
     DateTime? From = null, DateTime? To = null, int? WarehouseId = null, string? Note = null);

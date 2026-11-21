@@ -94,6 +94,11 @@ namespace TruckingSystem.Desktop.SERVICE_TransportOrderManagement
         public Task<OrderActionResultItem> ConfirmOrderAsync(int id)
             => _conn.PostAsync<OrderActionResultItem>($"/api/transport-orders/{id}/confirm", new { })!;
 
+        /// <summary>Xem trước khi hủy (không đổi dữ liệu): sẽ xảy ra gì / còn việc gì phải làm trước.</summary>
+        public async Task<CancelPreviewItem> GetCancelPreviewAsync(int id)
+            => await _conn.GetAsync<CancelPreviewItem>($"/api/transport-orders/{id}/cancel-preview")
+               ?? throw new InvalidOperationException("Máy chủ không trả kết quả xem trước.");
+
         /// <summary>-> Cancelled.</summary>
         public Task<OrderActionResultItem> CancelOrderAsync(int id)
             => _conn.PostAsync<OrderActionResultItem>($"/api/transport-orders/{id}/cancel", new { })!;

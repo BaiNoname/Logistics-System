@@ -794,7 +794,7 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
             var verb = t.LegType == "Return" ? "xuất trả" : "xuất";
             if (planned > 0 && done >= planned) return $"✅ Đã {verb} {done:0.##}/{planned:0.##}";
             if (done > 0) return $"📤 Đã {verb} {done:0.##}/{planned:0.##}";
-            return t.LegType == "Return" ? $"Xuất khi trả xong (0/{planned:0.##})"
+            return t.LegType == "Return" ? (t.Status == "Planned" ? $"📤 Chờ kho xuất trả (0/{planned:0.##})" : $"Xuất khi trả xong (0/{planned:0.##})")
                 : t.Status == "Planned" ? $"📤 Chờ kho xuất (0/{planned:0.##})"
                 : $"Chưa xuất (0/{planned:0.##})";
         }
@@ -817,10 +817,10 @@ namespace TruckingSystem.Desktop.GUI_TripManagement
 
         private const string WaitingIssueText = "📤 Chờ kho xuất";
 
-        /// <summary>Chặng GIAO chưa chạy, hàng đã nhập kho nhưng KHO CHƯA XÁC NHẬN XUẤT đủ lên xe
-        /// (màn Kho → 📤 Xuất kho theo chuyến) — server chặn Bắt đầu cho tới khi xuất xong.</summary>
+        /// <summary>Chặng GIAO (hoặc TRẢ HÀNG của đơn đã hủy) chưa chạy, hàng đã nhập kho nhưng KHO CHƯA XÁC NHẬN XUẤT
+        /// đủ lên xe (màn Kho → 📤 Xuất kho theo chuyến) — server chặn Bắt đầu cho tới khi xuất xong.</summary>
         private bool IsWaitingForIssue(TripListItem t)
-            => t.LegType == "Delivery" && t.Status == "Planned" && !IsWaitingForPickup(t) && !IsWaitingForReceipt(t)
+            => t.LegType is "Delivery" or "Return" && t.Status == "Planned" && !IsWaitingForPickup(t) && !IsWaitingForReceipt(t)
                && _progress.TryGetValue(t.Id, out var p) && p.QtyPlanned > 0 && p.QtyDone < p.QtyPlanned;
 
         private string StatusText(TripListItem t)

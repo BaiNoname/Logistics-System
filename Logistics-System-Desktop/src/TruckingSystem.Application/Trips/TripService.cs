@@ -178,9 +178,11 @@ public class TripService : ITripService
         // Chặng Delivery: hàng đã được KHO XÁC NHẬN XUẤT trước đó (TripIssueService) — không tự xuất
         // nữa (xuất kho là việc của nhân viên kho). Kiểm tra LẠI sau khi đã giành dòng chuyến: đúng lúc
         // đó kho vừa bấm "Hoàn tác xuất" (cũng khóa dòng chuyến) thì dừng, không chạy khi xe rỗng.
-        if (trip.LegType == TripLegType.Delivery && trip.WarehouseId.HasValue && await NotIssuedTextAsync(trip.Id) is { } notIssued)
-            return new TripActionResult(false, $"Kho chưa xác nhận xuất đủ hàng cho chuyến #{trip.Id} ({notIssued}) — chưa thể bắt đầu.",
-                await WarehouseFixesAsync("TripIssue", "📤 Xuất kho cho chuyến #" + trip.Id, trip.WarehouseId));
+        // Chặng TRẢ HÀNG cũng vậy (kho xác nhận XUẤT TRẢ trước khi xe chạy).
+        if (trip.LegType is TripLegType.Delivery or TripLegType.Return && trip.WarehouseId.HasValue && await NotIssuedTextAsync(trip.Id) is { } notIssued)
+            return new TripActionResult(false,
+                $"Kho chưa xác nhận {(trip.LegType == TripLegType.Return ? "XUẤT TRẢ" : "xuất")} đủ hàng cho chuyến #{trip.Id} ({notIssued}) — chưa thể bắt đầu.",
+                await WarehouseFixesAsync("TripIssue", (trip.LegType == TripLegType.Return ? "📤 Xuất trả cho chuyến #" : "📤 Xuất kho cho chuyến #") + trip.Id, trip.WarehouseId));
 
         trip.Status = TripStatus.InProgress;
         trip.StartTime = DateTime.UtcNow;
@@ -778,10 +780,19 @@ WHERE ""Id"" = {tripId}");
         var contractReason = await GetContractBlockReasonAsync(trip, fixes);
         if (contractReason is not null) return contractReason;
 
-        // Chặng TRẢ HÀNG: hàng chỉ trừ kho lúc chuyến hoàn tất — nhưng phải CÒN ĐỦ hàng trong kho
-        // ngay lúc xe chạy, nếu không tới lúc Duyệt mới báo "không đủ tồn kho" và chuyến kẹt ở
-        // Chờ xác nhận (hàng đã chở đi rồi mà kho không trừ được).
-        if (trip.LegType == TripLegType.Return) return await GetStockBlockReasonAsync(trip);
+        // Chặng TRẢ HÀNG (đơn bị hủy khi hàng đã nằm kho): kho phải CÒN ĐỦ hàng VÀ đã XÁC NHẬN XUẤT TRẢ lên xe
+        // (màn Kho → 📤 Xuất kho theo chuyến) — trước đây xe chạy mà kho không hề biết, tới lúc Duyệt mới trừ kho.
+        if (trip.LegType == TripLegType.Return)
+        {
+            var returnStock = await GetStockBlockReasonAsync(trip);
+            if (returnStock is not null || !trip.WarehouseId.HasValue) return returnStock;
+            var notIssuedReturn = await NotIssuedTextAsync(trip.Id);
+            if (notIssuedReturn is null) return null;
+            if (fixes is not null && await WarehouseFixesAsync("TripIssue", $"📤 Xuất trả cho chuyến #{trip.Id}", trip.WarehouseId) is { } returnFix)
+                fixes.AddRange(returnFix);
+            return $"Kho chưa xác nhận XUẤT TRẢ cho chuyến trả hàng #{trip.Id} ({notIssuedReturn}). Vào màn Kho → 📤 Xuất kho theo chuyến, " +
+                   "bốc hàng lên xe rồi bấm Xác nhận xuất — xong tài xế mới bắt đầu chuyến trả hàng được.";
+        }
         if (trip.LegType != TripLegType.Delivery) return null;
 
         var pendingPickups = await _db.Trips

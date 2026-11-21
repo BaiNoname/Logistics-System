@@ -41,13 +41,16 @@ public record TransportOrderListItemDto(
     int StorageDay = 0,                     // hàng đang nằm kho: ngày lưu kho thứ mấy (0 = không có hàng trong kho)
     int FreeDaysLeft = 0,                   // còn mấy ngày miễn phí lưu kho (0 = hết / không có; -1 = kho không tính phí)
     decimal StorageFeeToDate = 0,           // phí lưu kho tính cho khách tới hôm nay (tạm tính)
-    decimal StockM3 = 0                     // m³ hàng của đơn đang nằm kho
+    decimal StockM3 = 0,                    // m³ hàng của đơn đang nằm kho
+    int OpenReturnTripId = 0                // ĐƠN ĐÃ HỦY còn chuyến Trả hàng chưa xong: số chuyến đó (0 = không) — Desktop báo "còn việc"
 );
 
 /// <summary>LegType: Pickup / Delivery / Return — cùng 1 lô hàng đi qua nhiều chặng, nên
 /// cộng "số lượng chở" của mọi chuyến sẽ ra gấp đôi/gấp ba; Desktop hiện cột Chặng.</summary>
 public record TripSummaryDto(int Id, string VehiclePlate, string DriverName, string Status, decimal QtyPlanned, string LegType = "Delivery",
-    string? FromName = null, string? ToName = null); // điểm đi -> điểm đến của chặng (xem TripRouteText)
+    string? FromName = null, string? ToName = null, // điểm đi -> điểm đến của chặng (xem TripRouteText)
+    DateTime? RunDate = null,  // ngày chạy (giờ VN): đã xuất phát thì ngày bắt đầu thật, chưa thì ngày dự kiến
+    decimal? GpsKm = null);    // km GPS THẬT (cộng các điểm app tài xế gửi) — null = chuyến chưa có GPS
 
 /// <summary>Hợp đồng chọn được cho đơn: của đúng khách hàng, đang hiệu lực hôm nay.</summary>
 /// <summary>Type: "OneTime" | "LongTerm" | null (hợp đồng cũ). UsedByOrder*: hợp đồng một lần đã gắn với đơn chưa hủy đó.</summary>
@@ -58,7 +61,18 @@ public record OrderContractOptionDto(int Id, string Code, DateTime StartDate, Da
 /// trả nguyên TransportOrderDetailDto vì Desktop chỉ cần biết có thành công
 /// không và lý do nếu thất bại, rồi tự gọi lại GetByIdAsync để load lại mới nhất.</summary>
 public record OrderActionResult(bool Success, string? Message,
-    List<TruckingSystem.Application.Common.FixHint>? Fixes = null); // cách sửa nhanh khi bị chặn (xem FixHint)
+    List<TruckingSystem.Application.Common.FixHint>? Fixes = null, // cách sửa nhanh khi bị chặn (xem FixHint)
+    List<CancelEffectDto>? Effects = null); // HỦY ĐƠN: đã làm những gì (chuyến Trả hàng, chuyến bị hủy, hàng trả tại kho...)
+
+/// <summary>1 dòng "sẽ / đã xảy ra gì" khi hủy đơn. Kind: Return (tạo chuyến Trả hàng — TripId = chuyến mới, null khi
+/// xem trước), CancelTrip, OnRoad (chuyến lấy hàng đang chạy — gọi tài xế), ReturnAtWarehouse (xuất trả khách tại kho),
+/// Fee (phí lưu kho), Info.</summary>
+public record CancelEffectDto(string Kind, string Text, int? TripId = null);
+
+/// <summary>XEM TRƯỚC KHI HỦY: CanCancel = true -> Effects là những gì SẼ xảy ra; false -> BlockMessage gom ĐỦ mọi việc
+/// phải làm trước + Fixes (nút sửa nhanh).</summary>
+public record CancelPreviewDto(bool CanCancel, string OrderCode, List<CancelEffectDto> Effects,
+    string? BlockMessage, List<TruckingSystem.Application.Common.FixHint>? Fixes);
 
 /// <summary>Đổi hạn giao cam kết của đơn ĐÃ XÁC NHẬN / ĐANG CHẠY (khách xin dời, thỏa thuận lùi
 /// hạn...) — bắt buộc ghi lý do, hệ thống ghi nhật ký hạn cũ -> hạn mới.</summary>

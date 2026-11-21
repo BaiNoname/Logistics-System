@@ -7,6 +7,8 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
     /// <summary>📤 XUẤT KHO THEO CHUYẾN — chặng Giao đã chia xe, chưa chạy: nhân viên kho soạn hàng theo
     /// cột "Lấy ở ô", bốc lên xe rồi XÁC NHẬN XUẤT (server xuất đúng tổng số lượng của chuyến). Chưa xuất
     /// đủ thì tài xế không bắt đầu chuyến giao được. Hoàn tác xuất = dỡ hàng về kệ (xe chưa chạy).
+    /// Chuyến TRẢ HÀNG (đơn bị hủy khi hàng đã nằm kho) cũng hiện ở đây, ghi "🔙 Trả hàng" — kho XUẤT TRẢ lên xe
+    /// thì tài xế mới chạy về người gửi được.
     /// Giao diện tĩnh ở TripIssuesForm.Designer.cs.</summary>
     public partial class TripIssuesForm : BaseForm
     {
@@ -83,7 +85,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
         private void SetupSteps()
         {
             int S(int v) => LogicalToDeviceUnits(v);
-            lblInfo.Text = "① Chọn chuyến sắp chạy — chặng Giao đã chia xe, chưa chạy. Chưa xuất đủ hàng thì tài xế không bắt đầu chuyến được.";
+            lblInfo.Text = "① Chọn chuyến sắp chạy — chặng Giao đã chia xe (hoặc 🔙 Trả hàng của đơn đã hủy), chưa chạy. Chưa xuất đủ hàng thì tài xế không bắt đầu chuyến được.";
             lblInfo.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
             lblInfo.ForeColor = Theme.TextPrimary;
 
@@ -175,7 +177,8 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             var first = SelectedTripId() is int id ? TripLines(id).FirstOrDefault() : null;
             var total = _pickItems.Count;
             var done = _pickTrip is int t && _checked.TryGetValue(t, out var h) ? _pickItems.Count(i => h.Contains(i.Key)) : 0;
-            btnIssue.Text = first is null ? "📤 Xuất kho chuyến" : $"📤 Xuất kho chuyến #{first.TripId} ({done}/{total})";
+            btnIssue.Text = first is null ? "📤 Xuất kho chuyến"
+                : $"📤 {(first.LegType == "Return" ? "Xuất trả" : "Xuất kho")} chuyến #{first.TripId} ({done}/{total})";
             btnIssue.Enabled = !_busy && first is { CanIssue: true } && done >= total;
             btnUndo.Visible = first is { CanUndo: true };
             btnUndo.Enabled = !_busy;
@@ -216,8 +219,9 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
                 BindGrid(keepTripId);
                 var trips = _lines.Select(l => l.TripId).Distinct().Count();
                 var ready = _lines.Where(l => l.CanIssue).Select(l => l.TripId).Distinct().Count();
-                ShowStatus(trips == 0 ? "Không có chuyến giao nào đang chờ ở kho này."
-                    : $"{trips} chuyến giao chưa chạy — {ready} chuyến sẵn sàng xuất.", Theme.TextSecondary);
+                var returns = _lines.Where(l => l.LegType == "Return").Select(l => l.TripId).Distinct().Count();
+                ShowStatus(trips == 0 ? "Không có chuyến giao / trả hàng nào đang chờ ở kho này."
+                    : $"{trips} chuyến chưa chạy{(returns > 0 ? $" (có {returns} chuyến 🔙 trả hàng)" : "")} — {ready} chuyến sẵn sàng xuất.", Theme.TextSecondary);
             }
             catch (Exception ex)
             {
@@ -236,7 +240,7 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             grid.DataSource = rows.Select(l => new
             {
                 l.TripId,
-                Chuyến = $"#{l.TripId}",
+                Chuyến = l.LegType == "Return" ? $"#{l.TripId} 🔙 Trả hàng" : $"#{l.TripId}",
                 Đơn = l.OrderCode,
                 Khách_hàng = l.CustomerName,
                 Xe_tài_xế = $"{l.PlateNumber} · {l.DriverName}",
@@ -279,9 +283,11 @@ namespace TruckingSystem.Desktop.GUI_WarehouseManagement
             var lines = TripLines(tripId);
             var list = string.Join("\n", lines.Where(l => l.QtyPending > 0)
                 .Select(l => $"• {l.CargoType}: {l.QtyPending:0.##}  (lấy ở kệ: {l.BinsText})"));
-            if (!Ask.Confirm(this, $"Xuất kho chuyến #{tripId} lên xe {lines[0].PlateNumber}?",
-                    $"Hàng đã soạn và bốc lên xe:\n{list}\n\nTồn kho sẽ bị trừ đúng các số lượng này.",
-                    $"📤 Xuất kho chuyến #{tripId}")) return;
+            var verb = lines[0].LegType == "Return" ? "Xuất trả" : "Xuất kho";
+            if (!Ask.Confirm(this, $"{verb} chuyến #{tripId} lên xe {lines[0].PlateNumber}?",
+                    $"Hàng đã soạn và bốc lên xe:\n{list}\n\nTồn kho sẽ bị trừ đúng các số lượng này." +
+                    (lines[0].LegType == "Return" ? $"\n(Đơn {lines[0].OrderCode} đã hủy — xe chở hàng trả về người gửi.)" : ""),
+                    $"📤 {verb} chuyến #{tripId}")) return;
             await RunAsync(() => _service.IssueAsync(_warehouseId, tripId), tripId);
         }
 

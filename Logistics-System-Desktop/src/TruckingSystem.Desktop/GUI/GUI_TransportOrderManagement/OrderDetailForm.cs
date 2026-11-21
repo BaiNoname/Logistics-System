@@ -37,6 +37,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             dtPlannedStart.MaxDate = DateTime.Today.AddDays(3); // khớp server: chia xe trước tối đa 3 ngày
             dtPlannedStart.Value = DateTime.Today; // mặc định xuất phát hôm nay
             SetupActionLayout();
+            SetupTripsArea(); // vùng "Chuyến đã gán": nút bản đồ cạnh tiêu đề, nhấp đúp / chuột phải (OrderDetailForm.Trips.cs)
         }
 
         // ================= Bố cục nút theo quy tắc UX (1 nút chính, nguy hiểm tách riêng, việc tiếp theo) =================
@@ -61,7 +62,6 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                 if (_api is null || _fixAllocate is null) return;
                 if (await QuickFix.RunAsync(this, _api, _fixAllocate)) await LoadAsync(); // sửa xong -> nút Chia xe tự bật lại nếu đủ điều kiện
             };
-            actionBar.SetFlowBreak(btnViewRoute, true);
 
             // Nút nguy hiểm -> chữ đỏ góc trái chân cửa sổ.
             actionBar.Controls.Remove(btnCancel);
@@ -88,7 +88,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             btnEdit.Visible = draft;
             btnConfirm.Visible = draft;
             btnAllocate.Visible = lblPlannedStart.Visible = dtPlannedStart.Visible = waitAlloc;
-            btnCancel.Visible = btnCancel.Enabled;
+            btnCancel.Visible = order.Status is not ("Done" or "Cancelled"); // mờ kèm lý do khi xe giao đã xuất kho
             // Chưa chia được (khách chưa mang hàng tới đủ / kho thiếu khu) -> mờ nút + ghi lý do NGAY, không bấm rồi mới báo lỗi.
             var blocked = waitAlloc ? order.AllocateBlockReason : null;
             if (blocked is not null) btnAllocate.Enabled = false;
@@ -110,6 +110,8 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                 "Confirmed" when order.Trips.Count == 0 => "chọn ngày xuất phát rồi bấm 🚚 Chia xe tự động để hệ thống xếp xe + tài xế.",
                 "Confirmed" or "InProgress" => "đơn đang được vận chuyển — theo dõi từng chuyến ở bảng bên dưới (màn Chuyến xe để thao tác).",
                 "Done" => "đơn đã hoàn tất — không còn việc cần làm.",
+                "Cancelled" when order.Trips.FirstOrDefault(t => t.LegType == "Return" && t.Status is not ("Completed" or "Cancelled")) is { } back
+                    => $"đơn đã hủy — còn chuyến Trả hàng #{back.Id} chưa xong: kho xuất trả lên xe → tài xế chạy về người gửi → duyệt chuyến (màn Chuyến xe).",
                 "Cancelled" => "đơn đã hủy.",
                 _ => "—",
             };
@@ -161,19 +163,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                     Số_lượng = c.QtyTotal,
                 }).ToList();
 
-                // Cột Chặng: cùng 1 lô hàng đi qua chặng Lấy hàng rồi Giao hàng (và Trả hàng khi
-                // hủy) — không có cột này thì cộng "số lượng chở" ra gấp đôi/gấp ba.
-                gridTrips.DataSource = order.Trips.Select(t => new
-                {
-                    Mã_chuyến = t.Id,
-                    Chặng = LegText(t.LegType),
-                    Điểm_đi = t.FromName ?? "—",
-                    Điểm_đến = t.ToName ?? "—",
-                    Biển_số_xe = t.VehiclePlate,
-                    Tài_xế = t.DriverName,
-                    Trạng_thái = TruckingSystem.Desktop.GUI_Shared.ReportFormat.TripStatus(t.Status),
-                    Số_lượng_chở = t.QtyPlanned,
-                }).ToList();
+                BindTrips(order); // OrderDetailForm.Trips.cs
 
                 btnAllocate.Enabled = order.Trips.Count == 0 && order.Status == "Confirmed";
                 lblPlannedStart.Visible = dtPlannedStart.Visible = btnAllocate.Enabled;
@@ -184,11 +174,12 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                 // Đổi / bổ sung hạn giao: đơn Đã xác nhận / Đang chạy (Nháp sửa qua Sửa đơn; Hoàn tất / Hủy thì khóa).
                 btnChangeDeadline.Enabled = order.Status is "Confirmed" or "InProgress";
                 btnConfirm.Enabled = order.Status == "Draft" && order.CargoLines.Count > 0;
-                // Khớp server: KHÔNG hủy được khi đã có xe giao hàng xuất kho (đang chạy / chờ
-                // duyệt / đã giao), hoặc còn chuyến lấy hàng đang chờ duyệt (phải duyệt trước).
-                var deliveryLeft = order.Trips.Any(t => t.LegType == "Delivery" && t.Status is "InProgress" or "PendingConfirmation" or "Completed");
-                var pickupPending = order.Trips.Any(t => t.LegType == "Pickup" && t.Status == "PendingConfirmation");
-                btnCancel.Enabled = order.Status is not ("Done" or "Cancelled") && !deliveryLeft && !pickupPending;
+                // Khớp server: KHÔNG BAO GIỜ hủy được khi đã có xe giao hàng xuất kho (đang chạy / chờ duyệt / đã giao)
+                // -> nút mờ + ghi lý do ngay trên nút. Các trường hợp "còn việc phải làm trước" (chuyến lấy hàng chờ duyệt,
+                // hàng chưa nhập kho, kho đã xuất lên xe) vẫn bấm được: hộp xem trước nêu đủ việc + nút sửa nhanh (CancelOrderFlow).
+                var startedDelivery = order.Trips.FirstOrDefault(t => t.LegType == "Delivery" && t.Status is "InProgress" or "PendingConfirmation" or "Completed");
+                btnCancel.Enabled = order.Status is not ("Done" or "Cancelled") && startedDelivery is null;
+                btnCancel.Text = startedDelivery is not null ? $"🔒 Không hủy được: xe giao #{startedDelivery.Id} đã xuất kho" : "Hủy đơn…";
                 UpdateActionLayout(order);
                 UpdateAlerts(order);
                 _fit?.Invoke(); // hiện thêm khung cảnh báo -> nới cửa sổ cho bảng hàng / chuyến vẫn thấy đủ
@@ -287,38 +278,26 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
             }
         }
 
+        /// <summary>Hủy đơn: xem trước sẽ xảy ra gì -> hỏi chắc chắn -> hủy -> báo chuyến Trả hàng + bước tiếp (CancelOrderFlow).
+        /// Còn việc phải làm trước thì hiện hộp sửa nhanh thay vì 1 dòng báo lỗi.</summary>
         private async void BtnCancel_Click(object? sender, EventArgs e)
         {
             if (_api is null) return;
-            if (!Ask.Confirm(this, $"Hủy đơn {_currentOrder?.Code}?", "Đơn bị hủy hẳn, không hoàn tác được.",
-                    "❌ Hủy đơn", danger: true, cancelText: "Giữ đơn")) return;
-
             btnCancel.Enabled = false;
             try
             {
-                var result = await _api.TransportOrders.CancelOrderAsync(_orderId);
-                if (result.Success)
+                if (await CancelOrderFlow.RunAsync(this, _api, _orderId, _currentOrder?.Code ?? $"#{_orderId}") && !IsDisposed)
                 {
-                    lblResult.Text = "❌ Đã hủy đơn hàng." + (string.IsNullOrEmpty(result.Message) ? "" : "\n" + result.Message);
-                    lblResult.ForeColor = string.IsNullOrEmpty(result.Message) ? Theme.TextSecondary : Theme.Warning;
-                    // Có cảnh báo (VD xe lấy hàng đang chạy có thể đã bốc hàng) -> hiện hộp thoại để không bị bỏ sót
-                    if (!string.IsNullOrEmpty(result.Message))
-                        MessageBox.Show(FindForm(), result.Message, "Đã hủy đơn — cần lưu ý", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    await LoadAsync();
-                }
-                else
-                {
-                    lblResult.Text = "⚠️ " + result.Message;
-                    lblResult.ForeColor = Theme.Warning;
-                    await LoadAsync();
+                    lblResult.Text = "❌ Đã hủy đơn hàng.";
+                    lblResult.ForeColor = Theme.TextSecondary;
                 }
             }
             catch (Exception ex)
             {
-                lblResult.Text = "Lỗi: " + ex.Message;
-                lblResult.ForeColor = Theme.Danger;
-                btnCancel.Enabled = true;
+                if (!IsDisposed) { lblResult.Text = "Lỗi: " + ex.Message; lblResult.ForeColor = Theme.Danger; }
             }
+            // Hộp sửa nhanh có thể đã chuyển sang màn khác và đóng cửa sổ này -> chỉ tải lại khi cửa sổ còn mở.
+            if (!IsDisposed && Visible) await LoadAsync();
         }
 
         private static string LegText(string legType) => legType switch

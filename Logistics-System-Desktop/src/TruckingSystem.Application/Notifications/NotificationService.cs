@@ -387,7 +387,8 @@ public class NotificationService : INotificationService
             .ToDictionary(g => g.Key, g => g.Select(x => x.ShiftDate.Date).ToHashSet());
 
         // Chặng Giao tới ngày chạy mà KHO CHƯA XUẤT hàng lên xe (hàng đã nhập kho đủ, chặng Lấy đã xong).
-        var deliveryIds = trips.Where(t => t.LegType == TripLegType.Delivery).Select(t => t.Id).ToList();
+        // Chặng TRẢ HÀNG (đơn bị hủy) cũng phải chờ kho XUẤT TRẢ — chuyến này không có ngày dự kiến -> báo ngay.
+        var deliveryIds = trips.Where(t => t.LegType is TripLegType.Delivery or TripLegType.Return).Select(t => t.Id).ToList();
         var plannedByTrip = (await _db.TripLines.Where(l => deliveryIds.Contains(l.TripId))
                 .GroupBy(l => l.TripId).Select(g => new { g.Key, Qty = g.Sum(x => x.QtyPlanned) }).ToListAsync())
             .ToDictionary(x => x.Key, x => x.Qty);
@@ -436,16 +437,22 @@ public class NotificationService : INotificationService
                         reason = $"Tài xế {d.FullName} chưa đăng ký ngày làm {string.Join(", ", missing.Select(x => x.ToString("dd/MM")))}";
                 }
             }
-            if (reason is null && t.LegType == TripLegType.Delivery && from == today
-                && !ordersWithOpenPickup.Contains(orderOfTrip[t.Id])
+            var isReturnLeg = t.LegType == TripLegType.Return;
+            if (reason is null && t.LegType is TripLegType.Delivery or TripLegType.Return && from == today
+                && (isReturnLeg || !ordersWithOpenPickup.Contains(orderOfTrip[t.Id]))
                 && (issuedByTrip.TryGetValue(t.Id, out var iq) ? iq : 0) < (plannedByTrip.TryGetValue(t.Id, out var pq) ? pq : 0))
             {
                 // Việc của KHO -> tiêu đề riêng có tên kho: nhấp đúp mở thẳng "📤 Xuất kho theo chuyến" đúng kho
                 // (nhân viên kho không vào được màn Chuyến — trước đây nhấp đúp báo "không có quyền").
                 var wh = string.IsNullOrWhiteSpace(t.WarehouseName) ? "" : $" {t.WarehouseName}";
-                result.Add(($"{PrefixTripBlocked}Chuyến #{t.Id} (Giao hàng, đơn {t.OrderCode}) chờ kho{wh} xuất hàng",
-                    $"Chuyến #{t.Id} dự kiến chạy hôm nay {today:dd/MM} nhưng kho chưa xác nhận xuất hàng lên xe — vào màn Kho → 📤 Xuất kho theo chuyến " +
-                    "(hàng chưa nhập kho thì nhập ở 📦 Nhập hàng từ chuyến trước). Chưa xuất kho thì chuyến KHÔNG xuất phát được."));
+                // (Tiêu đề GIỮ đuôi "chờ kho … xuất hàng" — Desktop dựa vào đó để mở đúng màn kho.)
+                result.Add(isReturnLeg
+                    ? ($"{PrefixTripBlocked}Chuyến #{t.Id} (Trả hàng, đơn {t.OrderCode} đã hủy) chờ kho{wh} xuất hàng",
+                       $"Đơn {t.OrderCode} đã hủy — chuyến trả hàng #{t.Id} chờ kho xác nhận XUẤT TRẢ hàng lên xe (màn Kho → 📤 Xuất kho theo chuyến). " +
+                       "Chưa xuất thì tài xế KHÔNG bắt đầu chuyến trả hàng được.")
+                    : ($"{PrefixTripBlocked}Chuyến #{t.Id} (Giao hàng, đơn {t.OrderCode}) chờ kho{wh} xuất hàng",
+                       $"Chuyến #{t.Id} dự kiến chạy hôm nay {today:dd/MM} nhưng kho chưa xác nhận xuất hàng lên xe — vào màn Kho → 📤 Xuất kho theo chuyến " +
+                       "(hàng chưa nhập kho thì nhập ở 📦 Nhập hàng từ chuyến trước). Chưa xuất kho thì chuyến KHÔNG xuất phát được."));
                 continue;
             }
             if (reason is null) continue;

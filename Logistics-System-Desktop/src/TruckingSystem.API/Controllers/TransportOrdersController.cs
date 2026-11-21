@@ -74,6 +74,12 @@ public class TransportOrdersController : ControllerBase
         return result.Success ? Ok(result) : BadRequest(result);
     }
 
+    /// <summary>XEM TRƯỚC KHI HỦY — không đổi dữ liệu: sẽ hủy chuyến nào, có tạo chuyến Trả hàng không, hàng trả tại kho,
+    /// phí lưu kho; hoặc mọi việc phải làm trước kèm cách sửa nhanh.</summary>
+    [HttpGet("{id:int}/cancel-preview")]
+    public async Task<ActionResult<CancelPreviewDto>> CancelPreview(int id)
+        => Ok(await _service.GetCancelPreviewAsync(id));
+
     /// <summary>-> Cancelled.</summary>
     [HttpPost("{id:int}/cancel")]
     public async Task<ActionResult<OrderActionResult>> Cancel(int id)

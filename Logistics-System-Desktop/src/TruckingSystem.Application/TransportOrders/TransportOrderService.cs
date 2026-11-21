@@ -33,7 +33,9 @@ public class TransportOrderService : ITransportOrderService
                 o.Trips.Count(t => t.Status != TripStatus.Cancelled),
                 o.CommittedDeliveryDate, o.Warehouse.Name,
                 o.Contract != null ? o.Contract.Code : null, 0,
-                null, 0, 0, 0m, 0m))
+                null, 0, 0, 0m, 0m,
+                o.Trips.Where(t => t.LegType == TripLegType.Return && t.Status != TripStatus.Cancelled && t.Status != TripStatus.Completed)
+                    .OrderBy(t => t.Id).Select(t => (int?)t.Id).FirstOrDefault() ?? 0))
             .ToListAsync();
         // Hạn tính trễ (công ty dời hạn thì khác hạn giao), tình trạng lưu kho (ngày thứ mấy, còn miễn phí, phí tới nay),
         // hàng nằm kho sau hạn tính trễ mà chưa ai chọn do bên nào -> Desktop gắn nhãn đỏ + đếm vào số việc chờ.
@@ -48,6 +50,32 @@ public class TransportOrderService : ITransportOrderService
             if (overdue.TryGetValue(o.Id, out var i) && i.Decision is null) r = r with { OverdueStorageDays = i.Days };
             return r;
         }).ToList();
+    }
+
+    /// <summary>Km GPS THẬT theo chuyến = cộng khoảng cách giữa các điểm GPS liên tiếp (cùng cách tính với
+    /// TripService.GetFuelEstimateAsync). Chuyến không có điểm nào thì không có trong kết quả.</summary>
+    private async Task<Dictionary<int, decimal>> GpsKmByTripAsync(List<int> tripIds)
+    {
+        if (tripIds.Count == 0) return new Dictionary<int, decimal>();
+        var points = await _db.Waypoints.Where(w => tripIds.Contains(w.TripId))
+            .OrderBy(w => w.TripId).ThenBy(w => w.Timestamp)
+            .Select(w => new { w.TripId, w.Lat, w.Lng })
+            .ToListAsync();
+        static double Km(double lat1, double lng1, double lat2, double lng2)
+        {
+            var dLat = (lat2 - lat1) * Math.PI / 180.0;
+            var dLng = (lng2 - lng1) * Math.PI / 180.0;
+            var a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
+                    Math.Cos(lat1 * Math.PI / 180.0) * Math.Cos(lat2 * Math.PI / 180.0) * Math.Sin(dLng / 2) * Math.Sin(dLng / 2);
+            return 6371.0 * 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
+        }
+        return points.GroupBy(p => p.TripId).ToDictionary(g => g.Key, g =>
+        {
+            var list = g.ToList();
+            double total = 0;
+            for (var i = 1; i < list.Count; i++) total += Km(list[i - 1].Lat, list[i - 1].Lng, list[i].Lat, list[i].Lng);
+            return Math.Round((decimal)total, 1);
+        });
     }
 
     public async Task<TransportOrderDetailDto?> GetByIdAsync(int id)
@@ -81,6 +109,10 @@ public class TransportOrderService : ITransportOrderService
                         : new FixHint("ManualReceive", "🙋 Nhận hàng khách mang tới", WarehouseId: order.WarehouseId, Name: order.Warehouse.Name),
                 },
             };
+        // Km GPS thật của từng chuyến (bảng "Chuyến đã gán" của Chi tiết đơn) — chỉ chuyến đã xuất phát mới có điểm GPS.
+        var gpsKm = await GpsKmByTripAsync(order.Trips.Where(t => t.StartTime.HasValue).Select(t => t.Id).ToList());
+        if (gpsKm.Count > 0)
+            dto = dto with { Trips = dto.Trips.Select(t => gpsKm.TryGetValue(t.Id, out var km) ? t with { GpsKm = km } : t).ToList() };
         var (late, suggested) = LateWarning(order);
         dto = dto with
         {
@@ -472,6 +504,16 @@ public class TransportOrderService : ITransportOrderService
 
     public Task<StorageFeeDto?> GetStorageFeeAsync(int id) => StorageFeeRules.ComputeAsync(_db, id);
 
+    /// <summary>XEM TRƯỚC KHI HỦY (mẫu "Hủy đơn & chuyến trả hàng" đã chốt): chạy ĐÚNG logic hủy nhưng KHÔNG ghi gì
+    /// (cuối cùng Rollback) — trả danh sách "sẽ xảy ra gì" (chuyến nào bị hủy, có tạo chuyến Trả hàng không, hàng trả
+    /// tại kho, xe rảnh lại, phí lưu kho) hoặc TẤT CẢ lý do đang chặn kèm nút sửa nhanh (không dừng ở lý do đầu tiên).</summary>
+    public async Task<CancelPreviewDto> GetCancelPreviewAsync(int id)
+    {
+        var (result, code, canCancel) = await CancelCoreAsync(id, dryRun: true);
+        return new CancelPreviewDto(canCancel, code, result.Effects ?? new List<CancelEffectDto>(),
+            canCancel ? null : result.Message, result.Fixes);
+    }
+
     /// <summary>Hủy đơn — xử lý theo 3 mức tùy tình trạng hàng hóa thật tại
     /// thời điểm hủy (KHÔNG hủy lẻ từng Trip, chỉ hủy qua Đơn):
     ///   Mức 1 — Chưa chạm kho (Planned/InProgress, chưa Pickup xong): hủy
@@ -479,12 +521,17 @@ public class TransportOrderService : ITransportOrderService
     ///   Mức 2 — Hàng đã nằm trong kho (Pickup đã Completed VÀ đã nhập kho đủ
     ///     — còn hàng chờ nhập thì CHẶN hủy) nhưng Giao hàng còn
     ///     Planned (chưa xuất): hủy Delivery cũ, TẠO THÊM 1 Trip "Trả hàng"
-    ///     (LegType.Return) dùng lại xe/tài xế đã có sẵn gần kho. Xuất kho
-    ///     thật + trả xe rảnh chỉ xảy ra SAU, khi tài xế chạy xong và bấm
-    ///     Hoàn tất (tái dùng cơ chế Complete có sẵn, xem HandleArrivalAsync).
+    ///     (LegType.Return) dùng lại xe/tài xế đã có sẵn gần kho. Kho phải XÁC NHẬN
+    ///     XUẤT TRẢ (màn Kho → 📤 Xuất kho theo chuyến) thì tài xế mới bắt đầu được;
+    ///     chạy xong + Duyệt thì trả xe rảnh.
     ///   Mức 3 — Giao hàng đã InProgress (hàng đã xuất kho thật): CHẶN,
-    ///     không cho hủy nữa.</summary>
-    public async Task<OrderActionResult> CancelAsync(int id)
+    ///     không cho hủy nữa.
+    /// Kết quả kèm Effects = đã làm những gì (Desktop hiện hộp "Đã hủy đơn" + các bước tiếp theo).</summary>
+    public async Task<OrderActionResult> CancelAsync(int id) => (await CancelCoreAsync(id, dryRun: false)).Result;
+
+    /// <summary>dryRun = true: chỉ tính "sẽ xảy ra gì", không đổi dữ liệu nào (không thêm chuyến, không SaveChanges,
+    /// không xuất kho) và Rollback ở cuối.</summary>
+    private async Task<(OrderActionResult Result, string Code, bool CanCancel)> CancelCoreAsync(int id, bool dryRun)
     {
         // KHÓA đơn + mọi chuyến của đơn NGAY ĐẦU (SELECT ... FOR UPDATE) rồi mới đọc
         // và kiểm tra. Trước đây đọc/kiểm tra xong mới mở transaction: đúng lúc đó app
@@ -501,21 +548,33 @@ public class TransportOrderService : ITransportOrderService
 
         var order = await _db.TransportOrders
             .Include(o => o.Trips).ThenInclude(t => t.Vehicle)
+            .Include(o => o.Trips).ThenInclude(t => t.DriverEmployee)
             .Include(o => o.Trips).ThenInclude(t => t.TripLines)
             .Include(o => o.CargoLines)
             .FirstOrDefaultAsync(o => o.Id == id);
-        if (order is null) return new OrderActionResult(false, "Không tìm thấy đơn hàng.");
+        if (order is null) return (new OrderActionResult(false, "Không tìm thấy đơn hàng."), "", false);
 
         if (order.Status == TransportOrderStatus.Done)
-            return new OrderActionResult(false, "Đơn đã hoàn tất — không thể hủy.");
+            return (new OrderActionResult(false, "Đơn đã hoàn tất — không thể hủy."), order.Code, false);
         if (order.Status == TransportOrderStatus.Cancelled)
-            return new OrderActionResult(false, "Đơn này đã bị hủy từ trước.");
+            return (new OrderActionResult(false, "Đơn này đã bị hủy từ trước."), order.Code, false);
 
         // Mức 3 — CHẶN nếu BẤT KỲ chuyến Giao hàng nào (của bất kỳ xe nào) đã
         // xuất kho: đang chạy, đang chờ xác nhận, hoặc đã giao xong.
         if (order.Trips.Any(t => t.LegType == TripLegType.Delivery
                 && t.Status is TripStatus.InProgress or TripStatus.PendingConfirmation or TripStatus.Completed))
-            return new OrderActionResult(false, "Đã có xe xuất kho và đang/đã giao hàng — không thể hủy đơn nữa.");
+            return (new OrderActionResult(false, "Đã có xe xuất kho và đang/đã giao hàng — không thể hủy đơn nữa."), order.Code, false);
+
+        var warehouseIds = order.Trips.Where(t => t.WarehouseId.HasValue).Select(t => t.WarehouseId!.Value).Distinct().ToList();
+        var warehouseNames = await _db.Warehouses.Where(w => warehouseIds.Contains(w.Id)).ToDictionaryAsync(w => w.Id, w => w.Name);
+        string WarehouseName(int? warehouseId)
+            => warehouseId is int w && warehouseNames.TryGetValue(w, out var n) ? n : "";
+        int? TripWarehouse(int tripId) => order.Trips.FirstOrDefault(t => t.Id == tripId)?.WarehouseId;
+
+        // ===== Các việc PHẢI LÀM TRƯỚC khi hủy — gom ĐỦ tất cả (trước đây chỉ báo cái đầu tiên, sửa xong
+        // lại bị chặn tiếp) + mỗi việc 1 nút sửa nhanh dẫn thẳng tới đúng chỗ (Desktop: QuickFix).
+        var blocks = new List<string>();
+        var fixes = new List<FixHint>();
 
         // Kho đã XÁC NHẬN XUẤT (hàng đã bốc lên xe) cho chuyến giao CHƯA chạy -> hàng đang nằm trên xe,
         // không còn trong kho: hủy lúc này sẽ tính sai chuyến Trả hàng / trả khách. Hoàn tác xuất trước.
@@ -524,41 +583,67 @@ public class TransportOrderService : ITransportOrderService
                         && g.Trip!.LegType == TripLegType.Delivery && g.Trip.Status == TripStatus.Planned)
             .Select(g => g.TripId!.Value).Distinct().ToListAsync();
         if (loadedTripIds.Count > 0)
-            return new OrderActionResult(false,
-                $"Kho đã xuất hàng lên xe cho chuyến giao #{string.Join(", #", loadedTripIds)} (xe chưa chạy) — vào màn Kho → 📤 Xuất kho theo chuyến, " +
-                "bấm Hoàn tác xuất (dỡ hàng về kệ) rồi mới hủy đơn.");
+        {
+            blocks.Add($"Kho đã xuất hàng lên xe cho chuyến giao #{string.Join(", #", loadedTripIds)} (xe chưa chạy) — " +
+                       "phải Hoàn tác xuất (dỡ hàng về kệ) trước.");
+            foreach (var g in loadedTripIds.GroupBy(TripWarehouse).Where(g => g.Key.HasValue))
+                fixes.Add(new FixHint("TripIssue", $"↩️ Hoàn tác xuất — chuyến giao #{string.Join(", #", g)}",
+                    Name: WarehouseName(g.Key), WarehouseId: g.Key,
+                    Note: $"Kho {WarehouseName(g.Key)} → 📤 Xuất kho theo chuyến: chọn chuyến rồi bấm ↩️ Hoàn tác"));
+        }
 
-        // CHẶN nếu có chuyến Lấy hàng đang "Chờ xác nhận": tài xế đã chở hàng về
-        // kho nhưng hàng CHƯA được nhập (nhập kho chỉ xảy ra lúc Duyệt). Hủy lúc
-        // này sẽ làm hàng nằm ở kho mà hệ thống không ghi nhận, cũng không tạo
-        // chuyến Trả hàng. Phải Duyệt (nhập kho) hoặc Từ chối chuyến đó trước.
+        // Chuyến Lấy hàng đang "Chờ xác nhận": tài xế đã chở hàng về kho nhưng hàng CHƯA được nhập
+        // (nhập kho chỉ xảy ra sau Duyệt). Hủy lúc này -> hàng nằm ở kho mà hệ thống không ghi nhận.
         var pendingPickupIds = order.Trips
             .Where(t => t.LegType == TripLegType.Pickup && t.Status == TripStatus.PendingConfirmation)
             .Select(t => t.Id).ToList();
         if (pendingPickupIds.Count > 0)
-            return new OrderActionResult(false,
-                "Chuyến lấy hàng #" + string.Join(", #", pendingPickupIds) +
-                " đang CHỜ XÁC NHẬN (hàng đã về kho nhưng chưa nhập). " +
-                "Hãy DUYỆT chuyến đó rồi NHẬP KHO (màn Kho → 📦 Nhập hàng từ chuyến) trước, rồi mới hủy đơn — hàng trong kho sẽ được trả lại khi hủy. " +
-                "CHỈ Từ chối khi tài xế báo nhầm và hàng THẬT SỰ chưa về kho.");
+        {
+            blocks.Add("Chuyến lấy hàng #" + string.Join(", #", pendingPickupIds) +
+                       " đang CHỜ DUYỆT (tài xế báo đã chở hàng về kho) — duyệt chuyến rồi nhập kho trước. " +
+                       "CHỈ Từ chối khi tài xế báo nhầm và hàng THẬT SỰ chưa về kho.");
+            foreach (var pickupId in pendingPickupIds)
+                fixes.Add(new FixHint("Trip", $"✅ Mở chuyến #{pickupId} để duyệt", Id: pickupId, Name: $"#{pickupId}",
+                    Note: "Màn Chuyến xe — duyệt xong thì nhập kho hàng lấy về"));
+        }
 
-        // CHẶN nếu có chuyến Lấy hàng đã về kho (Hoàn tất) mà hàng CHƯA NHẬP KHO hết: hàng
-        // nằm ở kho nhưng chưa có tồn kho -> hủy lúc này không trả được hàng (không có gì để
-        // xuất), cũng không tạo đúng chuyến Trả hàng. Nhập kho trước rồi hủy (giữ logic đơn giản).
+        // Chuyến Lấy hàng đã về kho (Hoàn tất) mà hàng CHƯA NHẬP KHO hết: chưa có tồn kho -> hủy lúc này
+        // không trả được hàng (không có gì để xuất), cũng không tạo đúng chuyến Trả hàng.
         var waitingReceipt = await PendingReceiptRules.LoadAsync(_db, l => l.Trip.TransportOrderId == id);
         if (waitingReceipt.Count > 0)
-            return new OrderActionResult(false,
-                "Chuyến lấy hàng " + PendingReceiptRules.Describe(waitingReceipt) +
-                " đã về kho nhưng hàng CHƯA NHẬP KHO. Hãy nhập kho trước (màn Kho → 📦 Nhập hàng từ chuyến — tự chọn vị trí hoặc để hệ thống tự xếp), " +
-                "rồi mới hủy đơn — hàng trong kho sẽ được trả lại khách khi hủy.");
+        {
+            blocks.Add("Chuyến lấy hàng " + PendingReceiptRules.Describe(waitingReceipt) +
+                       " đã về kho nhưng hàng CHƯA NHẬP KHO — nhập kho trước (hàng trong kho sẽ được trả lại khách khi hủy).");
+            foreach (var w in waitingReceipt.Select(p => TripWarehouse(p.TripId)).Where(w => w.HasValue).Distinct())
+                fixes.Add(new FixHint("PendingReceipt", $"📦 Nhập kho hàng lấy về — kho {WarehouseName(w)}",
+                    Name: WarehouseName(w), WarehouseId: w,
+                    Note: "Màn 📦 Nhập hàng từ chuyến — tự chọn vị trí hoặc để hệ thống tự xếp"));
+        }
 
-        // Chuyến Lấy hàng đang chạy: vẫn cho hủy, nhưng báo lại để điều phối gọi
-        // tài xế dừng (app tài xế sẽ tự ngừng tracking khi thấy chuyến bị hủy).
-        var pickupsOnRoadIds = order.Trips
-            .Where(t => t.LegType == TripLegType.Pickup && t.Status == TripStatus.InProgress)
-            .Select(t => t.Id).ToList();
-        string? cancelNote = pickupsOnRoadIds.Count > 0
-            ? "Đã hủy đơn. Lưu ý: chuyến lấy hàng #" + string.Join(", #", pickupsOnRoadIds) +
+        if (blocks.Count > 0)
+        {
+            var message = blocks.Count == 1 ? blocks[0]
+                : $"Còn {blocks.Count} việc phải làm trước khi hủy:\n" + string.Join("\n", blocks.Select((b, i) => $"{i + 1}) {b}"));
+            return (new OrderActionResult(false, message, fixes), order.Code, false);
+        }
+
+        // ===== Từ đây: hủy được. effects = "sẽ / đã xảy ra gì" (xem trước: thì tương lai; hủy thật: đã làm).
+        var effects = new List<CancelEffectDto>();
+        string Say(string future, string past) => dryRun ? future : past;
+        var cargoNames = order.CargoLines.ToDictionary(c => c.Id, c => c.CargoType);
+        string Goods(IEnumerable<TripLine> lines) => string.Join(", ", lines.GroupBy(l => l.CargoLineId)
+            .Select(g => $"{g.Sum(x => x.QtyPlanned):0.##} {(cargoNames.TryGetValue(g.Key, out var n) ? n : "hàng")}"));
+        static string LegName(TripLegType leg) => leg switch
+        {
+            TripLegType.Pickup => "lấy hàng", TripLegType.Delivery => "giao", _ => "trả hàng",
+        };
+
+        // Chuyến Lấy hàng đang chạy: vẫn cho hủy, nhưng báo lại (kèm tên + số điện thoại tài xế) để điều phối
+        // gọi tài xế dừng (app tài xế sẽ tự ngừng tracking khi thấy chuyến bị hủy).
+        var pickupsOnRoad = order.Trips
+            .Where(t => t.LegType == TripLegType.Pickup && t.Status == TripStatus.InProgress).ToList();
+        string? cancelNote = pickupsOnRoad.Count > 0
+            ? "Đã hủy đơn. Lưu ý: chuyến lấy hàng #" + string.Join(", #", pickupsOnRoad.Select(t => t.Id)) +
               " đang trên đường — hãy liên hệ tài xế để dừng lại."
             : null;
 
@@ -576,7 +661,6 @@ public class TransportOrderService : ITransportOrderService
             .GroupBy(t => t.VehicleId)
             .ToList();
 
-        var cancelledTripIds = new List<int>();
         // Phần hàng trong kho mà chuyến Trả hàng (tạo mới / đang có) sẽ mang đi — theo (kho, dòng hàng).
         var coveredByReturn = new Dictionary<(int WarehouseId, int CargoLineId), decimal>();
         void Cover(int? warehouseId, IEnumerable<TripLine> lines)
@@ -609,6 +693,9 @@ public class TransportOrderService : ITransportOrderService
                 return stockOnHand - stockCovered >= dl.QtyPlanned;
             });
         var vehiclesToRelease = new List<Vehicle>();
+        var returnVehicleIds = new HashSet<int>();
+        var newReturns = new List<(Trip? Trip, string Plate, string Driver, string Goods, int? WarehouseId)>();
+        var cancelEffects = new List<CancelEffectDto>();
 
         foreach (var group in tripsByVehicle)
         {
@@ -627,30 +714,39 @@ public class TransportOrderService : ITransportOrderService
                 // Mức 2 — tạo chuyến Trả hàng cho ĐÚNG phần hàng của xe này, dùng
                 // lại xe/tài xế đang ở sẵn gần kho. Xe CHƯA rảnh, còn phải chạy
                 // chuyến trả hàng (xe rảnh lại khi chuyến đó được Duyệt/Hoàn tất).
-                _db.Trips.Add(new Trip
+                Trip? returnTrip = null;
+                if (!dryRun)
                 {
-                    TransportOrderId = order.Id,
-                    VehicleId = delivery.VehicleId,
-                    DriverEmployeeId = delivery.DriverEmployeeId,
-                    WarehouseId = delivery.WarehouseId,
-                    LegType = TripLegType.Return,
-                    Status = TripStatus.Planned,
-                    // Ước tính kế hoạch cho chuyến Trả hàng (Kho -> điểm lấy hàng ban đầu) = 1 nửa
-                    // chặng Lấy hàng (vốn là khứ hồi Kho -> đối tác -> Kho) của chính xe này —
-                    // để báo cáo xăng có "km kế hoạch" và tính đúng số ngày làm của tài xế.
-                    EstimatedDistanceKm = pickup?.EstimatedDistanceKm is decimal pickupKm ? Math.Round(pickupKm / 2, 1) : null,
-                    EstimatedDurationMinutes = pickup?.EstimatedDurationMinutes is int pickupMin ? pickupMin / 2 : null,
-                    TripLines = delivery.TripLines.Select(l => new TripLine
+                    returnTrip = new Trip
                     {
-                        CargoLineId = l.CargoLineId,
-                        QtyPlanned = l.QtyPlanned,
-                    }).ToList(),
-                });
+                        TransportOrderId = order.Id,
+                        VehicleId = delivery.VehicleId,
+                        DriverEmployeeId = delivery.DriverEmployeeId,
+                        WarehouseId = delivery.WarehouseId,
+                        LegType = TripLegType.Return,
+                        Status = TripStatus.Planned,
+                        // Ước tính kế hoạch cho chuyến Trả hàng (Kho -> điểm lấy hàng ban đầu) = 1 nửa
+                        // chặng Lấy hàng (vốn là khứ hồi Kho -> đối tác -> Kho) của chính xe này —
+                        // để báo cáo xăng có "km kế hoạch" và tính đúng số ngày làm của tài xế.
+                        EstimatedDistanceKm = pickup?.EstimatedDistanceKm is decimal pickupKm ? Math.Round(pickupKm / 2, 1) : null,
+                        EstimatedDurationMinutes = pickup?.EstimatedDurationMinutes is int pickupMin ? pickupMin / 2 : null,
+                        TripLines = delivery.TripLines.Select(l => new TripLine
+                        {
+                            CargoLineId = l.CargoLineId,
+                            QtyPlanned = l.QtyPlanned,
+                        }).ToList(),
+                    };
+                    _db.Trips.Add(returnTrip);
+                    delivery.Status = TripStatus.Cancelled;
+                    delivery.CancelReason = reason;
+                }
                 Cover(delivery.WarehouseId, delivery.TripLines);
-
-                delivery.Status = TripStatus.Cancelled;
-                delivery.CancelReason = reason;
-                cancelledTripIds.Add(delivery.Id);
+                returnVehicleIds.Add(delivery.VehicleId);
+                newReturns.Add((returnTrip, delivery.Vehicle?.PlateNumber ?? "?", delivery.DriverEmployee?.FullName ?? "?",
+                    Goods(delivery.TripLines), delivery.WarehouseId));
+                cancelEffects.Add(new CancelEffectDto("CancelTrip",
+                    Say($"❌ Hủy chuyến giao #{delivery.Id} (chưa chạy) — thay bằng chuyến Trả hàng",
+                      $"❌ Đã hủy chuyến giao #{delivery.Id} — thay bằng chuyến Trả hàng"), delivery.Id));
             }
             else
             {
@@ -660,12 +756,14 @@ public class TransportOrderService : ITransportOrderService
                 foreach (var trip in group.Where(t =>
                     t.Status is TripStatus.Planned or TripStatus.InProgress or TripStatus.PendingConfirmation))
                 {
+                    cancelEffects.Add(new CancelEffectDto("CancelTrip",
+                        Say($"❌ Hủy chuyến {LegName(trip.LegType)} #{trip.Id}", $"❌ Đã hủy chuyến {LegName(trip.LegType)} #{trip.Id}"), trip.Id));
+                    if (dryRun) continue;
                     trip.Status = TripStatus.Cancelled;
                     trip.CancelReason = reason;
                     // Chuyến đã chạy dở -> ghi giờ kết thúc = lúc hủy (giới hạn khung giờ
                     // nhận video, thời lượng chuyến trong báo cáo).
                     if (trip.StartTime.HasValue) trip.EndTime ??= now;
-                    cancelledTripIds.Add(trip.Id);
                 }
                 // Trả xe về Rảnh (xét SAU vòng lặp): chỉ khi xe "Đang chạy" — không ghi đè Bảo
                 // trì / Ngưng hoạt động — VÀ xe không còn chuyến nào của ĐƠN KHÁC (xe đã được
@@ -675,18 +773,31 @@ public class TransportOrderService : ITransportOrderService
             }
         }
 
-        foreach (var vehicle in vehiclesToRelease)
+        foreach (var t in pickupsOnRoad)
+        {
+            var phone = string.IsNullOrWhiteSpace(t.DriverEmployee?.Phone) ? "" : " · ☎ " + t.DriverEmployee!.Phone!.Trim();
+            effects.Add(new CancelEffectDto("OnRoad",
+                $"📞 Chuyến lấy hàng #{t.Id} đang trên đường — gọi tài xế {t.DriverEmployee?.FullName ?? "?"}{phone} để quay xe " +
+                "(app tài xế tự dừng khi thấy chuyến bị hủy)", t.Id));
+        }
+
+        var releasedPlates = new List<string>();
+        foreach (var vehicle in vehiclesToRelease.DistinctBy(v => v.Id))
         {
             if (vehicle.Status != VehicleStatus.OnTrip) continue;
             var busyElsewhere = await _db.Trips.AnyAsync(t => t.VehicleId == vehicle.Id && t.TransportOrderId != order.Id &&
                 (t.Status == TripStatus.Planned || t.Status == TripStatus.InProgress || t.Status == TripStatus.PendingConfirmation));
-            var hasNewReturnTrip = _db.Trips.Local.Any(t => t.Id == 0 && t.VehicleId == vehicle.Id && t.LegType == TripLegType.Return);
-            if (!busyElsewhere && !hasNewReturnTrip) vehicle.Status = VehicleStatus.Available;
+            if (busyElsewhere || returnVehicleIds.Contains(vehicle.Id)) continue;
+            releasedPlates.Add(vehicle.PlateNumber);
+            if (!dryRun) vehicle.Status = VehicleStatus.Available;
         }
 
-        order.Status = TransportOrderStatus.Cancelled;
-        order.UpdatedAt = now;
-        await _db.SaveChangesAsync();
+        if (!dryRun)
+        {
+            order.Status = TransportOrderStatus.Cancelled;
+            order.UpdatedAt = now;
+            await _db.SaveChangesAsync();
+        }
 
         // Hàng của đơn còn NẰM TRONG KHO mà không có chuyến Trả hàng nào mang đi (đơn khách
         // tự mang tới; hoặc đã nhập kho tay nhưng chưa Chia xe) -> XUẤT TRẢ KHÁCH TẠI KHO
@@ -696,30 +807,69 @@ public class TransportOrderService : ITransportOrderService
             .Select(s => new { s.WarehouseId, s.CargoLineId, s.QtyOnHand })
             .ToListAsync();
         decimal returnedAtWarehouse = 0;
+        var returnedByWarehouse = new Dictionary<int, decimal>();
         foreach (var stock in stocks)
         {
             var covered = coveredByReturn.TryGetValue((stock.WarehouseId, stock.CargoLineId), out var coveredQty) ? coveredQty : 0;
             var uncovered = stock.QtyOnHand - covered;
             if (uncovered <= 0) continue;
 
-            var issue = await _warehouseService.IssueGoodsAsync(stock.WarehouseId, order.Id, stock.CargoLineId,
-                uncovered, issuedByEmployeeId: null, tripId: null, performedByUserName: $"{WarehouseSlottingService.CancelReturnPerformerPrefix}{order.Code} — trả khách tại kho");
-            if (!issue.Success)
-                return new OrderActionResult(false, "Không thể xuất trả hàng còn trong kho: " + issue.Message); // chưa Commit -> Rollback
+            if (!dryRun)
+            {
+                var issue = await _warehouseService.IssueGoodsAsync(stock.WarehouseId, order.Id, stock.CargoLineId,
+                    uncovered, issuedByEmployeeId: null, tripId: null, performedByUserName: $"{WarehouseSlottingService.CancelReturnPerformerPrefix}{order.Code} — trả khách tại kho");
+                if (!issue.Success)
+                    return (new OrderActionResult(false, "Không thể xuất trả hàng còn trong kho: " + issue.Message), order.Code, false); // chưa Commit -> Rollback
+            }
             returnedAtWarehouse += uncovered;
+            returnedByWarehouse[stock.WarehouseId] = returnedByWarehouse.GetValueOrDefault(stock.WarehouseId) + uncovered;
+        }
+        if (returnedByWarehouse.Count > 0)
+        {
+            var missing = returnedByWarehouse.Keys.Where(k => !warehouseNames.ContainsKey(k)).ToList();
+            if (missing.Count > 0)
+                foreach (var w in await _db.Warehouses.Where(w => missing.Contains(w.Id)).Select(w => new { w.Id, w.Name }).ToListAsync())
+                    warehouseNames[w.Id] = w.Name;
         }
 
-        await transaction.CommitAsync();
+        if (dryRun) await transaction.RollbackAsync();
+        else await transaction.CommitAsync();
 
         // Lịch Google: KHÔNG gỡ sự kiện nữa — controller cập nhật các chuyến vừa hủy sang màu ĐỎ "Đã hủy"
         // (tài xế / khách vẫn thấy chuyến đã bị hủy thay vì sự kiện biến mất không rõ lý do).
+
+        // ===== Ghép danh sách "sẽ / đã xảy ra gì" theo thứ tự đọc: chuyến Trả hàng -> chuyến bị hủy -> tài xế
+        // đang chạy -> hàng trả tại kho -> xe rảnh -> phí lưu kho.
+        var result = new List<CancelEffectDto>();
+        foreach (var r in newReturns)
+            result.Add(new CancelEffectDto("Return",
+                Say($"🔙 Tạo chuyến Trả hàng — xe {r.Plate} · tài xế {r.Driver} chở {r.Goods} từ kho {WarehouseName(r.WarehouseId)} về {order.PickupPoint}",
+                  $"🔙 Đã tạo chuyến Trả hàng #{r.Trip?.Id} — xe {r.Plate} · tài xế {r.Driver} chở {r.Goods} từ kho {WarehouseName(r.WarehouseId)} về {order.PickupPoint}"),
+                r.Trip?.Id));
+        result.AddRange(cancelEffects);
+        result.AddRange(effects);
+        foreach (var (warehouseId, qty) in returnedByWarehouse)
+            result.Add(new CancelEffectDto("ReturnAtWarehouse",
+                Say($"🏬 Xuất trả {qty:0.##} đơn vị hàng tại kho {WarehouseName(warehouseId)} — khách tới kho nhận lại (không có chuyến trả hàng)",
+                  $"🏬 Đã xuất trả {qty:0.##} đơn vị hàng tại kho {WarehouseName(warehouseId)} — khách tới kho nhận lại")));
+        if (releasedPlates.Count > 0)
+            result.Add(new CancelEffectDto("Info",
+                Say($"🚚 Xe {string.Join(", ", releasedPlates)} rảnh lại, nhận đơn khác được", $"🚚 Xe {string.Join(", ", releasedPlates)} đã rảnh lại")));
+
+        var fee = await StorageFeeRules.ComputeAsync(_db, id);
+        if (fee is not null && (fee.TotalFee > 0 || fee.ReceivedDate is not null))
+            result.Add(new CancelEffectDto("Fee", newReturns.Count > 0
+                ? $"💰 Phí lưu kho tới hôm nay {fee.TotalFee:N0} đ — còn tính tới ngày kho xuất trả hàng lên xe chuyến Trả hàng"
+                : $"💰 Phí lưu kho {fee.TotalFee:N0} đ — chốt tới ngày hàng rời kho"));
+        if (result.Count == 0)
+            result.Add(new CancelEffectDto("Info", Say("Đơn chưa có chuyến nào chạy — chỉ chuyển đơn sang Đã hủy.", "Đơn đã chuyển sang Đã hủy.")));
 
         if (returnedAtWarehouse > 0)
         {
             var note = $"Đã xuất trả {returnedAtWarehouse:0.##} đơn vị hàng còn trong kho (không có chuyến trả hàng) — khách nhận lại tại kho.";
             cancelNote = cancelNote is null ? "Đã hủy đơn. " + note : cancelNote + "\n" + note;
         }
-        return new OrderActionResult(true, cancelNote);
+        return (new OrderActionResult(true, dryRun ? null : cancelNote, null, result), order.Code, true);
     }
 
     /// <summary>Hợp đồng của đơn (tuỳ chọn): phải tồn tại, của ĐÚNG khách hàng và đang hiệu lực
@@ -945,7 +1095,8 @@ public class TransportOrderService : ITransportOrderService
                 order.PickupLocation?.Name, order.PickupPoint, order.DropoffLocation?.Name, order.DropoffPoint);
             return new TripSummaryDto(
                 t.Id, t.Vehicle.PlateNumber, t.DriverEmployee.FullName, t.Status.ToString(),
-                t.TripLines.Sum(tl => tl.QtyPlanned), t.LegType.ToString(), route.From, route.To);
+                t.TripLines.Sum(tl => tl.QtyPlanned), t.LegType.ToString(), route.From, route.To,
+                t.StartTime.HasValue ? VnClock.ToVnWallClock(t.StartTime) : t.PlannedStartDate);
         }).ToList(),
         order.PickupLocation?.Lat, order.PickupLocation?.Lng,
         order.DropoffLocation?.Lat, order.DropoffLocation?.Lng,

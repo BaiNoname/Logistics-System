@@ -257,6 +257,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                 "Confirmed" => $"Đã chia xe ({o.ActiveTripCount} chuyến) — chờ xe xuất phát, theo dõi ở màn Chuyến",
                 "InProgress" => $"Đang vận chuyển {o.ProgressPercent:0.##}% — theo dõi ở màn Chuyến",
                 "Done" => "Hoàn tất — chỉ xem lại / phí lưu kho",
+                "Cancelled" when o.OpenReturnTripId > 0 => $"🔙 Đã hủy — còn chuyến Trả hàng #{o.OpenReturnTripId} chưa xong: kho xuất trả → tài xế chạy → duyệt",
                 "Cancelled" => "Đã hủy — chỉ xem lại",
                 _ => "",
             };
@@ -278,7 +279,7 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                 To = string.IsNullOrWhiteSpace(o.DropoffPoint) ? "?" : o.DropoffPoint,
                 RouteMid = string.IsNullOrWhiteSpace(o.WarehouseName) ? "giao thẳng" : $"qua 🏬 {o.WarehouseName}",
                 Next = next,
-                Blocked = overdue || o.OverdueStorageDays > 0 || o.Status == "Confirmed" && o.ActiveTripCount == 0,
+                Blocked = overdue || o.OverdueStorageDays > 0 || o.Status == "Confirmed" && o.ActiveTripCount == 0 || o.OpenReturnTripId > 0,
                 Done = o.Status == "Done",
                 Accent = StatusColor(o.Status),
             };
@@ -324,6 +325,11 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                 "Draft" => ("✅ Xác nhận đơn", (Func<Task>)(() => RunAsync(_actConfirm))),
                 "Confirmed" when o.ActiveTripCount == 0 => ("🚚 Chia xe", (Func<Task>)(() => RunAsync(_actAllocate))),
                 "Confirmed" or "InProgress" => ("🛣️ Xem chuyến của đơn", (Func<Task>)(() => OpenTripsScreen(o.Code))),
+                "Cancelled" when o.OpenReturnTripId > 0 => ($"🛣️ Mở chuyến #{o.OpenReturnTripId}", (Func<Task>)(() =>
+                {
+                    if (_api is { } api) TruckingSystem.Desktop.GUI_Shared.QuickFix.OpenTrip(this, api, o.OpenReturnTripId);
+                    return Task.CompletedTask;
+                })),
                 _ => ("📄 Xem chi tiết", (Func<Task>)(() => RunAsync(_actDetail))),
             };
             return info;
@@ -367,16 +373,14 @@ namespace TruckingSystem.Desktop.GUI_TransportOrderManagement
                 result.Success ? Theme.Success : Theme.Warning);
         }
 
+        /// <summary>Hủy đơn: xem trước sẽ xảy ra gì -> hỏi chắc chắn -> hủy -> báo chuyến Trả hàng + bước tiếp (CancelOrderFlow).
+        /// Còn việc phải làm trước thì hiện hộp sửa nhanh (mỗi việc 1 nút) thay vì 1 dòng báo lỗi.</summary>
         private async Task CancelAsync(TransportOrderListItem o)
         {
-            if (!Ask.Confirm(this, $"Hủy đơn {o.Code}?", "Đơn bị hủy hẳn, không hoàn tác được.",
-                    "❌ Hủy đơn", danger: true, cancelText: "Giữ đơn")) return;
-            var result = await _api!.TransportOrders.CancelOrderAsync(o.Id);
+            var cancelled = await CancelOrderFlow.RunAsync(this, _api!, o.Id, o.Code);
+            if (IsDisposed) return; // đã chuyển sang màn Chuyến xe (mở chuyến trả hàng / chuyến cần duyệt)
             await LoadAsync();
-            if (result.Success && !string.IsNullOrEmpty(result.Message)) // cảnh báo quan trọng (VD xe lấy hàng đang chạy) -> giữ hộp thoại
-                MessageBox.Show(FindForm(), result.Message, "Đã hủy đơn — cần lưu ý", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            SetStatus(result.Success ? $"❌ Đã hủy đơn {o.Code}." : "⚠️ " + result.Message,
-                result.Success ? Theme.TextSecondary : Theme.Warning);
+            if (cancelled) SetStatus($"❌ Đã hủy đơn {o.Code}.", Theme.TextSecondary);
         }
 
         private async Task ChangeDeadlineAsync(TransportOrderListItem o)

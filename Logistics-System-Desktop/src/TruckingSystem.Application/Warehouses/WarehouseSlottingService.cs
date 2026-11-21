@@ -1304,8 +1304,8 @@ public class WarehouseSlottingService : IWarehouseSlottingService
     // ================= Tình trạng hàng theo đơn =================
 
     /// <summary>Số lượng đang GIỮ cho các chuyến sắp lấy hàng ra khỏi kho: chuyến
-    /// Giao chưa bắt đầu (bắt đầu mới xuất kho) và chuyến Trả hàng chưa hoàn tất
-    /// (hoàn tất mới xuất kho) — trừ phần chuyến đó đã xuất rồi.</summary>
+    /// Giao chưa bắt đầu và chuyến Trả hàng chưa hoàn tất (kho xác nhận xuất ở màn "📤 Xuất kho theo
+    /// chuyến"; chuyến Trả hàng cũ chưa xuất thì hoàn tất mới xuất) — trừ phần chuyến đó đã xuất rồi.</summary>
     private async Task<decimal> GetReservedQtyAsync(int cargoLineId)
     {
         var lines = await _db.TripLines
@@ -1643,6 +1643,7 @@ public class WarehouseSlottingService : IWarehouseSlottingService
             else
                 progress = done >= t.Planned && t.Planned > 0 ? $"✅ Đã xuất kho {done:0.##}/{t.Planned:0.##}"
                          : done > 0 ? $"📤 Đã xuất {done:0.##}/{t.Planned:0.##}"
+                         : t.Status == TripStatus.Planned && t.LegType == TripLegType.Return ? "⏳ Chờ kho xuất trả (màn Kho → 📤 Xuất kho theo chuyến)"
                          : t.LegType == TripLegType.Return ? "⏳ Xuất kho khi chuyến trả hàng hoàn tất"
                          : "⏳ Chờ kho xuất (màn Kho → 📤 Xuất kho theo chuyến)";
 

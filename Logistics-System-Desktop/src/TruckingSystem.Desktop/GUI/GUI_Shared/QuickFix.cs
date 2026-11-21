@@ -180,6 +180,8 @@ namespace TruckingSystem.Desktop.GUI_Shared
                         return Navigate(owner, "Tài xế", () => { var c = new DriversControl(api); c.FocusOn(fix.Name ?? ""); return c; });
                     case "Contracts":
                         return Navigate(owner, "Hợp đồng", null);
+                    case "Trip" when fix.Id is int focusTripId:
+                        return OpenTrip(owner, api, focusTripId);
                 }
             }
             catch (Exception ex)
@@ -190,6 +192,11 @@ namespace TruckingSystem.Desktop.GUI_Shared
             Ask.Fail(owner, "Chưa hỗ trợ mở nhanh chỗ sửa này.");
             return false;
         }
+
+        /// <summary>Sang màn Chuyến xe, chỉ hiện + chọn sẵn chuyến #id (VD duyệt chuyến lấy hàng trước khi hủy đơn,
+        /// mở chuyến Trả hàng vừa tạo). Luôn trả false: không hỏi làm lại.</summary>
+        public static bool OpenTrip(Control owner, ApiServices api, int tripId)
+            => Navigate(owner, "Chuyến xe", () => { var c = new TripsControl(api); c.FocusTrip(tripId); return c; });
 
         /// <summary>Chuyển sang màn khác (đóng hộp thoại đang mở để thấy màn đó). Luôn trả false: không hỏi làm lại.</summary>
         private static bool Navigate(Control owner, string navName, Func<Control>? build)

@@ -6,7 +6,7 @@
 ;            cạnh file này -> máy chưa có WebView2 sẽ được cài tự động.
 ; ============================================================================
 #define AppName      "TruckingSystem"
-#define AppVersion   "1.0.11"
+#define AppVersion   "1.0.14"
 #define AppPublisher "Nhóm Thiện Nhân – Hoàng Minh"
 #define AppExe       "TruckingSystem.Desktop.exe"
 #define PublishDir   "..\publish\Desktop"

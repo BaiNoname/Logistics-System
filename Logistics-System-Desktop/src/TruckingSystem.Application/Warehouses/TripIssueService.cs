@@ -5,7 +5,7 @@ using TruckingSystem.Domain.Enums;
 
 namespace TruckingSystem.Application.Warehouses;
 
-/// <summary>1 dòng hàng của 1 chuyến GIAO chưa chạy tại kho — màn "📤 Xuất kho theo chuyến".
+/// <summary>1 dòng hàng của 1 chuyến GIAO (hoặc TRẢ HÀNG khi hủy đơn — LegType = "Return") chưa chạy tại kho — màn "📤 Xuất kho theo chuyến".
 /// State / CanIssue / CanUndo / BlockReason là của CẢ CHUYẾN (lặp lại trên mọi dòng của chuyến).
 /// BinsText: hàng đang nằm ở ô nào (lô nhập trước xuất trước) để nhân viên kho soạn hàng.</summary>
 public record TripIssueLineDto(int TripId, int TransportOrderId, string OrderCode, string CustomerName,
@@ -13,7 +13,8 @@ public record TripIssueLineDto(int TripId, int TransportOrderId, string OrderCod
     string TripState, bool CanIssue, bool CanUndo, string? BlockReason,
     int CargoLineId, string CargoType, decimal QtyPlanned, decimal QtyIssued, decimal QtyPending, decimal QtyOnHand,
     string BinsText, string Destination = "—", // điểm giao của chuyến (xe chở hàng đi đâu)
-    DateTime? LatestStart = null, DateTime? Deadline = null, string? DeadlineText = null); // mốc PHẢI xuất phát trước (cùng quy tắc màn Chuyến) + hạn giao
+    DateTime? LatestStart = null, DateTime? Deadline = null, string? DeadlineText = null, // mốc PHẢI xuất phát trước (cùng quy tắc màn Chuyến) + hạn giao
+    string LegType = "Delivery"); // "Return" = chuyến TRẢ HÀNG của đơn đã hủy (xuất trả về khách)
 
 public interface ITripIssueService
 {
@@ -28,7 +29,9 @@ public interface ITripIssueService
 /// (Desktop hay app tài xế — TripService.GetStartBlockReasonAsync). Số lượng xuất = ĐÚNG tổng số lượng
 /// của chuyến (không xuất lẻ, không xuất ngoài chuyến) -> không lệch tồn kho.
 /// Xuất nhầm / cần đổi xe / hủy đơn trước khi xe chạy: "Hoàn tác xuất" (dỡ hàng về kệ, phiếu xuất
-/// giữ lại và đánh dấu đã hoàn tác).</summary>
+/// giữ lại và đánh dấu đã hoàn tác).
+/// Chuyến TRẢ HÀNG (đơn bị hủy khi hàng đã nằm kho) đi qua ĐÚNG quy trình này: kho xác nhận XUẤT TRẢ lên xe
+/// thì tài xế mới bắt đầu chuyến trả được (trước đây xe chạy mà kho không hề biết, tới lúc hoàn tất mới trừ kho).</summary>
 public class TripIssueService : ITripIssueService
 {
     private readonly IApplicationDbContext _db;
@@ -43,9 +46,13 @@ public class TripIssueService : ITripIssueService
     public async Task<List<TripIssueLineDto>> GetAsync(int warehouseId)
     {
         var trips = await _db.Trips
-            .Where(t => t.WarehouseId == warehouseId && t.LegType == TripLegType.Delivery && t.Status == TripStatus.Planned)
+            .Where(t => t.WarehouseId == warehouseId && t.Status == TripStatus.Planned
+                        && (t.LegType == TripLegType.Delivery || t.LegType == TripLegType.Return))
             .Select(t => new
             {
+                t.LegType,
+                PickupName = t.TransportOrder.PickupLocation != null ? t.TransportOrder.PickupLocation.Name : null,
+                t.TransportOrder.PickupPoint,
                 t.Id, t.TransportOrderId, OrderCode = t.TransportOrder.Code, CustomerName = t.TransportOrder.Customer.Name,
                 DriverName = t.DriverEmployee.FullName, t.Vehicle.PlateNumber, t.PlannedStartDate,
                 DropoffName = t.TransportOrder.DropoffLocation != null ? t.TransportOrder.DropoffLocation.Name : null,
@@ -103,7 +110,8 @@ public class TripIssueService : ITripIssueService
         var result = new List<TripIssueLineDto>();
         foreach (var t in trips)
         {
-            var dl = Deadline(t.Id, t.TransportOrderId);
+            var isReturn = t.LegType == TripLegType.Return;
+            var dl = isReturn ? null : Deadline(t.Id, t.TransportOrderId); // trả hàng: đơn đã hủy, không có hạn giao
             var tLines = lines.Where(l => l.TripId == t.Id).Select(l =>
             {
                 var done = issued.FirstOrDefault(i => i.TripId == t.Id && i.CargoLineId == l.CargoLineId)?.Qty ?? 0;
@@ -115,9 +123,10 @@ public class TripIssueService : ITripIssueService
 
             string state; string? reason = null;
             if (allIssued) state = "✅ Đã xuất — chờ xe chạy";
-            else if (pendingPickupOrders.Contains(t.TransportOrderId))
+            // Trả hàng: hàng đã nằm kho từ trước (hủy đơn đã bắt nhập kho xong) -> không xét chặng Lấy hàng / chờ nhập.
+            else if (!isReturn && pendingPickupOrders.Contains(t.TransportOrderId))
             { state = "⏳ Chờ chặng Lấy hàng"; reason = "Chặng Lấy hàng của đơn chưa hoàn tất — hàng chưa về kho."; }
-            else if (waitingOrderIds.Contains(t.TransportOrderId))
+            else if (!isReturn && waitingOrderIds.Contains(t.TransportOrderId))
             { state = "📦 Chờ nhập kho"; reason = "Hàng đã về kho nhưng chưa nhập kho xong — nhập ở nút 📦 Nhập hàng từ chuyến trước."; }
             else if (tLines.FirstOrDefault(l => l.Pending > l.OnHand) is { } shortLine)
             { state = "⚠️ Kho không đủ hàng"; reason = $"\"{shortLine.CargoType}\": cần xuất {shortLine.Pending:0.##}, trong kho chỉ còn {shortLine.OnHand:0.##}."; }
@@ -128,8 +137,9 @@ public class TripIssueService : ITripIssueService
                     t.PlannedStartDate, state, !allIssued && reason is null, anyIssued, reason,
                     l.CargoLineId, l.CargoType, l.QtyPlanned, l.Issued, l.Pending, l.OnHand,
                     bins.TryGetValue(l.CargoLineId, out var b) ? b : "—",
-                    TripRouteText.For(TripLegType.Delivery, null, null, null, t.DropoffName, t.DropoffPoint).To,
-                    dl?.LatestStart, dl?.Deadline, dl?.Text));
+                    isReturn ? "🔙 Trả về: " + TripRouteText.For(TripLegType.Return, null, t.PickupName, t.PickupPoint, null, null).To
+                             : TripRouteText.For(TripLegType.Delivery, null, null, null, t.DropoffName, t.DropoffPoint).To,
+                    dl?.LatestStart, dl?.Deadline, dl?.Text, isReturn ? "Return" : "Delivery"));
         }
         // Chuyến GẤP nhất (mốc phải xuất phát sớm nhất) lên đầu; chưa có hạn thì theo ngày xuất phát dự kiến.
         return result.OrderBy(r => r.LatestStart ?? r.PlannedStartDate ?? DateTime.MaxValue)
@@ -155,11 +165,13 @@ public class TripIssueService : ITripIssueService
                 $"Chuyến #{tripId} dự kiến xuất phát {planned:dd/MM/yyyy} — chỉ xuất kho từ ngày {planned.Date.AddDays(-MaxIssueDaysBeforeStart):dd/MM/yyyy} " +
                 $"(trước ngày chạy tối đa {MaxIssueDaysBeforeStart} ngày).");
 
-        var pendingPickup = await _db.Trips.AnyAsync(t => t.TransportOrderId == trip.TransportOrderId && t.LegType == TripLegType.Pickup
+        var isReturn = trip.LegType == TripLegType.Return;
+        var pendingPickup = !isReturn && await _db.Trips.AnyAsync(t => t.TransportOrderId == trip.TransportOrderId && t.LegType == TripLegType.Pickup
                                                           && t.Status != TripStatus.Cancelled && t.Status != TripStatus.Completed);
         if (pendingPickup)
             return new WarehouseActionResult(false, "Chặng Lấy hàng của đơn chưa hoàn tất — hàng chưa về kho, chưa xuất được.");
-        var waiting = await PendingReceiptRules.LoadAsync(_db, l => l.Trip.TransportOrderId == trip.TransportOrderId);
+        var waiting = isReturn ? new List<PendingReceiptRules.PendingLine>()
+            : await PendingReceiptRules.LoadAsync(_db, l => l.Trip.TransportOrderId == trip.TransportOrderId);
         if (waiting.Count > 0)
             return new WarehouseActionResult(false, "Hàng của đơn đã về kho nhưng CHƯA NHẬP KHO xong — nhập ở nút 📦 Nhập hàng từ chuyến trước rồi mới xuất.");
 
@@ -184,7 +196,8 @@ public class TripIssueService : ITripIssueService
 
         await transaction.CommitAsync();
         return new WarehouseActionResult(true,
-            $"Đã xác nhận xuất kho cho chuyến #{tripId} (xe {trip.Plate}):\n{string.Join("\n", done)}\nTài xế có thể bắt đầu chuyến giao.");
+            $"Đã xác nhận {(isReturn ? "XUẤT TRẢ" : "xuất kho")} cho chuyến #{tripId} (xe {trip.Plate}):\n{string.Join("\n", done)}\n" +
+            (isReturn ? "Tài xế có thể bắt đầu chuyến trả hàng về khách." : "Tài xế có thể bắt đầu chuyến giao."));
     }
 
     public async Task<WarehouseActionResult> UndoTripAsync(int warehouseId, int tripId, StockPerformer performer)
@@ -200,7 +213,7 @@ public class TripIssueService : ITripIssueService
         return new WarehouseActionResult(true, $"Đã hoàn tác xuất kho chuyến #{tripId} — hàng dỡ khỏi xe, trả về kệ:\n{result.Message}");
     }
 
-    private sealed record LockedTrip(int TransportOrderId, string Plate, VehicleStatus VehicleStatus, DateTime? PlannedStartDate);
+    private sealed record LockedTrip(int TransportOrderId, string Plate, VehicleStatus VehicleStatus, DateTime? PlannedStartDate, TripLegType LegType);
 
     /// <summary>Số ngày được xuất (bốc hàng lên xe) TRƯỚC ngày xuất phát dự kiến.</summary>
     private const int MaxIssueDaysBeforeStart = 1;
@@ -214,10 +227,11 @@ public class TripIssueService : ITripIssueService
             .Select(t => new { t.LegType, t.Status, t.WarehouseId, t.TransportOrderId, t.Vehicle.PlateNumber, VehicleStatus = t.Vehicle.Status, t.PlannedStartDate })
             .FirstOrDefaultAsync();
         if (trip is null) return (null, "Không tìm thấy chuyến.");
-        if (trip.LegType != TripLegType.Delivery) return (null, $"Chuyến #{tripId} không phải chuyến Giao hàng.");
+        if (trip.LegType is not (TripLegType.Delivery or TripLegType.Return))
+            return (null, $"Chuyến #{tripId} không phải chuyến Giao hàng / Trả hàng.");
         if (trip.WarehouseId != warehouseId) return (null, $"Chuyến #{tripId} xuất từ kho khác.");
         if (trip.Status != TripStatus.Planned)
             return (null, $"Chuyến #{tripId} không còn ở trạng thái chưa chạy (xe đã xuất phát / đã xong / đã hủy).");
-        return (new LockedTrip(trip.TransportOrderId, trip.PlateNumber, trip.VehicleStatus, trip.PlannedStartDate), null);
+        return (new LockedTrip(trip.TransportOrderId, trip.PlateNumber, trip.VehicleStatus, trip.PlannedStartDate, trip.LegType), null);
     }
 }
